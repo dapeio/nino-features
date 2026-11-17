@@ -29,7 +29,6 @@ defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname(
 require $root. '/tests/harness.php';
 require __DIR__. '/fixtures/repository.php';
 
-use Nino\Modules\Themes\Archive;
 use Nino\Modules\Themes\Brand;
 use Nino\Modules\Themes\Repository;
 use Nino\Modules\Themes\Typefaces;
@@ -114,8 +113,8 @@ function fontsServe( array &$appData, array $serves ): ArrayObject {
 	};
 
 	// No name is looked up on this machine either: a name is public unless the test says where it leads
-	if( isset( $appData['./nino/themes/resolve'] ) === false )
-		$appData['./nino/themes/resolve'] = static fn( string $host ): array => [ '93.184.216.34' ];
+	if( isset( $appData['./nino/fetch/resolve'] ) === false )
+		$appData['./nino/fetch/resolve'] = static fn( string $host ): array => [ '93.184.216.34' ];
 
 	return $asked;
 }
@@ -273,14 +272,14 @@ check( 'A. what the repository takes for a name the brand can use is what the br
 check( 'A. the key of the feature is a public key that openssl reads, of the curve the scheme signs with; the list and the lock are below data/ in a folder whose name begins with a dot, the work of an install is a folder of public/fonts/ whose name begins with one, and the licence of a family is a file with the ending of a text',
 	is_array( $details = openssl_pkey_get_details( openssl_pkey_get_public( Repository::PUBLIC_KEY ) ) ) === true && ( $details['ec']['curve_name'] ?? '' ) === 'prime256v1' && Typefaces::WORK === '.work-' && Repository::CACHE === '/data/theme/.fonts/list.json' && Typefaces::LOCK === '/data/theme/.fonts/install.lock' && Typefaces::LICENSE === 'LICENSE.txt' );
 
-// what no file of the three classes does
+// what no file of the two classes does
 $sources = [];
 
-foreach( [ 'Repository/Repository.php', 'Typefaces/Typefaces.php', 'Archive/Archive.php' ] as $file )
+foreach( [ 'Repository/Repository.php', 'Typefaces/Typefaces.php' ] as $file )
 	$sources[$file] = (string) file_get_contents( $featureDir. '/'. $file );
 
 $code = implode( "\n", $sources );
-check( 'A. the three classes ask the network through the client of the kernel and through nothing else, run no program, read no archive with a class that writes it to a disk, and name nothing that only one C library has',
+check( 'A. the two classes ask the network through the client of the kernel and through nothing else, run no program, read no archive with a class that writes it to a disk, and name nothing that only one C library has',
 	substr_count( $code, '\\Nino\\Fetch::get(' ) === 3 && preg_match( '/\bcurl_|fsockopen|stream_socket|stream_context|allow_url|\bexec\s*\(|shell_exec|proc_open|passthru|popen\s*\(|\bsystem\s*\(|PharData|ZipArchive|\beval\s*\(|unserialize|\binclude\b|\brequire\b/', $code ) === 0
 	&& preg_match( '/GLOB_'. 'BRACE|strptime|setlocale|TRANSLIT|\bglob\s*\(/', $code ) === 0 && preg_match( '/file_get_contents\(\s*[\'"]https?:/', $code ) === 0 );
 
@@ -323,7 +322,7 @@ foreach( array_keys( $words['en_US'] ) as $key )
 check( 'A. no word of the fonts is left without a reader: each is asked for by the script or is the sentence of a failure the classes name'. ( $unread === [] ? '' : ' - '. implode( ', ', $unread ) ), $unread === [] );
 
 $fontKeys = static fn( array $fills ): array => array_values( array_filter( array_keys( $fills ), static fn( string $key ): bool => str_contains( $key, '/themes/fonts/' ) === true || str_contains( $key, 'themes_fonts_' ) === true ) );
-check( 'A. every failure the three classes name ('. count( $codes ). ') and every word the script says ('. count( array_unique( $said[1] ) ). ') has a sentence in both languages, and the two languages have the same '. count( $fontKeys( $words['en_US'] ) ). ' keys'. ( $missing === [] ? '' : ' - '. implode( ', ', $missing ) ),
+check( 'A. every failure the two classes name ('. count( $codes ). ') and every word the script says ('. count( array_unique( $said[1] ) ). ') has a sentence in both languages, and the two languages have the same '. count( $fontKeys( $words['en_US'] ) ). ' keys'. ( $missing === [] ? '' : ' - '. implode( ', ', $missing ) ),
 	$missing === [] && count( $codes ) >= 18 && count( array_unique( $said[1] ) ) > 40 && $fontKeys( $words['en_US'] ) === $fontKeys( $words['de_DE'] ) && count( $fontKeys( $words['en_US'] ) ) > 80 );
 
 check( 'A. the log names the three actions that change something and shows the slug as a slug, whatever was posted',
@@ -347,7 +346,7 @@ $stateOf = static function( array $settings, ?callable $resolve = null ) use ( &
 	$looked = new ArrayObject();
 
 	$site['/nino/features']['themes']['settings'] = $settings;
-	$site['./nino/themes/resolve'] = static function( string $host ) use ( $looked, $resolve ): array|false {
+	$site['./nino/fetch/resolve'] = static function( string $host ) use ( $looked, $resolve ): array|false {
 		$looked[] = $host;
 		return $resolve === null ? [ '93.184.216.34' ] : $resolve( $host );
 	};
@@ -359,7 +358,7 @@ $stateOf = static function( array $settings, ?callable $resolve = null ) use ( &
 	[ $loadStatus, $load ] = $settings === [] ? [ 0, [] ] : fontsCall( $site, 'themes/fonts-load' );
 
 	$site['/nino/features']['themes']['settings'] = $fixture;
-	unset( $site['./nino/themes/resolve'] );
+	unset( $site['./nino/fetch/resolve'] );
 	fontsServe( $site, [] );
 
 	return [ 'status' => $status, 'state' => $view['repository']['state'] ?? '', 'host' => $view['repository']['host'] ?? '', 'ownKey' => $view['repository']['ownKey'] ?? null, 'viewAsked' => $viewAsked, 'load' => $loadStatus, 'code' => $load['code'] ?? '', 'asked' => array_column( (array) $asked, 0 ), 'looked' => (array) $looked ];
@@ -388,25 +387,25 @@ check( 'B. the two settings are saved by the kernel in the form of the manifest:
 $spelled = [];
 
 foreach( [ 'https://127.0.0.1/x', 'https://[::1]/x', 'https://2130706433/x', 'https://0x7f000001/x', 'https://8.8.8.8/x', 'https://localhost/x', 'https://printer/x', 'https://nas.local/x', 'https://fonts.internal/x', 'https://-bad.example.com/x', 'https://example.123/x', 'http://fonts.example.test/x' ] as $url )
-	$spelled[$url] = Repository::host( $site, $url, false ) === false && Repository::host( $site, $url ) === false;
+	$spelled[$url] = \Nino\Fetch::isPublic( $site, $url, false ) === false && \Nino\Fetch::isPublic( $site, $url ) === false;
 
 $literal = $stateOf( [ 'fontsUrl' => 'https://169.254.169.254/latest/meta-data', 'fontsKey' => $keys[2] ] );
 check( 'B. an address in place of a name - dotted, whole, hexadecimal, IPv6, a public one as well - the name of a machine without a dot and a name of a local network are no host that is asked: said by the view without a lookup, refused by a load with no request and no lookup'. ( array_unique( array_values( $spelled ) ) === [ true ] ? '' : ' - NOT: '. implode( ', ', array_keys( array_filter( $spelled, static fn( bool $ok ): bool => $ok === false ) ) ) ),
-	count( $spelled ) === 12 && array_unique( array_values( $spelled ) ) === [ true ] && Repository::host( $site, FONTS_LIST, false ) === true && [ $literal['state'], $literal['load'], $literal['code'], $literal['asked'], $literal['looked'] ] === [ 'internal', 409, 'themes_fonts_internal', [], [] ] );
+	count( $spelled ) === 12 && array_unique( array_values( $spelled ) ) === [ true ] && \Nino\Fetch::isPublic( $site, FONTS_LIST, false ) === true && [ $literal['state'], $literal['load'], $literal['code'], $literal['asked'], $literal['looked'] ] === [ 'internal', 409, 'themes_fonts_internal', [], [] ] );
 
 // the host: by what the lookup answers, where a request follows
 $leads = [];
 
 foreach( [ '127.0.0.1', '10.1.2.3', '192.168.0.1', '169.254.169.254', '100.64.0.1', '::1', 'fd12::1', 'fe80::1', '::ffff:8.8.8.8', '::93.184.216.34', '64:ff9b::a00:1', 'no address', 42 ] as $address ) {
-	$site['./nino/themes/resolve'] = static fn( string $host ): array => [ '93.184.216.34', $address ];
-	$leads[(string) $address] = Repository::host( $site, FONTS_LIST ) === false;
+	$site['./nino/fetch/resolve'] = static fn( string $host ): array => [ '93.184.216.34', $address ];
+	$leads[(string) $address] = \Nino\Fetch::isPublic( $site, FONTS_LIST ) === false;
 }
 
 $reaches = [];
 
 foreach( [ '93.184.216.34', '2606:2800:220:1:248:1893:25c8:1946', '64:ff9b::5db8:d822' ] as $address ) {
-	$site['./nino/themes/resolve'] = static fn( string $host ): array => [ $address ];
-	$reaches[$address] = Repository::host( $site, FONTS_LIST ) === true;
+	$site['./nino/fetch/resolve'] = static fn( string $host ): array => [ $address ];
+	$reaches[$address] = \Nino\Fetch::isPublic( $site, FONTS_LIST ) === true;
 }
 
 $internal = $stateOf( $fixture, static fn( string $host ): array => [ '93.184.216.34', '10.0.0.8' ] );
@@ -441,7 +440,7 @@ $asked = fontsServe( $site, $serves );
 [ $status, $body ] = fontsCall( $site, 'themes/fonts-load' );
 $cacheFile = \Nino\Filesystem::path( $site, Repository::CACHE );
 check( 'C. a list whose signature holds is loaded: two requests and no more - the list, then its signature at .sig - each with its limit of bytes and of time, and the answer lists the families',
-	$status === 200 && $body['loaded'] === 2 && (array) $asked === [ [ FONTS_LIST, [ 'timeout' => 15, 'maxBytes' => 1048576 ] ], [ FONTS_LIST. '.sig', [ 'timeout' => 15, 'maxBytes' => 4096 ] ] ]
+	$status === 200 && $body['loaded'] === 2 && (array) $asked === [ [ FONTS_LIST, [ 'timeout' => 15, 'maxBytes' => 1048576, 'addresses' => [ '93.184.216.34' ] ] ], [ FONTS_LIST. '.sig', [ 'timeout' => 15, 'maxBytes' => 4096, 'addresses' => [ '93.184.216.34' ] ] ] ]
 	&& array_column( $body['available']['families'], 'slug' ) === [ 'open-sans', 'fraunces' ] && $body['available']['stale'] === false );
 check( 'C. the panel is told of a family what a person chooses by and not where its archive is nor its digest, and the list is kept below data/ for the view that follows, which asks nobody',
 	array_keys( $body['available']['families'][0] ) === [ 'slug', 'family', 'category', 'version', 'license', 'source', 'weights', 'styles', 'size', 'problem', 'installed', 'foreign' ] && $body['available']['families'][1]['weights'] === [ '100 900' ]
@@ -566,7 +565,7 @@ foreach( array_diff( (array) scandir( $folder ), [ '.', '..' ] ) as $name )
 	$modes[] = substr( sprintf( '%o', fileperms( $folder. '/'. $name ) ), -4 );
 
 check( 'D. an install asks for the archive of the family and for nothing else - one request, with the size the list names and one byte as its limit - and the family stands in public/fonts/<slug>/: its .woff2 files byte for byte, its licence as LICENSE.txt and a font.json, no other file, none that can be run',
-	$status === 200 && $body['result'] === [ 'slug' => 'open-sans', 'updated' => false ] && (array) $asked === [ [ $open['entry']['archive'], [ 'timeout' => 60, 'maxBytes' => strlen( $open['archive'] ) + 1 ] ] ]
+	$status === 200 && $body['result'] === [ 'slug' => 'open-sans', 'updated' => false ] && (array) $asked === [ [ $open['entry']['archive'], [ 'timeout' => 60, 'maxBytes' => strlen( $open['archive'] ) + 1, 'addresses' => [ '93.184.216.34' ] ] ] ]
 	&& array_values( array_diff( (array) scandir( $folder ), [ '.', '..' ] ) ) === [ '400-italic.woff2', '400.woff2', '700.woff2', 'LICENSE.txt', 'font.json' ] && file_get_contents( $folder. '/400.woff2' ) === $open['files']['400.woff2']
 	&& str_contains( (string) file_get_contents( $folder. '/LICENSE.txt' ), 'SIL Open Font License' ) === true && array_unique( $modes ) === [ '0644' ] );
 check( 'D. font.json is what the brand reads - the name, the fallback of the category, the faces - with the slug, the version, the licence, the category and the source beside it, and nothing of the work is left: no folder of it in public/fonts/, below data/ the list and the lock',
@@ -666,7 +665,7 @@ $installOf = static function( array $family, array $change = [], ?callable $prep
 	if( $status === 200 )
 		fontsCall( $site, 'themes/fonts-remove', [ 'slug' => $family['entry']['slug'] ] );
 
-	unset( $site['./nino/themes/resolve'] );
+	unset( $site['./nino/fetch/resolve'] );
 	fontsServe( $site, [] );
 
 	return [ 'status' => $status, 'code' => $body['code'] ?? '', 'asked' => array_column( (array) $asked, 0 ), 'clean' => $clean === true && $free === true ];
@@ -718,8 +717,17 @@ $wrong = $notRefused( $content, 502, 'themes_fonts_archive' );
 check( 'E. the archive of these probes, written entry by entry, installs as it is; one that holds anything but the family the list promised is refused although its digest is the signed one: 502, nothing in public/ changed, nothing left - '. implode( '; ', array_keys( $content ) ). ( $wrong === [] ? '' : ' - NOT: '. implode( ', ', $wrong ) ),
 	$installOf( $tarOf( $base ) )['status'] === 200 && count( $content ) === 11 && $wrong === [] );
 
+$twelve = [];
+
+foreach( [ 100, 200, 300, 400, 500, 600 ] as $weight )
+	foreach( [ 'normal', 'italic' ] as $style )
+		$twelve[] = [ $weight, $style ];
+
+check( 'E. a family of the most faces the brand takes installs - twelve woff2 files, the font.json and the licence, and the folder: the limit on the entries of its archive counts all of them',
+	count( $twelve ) === $constant( Repository::class, 'MAX_FACES' ) && $installOf( fontsFamily( 'inter', 'Inter', $twelve ) )['status'] === 200 );
+
 // the reader of the archive by itself: what it refuses, it refuses before anybody looks at what a file holds
-$readOf = static fn( array $entries ): array|string => Archive::read( (string) gzencode( fontsTar( $entries ) ), 'inter', 14, 4194304, 16777216 );
+$readOf = static fn( array $entries ): array|string => \Nino\Archive::read( (string) gzencode( fontsTar( $entries ) ), 'inter', 15, 4194304, 16777216, $constant( Typefaces::class, 'FILE_NAME' ) );
 $read = $readOf( $base );
 $unread = [
 	'a symbolic link'									=> $readOf( array_merge( $base, [ [ 'inter/900.woff2', '', '2', '/etc/passwd' ] ] ) ),
@@ -736,21 +744,22 @@ $unread = [
 	'a file of one byte over four megabytes'	=> $readOf( array_merge( $base, [ [ 'inter/900.woff2', str_repeat( 'x', 4194305 ) ] ] ) ),
 	'fifteen files'										=> $readOf( array_merge( $base, array_map( static fn( int $number ): array => [ 'inter/extra-'. $number. '.woff2', 'x' ], range( 1, 11 ) ) ) ),
 	'files of more than sixteen megabytes together'	=> $readOf( array_merge( $base, array_map( static fn( int $number ): array => [ 'inter/extra-'. $number. '.woff2', str_repeat( 'x', 4194304 ) ], range( 1, 5 ) ) ) ),
+	'a pax header that names a path'	=> $readOf( array_merge( array_slice( $base, 0, 3 ), [ [ 'inter/PaxHeaders/400.woff2', "30 path=inter/../../evil.php\n", 'x' ] ], array_slice( $base, 3 ) ) ),
 	'a file twice'										=> $readOf( array_merge( $base, [ [ 'inter/400.woff2', 'x' ] ] ) ),
 	'a second folder'									=> $readOf( array_merge( $base, [ [ 'evil/', '', '5' ] ] ) ),
 	'the folder twice'								=> $readOf( array_merge( $base, [ [ 'inter/', '', '5' ] ] ) ),
-	'a header whose checksum does not hold'	=> Archive::read( (string) gzencode( substr_replace( fontsTar( $base ), '0000000', 148, 7 ) ), 'inter', 14, 4194304, 16777216 ),
-	'a tar that ends inside a file'		=> Archive::read( (string) gzencode( substr( fontsTar( $base ), 0, 512 * 6 + 100 ) ), 'inter', 14, 4194304, 16777216 ),
-	'no gzip stream'									=> Archive::read( fontsTar( $base ), 'inter', 14, 4194304, 16777216 ),
-	'a gzip stream without its last four bytes'	=> Archive::read( substr( (string) gzencode( fontsTar( $base ) ), 0, -4 ), 'inter', 14, 4194304, 16777216 ),
-	'a second gzip stream behind the first'	=> Archive::read( gzencode( fontsTar( $base ) ). gzencode( fontsTar( [ [ 'inter/900.woff2', 'x' ] ] ) ), 'inter', 14, 4194304, 16777216 ),
-	'anything behind the gzip stream'	=> Archive::read( gzencode( fontsTar( $base ) ). 'more', 'inter', 14, 4194304, 16777216 ),
+	'a header whose checksum does not hold'	=> \Nino\Archive::read( (string) gzencode( substr_replace( fontsTar( $base ), '0000000', 148, 7 ) ), 'inter', 15, 4194304, 16777216 ),
+	'a tar that ends inside a file'		=> \Nino\Archive::read( (string) gzencode( substr( fontsTar( $base ), 0, 512 * 6 + 100 ) ), 'inter', 15, 4194304, 16777216 ),
+	'no gzip stream'									=> \Nino\Archive::read( fontsTar( $base ), 'inter', 15, 4194304, 16777216 ),
+	'a gzip stream without its last four bytes'	=> \Nino\Archive::read( substr( (string) gzencode( fontsTar( $base ) ), 0, -4 ), 'inter', 15, 4194304, 16777216 ),
+	'a second gzip stream behind the first'	=> \Nino\Archive::read( gzencode( fontsTar( $base ) ). gzencode( fontsTar( [ [ 'inter/900.woff2', 'x' ] ] ) ), 'inter', 15, 4194304, 16777216 ),
+	'anything behind the gzip stream'	=> \Nino\Archive::read( gzencode( fontsTar( $base ) ). 'more', 'inter', 15, 4194304, 16777216 ),
 ];
 $passed = array_keys( array_filter( $unread, static fn( array|string $answer ): bool => is_string( $answer ) === false ) );
-check( 'E. the reader of the archive answers the files of a good one by their names, in memory - in the forms a tar may have: without the entry of its folder, with ./ before its names, with the extension of pax before a file - and refuses each of these by itself, whatever a file holds: '. implode( ', ', array_keys( $unread ) ). ( $passed === [] ? '' : ' - NOT: '. implode( ', ', $passed ) ),
-	is_array( $read ) === true && array_keys( $read ) === [ 'font.json', 'LICENSE', '400.woff2', '700.woff2' ] && $read['400.woff2'] === $good['400.woff2'] && count( $unread ) === 23 && $passed === []
+check( 'E. the reader of the archive answers the files of a good one by their names, in memory - in the forms a tar may have: without the entry of its folder, with ./ before its names, with a pax header that says only a time before a file - and refuses each of these by itself, whatever a file holds: '. implode( ', ', array_keys( $unread ) ). ( $passed === [] ? '' : ' - NOT: '. implode( ', ', $passed ) ),
+	is_array( $read ) === true && array_keys( $read ) === [ 'font.json', 'LICENSE', '400.woff2', '700.woff2' ] && $read['400.woff2'] === $good['400.woff2'] && count( $unread ) === 24 && $passed === []
 	&& is_array( $readOf( array_slice( $base, 1 ) ) ) === true && is_array( $readOf( array_map( static fn( array $one ): array => [ './'. $one[0] ] + $one, $base ) ) ) === true
-	&& is_array( $pax = $readOf( array_merge( array_slice( $base, 0, 3 ), [ [ 'inter/PaxHeaders/400.woff2', "30 path=inter/../../evil.php\n", 'x' ] ], array_slice( $base, 3 ) ) ) ) === true && array_keys( $pax ) === array_keys( $read ) );
+	&& is_array( $pax = $readOf( array_merge( array_slice( $base, 0, 3 ), [ [ 'inter/PaxHeaders/400.woff2', "20 mtime=1700000000\n", 'x' ] ], array_slice( $base, 3 ) ) ) ) === true && array_keys( $pax ) === array_keys( $read ) );
 unset( $unread, $read );
 
 $stream = ( static function(): string {
@@ -763,7 +772,7 @@ $stream = ( static function(): string {
 } )();
 memory_reset_peak_usage();
 $floor = memory_get_usage();
-$bomb = Archive::read( $stream, 'inter', 14, 4194304, 16777216 );
+$bomb = \Nino\Archive::read( $stream, 'inter', 15, 4194304, 16777216 );
 $grown = memory_get_peak_usage() - $floor;
 $numbers[] = 'a stream of '. round( strlen( $stream ) / 1024 ). ' KB that unpacks to 64 MB: refused with the memory '. round( $grown / 1048576, 1 ). ' MB over where it stood';
 check( 'E. a stream that unpacks to 64 megabytes is stopped where it passes the limit of a family and is not read to its end: the memory grows by less than what it would unpack to', is_string( $bomb ) === true && $grown < 48 * 1048576 );
@@ -795,7 +804,7 @@ $literal = fontsFamily( 'inter', 'Inter', $faces, [ 'entry' => [ 'archive' => 'h
 $cdn = fontsFamily( 'inter', 'Inter', $faces, [ 'host' => 'cdn.example.test' ] );
 $elsewhere = [
 	'an address in place of a name'	=> $installOf( $literal, [ 'https://169.254.169.254/latest/user-data' => $literal['archive'] ] ),
-	'a name that leads to 10.0.0.8'	=> $installOf( $cdn, [], static function( array &$appData ): void { $appData['./nino/themes/resolve'] = static fn( string $host ): array => $host === 'cdn.example.test' ? [ '10.0.0.8' ] : [ '93.184.216.34' ]; } ),
+	'a name that leads to 10.0.0.8'	=> $installOf( $cdn, [], static function( array &$appData ): void { $appData['./nino/fetch/resolve'] = static fn( string $host ): array => $host === 'cdn.example.test' ? [ '10.0.0.8' ] : [ '93.184.216.34' ]; } ),
 ];
 check( 'E. an archive the signed list places at an internal host - an address, a name that is looked up as one - is not asked for: 409 and no request; one at another public host than the list is asked for there, since the list is signed and says where',
 	$notRefused( $elsewhere, 409, 'themes_fonts_internal' ) === [] && array_sum( array_map( static fn( array $answer ): int => count( $answer['asked'] ), $elsewhere ) ) === 0 && $installOf( $cdn )['status'] === 200 );

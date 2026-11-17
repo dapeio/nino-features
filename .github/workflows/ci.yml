@@ -15,16 +15,13 @@ concurrency:
 # what was written for Nino 1 and waits for its move to Nino 2 (README.md)
 jobs:
   # Every feature against a Nino checkout: its manifest has to validate, its
-  # own tests have to pass, and static analysis has to stay clean. main is
-  # what the kernel is about to become, the latest tag what a project runs
-  # today - a feature has to hold on both
+  # own tests have to pass, and static analysis has to stay clean. Against main
+  # alone: the catalogue is format 2, which reads components, blocks and
+  # themes the way main does, and every feature of features/ asks for ^2.0 -
+  # Nino 1, the latest tag until the first 2.x one, has no \Nino\Packages to
+  # build the packages with and would skip every feature
   test:
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        nino: [ main, latest ]
 
     steps:
       - uses: actions/checkout@v4
@@ -46,16 +43,8 @@ jobs:
       - name: Lint all JS files
         run: find features -name "*.js" -print0 | xargs -0 -r -n1 node --check
 
-      - name: Fetch Nino (${{ matrix.nino }})
-        run: |
-          git clone --depth 1 https://github.com/dapeio/nino.git nino
-          if [ "${{ matrix.nino }}" = "latest" ]; then
-            # versionsort.suffix: git's version sort puts a suffixed tag after its
-            # base by default (v1.3.0-beta after v1.3.0), so a release would never
-            # be "latest" while its own pre-release tag exists. With '-' as the
-            # suffix every -beta/-rc sorts below the release it precedes
-            cd nino && git fetch --tags --depth 1 && tag=$(git -c versionsort.suffix=- tag --sort=-v:refname | head -n1) && [ -n "$tag" ] && git checkout -q "$tag" && echo "Nino $tag"
-          fi
+      - name: Fetch Nino (main)
+        run: git clone --depth 1 https://github.com/dapeio/nino.git nino
 
       # The same layout a project has: every feature the checkout can run
       # below its features/, where the autoloader and the tests find it. A
@@ -95,7 +84,6 @@ jobs:
         run: cd nino && npx --yes eslint@9.39.0 --no-error-on-unmatched-pattern features
 
       - name: Keep the catalogue as an artifact
-        if: matrix.nino == 'main'
         uses: actions/upload-artifact@v4
         with:
           name: catalogue

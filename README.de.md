@@ -16,6 +16,8 @@ Ein Nino-Checkout liefert kein Feature aus. Was ein Projekt über den Kernel hin
 
 Ein Feature ist in seinem Manifest dokumentiert: Das `manual` in `feature.php` zeigt das Features-Panel auf dem Tab Beschreibung, und der `hint` einer Einstellung steht neben dem Feld im Formular. Weitere Dokumentation gibt es nicht zu pflegen. Die Geschichte eines Features ist die Commit-Historie.
 
+Neben den Features veröffentlicht der Katalog zwei Sorten Paket, die keinen Code enthalten: ein **Theme** (`themes/<key>/`: `theme.json`, ein Teil – `part.json` und `part.css` – für die Seite und für jede Gruppe von Komponenten, eigene Blocks, eine `preview.webp`) und ein **Block-Paket** (`blocks/<key>/`: `pack.json`, je Block ein Ordner mit `block.json`, `block.tpl`, `text/<xx_XX>.json` und `images/<slot>.svg|webp|png|jpg`, eine `preview.webp`). Sie werden unter `private/packages/` installiert, das kein Webserver ausliefert, und zwar von derselben Funktion, die sie schon beim Bauen prüft: Was ein Projekt ausführt, steckt nicht in ihnen. [Wie ein Paket gebaut und geprüft wird](#wie-ein-paket-gebaut-und-geprüft-wird), steht weiter unten.
+
 Neben den Features führt der Katalog wenige **Anwendungen** – benannte Verbünde von Features, die zusammen funktionieren, mit einem Einstieg; siehe [Eine Anwendung schreiben](#eine-anwendung-schreiben).
 
 ## Ein Feature installieren
@@ -50,7 +52,7 @@ Ein einzelner Test läuft auch direkt:
 NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
 ```
 
-`bin/catalogue.php` gibt aus, was der Katalog listen würde, als JSON – die Anwendungen eingeschlossen –, ohne Archiv und ohne Signatur. CI (`.github/workflows/ci.yml`) führt dieselben Tests gegen Ninos `main` und gegen sein jüngstes Tag aus, dazu eine Syntaxprüfung, Ninos eigenen Vertragstest sowie PHPStan und ESLint über `features/`. Nichts wartet darauf: Es ist eine Bequemlichkeit.
+`bin/catalogue.php` gibt aus, was der Katalog listen würde, als JSON – die Anwendungen eingeschlossen –, ohne Archiv und ohne Signatur. CI (`.github/workflows/ci.yml`) führt dieselben Tests gegen Ninos `main` aus – den Katalog von Format 2 liest allein Nino 2, und Nino 1 hat keine Pakete, ihn damit zu lesen –, dazu eine Syntaxprüfung, Ninos eigenen Vertragstest sowie PHPStan und ESLint über `features/`. Nichts wartet darauf: Es ist eine Bequemlichkeit.
 
 ## Ein Feature schreiben
 
@@ -107,9 +109,9 @@ git pull
 NINO_CATALOGUE_KEY=/safe/place/catalogue-key.pem bin/release.sh
 ```
 
-Es führt zuerst `bin/check.sh` aus (`--quick` überspringt das), dann baut `bin/build.php` jedes Archiv nach `public/`, schreibt `catalogue.json` und signiert es; jede Datei landet ganz, per Umbenennen. `NINO_ROOT` nennt den Nino-Checkout (Standard `../nino`), `NINO_CATALOGUE_URL`, wo `public/` ausgeliefert wird (Standard `https://catalogue.getnino.dev`). Eine Probe ist der Build in ein anderes Verzeichnis: `php bin/build.php ../nino /tmp/rehearsal`.
+Es führt zuerst `bin/check.sh` aus (`--quick` überspringt das), dann baut `bin/build.php` jedes Archiv und das Bild jedes Themes und Block-Pakets nach `public/`, schreibt `catalogue.json` und signiert es; jede Datei landet ganz, per Umbenennen. `NINO_ROOT` nennt den Nino-Checkout (Standard `../nino`), `NINO_CATALOGUE_URL`, wo `public/` ausgeliefert wird (Standard `https://catalogue.getnino.dev`). Eine Probe ist der Build in ein anderes Verzeichnis: `php bin/build.php ../nino /tmp/rehearsal`.
 
-Es gibt einen Eintrag je Feature, die Version seines Manifests, und kein Tag. Eine Änderung ohne neue `version` erreicht neue Installationen, bestehende nicht: Das Features-Panel bietet ein Update aus dem Katalog nur für eine höhere Version an. Die `version` wird also erhöht, wenn installierte Projekte das Update angeboten bekommen sollen.
+Es gibt einen Eintrag je Paket, die Version seines Manifests, von `theme.json` oder `pack.json`, und kein Tag. Eine Änderung ohne neue `version` erreicht neue Installationen, bestehende nicht: Das Features-Panel bietet ein Update aus dem Katalog nur für eine höhere Version an. Die `version` wird also erhöht, wenn installierte Projekte das Update angeboten bekommen sollen.
 
 ## Der Server
 
@@ -137,27 +139,39 @@ openssl dgst -sha256 -sign catalogue-key.pem public/catalogue.json | base64 -w0 
 
 Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--key catalogue-key.pem` signiert es selbst und prüft die Signatur mit der öffentlichen Hälfte, bevor es endet. Lade das Verzeichnis nach `https://example.org/features/` hoch und zeige ein Projekt dorthin: `/nino/catalogue/url` nennt die URL des Katalogs, `/nino/catalogue/key` seinen öffentlichen Schlüssel, beides in `config.php`.
 
-## Der Katalog, Format 1
+## Wie ein Paket gebaut und geprüft wird
+
+`bin/build.php` liest `features/<Name>/`, `themes/<key>/` und `blocks/<key>/` – die beiden letzten halten ein `.gitkeep`, solange es kein Theme und kein Block-Paket gibt – durch den Kernel eines Nino-Checkouts und bricht bei dem Ersten ab, was der Kernel ablehnen würde, mit dem Pfad der Datei und einem Satz, bevor es etwas schreibt:
+
+- Jedes Paket wird nach den Regeln geprüft, nach denen der Kernel es installiert, mit derselben Funktion – `\Nino\Packages::check()` – über die Dateien seines Ordners, im Register der Komponenten aller Features dieses Repositorys, sodass jede Gruppe, die ein Teil nennt, als das gelesen wird, was sie ist. Ein Theme oder Block-Paket enthält, was seine Sorte aufzählt, und sonst nichts: eine `.php`, eine `.htaccess`, ein Skript oder eine versteckte Datei wird mit ihrem Pfad abgelehnt; die `part.css` eines Teils nach den Regeln eines Teils (kein `@import`, kein `url()`, kein `!important`, keine Klasse und kein Token einer anderen Gruppe); ein Block nach den Regeln eines Blocks (kein `[html]`, kein eigenes Markup, nur Komponenten);
+- darüber hinaus: Ein SVG, dessen Neubau durch `\Nino\Images::cleanSvg()` ein Element oder ein Attribut verliert, bricht den Build ab – was der Kernel in ein Projekt schreibt, ist der Neubau, nie die Datei, wie sie kam, und der Autor soll sehen, was vom Bild übrig bleibt –, ebenso ein Teil einer Gruppe, die kein Feature dieses Repositorys mitbringt, und ein Theme oder Block-Paket ohne `preview.webp` oder mit einem Ordner, der nicht sein Key ist;
+- was ein Eintrag über den Bedarf eines Pakets sagt, wird aus den Dateien gerechnet und nie hingeschrieben: Ein Theme braucht `themes`, das Feature jeder Gruppe seiner Teile und die Features, deren Komponenten seine Blocks aufrufen, und die Schriften, die seine Marke (`theme.json`, `brand`) vorschlägt, die Systemschriften ausgenommen; ein Block-Paket die Features, deren Komponenten seine Blocks aufrufen; ein Feature, was sein Manifest verlangt.
+
+Jedes Archiv ist ein einfacher Tar, vom Skript geschrieben, deterministisch, und wird mit `\Nino\Archive` zurückgelesen – dem Leser, mit dem der Kernel installiert –, bevor ihm getraut wird: Es muss die Dateien enthalten, aus denen es gebaut wurde. Das fertige Dokument läuft durch `\Nino\Catalogue::parse()`, und ein Eintrag, den der Kernel nicht lesen kann, ist ein Fehler des Builds. Das Bild eines Themes oder Block-Pakets liegt neben seinem Archiv als `<kind>-<key>-<version>.webp`.
+
+## Der Katalog, Format 2
 
 ```json
-{ "format": 1, "generated": "2026-09-07T12:00:00Z", "applications": [ { "key": "website", "...": "..." } ], "features": [ { "key": "newsletter", "...": "..." } ] }
+{ "format": 2, "generated": "2026-11-17T12:00:00Z", "applications": [ { "key": "website", "...": "..." } ], "packages": [ { "kind": "feature", "key": "newsletter", "...": "..." } ] }
 ```
 
-| Feld | Was es sagt |
-| --- | --- |
-| `key` | der Feature-Key, ein Slug – `newsletter` |
-| `name`, `description` | wie das Manifest sie hat: ein String oder eine Abbildung `locale => string` |
-| `category` | wofür das Feature da ist, ein Slug – das des Manifests |
-| `maturity` | das Abzeichen, das das Features-Panel neben den Namen zeichnet – das des Manifests; fehlt, wo es keines nennt |
-| `version` | `major.minor.patch`, die des Manifests |
-| `nino` | die Nino-Versionsbedingung, `^2.0` |
-| `php` | `{ "ext": [ ... ] }` – die PHP-Erweiterungen, die das Feature braucht |
-| `requires` | die Keys der Features, die es benötigt |
-| `directory` | das eine Verzeichnis, das das Archiv enthält – `Newsletter`, der Klassenname |
-| `archive` | die https-URL des Archivs, `<key>-<version>.tar.gz`, gepackt höchstens 20 MB |
-| `sha256` | die Hex-Prüfsumme des Archivs – wogegen der Kernel einen Download prüft |
-| `size` | seine Größe in Bytes |
-| `released` | der Tag, an dem dieses Archiv zum ersten Mal so veröffentlicht wurde, `YYYY-MM-DD` |
+Der Kernel liest Format 2 und sonst nichts; ein Eintrag einer `kind`, die er nicht kennt, wird übersprungen, und ein Eintrag, der nicht ist, was seine Sorte sagt, wird weggelassen und kostet nur sich selbst.
+
+| Feld | Sorten | Was es sagt |
+| --- | --- | --- |
+| `kind` | alle | `feature`, `theme` oder `blocks` |
+| `key` | alle | ein Slug, je Sorte eindeutig – `newsletter`, `craft`, `gastro` |
+| `version` | alle | `major.minor.patch`: die des Manifests, von `theme.json`, von `pack.json` |
+| `name`, `description` | alle | ein String oder eine Abbildung `locale => string` |
+| `category`, `maturity` | feature | die des Manifests; `maturity` fehlt, wo es keine nennt |
+| `directory` | feature | das eine Verzeichnis, das das Archiv enthält – `Newsletter`, der Klassenname |
+| `requires` | alle | `{ "nino": "^2.0", "php": [ ... ], "features": [ ... ], "fonts": [ ... ] }`: der Kernel, gegen den das Paket geprüft wurde, die PHP-Erweiterungen eines Features, die Keys der Features, die es benötigt, die Schriften eines Themes |
+| `parts` | theme | je Gruppe der Teile der Vertrag ihrer `part.json`: `{ "section": { "feature": "basis", "contract": "^1.0" }, "page": { "contract": "kernel@^2.0" } }` |
+| `blocks` | theme, blocks | die Keys der Blocks eines Themes; bei einem Block-Paket Key und Kategorie jedes Blocks |
+| `preview` | theme, blocks | `{ "url", "sha256", "size" }` der `preview.webp`, höchstens 256 KB |
+| `archive` | alle | die https-URL des Archivs, `<kind>-<key>-<version>.tar.gz` – gepackt höchstens 8 MB bei einem Feature, 2 MB bei einem Theme oder Block-Paket |
+| `sha256`, `size` | alle | die Hex-Prüfsumme des Archivs – wogegen der Kernel einen Download prüft – und seine Größe in Bytes |
+| `released` | alle | der Tag, an dem dieses Archiv zum ersten Mal so veröffentlicht wurde, `YYYY-MM-DD` |
 
 `applications` ist eine Liste nach Key, die Anwendung mit den meisten Features zuletzt, ein Eintrag je Datei von `applications/`, jeder so, wie die Datei ihn hat:
 
@@ -165,9 +179,9 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 { "key": "website", "name": { "en_US": "Website", "de_DE": "Webseite" }, "description": { "en_US": "...", "de_DE": "..." }, "features": [ "builder", "design", "consent", "forms", "modeswitch", "seo" ], "next": "/_admin/#dashboard", "start": "starter" }
 ```
 
-Der Schlüssel steht über `features`, und das Format bleibt 1: ein Kernel, der ihn nicht kennt, liest den Rest wie zuvor, und die Signatur deckt ihn mit ab. Ein Eintrag trägt `menu` nur bei `"folded"`; eine Anwendung ohne hat keinen Schlüssel dafür. Die Felder sind die Tabelle aus [Eine Anwendung schreiben](#eine-anwendung-schreiben).
+Ein Eintrag trägt `menu` nur bei `"folded"`; eine Anwendung ohne hat keinen Schlüssel dafür. Die Felder sind die Tabelle aus [Eine Anwendung schreiben](#eine-anwendung-schreiben).
 
-`catalogue.json.sig` ist seine abgetrennte Signatur: ECDSA über SHA-256 der exakten Bytes, DER, base64 in einer Zeile. `generated` ist die Zeit der letzten Änderung, ISO 8601 UTC. Was `\Nino\Catalogue::parse()` abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum lässt `bin/build.php` das, was es gleich schreibt, zuerst durch `parse()` laufen.
+`catalogue.json.sig` ist seine abgetrennte Signatur: ECDSA über SHA-256 der exakten Bytes, DER, base64 in einer Zeile. `generated` ist die Zeit der letzten Änderung, ISO 8601 UTC. Ein `catalogue.json` eines anderen Formats im Ausgabeverzeichnis wird nicht überbaut.
 
 ## Lizenz
 

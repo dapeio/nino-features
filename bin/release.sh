@@ -1,10 +1,10 @@
 #!/bin/sh
 # bin/release.sh - make public/ what main carries. The repository lives on the
 # server and public/ is the directory the web server delivers as the catalogue,
-# so a release is a build into it: every archive, catalogue.json and its
-# signature. An archive the catalogue no longer names is removed. Nothing is
-# copied anywhere; a web server elsewhere is given public/ by whatever moves
-# files to it.
+# so a release is a build into it: every archive, the picture of every theme
+# and package of blocks, catalogue.json and its signature. An archive or a
+# picture the catalogue no longer names is removed. Nothing is copied anywhere;
+# a web server elsewhere is given public/ by whatever moves files to it.
 #
 # Usage: NINO_CATALOGUE_KEY=key.pem bin/release.sh [--quick]
 #   --quick     skip bin/check.sh (the tests ran already)

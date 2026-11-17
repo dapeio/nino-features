@@ -2,20 +2,22 @@
 declare(strict_types=1);
 /**
  *	Nino features
- *	catalogue.php	The preview: reads every feature's manifest through a Nino
- *								checkout and prints what the catalogue would list, as JSON -
- *								key, name, description, category, maturity, version, the Nino
- *								version constraint, PHP extensions, what it requires and the
- *								directory it lives in - without building an archive, without a
- *								signature. A manifest that does not validate fails the run:
- *								the catalogue never lists what Nino would skip. bin/check.sh
- *								and CI use it as the manifest check. The applications of
- *								applications/ (bin/applications.php) are listed above the
- *								features - name, features, entry point - and an invalid one
- *								fails the run as well.
+ *	catalogue.php	The preview: reads every package through a Nino checkout and
+ *								prints what the catalogue would list, as JSON - the features
+ *								below features/, the themes below themes/ and the packages of
+ *								blocks below blocks/ as the entries of format 2, with what is
+ *								computed of them (what they require, the parts of a theme, the
+ *								blocks) - without building an archive, without a picture and
+ *								without a signature. A package that does not validate fails the
+ *								run, with the file and the sentence: the catalogue never lists
+ *								what Nino would refuse. bin/check.sh and CI use it as the
+ *								manifest check. The applications of applications/
+ *								(bin/applications.php) are listed above the packages - name,
+ *								features, entry point - and an invalid one fails the run as
+ *								well.
  *
  *								What getnino.dev publishes - the archives and the signed
- *								catalogue.json in format 1 - is built by bin/build.php.
+ *								catalogue.json in format 2 - is built by bin/build.php.
  *
  *	Usage: php bin/catalogue.php <path to a Nino checkout> > catalogue.json
  */
@@ -32,62 +34,52 @@ if( $root === '' || is_file( $root. '/_nino/Nino.php' ) === false ) {
 // describes what is here
 define( 'NINO_FEATURES_DIR', dirname( __DIR__ ). '/features' );
 
-$warnings = [];
-set_error_handler( static function( int $level, string $message ) use ( &$warnings ): bool {
-	$warnings[] = $message;
-	return true;
-} );
-
 require $root. '/_nino/Nino.php';
 
-// A checkout that predates the feature contract and its categories: say so
-// instead of dying with a class-not-found or an undefined key - Nino
-// 1.1.0-beta and everything before it is such a checkout
-if( class_exists( '\Nino\Features' ) === false || defined( '\Nino\Features::CATEGORIES' ) === false ) {
-	fwrite( STDERR, "The Nino checkout at ". $root. " (". \Nino\VERSION. ") has no \\Nino\\Features::CATEGORIES - the catalogue needs a Nino that carries the feature contract and its categories, 1.2 or later (docs/features.md)\n" );
+// A checkout that predates the packages: say so instead of dying with a class-not-found
+if( class_exists( '\Nino\Packages' ) === false || class_exists( '\Nino\Archive' ) === false || defined( '\Nino\Catalogue::FORMAT' ) === false || \Nino\Catalogue::FORMAT !== 2 ) {
+	fwrite( STDERR, "The Nino checkout at ". $root. " (". \Nino\VERSION. ") has no \\Nino\\Packages, \\Nino\\Archive and catalogue format 2 - the catalogue needs the Nino that reads packages, 2.0 or later (docs/features.md)\n" );
 	exit( 2 );
 }
 
-$appData	= [];
-$catalogue	= [];
+require __DIR__. '/packages.php';
+require __DIR__. '/applications.php';
 
-// A feature that comes with the kernel (\Nino\Features::all() lists it with 'shipped' => true) is the kernel's and no entry of this catalogue
-foreach( \Nino\Features::all( $appData ) as $feature ) {
+[ $features, $problems ] = readFeatures( NINO_FEATURES_DIR );
 
-	if( ( $feature['shipped'] ?? false ) === true )
-		continue;
-
-	$catalogue[] = [
-		'key'					=> $feature['key'],
-		'name'				=> $feature['name'],
-		'description'	=> $feature['description'],
-		'category'		=> $feature['category'],
-		// ?? '': most features leave the badge out, and a kernel from before
-		// the field (1.3) drops it from the manifest
-		'maturity'		=> $feature['maturity'] ?? '',
-		'version'			=> $feature['version'],
-		'nino'				=> $feature['nino'],
-		'php'					=> $feature['php'],
-		'requires'		=> $feature['requires'],
-		'directory'		=> basename( $feature['dir'] ),
-	];
+if( $problems === [] ) {
+	[ $register, $found ] = packageRegister( $features );
+	$problems = $found;
 }
 
-// Every directory has to be in the catalogue: one Nino skipped is a manifest
-// to fix, not a feature to leave out silently
-$directories = array_values( array_filter( scandir( NINO_FEATURES_DIR ) ?: [], static fn( string $entry ): bool => $entry[0] !== '.' && is_dir( NINO_FEATURES_DIR. '/'. $entry ) ) );
-if( count( $directories ) !== count( $catalogue ) || $warnings !== [] ) {
-	fwrite( STDERR, "Not every feature validates:\n  ". implode( "\n  ", $warnings ). "\n" );
-	exit( 1 );
-}
+$packages = array_map( 'featureEntry', array_values( $features ) );
+
+foreach( $problems === [] ? PACKAGES_FOLDERS : [] as $kind => $folder )
+	foreach( packageFolders( dirname( __DIR__ ), $kind ) as $name => $path ) {
+
+		[ , $files, $found ] = packageCollect( $path, $kind, $folder. '/'. $name );
+
+		if( $found === [] )
+			[ $entry, $found ] = packageEntry( $register, $kind, $name, $files, $features );
+
+		$problems = array_merge( $problems, $found );
+
+		if( $found === [] )
+			$packages[] = $entry;
+	}
 
 // The applications, every one - which of them a kernel offers is the kernel's
 // to say, as the features it can run are for bin/applicable.php
-require __DIR__. '/applications.php';
+if( $problems === [] ) {
 
-[ $applications, $problems ] = readApplications( dirname( __DIR__ ). '/applications', array_column( $catalogue, 'key' ) );
+	[ $applications, $found ] = readApplications( dirname( __DIR__ ). '/applications', array_keys( $features ) );
+
+	if( $found !== [] )
+		$problems[] = "Not every application is valid:\n  ". implode( "\n  ", $found );
+}
+
 if( $problems !== [] ) {
-	fwrite( STDERR, "Not every application is valid:\n  ". implode( "\n  ", $problems ). "\n" );
+	fwrite( STDERR, implode( "\n", $problems ). "\n" );
 	exit( 1 );
 }
 
@@ -95,5 +87,5 @@ echo json_encode( [
 	'nino'					=> \Nino\VERSION,
 	'generated'			=> gmdate( 'c' ),
 	'applications'	=> $applications,
-	'features'			=> $catalogue,
+	'packages'			=> $packages,
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), "\n";

@@ -29,7 +29,7 @@ namespace Nino\Modules\Themes {
 	 *										fonts-license	the licence text of an installed family
 	 *
 	 *										An install is whole or it is nothing. The archive named by the list is fetched over https, held to the size and
-	 *										the sha256 the signed list gives it, read in memory (see Archive) - one directory, plain files, none that is not
+	 *										the sha256 the signed list gives it, read in memory (see \Nino\Archive) - one directory, plain files, none that is not
 	 *										named - and looked at: its font.json says what the list said, every file named is there and begins and measures
 	 *										as a woff2 file does, the licence is there and is a text. Only then is the family written - into a folder of
 	 *										its own, public/fonts/.work-<random>/, with the font.json the brand reads (see Brand::fonts()) and the licence as
@@ -66,6 +66,9 @@ namespace Nino\Modules\Themes {
 		// The licence of a family as it stands in its folder: the archive brings LICENSE, and a file without an ending is one a web server
 		// sends without a type, for a browser to guess
 		public const string LICENSE = 'LICENSE.txt';
+
+		// A name of a file of a family in its archive: a plain name, in the folder of the family itself and in none below it
+		private const string FILE_NAME = '/^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/D';
 
 		// The licence text a panel is sent
 		public const int MAX_LICENSE_BYTES = 65536;
@@ -427,7 +430,9 @@ namespace Nino\Modules\Themes {
 			if( Repository::problem( $entry ) !== '' )
 				return [ 409, 'the font "'. $slug. '" cannot be installed here: '. Repository::problem( $entry ), 'themes_fonts_not_installable', [ $entry['family'] ], 'slug' ];
 
-			if( Repository::host( $appData, $entry['archive'] ) === false )
+			$addresses = \Nino\Fetch::check( $appData, $entry['archive'] );
+
+			if( is_string( $addresses ) === true )
 				return [ 409, 'the archive of the font is not at a public host', 'themes_fonts_internal', [], '' ];
 
 			$lock = self::_lock( $appData );
@@ -439,7 +444,7 @@ namespace Nino\Modules\Themes {
 
 			try {
 
-				$archive = \Nino\Fetch::get( $appData, $entry['archive'], [ 'maxBytes' => $entry['size'] + 1, 'timeout' => Repository::TIMEOUT_ARCHIVE ] );
+				$archive = \Nino\Fetch::get( $appData, $entry['archive'], [ 'maxBytes' => $entry['size'] + 1, 'timeout' => Repository::TIMEOUT_ARCHIVE, 'addresses' => $addresses ] );
 
 				if( $archive['ok'] === false )
 					return [ 502, 'the archive could not be fetched: '. $archive['error'], 'themes_fonts_download', [], '' ];
@@ -447,7 +452,10 @@ namespace Nino\Modules\Themes {
 				if( strlen( $archive['body'] ) !== $entry['size'] || hash_equals( $entry['sha256'], hash( 'sha256', $archive['body'] ) ) === false )
 					return [ 502, 'the archive does not match what the list promised', 'themes_fonts_mismatch', [], '' ];
 
-				$files = Archive::read( $archive['body'], $slug, Repository::MAX_FACES + 2, Repository::MAX_FILE_BYTES, Repository::MAX_FAMILY_BYTES );
+				// The files of a family are the faces, the manifest and the licence - and the folder is an entry of the archive as well; a name that is no plain
+				// name of a file, as a file in a folder of the folder, is none the family names
+				$files = \Nino\Archive::read( $archive['body'], $slug, Repository::MAX_FACES + 3, Repository::MAX_FILE_BYTES, Repository::MAX_FAMILY_BYTES, self::FILE_NAME );
+				$files = is_string( $files ) === true ? ( \Nino\Catalogue::ARCHIVE_WHY[$files] ?? $files ) : $files;
 				$looked = is_array( $files ) === true ? self::_look( $files, $entry ) : $files;
 
 				if( $looked !== true )
@@ -638,7 +646,7 @@ namespace Nino\Modules\Themes {
 		 *	Whether what came out of the archive is the family the signed list promised - and nothing else. Its font.json is the entry's manifest,
 		 *	every file the manifest names is there and is a woff2 file, the licence is there and says something, and no file besides them is.
 		 *
-		 *	@param		array			$files				name => content, as Archive::read() answers it
+		 *	@param		array			$files				name => content, as \Nino\Archive::read() answers it
 		 *	@param		array			$entry				The entry of the list
 		 *
 		 *	@return 	true|string
@@ -691,7 +699,7 @@ namespace Nino\Modules\Themes {
 		 *	Write the family into a folder of the work and move it into place
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$files				As Archive::read() answers it, looked at
+		 *	@param		array			$files				As \Nino\Archive::read() answers it, looked at
 		 *	@param		array			$entry				The entry of the list
 		 *	@param		string		$work					The folder of this install, which does not exist yet
 		 *

@@ -96,9 +96,6 @@ PEM;
 		public const string BRAND_FAMILY = '/^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$/D';
 		public const int BRAND_SLUG_LENGTH = 60;
 
-		// The names a host may not end in: they name a machine of a local network and no public one
-		private const array LOCAL_ENDINGS = [ 'localhost', 'local', 'localdomain', 'internal', 'intranet', 'lan', 'home', 'corp', 'arpa' ];
-
 		/**
 		 *	The address of the list, '' where the repository is switched off: the setting is empty or no https address
 		 *
@@ -141,74 +138,17 @@ PEM;
 				return 'off';
 
 			// By its spelling alone: a name is looked up where a request follows (see fetch()), and showing the panel asks nobody
-			if( self::host( $appData, $url, false ) === false )
+			if( \Nino\Fetch::isPublic( $appData, $url, false ) === false )
 				return 'internal';
 
 			// The signature is checked with openssl and the archive is read with zlib: where one is not there, the half that installs is off
-			if( function_exists( 'openssl_verify' ) === false || function_exists( 'openssl_pkey_get_public' ) === false || Archive::supported() === false )
+			if( function_exists( 'openssl_verify' ) === false || function_exists( 'openssl_pkey_get_public' ) === false || \Nino\Archive::supported() === false )
 				return 'unsupported';
 
 			// A key is a block of PEM, as the setting is pasted: openssl would read the path of a file of the server as well, and no setting names one
 			$key = self::key( $appData );
 
 			return str_contains( $key, '-----BEGIN PUBLIC KEY-----' ) === false || @openssl_pkey_get_public( $key ) === false ? 'badkey' : 'ready';
-		}
-
-		/**
-		 *	Whether an address names a host that may be asked. What is checked: the address is https; its host is a name - an address in place of a
-		 *	name, dotted, whole, hexadecimal or an IPv6 one, is none - of two labels or more, with a top level of letters that is no name of a local
-		 *	network; and, with the lookup, every address the system gives the name is one of the public internet (see _public()). A name the system
-		 *	gives no address is not asked.
-		 *
-		 *	What is not checked, and what stands against it:
-		 *	- the request that follows makes a lookup of its own: a name that answers another address the second time is not caught here;
-		 *	- the IPv6 addresses of a name are read with dns_get_record(), and where php has not got it they are not read: a name with a public
-		 *	  IPv4 address and an internal IPv6 one passes there;
-		 *	- a server that sends its requests through a proxy of its environment (HTTPS_PROXY) lets the proxy do the lookup, and this one says
-		 *	  nothing about where the proxy goes.
-		 *	Against all three: the repository is asked only where an account that may change the setting named it, a certificate has to hold for
-		 *	the name, the list is believed for its signature alone and an archive for the digest the signed list names.
-		 *
-		 *	A test replaces the lookup by putting a callable under './nino/themes/resolve' - it receives the host and answers the addresses, or
-		 *	false. Without the lookup the name is judged by its spelling: that is what the panel is shown by, which asks no name server for being
-		 *	opened.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$url
-		 *	@param		bool			$lookup				Whether the name is looked up as well
-		 *
-		 *	@return 	bool
-		 */
-		public static function host( array &$appData, string $url, bool $lookup = true ): bool {
-
-			if( \Nino\Fetch::isHttpsUrl( $url ) === false )
-				return false;
-
-			$host = rtrim( strtolower( (string) parse_url( $url, PHP_URL_HOST ) ), '.' );
-			$labels = explode( '.', $host );
-
-			if( $host === '' || strlen( $host ) > 253 || count( $labels ) < 2 || preg_match( '/^[a-z][a-z0-9-]*$/D', end( $labels ) ) !== 1 || in_array( end( $labels ), self::LOCAL_ENDINGS, true ) === true )
-				return false;
-
-			foreach( $labels as $label )
-				if( preg_match( '/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/D', $label ) !== 1 )
-					return false;
-
-			if( $lookup === false )
-				return true;
-
-			$resolve = $appData['./nino/themes/resolve'] ?? null;
-			$addresses = is_callable( $resolve ) === true ? $resolve( $host ) : self::_resolve( $host );
-
-			// No answer is no leave: a name nobody knows now may be an internal one a moment later
-			if( is_array( $addresses ) === false || $addresses === [] )
-				return false;
-
-			foreach( $addresses as $address )
-				if( is_string( $address ) === false || self::_public( $address ) === false )
-					return false;
-
-			return true;
 		}
 
 		/**
@@ -232,19 +172,22 @@ PEM;
 
 			$url = self::url( $appData );
 
-			if( self::host( $appData, $url ) === false ) {
+			// The host as the kernel judges it, and the addresses it found: both requests go to those
+			$addresses = \Nino\Fetch::check( $appData, $url );
+
+			if( is_string( $addresses ) === true ) {
 				$kind = 'internal';
 				return 'the font list is not at a public host';
 			}
 
-			$json = \Nino\Fetch::get( $appData, $url, [ 'maxBytes' => self::MAX_LIST_BYTES, 'timeout' => self::TIMEOUT_LIST ] );
+			$json = \Nino\Fetch::get( $appData, $url, [ 'maxBytes' => self::MAX_LIST_BYTES, 'timeout' => self::TIMEOUT_LIST, 'addresses' => $addresses ] );
 
 			if( $json['ok'] === false ) {
 				$kind = 'unreachable';
 				return 'the font list could not be fetched: '. $json['error'];
 			}
 
-			$signature = \Nino\Fetch::get( $appData, self::_signatureUrl( $url ), [ 'maxBytes' => self::MAX_SIGNATURE_BYTES, 'timeout' => self::TIMEOUT_LIST ] );
+			$signature = \Nino\Fetch::get( $appData, self::_signatureUrl( $url ), [ 'maxBytes' => self::MAX_SIGNATURE_BYTES, 'timeout' => self::TIMEOUT_LIST, 'addresses' => $addresses ] );
 
 			if( $signature['ok'] === false ) {
 				$kind = 'unreachable';
@@ -449,60 +392,6 @@ PEM;
 			$pathLength = strcspn( $url, '?#' );
 
 			return substr( $url, 0, $pathLength ). '.sig'. substr( $url, $pathLength );
-		}
-
-		/**
-		 *	The addresses the system gives a name: the IPv4 ones, and the IPv6 ones where php can ask for them (see host() for where it cannot)
-		 *
-		 *	@param		string		$host
-		 *
-		 *	@return 	array|false
-		 */
-		private static function _resolve( string $host ): array|false {
-
-			$found = @gethostbynamel( $host );
-			$found = is_array( $found ) === true ? $found : [];
-
-			if( function_exists( 'dns_get_record' ) === true ) {
-
-				$records = @dns_get_record( $host, DNS_AAAA );
-
-				foreach( is_array( $records ) === true ? $records : [] as $record )
-					if( is_string( $record['ipv6'] ?? null ) === true )
-						$found[] = $record['ipv6'];
-			}
-
-			return $found === [] ? false : $found;
-		}
-
-		/**
-		 *	Whether an address is one of the public internet: no private, reserved, loopback or link-local range - and not the shared range of a
-		 *	carrier's network either, which filter_var() has no flag for. An IPv6 address behind the prefix of a NAT64 gateway (64:ff9b::/96) is
-		 *	judged by the IPv4 address it carries. One that is an IPv4 address by mapping (::ffff:a.b.c.d) or by its last four bytes alone
-		 *	(::a.b.c.d) is none: filter_var() calls the second kind reserved from php 8.4 on and public before, and no repository lives there
-		 *
-		 *	@param		string		$address
-		 *
-		 *	@return 	bool
-		 */
-		private static function _public( string $address ): bool {
-
-			if( filter_var( $address, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) === false )
-				return false;
-
-			$packed = (string) @inet_pton( $address );
-
-			// 100.64.0.0/10
-			if( strlen( $packed ) === 4 )
-				return ord( $packed[0] ) !== 100 || ( ord( $packed[1] ) & 0xC0 ) !== 64;
-
-			if( strlen( $packed ) !== 16 || str_starts_with( $packed, str_repeat( "\0", 10 ). "\xff\xff" ) === true || str_starts_with( $packed, str_repeat( "\0", 12 ) ) === true )
-				return false;
-
-			if( str_starts_with( $packed, "\0\x64\xff\x9b". str_repeat( "\0", 8 ) ) === true )
-				return self::_public( (string) inet_ntop( substr( $packed, 12 ) ) );
-
-			return true;
 		}
 
 		/**

@@ -2,32 +2,48 @@
 declare(strict_types=1);
 /**
  *	Nino features
- *	build.php			Builds what getnino.dev publishes: one .tar.gz per feature,
- *								holding exactly the directory that lands below a project's
- *								features/, and the catalogue.json that lists them in format
- *								1 - what \Nino\Catalogue in Nino fetches, verifies and
- *								installs from. Every manifest below features/ is read through
- *								the kernel of a Nino checkout first: the catalogue never
- *								lists what Nino would skip.
+ *	build.php			Builds what getnino.dev publishes: one .tar.gz per package, and
+ *								the catalogue.json that lists them in format 2 - what
+ *								\Nino\Catalogue in Nino fetches, verifies and installs from.
+ *								A package is a feature (features/<Name>/, exactly the directory
+ *								that lands below a project's features/), a theme (themes/<key>/)
+ *								or a package of blocks (blocks/<key>/); the archive of the
+ *								two latter holds the folder of their key. Every package is read
+ *								through the kernel of a Nino checkout first, with the function
+ *								that installs it - \Nino\Packages::check() over the files, in
+ *								the register of the components of every feature of this
+ *								repository (bin/packages.php) -: the catalogue never lists what
+ *								Nino would refuse. What an entry says of what a package needs
+ *								(requires, parts, blocks) is computed from its files; and a svg
+ *								whose rebuild by the kernel loses an element or an attribute
+ *								stops the build. A problem is a message naming the file, and no
+ *								file is written.
  *
  *								The applications below applications/ (bin/applications.php)
  *								are held to their rules the same way, and a single one that
  *								is not stops the build with a message naming the file. They
  *								are published as the key "applications" of catalogue.json,
- *								above the features, by key with the one that has the most features
- *								last: a kernel that reads
- *								format 1 and does not know the key ignores it, and the
- *								signature covers it with the rest of the document.
+ *								above the packages, by key with the one that has the most
+ *								features last.
  *
  *								What main carries is the catalogue. Every archive is built
  *								on every run and replaces the one in the output directory;
- *								the archives are deterministic, so a feature that did not
+ *								the archives are deterministic, so a package that did not
  *								change gives the same bytes and its file is left alone. A
- *								feature that did change gives other bytes under the same
- *								name <key>-<version>.tar.gz, and its entry carries the new
- *								sha256 and size. There is one entry per feature, the version
- *								of its manifest; an archive in the output directory that no
- *								entry names is removed.
+ *								package that did change gives other bytes under the same
+ *								name <kind>-<key>-<version>.tar.gz, and its entry carries the
+ *								new sha256 and size. There is one entry per package, the
+ *								version of its manifest, theme.json or pack.json; an archive
+ *								or a picture in the output directory that no entry names is
+ *								removed. The picture of a theme or a package of blocks
+ *								(preview.webp of its folder) stands beside the archive as
+ *								<kind>-<key>-<version>.webp, and its entry names its digest.
+ *
+ *								Every archive is read back with \Nino\Archive, the reader that
+ *								installs it - no PharData -, and must hold the files it was
+ *								built from; the finished document goes through
+ *								\Nino\Catalogue::parse(), and an entry it cannot read is an
+ *								error here.
  *
  *								The catalogue.json already in the output directory (bin/
  *								release.sh builds into public/, the directory the web server
@@ -46,7 +62,7 @@ declare(strict_types=1);
  *	Usage: php bin/build.php <nino-checkout> <out-dir> [--base-url https://catalogue.getnino.dev] [--key private.pem]
  *
  *	  --base-url   where the archives will be served from: the archive url of
- *	               an entry is <base-url>/<key>-<version>.tar.gz
+ *	               an entry is <base-url>/<kind>-<key>-<version>.tar.gz
  *	  --key        the PEM private key to sign catalogue.json with (ECDSA over
  *	               P-256, see README.md). Without it no signature is written
  *	               and the openssl one-liner to sign by hand is printed
@@ -56,23 +72,11 @@ declare(strict_types=1);
  */
 
 const BUILD_DEFAULT_BASE_URL		= 'https://catalogue.getnino.dev';
-const BUILD_FORMAT							= 1;
-
-// What \Nino\Catalogue refuses - refused here first, where it can be fixed
-const BUILD_MAX_ARCHIVE_BYTES		= 20 * 1024 * 1024;
-const BUILD_MAX_UNPACKED_BYTES	= 50 * 1024 * 1024;
-const BUILD_MAX_ENTRIES					= 5000;
-
-// Left out of every archive: the feature's own tests, and what git, an
-// editor or a desktop leaves behind. A pattern is matched against every
-// path segment; 'tests' only against the first
-const BUILD_EXCLUDED						= [ '.git*', '.DS_Store', 'Thumbs.db', '.idea', '.vscode', '*~', '*.swp', '*.swo', '*.swx', '.#*', '#*#', '*.orig', '*.rej', '*.bak' ];
+const BUILD_FORMAT							= 2;
 
 // The modification time every archive entry carries - one fixed instant,
 // 2026-01-01T00:00:00Z, never the clock: what makes a rebuild the same bytes
 const BUILD_MTIME								= 1767225600;
-
-require __DIR__. '/applications.php';
 
 
 // --- Output ------------------------------------------------------------------
@@ -145,115 +149,6 @@ function removeTree( string $target ): void {
 }
 
 /**
- *	Whether a path relative to the feature directory stays out of the archive
- *
- *	@param		string		$relative			eg. 'tests/search-smoke.php'
- *
- *	@return 	bool
- */
-function excluded( string $relative ): bool {
-
-	$segments = explode( '/', $relative );
-
-	if( $segments[0] === 'tests' )
-		return true;
-
-	foreach( $segments as $segment )
-		foreach( BUILD_EXCLUDED as $pattern )
-			if( fnmatch( $pattern, $segment, FNM_PERIOD ) === true || fnmatch( $pattern, $segment ) === true )
-				return true;
-
-	return false;
-}
-
-/**
- *	Every file and directory below the feature directory that goes into the
- *	archive, sorted - so two builds of the same tree add the same entries in
- *	the same order. A symlink or anything else that is neither a file nor a
- *	directory fails the build, because the kernel refuses it on the other end.
- *
- *	@param		string		$source				The feature directory
- *
- *	@return 	array										relative path => whether it is a directory
- */
-function collectFiles( string $source ): array {
-
-	$files = [];
-
-	$iterator = new \RecursiveIteratorIterator(
-		new \RecursiveDirectoryIterator( $source, \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS ),
-		\RecursiveIteratorIterator::SELF_FIRST
-	);
-
-	foreach( $iterator as $file ) {
-
-		$relative = substr( (string) $file->getPathname(), strlen( $source ) + 1 );
-
-		if( excluded( $relative ) === true )
-			continue;
-
-		if( $file->isLink() === true || ( $file->isFile() === false && $file->isDir() === false ) )
-			fail( basename( $source ). '/'. $relative. ' is neither a file nor a directory - an archive holds nothing else' );
-
-		if( $file->isFile() === true && $file->isReadable() === false )
-			fail( basename( $source ). '/'. $relative. ' is not readable' );
-
-		$files[$relative] = $file->isDir();
-	}
-
-	ksort( $files, SORT_STRING );
-
-	return $files;
-}
-
-/**
- *	Look at a finished archive the way \Nino\Catalogue does before it unpacks
- *	one: every entry inside the one directory, bounded in count and size
- *
- *	@param		string		$path					Absolute path of the .tar.gz
- *	@param		string		$directory		The one top-level directory it may hold
- *
- *	@return 	array										[ entries, unpacked bytes ]
- */
-function inspectArchive( string $path, string $directory ): array {
-
-	$entries	= 0;
-	$bytes		= 0;
-
-	try {
-		$phar = new \PharData( $path );
-
-		foreach( new \RecursiveIteratorIterator( $phar, \RecursiveIteratorIterator::SELF_FIRST ) as $file ) {
-
-			$inside = substr( (string) $file->getPathname(), strlen( 'phar://'. $path. '/' ) );
-
-			if( $inside !== $directory && str_starts_with( $inside, $directory. '/' ) === false )
-				fail( basename( $path ). ' holds "'. $inside. '" outside "'. $directory. '/"' );
-
-			if( $file->isLink() === true || ( $file->isFile() === false && $file->isDir() === false ) )
-				fail( basename( $path ). ' holds "'. $inside. '", which is neither a file nor a directory' );
-
-			$entries++;
-			$bytes += $file->isFile() === true ? (int) $file->getSize() : 0;
-		}
-	}
-	catch( \Throwable $e ) {
-		fail( basename( $path ). ' cannot be read back: '. $e->getMessage() );
-	}
-
-	if( $entries === 0 )
-		fail( basename( $path ). ' is empty' );
-
-	if( $entries > BUILD_MAX_ENTRIES )
-		fail( basename( $path ). ' holds '. $entries. ' entries, the kernel accepts at most '. BUILD_MAX_ENTRIES );
-
-	if( $bytes > BUILD_MAX_UNPACKED_BYTES )
-		fail( basename( $path ). ' unpacks to '. $bytes. ' bytes, the kernel accepts at most '. BUILD_MAX_UNPACKED_BYTES );
-
-	return [ $entries, $bytes ];
-}
-
-/**
  *	One ustar header block - 512 bytes naming an entry, with the fixed time,
  *	no owner, and the checksum tar readers verify. A name longer than 100
  *	bytes is split at a slash into the ustar prefix and name fields.
@@ -299,25 +194,19 @@ function tarHeader( string $name, int $size, string $type, int $mode ): string {
 }
 
 /**
- *	Build one archive: the feature directory as <directory>/..., its files
- *	in sorted order with fixed modes and the fixed time, as one tar in
- *	memory, gzipped, written into a temporary directory, read back and
- *	checked the way the kernel reads it, then moved into place - unless the
- *	file there is the same bytes already
+ *	The tar of a folder as <directory>/..., its entries in the order given, with fixed modes and the fixed time
  *
- *	@param		string		$source				The feature directory
- *	@param		string		$directory		Its name - the one top-level directory of the archive
- *	@param		string		$target				<out-dir>/<key>-<version>.tar.gz
+ *	@param		string		$directory		The one top-level directory of the archive
+ *	@param		array			$entries			path => whether it is a directory
+ *	@param		array			$files				path => bytes of the files among them
  *
- *	@return 	array										[ entries, unpacked bytes ]
+ *	@return 	string
  */
-function buildArchive( string $source, string $directory, string $target ): array {
-
-	$files = collectFiles( $source );
+function tarOf( string $directory, array $entries, array $files ): string {
 
 	$tar = tarHeader( $directory. '/', 0, '5', 0755 );
 
-	foreach( $files as $relative => $isDirectory ) {
+	foreach( $entries as $relative => $isDirectory ) {
 
 		$inside = $directory. '/'. $relative;
 
@@ -326,80 +215,59 @@ function buildArchive( string $source, string $directory, string $target ): arra
 			continue;
 		}
 
-		$content = file_get_contents( $source. '/'. $relative );
-		if( $content === false )
-			fail( 'could not read '. $directory. '/'. $relative );
-
-		$tar .= tarHeader( $inside, strlen( $content ), '0', 0644 );
-		$tar .= $content. str_repeat( "\0", ( 512 - strlen( $content ) % 512 ) % 512 );
+		$tar .= tarHeader( $inside, strlen( $files[$relative] ), '0', 0644 );
+		$tar .= $files[$relative]. str_repeat( "\0", ( 512 - strlen( $files[$relative] ) % 512 ) % 512 );
 	}
 
-	$tar .= str_repeat( "\0", 1024 );
-
-	$packed = gzencode( $tar, 9 );
-	if( $packed === false )
-		fail( 'could not compress '. basename( $target ) );
-
-	if( strlen( $packed ) > BUILD_MAX_ARCHIVE_BYTES )
-		fail( basename( $target ). ' is '. strlen( $packed ). ' bytes packed, the kernel accepts at most '. BUILD_MAX_ARCHIVE_BYTES );
-
-	$tmp = sys_get_temp_dir(). '/nino-build-'. bin2hex( random_bytes( 6 ) );
-	if( @mkdir( $tmp, 0700, true ) === false )
-		fail( 'could not create a temporary directory below '. sys_get_temp_dir() );
-
-	$staged = $tmp. '/'. basename( $target );
-
-	if( file_put_contents( $staged, $packed ) !== strlen( $packed ) ) {
-		removeTree( $tmp );
-		fail( 'could not write '. basename( $target ). ' to the temporary directory' );
-	}
-
-	$stats = inspectArchive( $staged, $directory );
-
-	// The same bytes are already there: the file stays, with the time it has,
-	// so that what syncs the directory sees no change
-	if( is_file( $target ) === true && hash_file( 'sha256', $target ) === hash_file( 'sha256', $staged ) ) {
-		removeTree( $tmp );
-		return $stats;
-	}
-
-	if( @rename( $staged, $target ) === false && ( @copy( $staged, $target ) === false || (int) filesize( $target ) !== strlen( $packed ) ) ) {
-		removeTree( $tmp );
-		@unlink( $target );
-		fail( 'could not write '. $target );
-	}
-
-	removeTree( $tmp );
-
-	return $stats;
+	return $tar. str_repeat( "\0", 1024 );
 }
 
-
-// --- Manifests ---------------------------------------------------------------
-
 /**
- *	The name two features share, '' where they share none. A name is compared
- *	per locale, and one given as a plain string is that name in every locale,
- *	so a string collides with any string a map holds. Case is ignored: two
- *	rows reading "Seo" and "SEO" are as hard to tell apart as two reading the
- *	same, and the panel sorts by name rather than by spelling.
+ *	Build one archive in memory: the folder of a package as <directory>/..., gzipped - and read back the way the kernel reads it, which has to give the
+ *	files it was built from. Nothing is written
  *
- *	@param		array|string	$one				A manifest's 'name'
- *	@param		array|string	$other			Another manifest's 'name'
+ *	@param		string		$kind					One of \Nino\Packages::KINDS
+ *	@param		string		$label				What the package is called in a sentence, 'themes/craft'
+ *	@param		array			$entries			path => whether it is a directory, as packageCollect() answers
+ *	@param		array			$files				path => bytes of the files among them
+ *	@param		string		$directory		The one top-level directory of the archive
  *
- *	@return 	string											The shared name, '' where there is none
+ *	@return 	array										[ the archive, the files as the kernel reads them back ]
  */
-function sharedName( array|string $one, array|string $other ): string {
+function buildArchive( string $kind, string $label, array $entries, array $files, string $directory ): array {
 
-	$perLocale = static fn( array|string $name ): array => is_array( $name ) === true ? $name : [ '*' => $name ];
+	$packed = gzencode( tarOf( $directory, $entries, $files ), 9 );
+	if( $packed === false )
+		fail( $label. ' cannot be compressed' );
 
-	foreach( $perLocale( $one ) as $locale => $name )
-		foreach( $perLocale( $other ) as $otherLocale => $otherName )
-			if( ( $locale === $otherLocale || $locale === '*' || $otherLocale === '*' )
-				&& mb_strtolower( trim( $name ) ) === mb_strtolower( trim( $otherName ) ) )
-				return trim( $name );
+	if( strlen( $packed ) > \Nino\Catalogue::ARCHIVE_BYTES[$kind] )
+		fail( $label. ' is '. strlen( $packed ). ' bytes packed, the kernel accepts at most '. \Nino\Catalogue::ARCHIVE_BYTES[$kind] );
 
-	return '';
+	// The limits the kernel reads it by, as \Nino\Catalogue::_place() gives them
+	$limits	= \Nino\Packages::LIMITS[$kind];
+	$each		= $kind === \Nino\Packages::FEATURE ? $limits['bytes'] : \Nino\Blocks::MAX_PICTURE;
+	$back		= \Nino\Archive::read( $packed, $directory, $limits['files'], $each, $limits['bytes'] );
+
+	if( is_string( $back ) === true ) {
+
+		// Which file the reader refuses, for the sentence: each one of them alone in an archive of its own
+		$named = '';
+
+		foreach( $files as $path => $bytes )
+			if( \Nino\Archive::read( (string) gzencode( tarOf( $directory, [ $path => false ], $files ) ), $directory, $limits['files'], $each, $limits['bytes'] ) === $back ) {
+				$named = '/'. $path;
+				break;
+			}
+
+		fail( $label. $named. ' is refused by the reader of the kernel when it is read back: '. ( \Nino\Catalogue::ARCHIVE_WHY[$back] ?? $back ) );
+	}
+
+	ksort( $back, SORT_STRING );
+
+	if( $back !== $files )
+		fail( $label. ' does not read back as the files it was built from' );
+
+	return [ $packed, $back ];
 }
 
 
@@ -468,82 +336,50 @@ if( $options['key'] !== '' ) {
 }
 
 
-// --- The features, through the kernel ----------------------------------------
+
+// --- The packages, through the kernel ----------------------------------------
 
 // This repository's own features/, not the checkout's - the checkout may
 // carry a copy of them, but the catalogue publishes what is here
-define( 'NINO_FEATURES_DIR', dirname( __DIR__ ). '/features' );
+$repository = dirname( __DIR__ );
 
-$warnings = [];
-set_error_handler( static function( int $level, string $message ) use ( &$warnings ): bool {
-	$warnings[] = $message;
-	return true;
-} );
+define( 'NINO_FEATURES_DIR', $repository. '/features' );
 
 require $root. '/_nino/Nino.php';
 
-if( class_exists( '\Nino\Features' ) === false || defined( '\Nino\Features::CATEGORIES' ) === false )
-	fail( 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \\Nino\\Features::CATEGORIES - the catalogue needs a Nino that carries the feature contract and its categories, 1.2 or later (docs/features.md)', 2 );
+if( class_exists( '\Nino\Packages' ) === false || class_exists( '\Nino\Archive' ) === false || defined( '\Nino\Catalogue::FORMAT' ) === false || \Nino\Catalogue::FORMAT !== BUILD_FORMAT )
+	fail( 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \\Nino\\Packages, \\Nino\\Archive and catalogue format '. BUILD_FORMAT. ' - the catalogue needs the Nino that reads packages, 2.0 or later (docs/features.md)', 2 );
 
-$features = [];		// key => manifest, every directory below features/
+require __DIR__. '/packages.php';
+require __DIR__. '/applications.php';
 
-foreach( scandir( NINO_FEATURES_DIR ) ?: [] as $entry ) {
+[ $features, $problems ] = readFeatures( NINO_FEATURES_DIR );
 
-	$dir = NINO_FEATURES_DIR. '/'. $entry;
-
-	if( $entry[0] === '.' || is_dir( $dir ) === false )
-		continue;
-
-	$manifest = \Nino\Features::manifest( $dir );
-
-	if( $manifest === null )
-		fail( 'features/'. $entry. ' does not validate:'. "\n  ". implode( "\n  ", $warnings ) );
-
-	if( isset( $features[ $manifest['key'] ] ) === true )
-		fail( 'features/'. $entry. ' claims the key "'. $manifest['key']. '" that features/'. basename( $features[ $manifest['key'] ]['dir'] ). ' already holds' );
-
-	// The kernel takes any slug, so that an older Nino can read a catalogue
-	// filing a feature under a category it predates; a typo would travel all
-	// the way to a project's Features panel as a heading of its own. This is
-	// where a published feature is held to the kernel's vocabulary
-	if( in_array( $manifest['category'], \Nino\Features::CATEGORIES, true ) === false )
-		fail( 'features/'. $entry. ' is filed under '. ( $manifest['category'] === '' ? 'no category' : '"'. $manifest['category']. '"' ). ' - a published feature names one of: '. implode( ', ', \Nino\Features::CATEGORIES ) );
-
-	$features[ $manifest['key'] ] = $manifest;
-}
-
-if( $warnings !== [] )
-	fail( 'Not every feature validates:'. "\n  ". implode( "\n  ", $warnings ) );
-
-restore_error_handler();
+if( $problems !== [] )
+	fail( implode( "\n", $problems ) );
 
 if( $features === [] )
 	fail( 'No feature below '. NINO_FEATURES_DIR );
 
-ksort( $features );
+[ $register, $problems ] = packageRegister( $features );
 
-// The name is what a row in the Features panel says - the key is never on
-// screen there, and neither is the directory - so two features carrying one
-// name are two rows a person cannot tell apart, in a list they are choosing
-// from. Refused here, where it is one line to fix and nothing is published
-// yet; the kernel cannot refuse it, since the two would arrive from two
-// catalogues it has no say over
+if( $problems !== [] )
+	fail( implode( "\n", $problems ) );
+
+// What there is to publish: kind, key, the folder it is read from and the one its archive holds
+$sources = [];
+
 foreach( $features as $key => $manifest )
-	foreach( $features as $otherKey => $other ) {
+	$sources[] = [ 'kind' => \Nino\Packages::FEATURE, 'key' => $key, 'source' => $manifest['dir'], 'directory' => basename( $manifest['dir'] ), 'label' => 'features/'. basename( $manifest['dir'] ) ];
 
-		if( strcmp( $key, $otherKey ) >= 0 )
-			continue;
-
-		$shared = sharedName( $manifest['name'], $other['name'] );
-
-		if( $shared !== '' )
-			fail( 'features/'. basename( $manifest['dir'] ). ' and features/'. basename( $other['dir'] ). ' are both named "'. $shared. '" - a feature is shown by its name, so no two may carry one' );
-	}
+foreach( PACKAGES_FOLDERS as $kind => $folder )
+	foreach( packageFolders( $repository, $kind ) as $name => $path )
+		$sources[] = [ 'kind' => $kind, 'key' => $name, 'source' => $path, 'directory' => $name, 'label' => $folder. '/'. $name ];
 
 
 // --- The applications --------------------------------------------------------
 
-[ $applications, $problems ] = readApplications( dirname( __DIR__ ). '/applications', array_keys( $features ) );
+[ $applications, $problems ] = readApplications( $repository. '/applications', array_keys( $features ) );
 
 if( $problems !== [] )
 	fail( 'Not every application is valid:'. "\n  ". implode( "\n  ", $problems ) );
@@ -562,7 +398,7 @@ if( is_writable( $out ) === false )
 $cataloguePath	= $out. '/catalogue.json';
 $signaturePath	= $cataloguePath. '.sig';
 $before					= null;		// the catalogue.json as it was, the bytes
-$previous				= [];			// key => the entry it had
+$previous				= [];			// kind:key => the entry it had
 $generated			= '';
 
 if( is_file( $cataloguePath ) === true ) {
@@ -570,107 +406,111 @@ if( is_file( $cataloguePath ) === true ) {
 	$before		= (string) file_get_contents( $cataloguePath );
 	$document	= json_decode( $before, true );
 
-	if( is_array( $document ) === false || ( $document['format'] ?? null ) !== BUILD_FORMAT || is_array( $document['features'] ?? null ) === false )
+	if( is_array( $document ) === false || ( $document['format'] ?? null ) !== BUILD_FORMAT || is_array( $document['packages'] ?? null ) === false )
 		fail( $cataloguePath. ' is not a format '. BUILD_FORMAT. ' catalogue - not building over it' );
 
-	foreach( $document['features'] as $index => $entry ) {
+	foreach( $document['packages'] as $index => $entry ) {
 
-		if( is_array( $entry ) === false || is_string( $entry['key'] ?? null ) === false || is_string( $entry['version'] ?? null ) === false )
-			fail( $cataloguePath. ': entry '. $index. ' names no key and version - not building over it' );
+		if( is_array( $entry ) === false || is_string( $entry['kind'] ?? null ) === false || is_string( $entry['key'] ?? null ) === false || is_string( $entry['version'] ?? null ) === false )
+			fail( $cataloguePath. ': entry '. $index. ' names no kind, key and version - not building over it' );
 
-		// Per key the highest version: the entry the next one follows
-		if( isset( $previous[ $entry['key'] ] ) === false || version_compare( $entry['version'], $previous[ $entry['key'] ]['version'] ) > 0 )
-			$previous[ $entry['key'] ] = $entry;
+		$id = $entry['kind']. ':'. $entry['key'];
+
+		// Per package the highest version: the entry the next one follows
+		if( isset( $previous[$id] ) === false || version_compare( $entry['version'], $previous[$id]['version'] ) > 0 )
+			$previous[$id] = $entry;
 	}
 
 	$generated = is_string( $document['generated'] ?? null ) === true ? $document['generated'] : '';
 
-	say( 'reading  '. $cataloguePath. ' ('. count( $document['features'] ). ' '. ( count( $document['features'] ) === 1 ? 'entry' : 'entries' ). ')' );
+	say( 'reading  '. $cataloguePath. ' ('. count( $document['packages'] ). ' '. ( count( $document['packages'] ) === 1 ? 'entry' : 'entries' ). ')' );
 }
 
 
-// --- Build every archive -----------------------------------------------------
+// --- Check and build every package -------------------------------------------
 
+// Every package is looked at before a file is written: a run that stops on the last of them leaves the output directory as it was
 $today		= gmdate( 'Y-m-d' );
-$entries	= [];		// key => entry, as the catalogue carries it
+$built		= [];		// kind:key => [ entry, archive, picture ]
 
-foreach( $features as $key => $manifest ) {
+foreach( $sources as $source ) {
 
-	$version		= $manifest['version'];
-	$directory	= basename( $manifest['dir'] );
-	$name				= $key. '-'. $version. '.tar.gz';
-	$path				= $out. '/'. $name;
-	$label			= str_pad( $key. ' '. $version, 24 );
-	$old				= is_file( $path ) === true ? (string) hash_file( 'sha256', $path ) : '';
+	$kind				= $source['kind'];
+	$label			= $source['label'];
+	$id					= $kind. ':'. $source['key'];
 
-	[ $count, $unpacked ] = buildArchive( $manifest['dir'], $directory, $path );
+	[ $entries, $files, $problems ] = packageCollect( $source['source'], $kind, $label );
 
-	$sha256	= (string) hash_file( 'sha256', $path );
-	$size		= (int) filesize( $path );
+	if( $problems !== [] )
+		fail( implode( "\n", $problems ) );
 
-	say( ( $sha256 === $old ? 'same     ' : 'built    ' ). $label. $name. ' ('. $count. ' entries, '. human( $size ). ' packed, '. human( $unpacked ). ' unpacked, sha256 '. substr( $sha256, 0, 12 ). '…)' );
+	// What the kernel installs a package by is asked of the files as they lie in the folder, so that a problem names the file; the archive that is built
+	// after it is read back and has to hold the same files, which are the ones the kernel is asked of when it installs
+	if( $kind === \Nino\Packages::FEATURE ) {
 
-	// The day of the entry before while the archive is the same bytes, today
-	// when it is not
-	$released = $today;
-	if( isset( $previous[$key] ) === true && strtolower( (string) ( $previous[$key]['sha256'] ?? '' ) ) === $sha256 && is_string( $previous[$key]['released'] ?? null ) === true && trim( $previous[$key]['released'] ) !== '' )
-		$released = $previous[$key]['released'];
+		$problem = \Nino\Packages::check( $register, $kind, $files );
 
-	$entry = [
-		'key'					=> $key,
-		'name'				=> $manifest['name'],
-		'description'	=> $manifest['description'],
-		'category'		=> $manifest['category'],
-		'maturity'		=> $manifest['maturity'] ?? '',
-		'version'			=> $version,
-		'nino'				=> $manifest['nino'],
-		'php'					=> [ 'ext' => array_values( $manifest['php']['ext'] ) ],
-		'requires'		=> array_values( $manifest['requires'] ),
-		'directory'		=> $directory,
-		'archive'			=> $baseUrl. '/'. $name,
-		'sha256'			=> $sha256,
-		'size'				=> $size,
-		'released'		=> $released,
-	];
+		if( $problem !== null )
+			fail( $label. ( $problem['path'] === '' ? ': ' : '/' ). \Nino\Packages::why( $problem ) );
 
-	// The kernel refuses an empty description where it accepts a missing one
-	if( is_string( $entry['description'] ) === true && trim( $entry['description'] ) === '' )
-		unset( $entry['description'] );
+		$entry = featureEntry( $features[ $source['key'] ] );
+	}
+	else {
 
-	// Optional by design: most features carry no badge, and a kernel from
-	// before the field drops it from the manifest - the entry then says
-	// nothing, which every kernel reads
-	if( $entry['maturity'] === '' )
-		unset( $entry['maturity'] );
+		[ $entry, $problems ] = packageEntry( $register, $kind, $source['key'], $files, $features );
 
-	$entries[$key] = $entry;
-}
-
-// An archive no entry names is what an earlier version or a feature that is
-// gone left behind: the directory holds what the catalogue lists, nothing else
-$named = array_map( static fn( array $entry ): string => $entry['key']. '-'. $entry['version']. '.tar.gz', $entries );
-
-foreach( glob( $out. '/*.tar.gz' ) ?: [] as $file )
-	if( in_array( basename( $file ), $named, true ) === false ) {
-		@unlink( $file );
-		say( 'removed  '. basename( $file ). ' - no entry names it' );
+		if( $problems !== [] )
+			fail( implode( "\n", $problems ) );
 	}
 
+	[ $packed, $back ] = buildArchive( $kind, $label, $entries, $files, $source['directory'] );
+
+	$built[$id] = [ 'entry' => $entry, 'archive' => $packed, 'preview' => $kind === \Nino\Packages::FEATURE ? null : $back[PACKAGES_PREVIEW], 'label' => $label, 'count' => count( $entries ) + 1, 'bytes' => array_sum( array_map( 'strlen', $back ) ) ];
+}
+
+// --- The entries -------------------------------------------------------------
+
+// In the order they were read: the features, the themes, the packages of blocks, each by key
+$entries = [];		// kind:key => entry, as the catalogue carries it
+
+foreach( $built as $id => &$one ) {
+
+	$entry		= $one['entry'];
+	$name			= $entry['kind']. '-'. $entry['key']. '-'. $entry['version'];
+	$sha256		= hash( 'sha256', $one['archive'] );
+
+	$one['name']	= $name;
+	$one['sha256']	= $sha256;
+
+	// The day of the entry before while the archive is the same bytes, today when it is not
+	$released = $today;
+	if( isset( $previous[$id] ) === true && strtolower( (string) ( $previous[$id]['sha256'] ?? '' ) ) === $sha256 && is_string( $previous[$id]['released'] ?? null ) === true && trim( $previous[$id]['released'] ) !== '' )
+		$released = $previous[$id]['released'];
+
+	if( $one['preview'] !== null )
+		$entry['preview'] = [ 'url' => $baseUrl. '/'. $name. '.webp', 'sha256' => hash( 'sha256', $one['preview'] ), 'size' => strlen( $one['preview'] ) ];
+
+	$entries[$id] = $entry + [
+		'archive'			=> $baseUrl. '/'. $name. '.tar.gz',
+		'sha256'			=> $sha256,
+		'size'				=> strlen( $one['archive'] ),
+		'released'		=> $released,
+	];
+}
+
+unset( $one );
 
 // --- Write and sign ----------------------------------------------------------
 
-$encode = static function( array $features, string $generated ) use ( $applications ): string {
+$encode = static function( array $packages, string $generated ) use ( $applications ): string {
 
 	try {
-		return json_encode( [ 'format' => BUILD_FORMAT, 'generated' => $generated, 'applications' => $applications, 'features' => $features ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ). "\n";
+		return json_encode( [ 'format' => BUILD_FORMAT, 'generated' => $generated, 'applications' => $applications, 'packages' => $packages ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ). "\n";
 	}
 	catch( \JsonException $e ) {
 		fail( 'The catalogue cannot be encoded: '. $e->getMessage() );
 	}
 };
-
-// Sorted by key; one entry per key, so there is no version to order by
-ksort( $entries );
 
 // 'generated' is the time of the last change: while the entries are the
 // ones the catalogue already carries, it stays, and so do the bytes
@@ -680,14 +520,17 @@ $changed	= $json !== $before;
 if( $changed === true )
 	$json = $encode( array_values( $entries ), gmdate( 'Y-m-d\TH:i:s\Z' ) );
 
-// What the kernel on the other end will make of it
+// What the kernel on the other end will make of it: every entry is read, and one it leaves out is an error here
 $parsed = \Nino\Catalogue::parse( $json );
 
 if( is_string( $parsed ) === true )
 	fail( 'This kernel would refuse the catalogue: '. $parsed );
 
-if( count( $parsed['features'] ) !== count( $entries ) )
-	fail( 'This kernel reads '. count( $parsed['features'] ). ' of '. count( $entries ). ' entries' );
+if( $parsed['unreadable'] !== [] )
+	fail( 'This kernel cannot read every entry:'. "\n  ". implode( "\n  ", array_map( static fn( array $one ): string => 'entry '. $one['index']. ' ('. $one['kind']. ' '. $one['key']. '): '. $one['reason'], $parsed['unreadable'] ) ) );
+
+if( count( $parsed['packages'] ) !== count( $entries ) )
+	fail( 'This kernel reads '. count( $parsed['packages'] ). ' of '. count( $entries ). ' entries' );
 
 /**
  *	Write a file whole: into a temporary name beside it, then renamed over it.
@@ -703,6 +546,47 @@ function place( string $path, string $data ): void {
 		fail( 'Could not write '. $path );
 	}
 }
+
+// Nothing was written until now: what the kernel reads of the finished document is what is put in the directory
+foreach( $built as $one ) {
+
+	$path		= $out. '/'. $one['name']. '.tar.gz';
+	$label	= str_pad( $one['entry']['kind']. ' '. $one['entry']['key']. ' '. $one['entry']['version'], 34 );
+	$same		= is_file( $path ) === true && hash_file( 'sha256', $path ) === $one['sha256'];
+
+	// The same bytes are already there: the file stays, with the time it has, so that what syncs the directory sees no change
+	if( $same === false )
+		place( $path, $one['archive'] );
+
+	say( ( $same === true ? 'same     ' : 'built    ' ). $label. $one['name']. '.tar.gz ('. $one['count']. ' entries, '. human( strlen( $one['archive'] ) ). ' packed, '. human( $one['bytes'] ). ' unpacked, sha256 '. substr( $one['sha256'], 0, 12 ). '…)' );
+
+	if( $one['preview'] !== null ) {
+
+		$picture = $out. '/'. $one['name']. '.webp';
+
+		if( is_file( $picture ) === false || hash_file( 'sha256', $picture ) !== hash( 'sha256', $one['preview'] ) )
+			place( $picture, $one['preview'] );
+	}
+}
+
+// An archive or a picture no entry names is what an earlier version or a package that is gone left behind: the directory holds what the catalogue lists,
+// nothing else
+$named = [];
+
+foreach( $entries as $entry ) {
+
+	$named[] = basename( $entry['archive'] );
+
+	if( isset( $entry['preview'] ) === true )
+		$named[] = basename( $entry['preview']['url'] );
+}
+
+foreach( [ '*.tar.gz', '*.webp' ] as $pattern )
+	foreach( glob( $out. '/'. $pattern ) ?: [] as $file )
+		if( in_array( basename( $file ), $named, true ) === false ) {
+			@unlink( $file );
+			say( 'removed  '. basename( $file ). ' - no entry names it' );
+		}
 
 if( $changed === true ) {
 
