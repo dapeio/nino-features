@@ -144,7 +144,7 @@ namespace Nino\Modules {
 
 			foreach( \Nino\Modules\Themes\Reader::read( $appData )['themes'] as $key => $theme )
 				if( is_dir( $theme['dir']. '/blocks' ) === true )
-					$roots[] = [ 'dir' => $theme['dir']. '/blocks', 'origin' => (string) $key ];
+					$roots[] = [ 'dir' => $theme['dir']. '/blocks', 'origin' => (string) $key, 'label' => $theme['name'] ];
 
 			return $roots;
 		}

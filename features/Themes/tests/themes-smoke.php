@@ -3102,6 +3102,7 @@ $blocked = themesSite();
 $list = \Nino\Blocks::all( $blocked );
 check( 'N. the blocks of the themes that are installed are listed by the kernel, each with the key of its theme as its origin - none of the themes is on the website, and the one of the feature and the one of a fixture are there alike', ( $list['hero-band']['origin'] ?? '' ) === 'nino' && ( $list['hero-soft']['origin'] ?? '' ) === 'craft-probe'
 	&& ( $list['hero-band']['category'] ?? '' ) === 'intro' && \Nino\Blocks::rejected( $blocked ) === [] );
+check( 'N. ...and with the name of its theme as the label of where it comes from, which a panel shows', ( $list['hero-band']['label'] ?? null ) === \Nino\Modules\Themes\Reader::read( $blocked )['themes']['nino']['name'] && ( $list['hero-band']['label'] ?? null ) !== ( $list['hero-band']['origin'] ?? null ) );
 check( 'N. each is a block of the kernel as any other: it has its texts in both languages and names the variant of its theme, which the mix that is on may not have - the root of the template carries the variant', array_keys( (array) ( \Nino\Blocks::get( $blocked, 'hero-band' )['texts'] ?? [] ) ) === [ 'de_DE', 'en_US' ] && ( \Nino\Blocks::get( $blocked, 'hero-soft' )['variants'] ?? null ) === [ 'section-wrap' => [ 'soft' ] ]
 	&& ( \Nino\Blocks::get( $blocked, 'hero-band' )['variants'] ?? null ) === [ 'section-wrap' => [ 'band' ] ] );
 
