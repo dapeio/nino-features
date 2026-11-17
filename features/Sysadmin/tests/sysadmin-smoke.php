@@ -102,14 +102,14 @@ check( 'the manifest validates without a warning', is_array( $manifest ) === tru
 check( 'the feature has a manual in every section, the settings of the brief, and the data file its state is in', is_array( $manifest ) === true
 	&& array_keys( $manifest['settings'] ) === [ 'to', 'problemGap', 'beat' ] && $manifest['data'] === [ \Nino\Modules\Sysadmin::STATE ]
 	&& array_keys( $manifest['manual'] ) === \Nino\Features::MANUAL_SECTIONS && $manifest['category'] === 'system' );
-check( 'its constraint names the kernel that has the Dashboard notices as data, and its version is the first of a feature', is_array( $manifest ) === true
-	&& $manifest['version'] === '1.0.0' && \Nino\Features::satisfies( $manifest['nino'], '1.13.0' ) === true && \Nino\Features::satisfies( $manifest['nino'], '1.12.0' ) === false );
+check( 'its constraint names the kernel of Nino 2 and it brings no components', is_array( $manifest ) === true
+	&& $manifest['version'] === '2.0.0' && $manifest['nino'] === '^2.0' && \Nino\Features::satisfies( $manifest['nino'] ) === true && isset( $manifest['components'] ) === false );
 check( 'the defaults are the brief\'s: no address, a problem mail every 24 hours at most, a sign of life every week', is_array( $manifest ) === true
 	&& $manifest['settings']['to']['default'] === '' && $manifest['settings']['problemGap']['default'] === '24' && $manifest['settings']['beat']['default'] === 'weekly'
 	&& array_keys( $manifest['settings']['beat']['options'] ) === [ 'off', 'daily', 'weekly', 'monthly' ] );
 
 check( 'activation succeeds, lists the class and records the version', \Nino\Features::activate( $appData, 'sysadmin' ) === true
-	&& \Nino\Features::get( $appData, 'sysadmin' )['installed'] === '1.0.0' && in_array( '\\Nino\\Modules\\Sysadmin', $appData['/nino/modules'], true ) === true );
+	&& \Nino\Features::get( $appData, 'sysadmin' )['installed'] === '2.0.0' && in_array( '\\Nino\\Modules\\Sysadmin', $appData['/nino/modules'], true ) === true );
 check( 'the unit brings no template, no route and no element type of its own - the mail is nothing a visitor opens', array_diff( array_keys( include $feature. '/install/manifest.php' ), [ 'elements' ] ) === [] );
 
 $words = [ 'en_US' => (array) include $feature. '/install/text/en_US.php', 'de_DE' => (array) include $feature. '/install/text/de_DE.php' ];
@@ -166,7 +166,7 @@ $data = \Nino\Filesystem::path( $appData, '/data' );
 $listing = static function() use ( $data ): array {
 	clearstatcache();
 	$files = [];
-	foreach( glob( $data. '/{,.}*', GLOB_BRACE ) ?: [] as $file )
+	foreach( array_merge( glob( $data. '/*' ) ?: [], glob( $data. '/.*' ) ?: [] ) as $file )
 		if( is_file( $file ) === true )
 			$files[basename( $file )] = filemtime( $file ). ':'. filesize( $file );
 	return $files;
@@ -728,11 +728,11 @@ $at( $failAt + 41 * $day );
 \Nino\Filesystem::mutate( $appData, \Nino\Modules\Sysadmin::STATE, static fn( array $stored ): array => array_merge( $stored, [ 'lastProblem' => $failAt + 40 * $day ] ) );
 [ $status, $body ] = ninoCall( $appData, [ \Nino\Modules\Sysadmin\Admin::class, 'apiStatus' ] );
 check( 'the status says who is told, the distance, the rhythm and the clocks as times, and every finding with its rank and its sentence', $status === 200 && $body['recipients'] === [ 'a@example.org', 'b@example.org' ]
-	&& $body['gap'] === 24 && $body['beat'] === 'off' && $body['nextBeat'] === null && is_string( $body['lastProblem'] ) === true && preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $body['lastProblem'] ) === 1
+	&& $body['gap'] === 24 && $body['beat'] === 'off' && $body['nextBeat'] === null && $body['lastProblem'] === \Nino\Format::datetime( $appData, \Nino\Modules\Sysadmin\Report::stamp( $failAt + 40 * $day ) )
 	&& count( array_filter( $body['findings'], static fn( array $finding ): bool => in_array( $finding['rank'], [ 1, 2, 3 ], true ) === true && is_string( $finding['text'] ) === true && $finding['text'] !== '' && is_bool( $finding['event'] ) === true ) ) === count( $body['findings'] ) && $body['findings'] !== [] );
 $set( [ 'beat' => 'weekly' ] );
 [ , $body ] = ninoCall( $appData, [ \Nino\Modules\Sysadmin\Admin::class, 'apiStatus' ] );
-check( '...the next sign of life is the slot after the last', $body['nextBeat'] === \Nino\Modules\Sysadmin\Report::stamp( \Nino\Modules\Sysadmin::after( 'weekly', $stored()['lastBeat'] ) ) );
+check( '...the next sign of life is the slot after the last', $body['nextBeat'] === \Nino\Format::datetime( $appData, \Nino\Modules\Sysadmin\Report::stamp( \Nino\Modules\Sysadmin::after( 'weekly', $stored()['lastBeat'] ) ) ) );
 check( '...and the failure of a send, with its time and its count, once there is one', ( static function() use ( &$appData, $stored, $failAt, $day ): bool {
 	\Nino\Filesystem::mutate( $appData, \Nino\Modules\Sysadmin::STATE, static fn( array $state ): array => array_merge( $state, [ 'failed' => $failAt + 41 * $day, 'fails' => 3 ] ) );
 	[ , $body ] = ninoCall( $appData, [ \Nino\Modules\Sysadmin\Admin::class, 'apiStatus' ] );
@@ -981,19 +981,41 @@ check( 'the rhythm of a clock that is checked is an hour and a failure is retrie
 echo "\n";
 
 
-// --- The script of the panel, where node is on the path -------------------------------------
+// --- The script of the panel ---------------------------------------------------------------
 
-$node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+echo "Sysadmin - what the script of the panel builds\n";
 
-if( $node === '' || function_exists( 'exec' ) === false )
-	echo "  --  - node is not available here: sysadmin-js-smoke.js was NOT run\n";
-else {
-	$output = [];
-	$exit = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/sysadmin-js-smoke.js' ). ' 2>&1', $output, $exit );
-	check( 'sysadmin-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
-}
+check( 'the script takes its lists, its bar, its button and its dialog from the workbench and builds none of them itself',
+	preg_match( '/createElement\(\s*.button|window\.confirm|\balert\(|nino-admin-btn-|nino-admin-actionbar|<dialog|<form/', $script ) === 0
+	&& str_contains( $script, 'Nino.adminUi.actionBar( {' ) === true && substr_count( $script, "kind : 'primary'" ) === 1 && str_contains( $script, 'Nino.adminUi.sectionTitle(' ) === true
+	&& str_contains( $script, "Nino.adminUi.confirm( 'routine'" ) === true );
+check( 'the explanation of the screen is behind the (?) of its section and no paragraph stands over it; a locked button has the (?) with its reason, and no word of the panel uses the unicode ellipsis',
+	str_contains( $script, 'Nino.adminUi.sectionHelp(' ) === true && str_contains( $script, "'lead'" ) === false && str_contains( $script, 'Nino.adminUi.fieldHelp(' ) === true
+	&& str_contains( (string) file_get_contents( $feature. '/text/de_DE.php' ). (string) file_get_contents( $feature. '/text/en_US.php' ), '…' ) === false );
+check( 'the answer of the test mail is a toast and a failure stands in the line of the bar, not in the content',
+	str_contains( $script, 'Nino.adminUi.say(' ) === true && str_contains( $script, 'bar.line.error(' ) === true && preg_match( '/hint\([^)]*msg\/sent/', $script ) === 0 );
+check( 'the stylesheet names space and colour through the tokens of the workbench, writes no size, no radius and no number of its own, and every rule stands under the root of the panel', ( static function() use ( $feature ): bool {
+	$css = (string) preg_replace( '~/\*.*?\*/~s', '', (string) file_get_contents( $feature. '/assets/admin.css' ) );
+	$css = (string) preg_replace( '~^@layer[^;{]*;~m', '', $css );
+	preg_match_all( '~([^{}]+)\{([^{}]*)\}~', $css, $rules, PREG_SET_ORDER );
+	foreach( $rules as $rule ) {
+		foreach( explode( ',', $rule[1] ) as $selector )
+			if( str_starts_with( trim( $selector ), '@layer' ) === false && str_starts_with( trim( $selector ), '#sysadmin-list' ) === false )
+				return false;
+		$body = (string) preg_replace( '/var\([^)]*\)/', '', $rule[2] );
+		if( preg_match( '/\d(px|rem|em)\b|#[0-9a-f]{3,6}\b|rgba?\(|border-radius/i', $body ) === 1 )
+			return false;
+	}
+	return $rules !== [];
+} )() );
 
 echo "\n";
+
+// Nothing of the old components API or the old stylesheet vocabulary is left in the folder
+$oldWorld = [];
+foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $feature, \FilesystemIterator::SKIP_DOTS ) ) as $file )
+	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|(?<![-\w])nino-(?!admin-)[a-z]|--(?:space|color|radius|fontsize)-|Nino\.ui\./', (string) file_get_contents( (string) $file ) ) === 1 )
+		$oldWorld[] = (string) $file;
+check( 'no file of the feature names the vocabulary of Nino 1', $oldWorld === [] );
 
 ninoDone( $appData );

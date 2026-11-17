@@ -551,7 +551,7 @@ namespace Nino\Modules {
 			return [
 				'subject'	=> $say( 'mail/subject-'. $kind, [ $site, (string) $count ] ),
 				'text'		=> $text,
-				'body'		=> str_replace( '[[text]]', \Nino\Modules\Components::escape( $text ), \Nino\Feature::template( $appData, '/features/Sysadmin/templates', 'sysadmin-mail' ) ),
+				'body'		=> str_replace( '[[text]]', \Nino\Components::escape( $text ), \Nino\Feature::template( $appData, '/features/Sysadmin/templates', 'sysadmin-mail' ) ),
 			];
 		}
 

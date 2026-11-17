@@ -14,8 +14,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Sysadmin' => [
-				'en_US' => 'Shows who is told, the two clocks and what the report finds right now, and sends a test mail to the saved recipients; the settings are on the Settings tab, behind /_admin/features/manage.',
-				'de_DE' => 'Zeigt, wer Bescheid bekommt, die beiden Uhren und den Bericht und schickt den Empfängern eine Testmail; die Einstellungen stehen im Reiter Einstellungen, hinter /_admin/features/manage.',
+				'en_US' => 'Lists who is told, the two clocks and what the report finds right now, and sends a test mail to the saved recipients; the settings are on the Settings tab.',
+				'de_DE' => 'Listet, wer Bescheid bekommt, die beiden Uhren und was der Bericht jetzt findet, und schickt den Empfängern eine Testmail; die Einstellungen stehen im Reiter Einstellungen.',
 			],
 		],
 		'callbacks' => [],
@@ -31,8 +31,8 @@ return [
 		],
 	],
 	'category'		=> 'system',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.13',
+	'version'			=> '2.0.0',
+	'nino'				=> '^2.0',
 	'requires'		=> [],
 	// What it remembers between two requests: when it last looked, what it told, what failed. No address of a
 	// visitor and no message of the log - only keys of findings and times

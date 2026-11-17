@@ -1,0 +1,47 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	admin.css		What the panel of Sysadmin needs beyond the design system in _admin/assets/style.css:
+ *							a fact as its name and its value in a row of a dense list, side by side where there
+ *							is room and one under the other where there is not. Bundled while the feature is
+ *							on (see the panel's assets()); it only ever adds to nino.tool, scoped to the
+ *							panel's own mount, and names space and colour through the tokens of the workbench.
+ */
+
+@layer nino.tool {
+
+#sysadmin-list .sysadmin-fact {
+	display: grid;
+	grid-template-columns: minmax(0, calc( var(--nino-admin-space-8) * 9 )) minmax(0, 1fr);
+	align-items: baseline;
+	gap: var(--nino-admin-space-2) var(--nino-admin-space-6);
+}
+#sysadmin-list .sysadmin-finding {
+	display: flex;
+	align-items: baseline;
+	gap: var(--nino-admin-space-2) var(--nino-admin-space-6);
+}
+#sysadmin-list .sysadmin-fact-name {
+	color: var(--editor-text-secondary);
+}
+#sysadmin-list .sysadmin-fact-value,
+#sysadmin-list .sysadmin-finding-text {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+/* The narrow column of a phone and of a split pane: the name above its value, as the labels of a form stand above their fields below 38 rem */
+@media (max-width: 38rem) {
+	#sysadmin-list .sysadmin-fact {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	#sysadmin-list .sysadmin-finding {
+		flex-wrap: wrap;
+	}
+}
+#sysadmin-list .sysadmin-facts,
+#sysadmin-list .sysadmin-findings {
+	margin-bottom: var(--nino-admin-space-8);
+}
+
+}

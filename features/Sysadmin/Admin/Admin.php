@@ -64,7 +64,10 @@ namespace Nino\Modules\Sysadmin {
 			$beat			= \Nino\Modules\Sysadmin::beat( $appData );
 			$since		= ( $state['lastMail'] ?? 0 ) > 0 ? $state['lastMail'] : ( $state['since'] ?? $now );
 			$report		= \Nino\Modules\Sysadmin\Report::collect( $appData, self::_language( $appData ), $since, $now, false, \Nino\Modules\Sysadmin::aborted( $state, $now ) );
-			$stamp		= static fn( int $time ): ?string => $time > 0 ? \Nino\Modules\Sysadmin\Report::stamp( $time ) : null;
+			// A time the way the workbench writes one in the language it speaks (\Nino\Format), not the way the mail writes every time
+			$stamp		= static function( int $time ) use ( &$appData ): ?string {
+				return $time > 0 ? \Nino\Format::datetime( $appData, \Nino\Modules\Sysadmin\Report::stamp( $time ) ) : null;
+			};
 			$recipients = \Nino\Modules\Sysadmin::recipients( $appData );
 
 			\Nino\Http::ok( $request, [
