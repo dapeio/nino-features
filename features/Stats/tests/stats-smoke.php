@@ -14,7 +14,8 @@ declare(strict_types=1);
  *											bytes counted in the pages' bucket - and the retention
  *											sweep, the read-only panel and its permission - showing
  *											pages only, with their titles, even of a month counted
- *											before files were left out - the dashboard tile, and
+ *											before files were left out - the dashboard tile, what
+ *											the script of the panel builds and says, and
  *											deactivation. Travels with the feature and runs against
  *											the checkout three levels up, or the one NINO_ROOT names
  *											(see tests/harness.php there).
@@ -69,7 +70,7 @@ $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
 check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'stats'
 	&& $manifest['module'] === '\\Nino\\Modules\\Stats' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
-check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'it is written for this kernel, as a component-free feature of Nino 2', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true && isset( $manifest['components'] ) === false );
 check( 'it names itself in both interface languages', is_array( $manifest ) && \Nino\Features::localized( $manifest['name'], 'de_DE' ) !== \Nino\Features::localized( $manifest['name'], 'en_US' ) );
 check( 'it declares only the directory it owns under data/', is_array( $manifest ) && $manifest['data'] === [ '/data/stats' ] );
 
@@ -120,7 +121,7 @@ check( 'the settings answer their defaults', \Nino\Features::settings( $appData,
 ] );
 
 \Nino\Modules::callModules( $appData, 'init' );
-check( 'the panel is registered while the feature is active', isset( \Nino\Admin\Admin::panels( $appData )['stats'] ) === true );
+check( 'the panel is registered while the feature is active, with the Settings tab the kernel adds', isset( \Nino\Admin\Admin::panels( $appData )['stats'] ) === true && isset( \Nino\Admin\Admin::panels( $appData )['stats']['tabs']['stats-settings'] ) === true );
 
 echo "\n";
 
@@ -161,6 +162,7 @@ check( '...while a recent one, only 2 months old, survives', is_file( $recentMon
 countRequest( $appData, ninoVisit( $appData, '/hello' ) );
 check( 'a second view increments both the total and the uri', dayTotal( $appData, $month, $today ) === 2
 	&& monthFile( $appData, $month )['days'][$today]['uris']['/hello'] === 2 );
+
 
 echo "\n";
 
@@ -388,8 +390,13 @@ $viewFrom( str_repeat( 'ä', 200 ). '.example' );
 $kept = $referrersOf();
 check( 'a host of 253 bytes is stored whole', ( $kept[$whole] ?? null ) === 1 && strlen( $whole ) === 253 );
 check( '...and one of 4000 is stored cut to its first 253 - and a second that shares them is the same host', ( $kept[ str_repeat( 'b', 253 ) ] ?? null ) === 2 && isset( $kept[ strtolower( $long ) ] ) === false );
-check( '...at a character, not through one: 200 two-byte characters are kept as 126, still utf-8',
-	( $kept[ str_repeat( 'ä', 126 ) ] ?? null ) === 1 && count( $kept ) === 3 && count( array_filter( array_keys( $kept ), static fn( string|int $host ): bool => mb_check_encoding( (string) $host, 'UTF-8' ) === false ) ) === 0 );
+check( '...and a name of letters that are no letters of a host is not kept as one, whatever the server could make of it: every host kept is ascii, and the 200 two-byte characters are not among them',
+	count( array_filter( array_keys( $kept ), static fn( string|int $host ): bool => preg_match( '/^[a-z0-9.-]+$/D', (string) $host ) !== 1 ) ) === 0 && count( $kept ) <= 3 );
+// What is no host is no referrer: markup, a space, a port-less bracket, a name that starts with a hyphen
+foreach( [ '<img src=x onerror=alert(1)>', 'a b.example', '[::1]', '-bad.example', 'bad-.example', 'under_score.example' ] as $spam )
+	$viewFrom( $spam );
+check( 'a Referer whose host is no hostname is not kept: nothing of markup, a space, a bracket or a bad hyphen is among the referrers',
+	count( array_filter( array_keys( $referrersOf() ), static fn( string|int $host ): bool => preg_match( '/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/D', (string) $host ) !== 1 ) ) === 0 );
 
 $emptyDay();
 for( $i = 0; $i < 1000; $i++ )
@@ -738,6 +745,17 @@ check( '...which are this month and the twelve before it',
 echo "\n";
 
 
+\Nino\Auth::logoutUser( $appData );
+$beforeVisitor = dayTotal( $appData, $month, $today );
+// Nothing of the visitor is kept: what a request carries to identify one - an address, a cookie, a user agent, a language - is nowhere in the file of the month
+$_SERVER['REMOTE_ADDR'] = '203.0.113.77';
+countRequest( $appData, ninoVisit( $appData, '/hello', 'GET', [ 'HTTP_COOKIE' => 'sid=cookie-value-4711', 'HTTP_USER_AGENT' => 'Probe-Agent/9.9', 'HTTP_ACCEPT_LANGUAGE' => 'xx-YY', 'REMOTE_ADDR' => '203.0.113.77' ] ) );
+$raw = (string) file_get_contents( ninoSandboxDir( $appData ). '/private/data/stats/'. $month. '.php' );
+check( 'the file of the month holds no ip address, no cookie, no user agent and no language of a visitor', dayTotal( $appData, $month, $today ) === $beforeVisitor + 1
+	&& str_contains( $raw, '203.0.113' ) === false && str_contains( $raw, 'cookie-value' ) === false && str_contains( $raw, 'Probe-Agent' ) === false && str_contains( $raw, 'xx-YY' ) === false );
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+$expectedTotal++;
+
 // --- Deactivation --------------------------------------------------------------
 
 echo "Deactivation\n";
@@ -748,21 +766,53 @@ check( 'the panel is gone with it', isset( \Nino\Admin\Admin::panels( $appData )
 check( 'with the feature off, stats/months is an unknown action', $status === 404 );
 check( 'the counted views survive deactivation', dayTotal( $appData, $month, $today ) === $expectedTotal );
 
-// --- The panel's script, where node is on the path ------------------------------
-//
-// stats-js-smoke.js beside this file draws the bar row over a dom stand-in;
-// this suite runs it too where node is on the path, the way gallery-smoke.php
-// runs its twin, so bin/check.sh and CI cover both halves in one go
-$jsTest	= __DIR__. '/stats-js-smoke.js';
-$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+// --- The panel's script -----------------------------------------------------------
 
-if( $node === '' || function_exists( 'exec' ) === false ) {
-	echo "  --  - node is not available here: stats-js-smoke.js was NOT run\n";
-} else {
-	$output = []; $status = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
-	$summary = (string) end( $output );
-	check( 'stats-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
-}
+echo "The script of the panel\n";
+
+$script = (string) file_get_contents( $dir. '/assets/admin.js' );
+$words = [ 'de_DE' => include $dir. '/text/de_DE.php', 'en_US' => include $dir. '/text/en_US.php' ];
+
+check( 'the value of a bar is not only under the pointer: it is the title and the name of its column for a screen reader, and shows with the focus as well',
+	str_contains( $script, 'column.title = ' ) === true && str_contains( $script, "setAttribute( 'aria-label'" ) === true && str_contains( (string) file_get_contents( $dir. '/assets/admin.css' ), 'focus-within' ) === true );
+check( 'on a phone the labels of the days are one in five, so that they do not lie over one another',
+	preg_match( '/@media \(max-width: 38rem\)\s*\{[^@]*stats-bar-label[^@]*nth-child\(5n\+1\)/', (string) file_get_contents( $dir. '/assets/admin.css' ) ) === 1 );
+check( 'the script takes its tables, its context bar and its selector from the workbench and builds no button, dialog or bar of its own',
+	preg_match( '/createElement\(\s*.button|window\.confirm|\balert\(|nino-admin-btn-|nino-admin-actionbar|<dialog/', $script ) === 0
+	&& substr_count( $script, 'Nino.adminUi.table(' ) === 1 && str_contains( $script, 'Nino.adminUi.contextBar(' ) === true && str_contains( $script, 'Nino.adminUi.selectField(' ) === true
+	&& substr_count( $script, 'Nino.adminUi.sectionTitle(' ) >= 2 && str_contains( $script, 'search	: true' ) === true );
+check( 'what the server sent reaches the page as text, never as markup', preg_match( '/innerHTML\s*=\s*[^\x27"\s]/', $script ) === 0 && str_contains( $script, 'insertAdjacentHTML' ) === false );
+check( 'the stylesheet reads the tokens of the workbench: no size, no colour, no radius written, every rule under the root of the panel', ( static function() use ( $dir ): bool {
+	$css = (string) preg_replace( '~/\*.*?\*/~s', '', (string) file_get_contents( $dir. '/assets/admin.css' ) );
+	$css = (string) preg_replace( '~^@layer[^;{]*;~m', '', $css );
+	preg_match_all( '~([^{}]+)\{([^{}]*)\}~', $css, $rules, PREG_SET_ORDER );
+	foreach( $rules as $rule ) {
+		$selector = trim( $rule[1] );
+		if( $selector !== '' && str_starts_with( $selector, '@layer' ) === false && str_starts_with( $selector, '#stats-list' ) === false )
+			return false;
+		// A number with a unit is only allowed where it is a step of the workbench inside var()/calc(), a px of a hairline or of the grid minimum
+		$body = (string) preg_replace( '/var\([^)]*\)/', '', $rule[2] );
+		if( preg_match( '/\d(px|rem)\b/', (string) preg_replace( [ '/1px solid/', '/minmax\(20rem/', '/rotate\(-45deg\)/' ], '', $body ) ) === 1 || preg_match( '/#[0-9a-f]{3,6}\b|rgba?\(/i', $body ) === 1 )
+			return false;
+	}
+	return $rules !== [];
+} )() );
+
+check( 'both languages of the panel have the same keys, and every word the script reads is one of them or the workbench\'s own',
+	array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) && ( static function() use ( $script, $words ): bool {
+		preg_match_all( "~'(/_admin/(?!common/)[a-z/_-]+)'~", $script, $read );
+		$own = array_map( static fn( string $key ): string => trim( $key, '[]' ), array_keys( $words['en_US'] ) );
+		return array_diff( array_unique( $read[1] ), $own ) === [];
+	} )() );
+check( 'the months are named by the workbench\'s own words, twelve of them', preg_match_all( "~'/_admin/common/word/(january|february|march|april|may|june|july|august|september|october|november|december)'~", $script ) === 12 );
+
+echo "\n";
+
+// Nothing of the old components API or the old stylesheet vocabulary is left in the folder
+$oldWorld = [];
+foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) ) as $file )
+	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|(?<![-\w])nino-(?!admin-)[a-z]|--(?:space|color|radius|fontsize)-|Nino\.ui\./', (string) file_get_contents( (string) $file ) ) === 1 )
+		$oldWorld[] = (string) $file;
+check( 'no file of the feature names the vocabulary of Nino 1', $oldWorld === [] );
 
 ninoDone( $appData );

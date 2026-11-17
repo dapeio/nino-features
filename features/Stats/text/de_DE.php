@@ -10,6 +10,7 @@ return [
 	'[[/_admin/stats/empty/referrers]]'	=> 'Noch keine Herkunft erfasst.',
 	'[[/_admin/stats/label/month]]'			=> 'Monat',
 	'[[/_admin/stats/label/view]]'			=> 'Aufruf',
+	'[[/_admin/stats/label/views-column]]'	=> 'Aufrufe',
 	'[[/_admin/stats/label/views]]'			=> 'Aufrufe',
 	'[[/_admin/stats/label/day]]'				=> 'Tag mit Daten',
 	'[[/_admin/stats/label/days]]'				=> 'Tage mit Daten',
@@ -19,7 +20,11 @@ return [
 	'[[/_admin/stats/label/other-referrers]]'	=> 'Weitere Herkünfte',
 	'[[/_admin/stats/label/max]]'			=> 'Spitze: %d',
 	'[[/_admin/stats/label/referrer]]'		=> 'Herkunft',
-	'[[/_admin/stats/label/search]]'			=> 'Suchen',
+	'[[/_admin/stats/label/search-pages]]'	=> 'Seiten suchen',
+	'[[/_admin/stats/label/search-referrers]]'	=> 'Herkünfte suchen',
+	'[[/_admin/stats/label/daily]]'	=> 'Aufrufe je Tag',
+	'[[/_admin/stats/label/pages]]'	=> 'Seiten',
+	'[[/_admin/stats/label/referrers]]'	=> 'Herkünfte',
 	'[[/_admin/stats/nomatch]]'					=> 'Nichts passt zu dieser Suche.',
 
 	// The sentence of the code stats_month (Admin::apiMonth())

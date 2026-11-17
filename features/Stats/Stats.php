@@ -397,6 +397,13 @@ namespace Nino\Modules {
 			// like with like
 			$ownHost = (string) ( preg_replace( '/:\d+$/D', '', $ownHost ) ?? $ownHost );
 
+			// A host is letters, digits, hyphens and dots - an internationalised name as its ascii form where the server can make it: whatever else a Referer says is no host, and is not kept
+			if( preg_match( '/[^\x00-\x7F]/', $host ) === 1 )
+				$host = function_exists( 'idn_to_ascii' ) === true ? (string) ( idn_to_ascii( $host ) ?: '' ) : '';
+
+			if( preg_match( '/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/D', $host ) !== 1 )
+				return '';
+
 			return $host === $ownHost ? '' : mb_strcut( $host, 0, self::MAX_HOST_LENGTH, 'UTF-8' );
 		}
 

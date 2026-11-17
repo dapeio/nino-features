@@ -10,6 +10,7 @@ return [
 	'[[/_admin/stats/empty/referrers]]'	=> 'No referrers recorded yet.',
 	'[[/_admin/stats/label/month]]'			=> 'Month',
 	'[[/_admin/stats/label/view]]'			=> 'view',
+	'[[/_admin/stats/label/views-column]]'	=> 'Views',
 	'[[/_admin/stats/label/views]]'			=> 'views',
 	'[[/_admin/stats/label/day]]'				=> 'day with data',
 	'[[/_admin/stats/label/days]]'				=> 'days with data',
@@ -19,7 +20,11 @@ return [
 	'[[/_admin/stats/label/other-referrers]]'	=> 'Other referrers',
 	'[[/_admin/stats/label/max]]'			=> 'Peak: %d',
 	'[[/_admin/stats/label/referrer]]'		=> 'Referrer',
-	'[[/_admin/stats/label/search]]'			=> 'Search',
+	'[[/_admin/stats/label/search-pages]]'	=> 'Search pages',
+	'[[/_admin/stats/label/search-referrers]]'	=> 'Search referrers',
+	'[[/_admin/stats/label/daily]]'	=> 'Views per day',
+	'[[/_admin/stats/label/pages]]'	=> 'Pages',
+	'[[/_admin/stats/label/referrers]]'	=> 'Referrers',
 	'[[/_admin/stats/nomatch]]'					=> 'Nothing matches this search.',
 
 	// The sentence of the code stats_month (Admin::apiMonth())

@@ -1,0 +1,114 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	admin.css		What the panel of the Stats feature needs beyond the design system in
+ *							_admin/assets/style.css: the bar row of a month and the arrangement of its
+ *							two tables. Joins the workbench's style bundle while the feature is on (see
+ *							the panel's assets()), so the same layer rules apply, scoped to the panel's
+ *							own root, and it names space, type and radius through the tokens of the
+ *							workbench.
+ */
+
+@layer nino.tool {
+
+/* The line over the bars: the one fact of the month, in the strong weight */
+#stats-list .stats-summary {
+	margin: 0 0 var(--nino-admin-space-5);
+	font-weight: var(--nino-admin-weight-strong);
+}
+
+/* A day for each column, no chart library: the height of each bar is set inline as a share of the month's busiest day (see admin.js, bars()).
+   The row is three rows of a list high - the height of a list row is the unit the workbench measures a thing of this kind in */
+#stats-list .stats-bars {
+	position: relative;
+	display: flex;
+	align-items: flex-end;
+	gap: var(--nino-admin-space-1);
+	height: calc( var(--nino-admin-row-height) * 3 );
+	margin: 0 0 var(--nino-admin-space-8);
+	padding: var(--nino-admin-space-6) 0 var(--nino-admin-space-7);
+	border-bottom: 1px solid var(--editor-border);
+	overflow-x: auto;
+}
+#stats-list .stats-bar-col {
+	position: relative;
+	display: flex;
+	flex: 1 0 var(--nino-admin-space-2);
+	min-width: var(--nino-admin-space-2);
+	align-items: flex-end;
+	height: 100%;
+}
+#stats-list .stats-bar {
+	position: relative;
+	width: 100%;
+	min-height: var(--nino-admin-space-1);
+	border-radius: var(--editor-radius-sm) var(--editor-radius-sm) 0 0;
+	background: var(--editor-blue);
+}
+#stats-list .stats-bar-value {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	margin-bottom: var(--nino-admin-space-1);
+	font-size: var(--nino-admin-text-xs);
+	color: var(--editor-text-secondary);
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+}
+#stats-list .stats-bar-col:hover .stats-bar-value,
+#stats-list .stats-bar-col:focus-within .stats-bar-value {
+	opacity: 1;
+}
+#stats-list .stats-bar-label {
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%) rotate(-45deg);
+	transform-origin: top left;
+	margin-top: var(--nino-admin-space-2);
+	font-size: var(--nino-admin-text-xs);
+	color: var(--editor-text-secondary);
+	white-space: nowrap;
+}
+
+/* On a phone the numbers of the days are one in five: rotated, 30 of them overlap and the last one is cut off, and the value of every day is in its title and its name for a screen reader all the same */
+@media (max-width: 38rem) {
+	#stats-list .stats-bar-label {
+		display: none;
+	}
+	#stats-list .stats-bar-col:nth-child(5n+1) .stats-bar-label {
+		display: block;
+	}
+}
+
+/* The y axis: the busiest day's count, in the strip above the bars where the tallest of them reaches */
+#stats-list .stats-bars .stats-axis {
+	position: absolute;
+	top: 0;
+	left: 0;
+	font-size: var(--nino-admin-text-xs);
+	color: var(--editor-text-secondary);
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+/* Two tables side by side where the pane is wide, one under the other where it is not: a column of 20 rem holds a title, a path and a count, measured at 1280 px with the rail open */
+#stats-list .stats-tables {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+	gap: var(--nino-admin-space-6);
+}
+#stats-list .stats-path {
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
+}
+
+/* A host or a path is kept up to 253 bytes without a space in it: it breaks inside the cell rather than pushing the views column out of its table */
+#stats-list .stats-table .nino-admin-table-uri {
+	overflow-wrap: anywhere;
+}
+
+}

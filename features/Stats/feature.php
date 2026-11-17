@@ -14,14 +14,14 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Stats' => [
-				'en_US' => 'Shows the page views with a month selector, one bar per day and the top 50 pages and referrer hosts, read-only, behind the permission /_admin/stats/view, with a tile on the Dashboard.',
-				'de_DE' => 'Zeigt die Seitenaufrufe mit Monatsauswahl, einem Balken je Tag und den Top 50 der Seiten und Referrer-Hosts, nur lesend, hinter dem Recht /_admin/stats/view, dazu eine Kachel auf dem Dashboard.',
+				'en_US' => 'Shows the page views of a month as a bar for each day and two tables of the top 50 pages and referrer hosts, read-only, behind /_admin/stats/view, with a tile on the Dashboard.',
+				'de_DE' => 'Zeigt die Seitenaufrufe eines Monats als Balken je Tag und zwei Tabellen der Top 50 der Seiten und Referrer-Hosts, nur lesend, hinter /_admin/stats/view, dazu eine Kachel auf dem Dashboard.',
 			],
 		],
 		'callbacks' => [
 			'/nino/http/response' => [
-				'en_US' => 'Counts the page view with no cookie, no ip address and nothing stored per visitor; counting begins when the feature is switched on.',
-				'de_DE' => 'Zählt den Seitenaufruf, ohne Cookie, ohne IP-Adresse und ohne etwas pro Besucher zu speichern; gezählt wird ab dem Einschalten.',
+				'en_US' => 'Counts the page view with no cookie, no ip address and nothing stored per visitor, bots included; counting begins when the feature is switched on.',
+				'de_DE' => 'Zählt den Seitenaufruf, ohne Cookie, ohne IP-Adresse und ohne etwas pro Besucher zu speichern, Bots eingeschlossen; gezählt wird ab dem Einschalten.',
 			],
 		],
 		'install' => [
@@ -32,8 +32,8 @@ return [
 		],
 	],
 	'category'		=> 'marketing',
-	'version'			=> '1.1.2',
-	'nino'				=> '^1.8',
+	'version'			=> '2.0.0',
+	'nino'				=> '^2.0',
 	'requires'		=> [],
 	// The whole directory this feature owns under data/ - what a backup
 	// carries. There is nothing here a restore has to merge rather than
