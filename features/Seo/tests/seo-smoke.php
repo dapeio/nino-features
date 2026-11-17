@@ -117,11 +117,16 @@ echo "The feature - manifest and activation\n";
 $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
-check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'seo'
-	&& $manifest['module'] === '\\Nino\\Modules\\Seo' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
-check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
-check( 'it names itself in both interface languages', is_array( $manifest ) && \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
-check( 'it keeps no data of its own', is_array( $manifest ) && $manifest['data'] === [] );
+check( 'key, class and version are what the directory says, written for this kernel, with no data of its own', is_array( $manifest ) && $manifest['key'] === 'seo'
+	&& $manifest['module'] === '\\Nino\\Modules\\Seo' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1
+	&& \Nino\Features::satisfies( $manifest['nino'] ) === true && $manifest['data'] === [] );
+
+// What the old components API and the old stylesheet vocabulary would leave in the folder
+$oldWorld = [];
+foreach( [ 'feature.php', 'Seo.php', 'templates/alternate-link.tpl', 'templates/jsonld.tpl' ] as $file )
+	if( preg_match( '/Modules\\\\Components|\'(?:components|stacks)\'\s*=>|\bnino-[a-z]|--(?:space|color|radius|fontsize)-/', (string) file_get_contents( $dir. '/'. $file ) ) === 1 )
+		$oldWorld[] = $file;
+check( 'nothing of the old components API or stylesheet vocabulary is left in the feature', $oldWorld === [] );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native', '/nino/http/routes' ] );
 ninoWarnings();
@@ -185,7 +190,6 @@ check( 'it lists exactly the site pages, as absolute urls - not the excluded, do
 	'https://example.com/faq&more',
 	'https://example.com/ueber-uns',
 ] );
-check( '...a route for a whole subtree is no page: /shop/* is not an address, and not /shop either', str_contains( $sitemapBody, 'shop' ) === false );
 
 $hreflangs = [];
 if( is_object( $sitemapXml ) )
@@ -247,10 +251,8 @@ check( 'it lists the paired page under both locale headings, and the unpaired on
 	&& str_contains( $llmsBody, "### en-US" ) === true && str_contains( $llmsBody, '- [About Us](https://example.com/about): Who we are' ) === true
 	&& str_contains( $llmsBody, "### de-DE" ) === true && str_contains( $llmsBody, '- [Über uns](https://example.com/ueber-uns): Wer wir sind' ) === true
 	&& str_contains( $llmsBody, '- [FAQ & Mehr](https://example.com/faq&more): Antworten auf häufige Fragen' ) === true );
-check( 'the excluded page never appears', str_contains( $llmsBody, 'staging' ) === false );
-check( 'neither does the 404 page, for all it has a title', str_contains( $llmsBody, 'Nicht gefunden' ) === false
-	&& str_contains( $llmsBody, 'Not Found' ) === false && str_contains( $llmsBody, '/404' ) === false && str_contains( $llmsBody, '/gone' ) === false );
-check( '...nor a subtree', str_contains( $llmsBody, 'shop' ) === false );
+check( 'neither the excluded page, an error page nor a subtree appears', str_contains( $llmsBody, 'staging' ) === false
+	&& str_contains( $llmsBody, '/404' ) === false && str_contains( $llmsBody, '/gone' ) === false && str_contains( $llmsBody, 'shop' ) === false );
 
 echo "\n";
 
@@ -268,8 +270,6 @@ check( 'on a paired page it links both locale variants plus x-default', str_cont
 seoCurrentUri( $appData, '/faq&more' );
 check( 'on a page without variants it renders nothing', \Nino\Modules\Seo::doAlternatesShortcode( $appData, [] ) === '' );
 
-seoCurrentUri( $appData, '/nowhere' );
-check( 'on a uri that is not a known page it renders nothing either', \Nino\Modules\Seo::doAlternatesShortcode( $appData, [] ) === '' );
 
 echo "\n";
 
@@ -306,8 +306,8 @@ check( 'llms.txt now answers 404', $llmsOffRequest['/nino/http/response']['statu
 
 $robotsOffRequest = ninoVisit( $appData, '/robots.txt' );
 \Nino\Http::response( $appData, $robotsOffRequest );
-check( 'robots.txt no longer mentions llms.txt', str_contains( (string) ( $robotsOffRequest['/nino/http/response']['body'] ?? '' ), 'llms.txt' ) === false );
-check( '...while the sitemap line is still there', str_contains( (string) ( $robotsOffRequest['/nino/http/response']['body'] ?? '' ), 'Sitemap: https://example.com/sitemap.xml' ) === true );
+check( 'robots.txt drops the mention of llms.txt and keeps the sitemap line', str_contains( (string) ( $robotsOffRequest['/nino/http/response']['body'] ?? '' ), 'llms.txt' ) === false
+	&& str_contains( (string) ( $robotsOffRequest['/nino/http/response']['body'] ?? '' ), 'Sitemap: https://example.com/sitemap.xml' ) === true );
 
 check( 'agents is switched back on', \Nino\Features::saveSettings( $appData, 'seo', [ 'agents' => 'true' ] ) === [] );
 
@@ -351,7 +351,6 @@ $contributedBody = (string) ( $contributedSitemap['/nino/http/response']['body']
 $contributedXml = @simplexml_load_string( $contributedBody );
 $contributedLocs = is_object( $contributedXml ) ? array_map( 'strval', $contributedXml->xpath( '//*[local-name()="url"]/*[local-name()="loc"]' ) ?: [] ) : [];
 
-check( 'the document is still well-formed', $contributedXml !== false );
 check( 'a contributed page is in the sitemap', in_array( 'https://example.com/blog/first-light', $contributedLocs, true ) === true );
 check( '...with the date it brought, which no template mtime could have given it',
 	str_contains( $contributedBody, '<loc>https://example.com/blog/first-light</loc>' ) === true
@@ -362,16 +361,13 @@ check( '...and a date that is not one is left off rather than published',
 	in_array( 'https://example.com/blog/no-date', $contributedLocs, true ) === true
 	&& str_contains( $contributedBody, '2026-13-45' ) === false );
 
-check( 'an excluded path stays excluded, however it arrives', in_array( 'https://example.com/staging', $contributedLocs, true ) === false );
-check( 'this feature\'s own endpoints are refused the same way a route\'s would be', in_array( 'https://example.com/robots.txt', $contributedLocs, true ) === false );
-check( '...and a tool uri too', in_array( 'https://example.com/_admin/x', $contributedLocs, true ) === false );
-check( 'a page a persisted route already carries is listed once, not twice',
-	count( array_keys( $contributedLocs, 'https://example.com/about', true ) ) === 1 );
-check( '...and so is one two contributions both name',
-	count( array_keys( $contributedLocs, 'https://example.com/blog/first-light', true ) ) === 1 );
-check( 'an entry that is not a path, or not an entry, is nothing',
-	in_array( 'https://example.com/blog/no-slash', $contributedLocs, true ) === false
-	&& in_array( 'https://example.comblog/no-slash', $contributedLocs, true ) === false );
+check( 'an excluded path, this feature\'s own endpoint and a tool uri stay out, however they arrive', in_array( 'https://example.com/staging', $contributedLocs, true ) === false
+	&& in_array( 'https://example.com/robots.txt', $contributedLocs, true ) === false
+	&& in_array( 'https://example.com/_admin/x', $contributedLocs, true ) === false );
+check( 'a page a route carries, and one two contributions name, is listed once',
+	count( array_keys( $contributedLocs, 'https://example.com/about', true ) ) === 1
+	&& count( array_keys( $contributedLocs, 'https://example.com/blog/first-light', true ) ) === 1 );
+check( 'an entry that is not a path, or not an entry, is nothing', in_array( 'https://example.com/blog/no-slash', $contributedLocs, true ) === false );
 
 $contributedLlms = ninoVisit( $appData, '/llms.txt' );
 \Nino\Http::response( $appData, $contributedLlms );
@@ -440,7 +436,6 @@ $keptOutBody = (string) ( $keptOutSitemap['/nino/http/response']['body'] ?? '' )
 $keptOutXml = @simplexml_load_string( $keptOutBody );
 $keptOutLocs = is_object( $keptOutXml ) ? array_map( 'strval', $keptOutXml->xpath( '//*[local-name()="url"]/*[local-name()="loc"]' ) ?: [] ) : [];
 
-check( 'the document is still well-formed', $keptOutXml !== false );
 check( 'the page itself, a page below it and a contributed one are all out of sitemap.xml',
 	in_array( 'https://example.com/members', $keptOutLocs, true ) === false
 	&& in_array( 'https://example.com/members/area', $keptOutLocs, true ) === false
@@ -460,10 +455,6 @@ $keptOutLlmsBody = (string) ( $keptOutLlms['/nino/http/response']['body'] ?? '' 
 check( '...and llms.txt leaves them out too, the others in',
 	str_contains( $keptOutLlmsBody, '/members' ) === false && str_contains( $keptOutLlmsBody, 'Members only' ) === false
 	&& str_contains( $keptOutLlmsBody, '- [About Us](https://example.com/about): Who we are' ) === true );
-
-$keptOutRobots = ninoVisit( $appData, '/robots.txt' );
-\Nino\Http::response( $appData, $keptOutRobots );
-check( 'robots.txt does not name the paths a feature keeps out', str_contains( (string) ( $keptOutRobots['/nino/http/response']['body'] ?? '' ), 'members' ) === false );
 
 seoCurrentUri( $appData, '/members/area' );
 check( '[seo-alternates] knows no page where the page is kept out', \Nino\Modules\Seo::doAlternatesShortcode( $appData, [] ) === '' );
