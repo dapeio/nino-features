@@ -959,7 +959,10 @@ echo "\n";
 
 echo "What the session and the header are held to\n";
 
-\Nino\Features::saveSettings( $appData, 'mailer', [ 'host' => '127.0.0.1', 'port' => (string) $server['port'], 'encryption' => 'none', 'username' => '', 'from' => 'no-reply@example.org', 'fromName' => "Evil\r\nBcc: victim@example.org\r\nX-Injected: 1\r\n\r\nbody" ] );
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'host' => '127.0.0.1', 'port' => (string) $server['port'], 'encryption' => 'none', 'username' => '', 'from' => 'no-reply@example.org', 'fromName' => 'Evil' ] );
+
+// The kernel refuses a line end in a setting of one line; where it is stored all the same, the feature cleans it itself
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'fromName' => "Evil\r\nBcc: victim@example.org\r\nX-Injected: 1\r\n\r\nbody" ] );
 resetMailerLog( $server );
 $injected = [ 'to' => 'to@example.org', 'subject' => "Subject\r\nBcc: victim2@example.org", 'body' => 'y', 'replyTo' => '', 'sender' => "k@example.org\r\nX-Sender: 1", 'headers' => "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8", 'sent' => null ];
 \Nino\Modules\Mailer::callbackSend( $appData, $injected );

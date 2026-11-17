@@ -1400,13 +1400,15 @@ function world( options ) {
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	fire( goOn( w.dialogs[0] ), 'click' );
 	w.serve();
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === workbench['/_admin/common/conflict/reload'] } )[0], 'click' );
+	const asked = w.dialogs.length;
+	const conflict = w.dialogs[asked - 1];
 
-	const sure = w.dialogs[w.dialogs.length - 1];
+	check( 'J. the question of the conflict is open and nothing is asked of the server before an answer', conflict.open === true && w.requests.length === 0 );
 
-	check( 'J. Reload asks first, because the draft is lost with it', sure.open === true && w.requests.length === 0 && w.text( sure ).indexOf('lost') !== -1 );
+	fire( findAll( conflict, function( node ) { return node.textContent === workbench['/_admin/common/conflict/reload'] } )[0], 'click' );
 
-	fire( goOn( sure ), 'click' );
+	check( 'J. Reload is one answer: no second question follows it', w.dialogs.length === asked );
+
 	w.serve();
 
 	check( 'J. ...and then the theme is opened as it is saved: the draft is gone, the state is Saved and active, and the focus is on the name', w.dirty.entries.themes.isDirty() === false && w.state_() === APPLIED && w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] === 'true' && w.byClass( w.theme, 'themes-name' )[0].focused === true );
