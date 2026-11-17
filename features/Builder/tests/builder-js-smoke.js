@@ -27,6 +27,61 @@ const { check, done, fills } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const script = fs.readFileSync( path.join( featureDir, 'assets/admin.js' ), 'utf8' );
+/**
+ *	Every question of a script of the feature is asked with a title: each call of confirm(), choiceDialog() and formDialog() in the files names one, and
+ *	the one of confirm() and choiceDialog() is a word of the feature or of the workbench - a call, or a literal - and no variable that could be empty
+ */
+const dialogsWithoutTitle = function( sources ) {
+
+	const bad = [];
+
+	sources.forEach( function( file ) {
+
+		const text = fs.readFileSync( file, 'utf8' );
+		const calls = /Nino\.adminUi\.(confirm|choiceDialog|formDialog)\(/g;
+		let found;
+
+		while( ( found = calls.exec( text ) ) !== null ) {
+
+			const open = text.indexOf( '{', found.index );
+			let depth = 0;
+			let top = '';
+			let quote = '';
+
+			for( let at = open; at < text.length; at++ ) {
+
+				const char = text[at];
+
+				if( quote !== '' ) {
+					if( char === '\\' )
+						at++;
+					else if( char === quote )
+						quote = '';
+					continue;
+				}
+
+				if( char === "'" || char === '"' || char === '`' )
+					quote = char;
+				else if( char === '{' )
+					depth++;
+				else if( char === '}' && --depth === 0 )
+					break;
+
+				if( depth === 1 )
+					top += char;
+			}
+
+			const title = /(?:^|[{,\s])title\s*:\s*(\S[^\n]*)/.exec( top );
+			const word = found[1] === 'formDialog' ? /./ : /^(?:word\(|Nino\.adminUi\.text\(|Nino\.content\.getText\(|'|")/;
+
+			if( title === null || word.test( title[1] ) === false )
+				bad.push( path.basename( file )+ ':'+ text.slice( 0, found.index ).split('\n').length );
+		}
+	} );
+
+	return bad;
+};
+
 const words = {
 	en : fills( path.relative( root, path.join( featureDir, 'text/en_US.php' ) ) ),
 	de : fills( path.relative( root, path.join( featureDir, 'text/de_DE.php' ) ) ),
@@ -54,7 +109,7 @@ const words = {
 
 	// The keys the script puts together: the four things done to a block, the three widths, the two frames
 	[ 'up', 'down', 'copy', 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key ) } );
-	[ 'copy', 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key+ '-short' ) } );
+	[ 'copy' ].forEach( function( key ) { asked.add( 'label/'+ key+ '-short' ) } );
 	[ 'section-wrap', 'header-wrap', 'footer-wrap' ].forEach( function( key ) { asked.add( 'kind/'+ key ) } );
 	[ 'mobile', 'tablet', 'desktop', 'frame-header', 'frame-footer' ].forEach( function( key ) { asked.add( 'word/'+ key ) } );
 	// The places of the dialog: the categories and the two ways a place is named
@@ -80,6 +135,8 @@ const words = {
 	const missing = Array.from( asked ).filter( function( key ) { return words.en['/_admin/builder/'+ key] === undefined || words.de['/_admin/builder/'+ key] === undefined } );
 
 	check( 'A. every word the script asks for - '+ asked.size+ ' of them - is a fill of the panel in both interface languages', missing.length === 0 && asked.size > 20 );
+	check( 'A. every question the panel asks has a title, a word of the panel or of the workbench', dialogsWithoutTitle( [ path.join( featureDir, 'assets/admin.js' ) ] ).length === 0, dialogsWithoutTitle( [ path.join( featureDir, 'assets/admin.js' ) ] ).join() );
+	check( 'A. a dialog of the panel takes its width from the size the workbench gives it: no call names a class of a dialog, and the stylesheet gives no dialog a width', /nino-admin-dialog--/.test( script ) === false && /dialog[^{}]*\{[^}]*\bwidth\s*:/.test( fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' ) ) === false );
 	check( 'A. no fill of the panel is left without a reader, the same fills stand in both languages and a placeholder is the same in both', Object.keys( words.en ).filter( function( key ) {
 		return key.indexOf('/_admin/builder/') === 0 && key.split('/').length === 5;
 	} ).every( function( key ) {

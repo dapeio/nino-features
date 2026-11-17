@@ -1986,7 +1986,8 @@
 			title			: word('insert/title'),
 			message		: word('insert/note'),
 			content		: body,
-			className	: 'nino-admin-dialog--manual builder-insert-dialog',
+			size			: 'wide',
+			className	: 'builder-insert-dialog',
 			opener		: opener,
 			choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
 			onChoose	: function() {
@@ -2012,7 +2013,7 @@
 		Nino.adminUi.confirm( 'destructive', {
 			title		: word('confirm/drop-title'),
 			message	: word( 'confirm/drop-message', localized( entry.name ) ),
-			yes			: word('insert/drop'),
+			yes			: word('confirm/drop-title'),
 			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
 			kind		: 'danger',
 			opener	: opener,
@@ -2237,9 +2238,9 @@
 		const frame = S.frame === true ? nameOfPage( S.template ) : '';
 
 		Nino.adminUi.confirm( 'destructive', {
-			title		: frame === '' ? word('confirm/restore-title') : word( 'confirm/restore-title-frame', frame ),
-			message	: frame === '' ? word('confirm/restore-message') : word( 'confirm/restore-message-frame', frame ),
-			yes			: word('label/restore'),
+			title		: word( frame === '' ? 'confirm/restore-title' : 'confirm/restore-title-frame', frame ),
+			message	: word( frame === '' ? 'confirm/restore-message' : 'confirm/restore-message-frame', frame ),
+			yes			: word( frame === '' ? 'confirm/restore-title' : 'confirm/restore-title-frame', frame ),
 			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
 			kind		: 'danger',
 			opener	: opener,
@@ -3125,7 +3126,7 @@
 		Nino.adminUi.confirm( 'destructive', {
 			title		: word('confirm/unit-title'),
 			message	: word('confirm/unit-message'),
-			yes			: word('label/remove-short'),
+			yes			: word('confirm/unit-title'),
 			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
 			kind		: 'danger',
 			opener	: opener,
@@ -3319,7 +3320,7 @@
 				title			: word( 'offer/title', titleOfRel( rel ) ),
 				message		: word('offer/note'),
 				content		: body,
-				className	: 'nino-admin-dialog--manual builder-offer-dialog',
+				size			: 'form',
 				opener		: opener,
 				choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
 				onChoose	: function() {
@@ -3839,7 +3840,7 @@
 			title			: word( 'source/title', spec.label ),
 			message		: word('source/note'),
 			content		: body,
-			className	: 'nino-admin-dialog--manual builder-source-dialog',
+			size			: 'form',
 			opener		: opener,
 			choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
 			onChoose	: function() {
@@ -3944,9 +3945,9 @@
 			title			: word( 'picture/replace-of', target.label ),
 			message		: word('picture/replace-note'),
 			content		: body,
-			className	: 'builder-own-dialog',
+			size			: 'form',
 			opener		: opener,
-			choices		: [ { value : 'close', label : word('picture/done'), kind : 'primary' } ],
+			choices		: [ { value : 'close', label : Nino.adminUi.text('/_admin/common/label/close'), kind : 'primary' } ],
 			onChoose	: function() {
 
 				S.imageBack = target.key;
@@ -4052,67 +4053,56 @@
 		const kinds = [ 'intro', 'content', 'trust', 'offer', 'action', 'contact' ];
 		const category = Nino.adminUi.selectField( { key : 'own-category', label : word('own/category'), options : kinds.map( function( kind ) { return { value : kind, label : word( 'insert/cat-'+ kind ) } } ), value : 'content' } );
 		const key = Nino.adminUi.textField( { key : 'own-key', label : word('own/key'), maxLength : 40, value : '', hint : word('own/key-hint') } );
-		const problem = el( 'p', 'nino-admin-hint builder-source-error', '' );
 		let typed = false;
 		let made = '';
 
-		problem.setAttribute( 'role', 'alert' );
-		problem.hidden = true;
 		name.querySelector('input').addEventListener( 'input', function() {
 			if( typed === false )
 				key.querySelector('input').value = slugOf( name.querySelector('input').value );
 		} );
 		key.querySelector('input').addEventListener( 'input', function() { typed = true } );
 
-		body.appendChild( el( 'p', 'nino-admin-hint', word('own/note') ) );
-		[ name, about, category, key, problem ].forEach( function( part ) { body.appendChild( part ) } );
+		[ name, about, category, key ].forEach( function( part ) { body.appendChild( part ) } );
 
-		const save = Nino.adminUi.button( word('own/save'), function() {
-
-			if( name.querySelector('input').value.trim() === '' || NAME.test( key.querySelector('input').value ) === false ) {
-				problem.textContent = word( name.querySelector('input').value.trim() === '' ? 'own/need-name' : 'own/bad-key' );
-				problem.hidden = false;
-				return;
-			}
-
-			save.disabled = true;
-			api( 'blocksave', { tree : S.top, at : String( rootAt() ), key : key.querySelector('input').value, name : name.querySelector('input').value.trim(), description : about.querySelector('input').value.trim(), category : category.querySelector('select').value, texts : S.texts, pictures : picturesNow() }, function( status, response ) {
-
-				save.disabled = false;
-
-				if( status !== 200 ) {
-
-					const field = ( response ?? {} ).field === 'key' ? key : ( ( response ?? {} ).field === 'category' ? category : name );
-
-					problem.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/own' );
-					problem.hidden = false;
-					field.querySelector( field === category ? 'select' : 'input' ).focus();
-					return;
-				}
-
-				S.catalog = null;
-				made = name.querySelector('input').value.trim();
-				body.closest('dialog').close();
-			} );
-		}, { className : 'nino-admin-btn-primary' } );
-
-		body.appendChild( save );
-
-		Nino.adminUi.choiceDialog( {
+		Nino.adminUi.formDialog( {
 			title			: word('own/title'),
 			message		: word('own/note'),
-			content		: body,
-			className	: 'builder-own-dialog',
+			body			: body,
+			submit		: word('own/title'),
+			cancel		: Nino.adminUi.text('/_admin/common/label/cancel'),
 			opener		: opener,
-			choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
-			onChoose	: function() {
+			onSubmit	: function( values, ctl ) {
 
-				if( made !== '' )
-					told( word( 'own/saved', made ) );
+				// What is wrong is said at the field it is about, which gets the focus; the dialog stays
+				const refuse = function( label, text ) {
+
+					const control = label.querySelector( label === category ? 'select' : 'input' );
+
+					Nino.adminUi.fieldError( label, control, 'builder-own-problem', text );
+					control.focus();
+					ctl.idle();
+				};
+
+				if( name.querySelector('input').value.trim() === '' )
+					return refuse( name, word('own/need-name') );
+
+				if( NAME.test( key.querySelector('input').value ) === false )
+					return refuse( key, word('own/bad-key') );
+
+				api( 'blocksave', { tree : S.top, at : String( rootAt() ), key : key.querySelector('input').value, name : name.querySelector('input').value.trim(), description : about.querySelector('input').value.trim(), category : category.querySelector('select').value, texts : S.texts, pictures : picturesNow() }, function( status, response ) {
+
+					if( status !== 200 ) {
+						refuse( ( response ?? {} ).field === 'key' ? key : ( ( response ?? {} ).field === 'category' ? category : name ), Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/own' ) );
+						return;
+					}
+
+					S.catalog = null;
+					made = name.querySelector('input').value.trim();
+					body.closest('dialog').addEventListener( 'close', function() { told( word( 'own/saved', made ) ) } );
+					ctl.close();
+				} );
 			},
 		} );
-
-		name.querySelector('input').focus();
 	};
 
 	/**
@@ -4126,30 +4116,10 @@
 		const locales = data.locales.filter( function( entry ) { return entry.active === true } ).map( function( entry ) { return entry.locale } );
 		const body = el( 'div', 'builder-new-body' );
 		const fields = {};
-		const problems = {};
-		const general = el( 'p', 'nino-admin-hint builder-source-error', '' );
+		const wrappers = {};
 		const navs = {};
 		let made = null;
 
-		general.setAttribute( 'role', 'alert' );
-		general.hidden = true;
-
-		const complain = function( name, text ) {
-
-			const box = problems[name];
-
-			if( box === undefined ) {
-				general.textContent = text;
-				general.hidden = false;
-				return;
-			}
-
-			box.textContent = text;
-			box.hidden = false;
-			fields[name].setAttribute( 'aria-invalid', 'true' );
-		};
-
-		body.appendChild( el( 'p', 'nino-admin-hint', word('page/note') ) );
 		locales.forEach( function( locale ) {
 
 			const group = el( 'div', 'builder-new-group' );
@@ -4164,17 +4134,8 @@
 			group.appendChild( address );
 			fields['name-'+ locale] = name.querySelector('input');
 			fields['httpUri-'+ locale] = address.querySelector('input');
-
-			[ 'name-'+ locale, 'httpUri-'+ locale ].forEach( function( at ) {
-
-				const box = el( 'p', 'nino-admin-hint builder-source-error', '' );
-
-				box.id = 'builder-page-problem-'+ at;
-				box.hidden = true;
-				problems[at] = box;
-				fields[at].setAttribute( 'aria-describedby', box.id );
-				fields[at].parentNode.insertAdjacentElement( 'afterend', box );
-			} );
+			wrappers['name-'+ locale] = name;
+			wrappers['httpUri-'+ locale] = address;
 
 			address.querySelector('input').addEventListener( 'input', function() { touched = true } );
 			name.querySelector('input').addEventListener( 'input', function() {
@@ -4219,7 +4180,6 @@
 		startField.appendChild( chosen );
 		chosen.appendChild( Object.assign( el( 'option', '', word('page/start-none') ), { value : '' } ) );
 		body.appendChild( startField );
-		body.appendChild( general );
 
 		Nino.admin.builder.call( 'blocks', {}, function( status, response ) {
 
@@ -4231,61 +4191,50 @@
 			} );
 		} );
 
-		const make = Nino.adminUi.button( word('page/make'), function() {
-
-			const names = {};
-			const addresses = {};
-
-			Object.keys( problems ).forEach( function( at ) {
-				problems[at].hidden = true;
-				fields[at].removeAttribute('aria-invalid');
-			} );
-			general.hidden = true;
-			locales.forEach( function( locale ) {
-				names[locale] = fields['name-'+ locale].value;
-				addresses[locale] = fields['httpUri-'+ locale].value;
-			} );
-
-			make.disabled = true;
-			Nino.admin.builder.call( 'create', { names : names, addresses : addresses, navs : Object.keys( navs ).filter( function( nav ) { return navs[nav].checked } ), block : chosen.value }, function( status, response ) {
-
-				make.disabled = false;
-
-				if( status !== 200 ) {
-
-					const field = ( response ?? {} ).field === 'uri' || ( response ?? {} ).field === 'template' ? 'httpUri-'+ locales[0] : ( response ?? {} ).field;
-
-					complain( field, Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/create' ) );
-
-					if( problems[field] !== undefined )
-						fields[field].focus();
-
-					return;
-				}
-
-				made = response;
-				body.closest('dialog').close();
-			} );
-		}, { className : 'nino-admin-btn-primary' } );
-
-		body.appendChild( make );
-
-		Nino.adminUi.choiceDialog( {
+		Nino.adminUi.formDialog( {
 			title			: word('page/title'),
 			message		: word('page/note'),
-			content		: body,
-			className	: 'builder-new-dialog',
+			body			: body,
+			submit		: word('page/title'),
+			cancel		: Nino.adminUi.text('/_admin/common/label/cancel'),
 			opener		: opener,
-			choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
-			onChoose	: function() {
+			onSubmit	: function( values, ctl ) {
 
-				if( made !== null )
-					Nino.admin.builder.init( function() { Nino.admin.builder.go( [ made.slug ], { focus : 'page' } ) } );
+				const names = {};
+				const addresses = {};
+
+				locales.forEach( function( locale ) {
+					names[locale] = fields['name-'+ locale].value;
+					addresses[locale] = fields['httpUri-'+ locale].value;
+				} );
+
+				Nino.admin.builder.call( 'create', { names : names, addresses : addresses, navs : Object.keys( navs ).filter( function( nav ) { return navs[nav].checked } ), block : chosen.value }, function( status, response ) {
+
+					if( status !== 200 ) {
+
+						const field = ( response ?? {} ).field === 'uri' || ( response ?? {} ).field === 'template' ? 'httpUri-'+ locales[0] : ( response ?? {} ).field;
+						const text = Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/create' );
+
+						// What is wrong is said at the field it is about, or at the foot of the form where it is about none
+						if( wrappers[field] === undefined )
+							ctl.fail( null, text );
+						else {
+							Nino.adminUi.fieldError( wrappers[field], fields[field], 'builder-page-problem', text );
+							fields[field].focus();
+							ctl.idle();
+						}
+
+						return;
+					}
+
+					made = response;
+					body.closest('dialog').addEventListener( 'close', function() {
+						Nino.admin.builder.init( function() { Nino.admin.builder.go( [ made.slug ], { focus : 'page' } ) } );
+					} );
+					ctl.close();
+				} );
 			},
 		} );
-
-		if( locales.length > 0 )
-			fields['name-'+ locales[0]].focus();
 	};
 
 
@@ -4703,7 +4652,7 @@
 				title			: word('type/title'),
 				message		: word('type/note'),
 				content		: body,
-				className	: 'nino-admin-dialog--manual builder-offer-dialog',
+				size			: 'form',
 				opener		: opener,
 				choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
 				onChoose	: function() {

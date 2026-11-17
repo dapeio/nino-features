@@ -28,6 +28,61 @@ const vm = require('vm');
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
 const { check, done, findAll, fire, element, documentOf } = require( path.join( root, 'tests/harness.js' ) );
 
+/**
+ *	Every question of a script of the feature is asked with a title: each call of confirm(), choiceDialog() and formDialog() in the files names one, and
+ *	the one of confirm() and choiceDialog() is a word of the feature or of the workbench - a call, or a literal - and no variable that could be empty
+ */
+const dialogsWithoutTitle = function( sources ) {
+
+	const bad = [];
+
+	sources.forEach( function( file ) {
+
+		const text = fs.readFileSync( file, 'utf8' );
+		const calls = /Nino\.adminUi\.(confirm|choiceDialog|formDialog)\(/g;
+		let found;
+
+		while( ( found = calls.exec( text ) ) !== null ) {
+
+			const open = text.indexOf( '{', found.index );
+			let depth = 0;
+			let top = '';
+			let quote = '';
+
+			for( let at = open; at < text.length; at++ ) {
+
+				const char = text[at];
+
+				if( quote !== '' ) {
+					if( char === '\\' )
+						at++;
+					else if( char === quote )
+						quote = '';
+					continue;
+				}
+
+				if( char === "'" || char === '"' || char === '`' )
+					quote = char;
+				else if( char === '{' )
+					depth++;
+				else if( char === '}' && --depth === 0 )
+					break;
+
+				if( depth === 1 )
+					top += char;
+			}
+
+			const title = /(?:^|[{,\s])title\s*:\s*(\S[^\n]*)/.exec( top );
+			const word = found[1] === 'formDialog' ? /./ : /^(?:word\(|Nino\.adminUi\.text\(|Nino\.content\.getText\(|'|")/;
+
+			if( title === null || word.test( title[1] ) === false )
+				bad.push( path.basename( file )+ ':'+ text.slice( 0, found.index ).split('\n').length );
+		}
+	} );
+
+	return bad;
+};
+
 const script = fs.readFileSync( path.join( __dirname, '../assets/collection-filter.js' ), 'utf8' );
 
 /**
@@ -169,5 +224,8 @@ const started = run( [ early ], 'loading' );
 check( 'where the page is still loading it waits for DOMContentLoaded and has made no button yet', buttonsOf( early ).length === 0 && typeof started.listeners.DOMContentLoaded === 'function' );
 started.listeners.DOMContentLoaded();
 check( '...and makes them when the page is there', buttonsOf( early ).length === 3 );
+
+// the script of the page asks no question; where it ever does, the question has a title
+check( 'every question a script of the feature asks has a title: the script of the filter asks none, and none is asked without one', dialogsWithoutTitle( fs.readdirSync( path.join( __dirname, '../assets' ) ).filter( function( name ) { return name.slice( -3 ) === '.js' } ).map( function( name ) { return path.join( __dirname, '../assets', name ) } ) ).length === 0 );
 
 done();

@@ -41,6 +41,61 @@ const scriptPath = path.join( featureDir, 'assets/admin.js' );
 const script = fs.readFileSync( scriptPath, 'utf8' );
 const relative = path.relative( root, scriptPath );
 
+/**
+ *	Every question of a script of the feature is asked with a title: each call of confirm(), choiceDialog() and formDialog() in the files names one, and
+ *	the one of confirm() and choiceDialog() is a word of the feature or of the workbench - a call, or a literal - and no variable that could be empty
+ */
+const dialogsWithoutTitle = function( sources ) {
+
+	const bad = [];
+
+	sources.forEach( function( file ) {
+
+		const text = fs.readFileSync( file, 'utf8' );
+		const calls = /Nino\.adminUi\.(confirm|choiceDialog|formDialog)\(/g;
+		let found;
+
+		while( ( found = calls.exec( text ) ) !== null ) {
+
+			const open = text.indexOf( '{', found.index );
+			let depth = 0;
+			let top = '';
+			let quote = '';
+
+			for( let at = open; at < text.length; at++ ) {
+
+				const char = text[at];
+
+				if( quote !== '' ) {
+					if( char === '\\' )
+						at++;
+					else if( char === quote )
+						quote = '';
+					continue;
+				}
+
+				if( char === "'" || char === '"' || char === '`' )
+					quote = char;
+				else if( char === '{' )
+					depth++;
+				else if( char === '}' && --depth === 0 )
+					break;
+
+				if( depth === 1 )
+					top += char;
+			}
+
+			const title = /(?:^|[{,\s])title\s*:\s*(\S[^\n]*)/.exec( top );
+			const word = found[1] === 'formDialog' ? /./ : /^(?:word\(|Nino\.adminUi\.text\(|Nino\.content\.getText\(|'|")/;
+
+			if( title === null || word.test( title[1] ) === false )
+				bad.push( path.basename( file )+ ':'+ text.slice( 0, found.index ).split('\n').length );
+		}
+	} );
+
+	return bad;
+};
+
 const words = {
 	en : fills( path.relative( root, path.join( featureDir, 'text/en_US.php' ) ) ),
 	de : fills( path.relative( root, path.join( featureDir, 'text/de_DE.php' ) ) ),
@@ -116,6 +171,7 @@ const CHANGED = '\u25CF '+ W('state/changed');
 	check( 'A. the same fills stand in both languages, and a placeholder is the same in both', Object.keys( words.en ).filter( function( key ) { return key.indexOf('/_admin/themes/') === 0 } ).every( function( key ) {
 		return words.de[key] !== undefined && ( words.en[key].match( /%[sdn]/g ) ?? [] ).join() === ( words.de[key].match( /%[sdn]/g ) ?? [] ).join();
 	} ) );
+	check( 'A. every question the panel asks has a title, a word of the panel or of the workbench', dialogsWithoutTitle( [ scriptPath, path.join( featureDir, 'assets/admin-fonts.js' ) ] ).length === 0, dialogsWithoutTitle( [ scriptPath, path.join( featureDir, 'assets/admin-fonts.js' ) ] ).join() );
 	check( 'A. no sentence is written into the script: a text is set with word() and a name with textContent, never as markup', /innerHTML\s*=\s*[^'\s]/.test( script ) === false && /\.insertAdjacentHTML|document\.write|\.outerHTML\s*=/.test( script ) === false );
 }
 
@@ -1019,8 +1075,10 @@ function world( options ) {
 
 	check( 'G. the name is asked in a dialog with a field, and nothing is sent yet', dialog.open === true && input.value === 'Craft 2' && w.requests.length === 0, input.value );
 
+	check( 'G. the dialog is the form dialog of the workbench - its size is a class of the kernel - and its answers stand as every dialog\'s do: Cancel, then the one that goes on, which is the primary one', dialog.className.indexOf('nino-admin-dialog--form') !== -1 && kindsOf( dialog ) === 'secondary,primary' && findAll( dialog, function( node ) { return node.tagName === 'BUTTON' } )[0].textContent === CANCEL );
+
 	input.value = 'Lindner';
-	fire( findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( dialog ), 'click' );
 
 	check( 'G. the name goes with the mix to save-as - the name in the mix, the steps, the part - and the theme of the package is not touched', w.requests.length === 1 && w.requests[0].action === 'themes/save-as' && w.requests[0].payload.mix.name === 'Lindner' && w.requests[0].payload.mix.parts.section.values['section-wrap.space'] === 2 && w.requests[0].payload.force === false );
 
@@ -1040,7 +1098,7 @@ function world( options ) {
 	w.serve();
 	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
 	findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Lindner';
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( w.dialogs[w.dialogs.length - 1] ), 'click' );
 	w.answer( 409, { error : 'an own theme of that name is there', code : 'themes_name_taken', params : [ 'Lindner' ], field : 'name' } );
 
 	const second = w.dialogs[w.dialogs.length - 1];
@@ -1072,7 +1130,7 @@ function world( options ) {
 	check( 'G. ...the draft stays', w.requests.length === 0 && w.state_() === CHANGED );
 
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	fire( findAll( w.dialogs[1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( w.dialogs[1] ), 'click' );
 
 	check( 'G. Yes writes it: save with the key of the theme, its name in the mix and no force', w.requests.length === 1 && w.requests[0].action === 'themes/save' && w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.mix.name === 'Lindner' && w.requests[0].payload.force === false );
 
@@ -1081,7 +1139,7 @@ function world( options ) {
 
 	check( 'G. a stylesheet that is not the feature\'s is asked about before it is replaced, and nothing is sent until the answer is Yes', w.dialogs.length === 3 && w.dialogs[2].open === true && w.requests.length === 0 );
 
-	fire( findAll( w.dialogs[2], function( node ) { return node.tagName === 'BUTTON' && node.textContent === 'Replace' } )[0], 'click' );
+	fire( goOn( w.dialogs[2] ), 'click' );
 
 	check( 'G. ...Replace asks again with force', w.requests.length === 1 && w.requests[0].action === 'themes/save' && w.requests[0].payload.force === true );
 
@@ -1208,7 +1266,7 @@ function world( options ) {
 	a.serve();
 	fire( a.button( a.bar(), W('label/save-as') ), 'click' );
 	findAll( a.dialogs[a.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Fresh';
-	fire( findAll( a.dialogs[a.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( a.dialogs[a.dialogs.length - 1] ), 'click' );
 	a.serve();
 
 	check( 'I. after a save as an own theme the focus is on the name of the theme - the button that was pressed is gone with the screen it stood in', hasFocus( a, name( a ) ) && name( a ).attributes.tabindex === '-1' );
@@ -1281,7 +1339,7 @@ function world( options ) {
 	w.tick();
 	w.serve();
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( w.dialogs[0] ), 'click' );
 
 	check( 'J. save says which state of the theme it was made on: the stamp open gave', w.requests.length === 1 && w.requests[0].action === 'themes/save' && w.requests[0].payload.base === 'stamp-1' );
 
@@ -1299,13 +1357,14 @@ function world( options ) {
 	w.stamp = 'stamp-5';
 	w.doc.activeElement = w.byClass( w.theme, 'themes-name' )[0];
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( w.dialogs[0] ), 'click' );
 	w.serve();
 
 	const question = w.dialogs[w.dialogs.length - 1];
-	const answers = findAll( question, function( node ) { return node.tagName === 'BUTTON' } ).map( function( node ) { return node.textContent } );
+	const answers = findAll( question, function( node ) { return node.tagName === 'BUTTON' } );
+	const kinds = answers.map( function( node ) { return /nino-admin-btn-(primary|danger|secondary)/.exec( node.className )[1] } );
 
-	check( 'J. a theme written by another tab since it was opened is said in a question with three answers - Overwrite, Cancel and Reload - with the sentence of the server, and the bar says it too', question.open === true && answers.join() === 'Overwrite,Cancel,Reload' && w.text( question ).indexOf('The theme "Lindner" was changed since you opened it.') !== -1, w.text( question ) );
+	check( 'J. a theme written by another tab since it was opened is said in a question with three answers - the other way on, Cancel, and at the far right the one that overwrites, which is the dangerous one - with the sentence of the server, and the bar says it too', question.open === true && kinds.join() === 'secondary,secondary,danger' && answers[1].textContent === CANCEL && answers[2].textContent === workbench['/_admin/common/conflict/overwrite'] && w.text( question ).indexOf('The theme "Lindner" was changed since you opened it.') !== -1, w.text( question ) );
 
 	fire( findAll( question, function( node ) { return node.textContent === CANCEL } )[0], 'click' );
 
@@ -1314,7 +1373,7 @@ function world( options ) {
 
 	// Overwrite: the stamp of what is there now, then the same save with it
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( w.dialogs[w.dialogs.length - 1] ), 'click' );
 	w.serve();
 	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === workbench['/_admin/common/conflict/overwrite'] } )[0], 'click' );
 
@@ -1339,15 +1398,15 @@ function world( options ) {
 	w.serve();
 	w.stamp = 'stamp-5';
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( w.dialogs[0] ), 'click' );
 	w.serve();
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === 'Reload' } )[0], 'click' );
+	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === workbench['/_admin/common/conflict/reload'] } )[0], 'click' );
 
 	const sure = w.dialogs[w.dialogs.length - 1];
 
 	check( 'J. Reload asks first, because the draft is lost with it', sure.open === true && w.requests.length === 0 && w.text( sure ).indexOf('lost') !== -1 );
 
-	fire( findAll( sure, function( node ) { return node.textContent === 'Reload' } )[0], 'click' );
+	fire( goOn( sure ), 'click' );
 	w.serve();
 
 	check( 'J. ...and then the theme is opened as it is saved: the draft is gone, the state is Saved and active, and the focus is on the name', w.dirty.entries.themes.isDirty() === false && w.state_() === APPLIED && w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] === 'true' && w.byClass( w.theme, 'themes-name' )[0].focused === true );
@@ -1543,15 +1602,16 @@ function world( options ) {
 	check( 'L. the dialog says what is saved - the theme it comes from and what it is made of - in one sentence', w.text( first ).indexOf('The draft of "Nino" is saved as an own theme under a name: Whole page from Nino, Section from Craft, otherwise Standard.') !== -1, w.text( first ).slice( 0, 260 ) );
 
 	typed( first, '   ' );
-	fire( findAll( first, function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( first ), 'click' );
 
 	const second = w.dialogs[w.dialogs.length - 1];
 	const field = findAll( second, function( node ) { return node.tagName === 'INPUT' } )[0];
 
-	check( 'L. a name that says nothing sends nothing: the dialog is there again, with the sentence at the field, which is marked', w.requests.length === 0 && second !== first && second.open === true && field.attributes['aria-invalid'] === 'true' && w.text( second ).indexOf('needs a name') !== -1 );
+	check( 'L. a name that says nothing sends nothing: the dialog stays open, with the sentence at the field, which is marked', w.requests.length === 0 && second === first && second.open === true && field.attributes['aria-invalid'] === 'true' && w.text( second ).indexOf('needs a name') !== -1 );
 
 	typed( second, 'Fresh' );
-	fire( field, 'keydown', { key : 'Enter' } );
+	// The dialog's own form takes the key, which the stand-in of the page does not carry up from the field
+	fire( findAll( second, function( node ) { return node.tagName === 'FORM' } )[0], 'keydown', { key : 'Enter', target : field } );
 
 	check( 'L. Enter in the field saves: the name is sent', w.requests.length === 1 && w.requests[0].action === 'themes/save-as' && w.requests[0].payload.mix.name === 'Fresh' );
 	w.serve();
@@ -1631,7 +1691,7 @@ function world( options ) {
 	w.serve();
 	w.stamp = 'stamp-5';
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
+	fire( goOn( w.dialogs[0] ), 'click' );
 	w.serve();
 	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === workbench['/_admin/common/conflict/overwrite'] } )[0], 'click' );
 	w.answer( 200, Object.assign( { theme : { key : 'own:lindner', kind : 'own', name : 'Lindner' }, mix : mixOf( 'own:lindner' ), stamp : 'stamp-5', active : null }, describe( mixOf( 'own:lindner' ) ) ) );
@@ -1642,9 +1702,9 @@ function world( options ) {
 
 	const question = w.dialogs[w.dialogs.length - 1];
 
-	check( 'J. ...and where the stylesheet is somebody else\'s the question about it comes, as at any save, and nothing is sent before the answer', question.open === true && w.requests.length === 0 && findAll( question, function( node ) { return node.textContent === 'Replace' } ).length === 1 );
+	check( 'J. ...and where the stylesheet is somebody else\'s the question about it comes, as at any save, and nothing is sent before the answer', question.open === true && w.requests.length === 0 && goOn( question ) !== undefined );
 
-	fire( findAll( question, function( node ) { return node.textContent === 'Replace' } )[0], 'click' );
+	fire( goOn( question ), 'click' );
 
 	check( 'J. ...Replace sends it with force, and with the stamp of the Overwrite', w.requests.length === 1 && w.requests[0].payload.force === true && w.requests[0].payload.base === 'stamp-5' );
 }
@@ -1934,6 +1994,21 @@ function levels( w ) {
 	return seen;
 }
 
+/** The answer of a dialog that goes on: the last button, at the far right - whatever it is called */
+function goOn( dialog ) {
+	return findAll( dialog, function( node ) { return node.tagName === 'BUTTON' } ).pop();
+}
+
+/** The kinds of the answers of a dialog from the left: 'secondary', 'primary' or 'danger' */
+function kindsOf( dialog ) {
+	return findAll( dialog, function( node ) { return node.tagName === 'BUTTON' } ).map( function( node ) { return /nino-admin-btn-(primary|danger|secondary)/.exec( node.className )[1] } ).join();
+}
+
+/** The answer that goes on of the dialog that is open */
+function pressedOn( w ) {
+	fire( goOn( w.dialogs[w.dialogs.length - 1] ), 'click' );
+}
+
 /** The button of the dialog that is open that has the label */
 function pressed( w, label ) {
 
@@ -1968,7 +2043,7 @@ function pressed( w, label ) {
 	check( 'P. No saves nothing and the draft stays, and the focus is on Save, which was pressed - whatever the question gave it back to', w.requests.length === 0 && w.state_() === CHANGED && w.button( w.bar(), W('label/save') ).focused === true );
 
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	const sent = w.requests[0];
 
@@ -1982,7 +2057,7 @@ function pressed( w, label ) {
 	w.tick();
 	w.serve();
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'P. the next save is made on the stamp the last gave', w.requests[0]?.payload?.brandBase === 'brand-2' );
 	w.serve();
@@ -2007,14 +2082,14 @@ function pressed( w, label ) {
 	check( 'P. the mix and the brand changed in a theme of a package: the button makes an own theme, and the row of the brand in the groups says that it is changed', w.text( w.button( w.bar(), W('label/save-as') ) ) !== '' );
 
 	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'P. the brand is asked about first, since it reaches the website - and then the name', seen.join() === 'big' && w.dialogs.length === 2 && w.dialogs[1].open === true );
 
 	const dialog = w.dialogs[w.dialogs.length - 1];
 
 	findAll( dialog, function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Lindner';
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'P. M5: save as sends the mix and the brand side by side - the brand is no part of the mix - and the stamp of the brand', w.requests[0]?.action === 'themes/save-as' && w.requests[0]?.payload?.brand?.['color-1']?.value === '#9a4b1d' && w.requests[0]?.payload?.brandBase === 'brand-1' && w.requests[0]?.payload?.mix?.brand === undefined && JSON.stringify( w.requests[0]?.payload?.mix ).indexOf('color-1') === -1 );
 	w.serve();
@@ -2041,7 +2116,7 @@ function pressed( w, label ) {
 	w.tick();
 	w.serve();
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'P. an own theme with a changed brand: save, with the mix, the brand and the two stamps - the one of the theme and the one of the brand - and the asking comes first', w.requests[0]?.action === 'themes/save' && w.requests[0]?.payload?.brand?.['color-1']?.value === '#9a4b1d' && w.requests[0]?.payload?.brandBase === 'brand-1' && w.requests[0]?.payload?.base === w.stamp && w.requests[0]?.payload?.mix?.name === 'Lindner' );
 	w.serve();
@@ -2057,7 +2132,7 @@ function pressed( w, label ) {
 	w.serve();
 	w.brandStamp = 'brand-5';
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.serve();
 
 	const question = w.dialogs[w.dialogs.length - 1];
@@ -2065,7 +2140,7 @@ function pressed( w, label ) {
 	check( 'P. a brand that another tab saved since it was opened is said in the question of the conflict, with the sentence of the server, and Cancel keeps the draft', question.open === true && w.text( question ).indexOf( E('themes_brand_changed') ) !== -1 && ( fire( findAll( question, function( node ) { return node.textContent === CANCEL } )[0], 'click' ), w.state_() === CHANGED && w.requests.length === 0 ) );
 
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.serve();
 	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 
@@ -2087,7 +2162,7 @@ function pressed( w, label ) {
 	w.stamp = 'stamp-9';
 	w.brandStamp = 'brand-5';
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.serve();
 	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 	w.serve();
@@ -2113,9 +2188,9 @@ function pressed( w, label ) {
 	w.serve();
 	w.brandStamp = 'brand-5';
 	fire( w.button( w.bar(), W('label/save-as') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Lindner';
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.serve();
 	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 	w.serve();
@@ -2134,12 +2209,12 @@ function pressed( w, label ) {
 	w.tick();
 	w.serve();
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.answer( 409, { error : 'the stylesheet of the project is not the one this feature wrote', code : 'themes_foreign', params : [], field : '' } );
 
 	check( 'P. a stylesheet that is not the feature\'s is explained and Replace is offered, for the brand as it is for the theme', w.dialogs.length === 2 && w.text( w.dialogs[1] ).indexOf( E('themes_foreign') ) !== -1 && w.requests.length === 0 );
 
-	pressed( w, 'Replace' );
+	pressedOn( w );
 
 	check( 'P. ...Replace asks again with force, the stamp of the brand the one it was', w.requests.length === 1 && w.requests[0]?.action === 'themes/brand' && w.requests[0]?.payload?.force === true && w.requests[0]?.payload?.brandBase === 'brand-1' );
 	w.serve();
@@ -2308,7 +2383,7 @@ function pressed( w, label ) {
 	check( 'R. Cancel sends nothing and the focus is back on the button', w.requests.length === 0 && byId( w.theme, 'themes-save-as' ).focused === true );
 
 	fire( byId( w.theme, 'themes-save-as' ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'R. the name is sent with the mix of the draft - which is the theme as it stands - to save-as, and no brand, since none is changed', w.requests[0]?.action === 'themes/save-as' && w.requests[0]?.payload?.mix?.name === 'Craft 2' && w.requests[0]?.payload?.brand === undefined );
 	w.serve();
@@ -2470,7 +2545,7 @@ function pressed( w, label ) {
 	fire( byId( y.theme, 'themes-delete' ), 'click' );
 	pressed( y, 'Delete theme' );
 	y.answer( 409, { error : 'the stylesheet of the project is not the one this feature wrote', code : 'themes_foreign', params : [], field : '' } );
-	pressed( y, 'Replace' );
+	pressedOn( y );
 
 	check( 'R. a stylesheet that is not the feature\'s is explained, and Replace deletes with force', y.requests.length === 1 && y.requests[0]?.action === 'themes/delete' && y.requests[0]?.payload?.force === true && y.requests[0]?.payload?.base === 'stamp-1' );
 }
@@ -2695,7 +2770,7 @@ function said( w, node ) {
 	w.brandStored = Object.assign( brandNone(), { 'color-1' : { own : true, value : '#000001' }, 'color-2' : { own : true, value : '#000002' } } );
 	w.brandStamp = 'brand-5';
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.serve();
 
 	const question = said( w, w.dialogs[w.dialogs.length - 1] );
@@ -2718,7 +2793,7 @@ function said( w, node ) {
 	quiet.brandStored = Object.assign( brandNone(), { 'color-2' : { own : true, value : '#000002' } } );
 	quiet.brandStamp = 'brand-5';
 	fire( quiet.button( quiet.bar(), W('label/save') ), 'click' );
-	pressed( quiet, W('label/save') );
+	pressedOn( quiet );
 	quiet.serve();
 
 	check( 'S. where the other tab touched other values only, the question names none as changed by both', said( quiet, quiet.dialogs[quiet.dialogs.length - 1] ).indexOf( W('msg/brand-both').split('%s')[0] ) === -1 );
@@ -2733,12 +2808,12 @@ function said( w, node ) {
 	w.tick();
 	w.serve();
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.answer( 409, { error : 'the stylesheet cannot be read', code : 'themes_unreadable', params : [], field : '' } );
 
 	check( 'S. a stylesheet that cannot be read is asked about as one that is somebody else\'s, in the sentence that says that what it holds is not kept as the last state', said( w, w.dialogs[1] ).indexOf( E('themes_unreadable') ) !== -1 && w.requests.length === 0 );
 
-	pressed( w, 'Replace' );
+	pressedOn( w );
 
 	check( 'S. ...and Replace sends the force', w.requests.length === 1 && w.requests[0]?.payload?.force === true );
 
@@ -2867,7 +2942,7 @@ function nameField( w ) {
 	check( 'U. Cancel sends nothing, and the focus goes back to the button that was pressed', w.requests.length === 0 && button.focused === true );
 
 	fire( button, 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'U. Save sends the copy: the theme, the name, no stamp for a theme of a package and no force - and nothing of a mix: the server copies what it holds', w.requests.length === 1 && w.requests[0].action === 'themes/duplicate' && JSON.stringify( w.requests[0].payload ) === JSON.stringify( { theme : 'craft', name : Wp( 'msg/copy-name', 'Craft' ), force : false } ), JSON.stringify( w.requests[0]?.payload ) );
 	w.serve();
@@ -2887,7 +2962,7 @@ function nameField( w ) {
 
 	fire( findAll( craft, function( node ) { return node.dataset.duplicate === 'craft' } )[0], 'click' );
 	nameField( w ).value = 'Taken';
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.serve();
 
 	const again = w.dialogs[w.dialogs.length - 1];
@@ -2895,7 +2970,7 @@ function nameField( w ) {
 	check( 'U. a name that is taken is asked again in the dialog, with the sentence of the server at the field, which is marked, and the name that was typed', again.open === true && again !== w.dialogs[0] && nameField( w ).value === 'Taken' && w.text( byId( again, 'themes-name-error' ) ) === Wp( 'api/themes_name_taken', 'Taken Before' ) && nameField( w ).attributes['aria-invalid'] === 'true' );
 
 	nameField( w ).value = '   ';
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'U. a name that says nothing sends nothing: the dialog is there again with the sentence at the field', w.requests.length === 0 && w.text( byId( w.dialogs[w.dialogs.length - 1], 'themes-name-error' ) ) === W('error/name-empty') );
 
@@ -2916,7 +2991,7 @@ function nameField( w ) {
 
 	check( 'U. the suggestion for an own theme is made of its name as the other one is', nameField( w ).value === Wp( 'msg/copy-name', 'Lindner' ) );
 
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'U. an own theme is copied with the stamp of the card', w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.base === 'stamp-1', JSON.stringify( w.requests[0]?.payload ) );
 
@@ -2970,7 +3045,7 @@ function nameField( w ) {
 
 	check( 'U. the dialog of the settings is the one of the card: the suggestion, and what is copied and what the website goes on showing', nameField( w ).value === Wp( 'msg/copy-name', 'Lindner' ) && w.text( w.dialogs[w.dialogs.length - 1] ).indexOf( Wp( 'msg/duplicate', 'Lindner', Wp( 'msg/shown-theme', 'Nino' ) ) ) !== -1 );
 
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'U. ...and it is sent with the stamp of the theme that is open', w.requests[0].action === 'themes/duplicate' && w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.base === 'stamp-1' && w.requests[0].payload.force === false );
 	w.serve();
@@ -2985,11 +3060,12 @@ function nameField( w ) {
 
 	w.at( '#themes/own.lindner/settings' );
 	fire( byId( w.theme, 'themes-duplicate' ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.stamp = 'stamp-9';
 	w.serve();
 
 	check( 'U. a theme that is open and was saved otherwise meanwhile is not asked about as an overwrite - a copy overwrites nothing - but as what it is: the copy would be of a theme the person has not seen; the choices are to copy it as it is saved now, to reload and to cancel', w.dialogs.length === 2 && w.text( w.dialogs[1] ).indexOf( W('label/copy-as-saved') ) !== -1 && w.text( w.dialogs[1] ).indexOf( workbench['/_admin/common/conflict/overwrite'] ) === -1 && w.text( w.dialogs[1] ).indexOf( W('label/reload') ) !== -1 );
+	check( 'U. ...and the answers stand the way every dialog\'s do: the other way on, Cancel, and at the far right the one that goes on - which is not the one that destroys, so the focus may open on it', kindsOf( w.dialogs[1] ) === 'secondary,secondary,primary' && findAll( w.dialogs[1], function( node ) { return node.tagName === 'BUTTON' } )[1].textContent === CANCEL );
 
 	pressed( w, W('label/copy-as-saved') );
 	w.serve();
@@ -3004,7 +3080,7 @@ function nameField( w ) {
 
 	w.at( '#themes/own.lindner/settings' );
 	fire( byId( w.theme, 'themes-duplicate' ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.stamp = 'stamp-9';
 	w.serve();
 
@@ -3015,7 +3091,7 @@ function nameField( w ) {
 	check( 'U. Cancel makes no copy and asks nothing - and the line does not go on saying that something is saved', w.copies.length === 0 && w.requests.length === 0 && line() !== workbench['/_admin/common/msg/saving'] );
 
 	fire( byId( w.theme, 'themes-duplicate' ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.serve();
 	pressed( w, W('label/reload') );
 
@@ -3109,7 +3185,7 @@ function nameField( w ) {
 
 	w.at( '#themes' );
 	fire( findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:lindner' } )[0], 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 	w.stamp = 'stamp-9';
 	w.serve();
 
@@ -3381,7 +3457,7 @@ function nameField( w ) {
 	check( 'X. a stylesheet that is stale for another reason - the feature or the register was changed - is offered the same: the bar has Rebuild, with nothing changed in the draft', w.dirty.entries.themes.isDirty() === false && w.button( w.bar(), W('label/rebuild') ).hidden === false );
 
 	fire( w.button( w.bar(), W('label/rebuild') ), 'click' );
-	pressed( w, W('label/save') );
+	pressedOn( w );
 
 	check( 'X. for an own theme it is a save that changes nothing: the theme, its mix as it is saved - the name in it - and the stamp it was seen in, and no brand', w.requests.length === 1 && w.requests[0].action === 'themes/save' && w.requests[0].payload.theme === 'own:lindner' && w.requests[0].payload.base === 'stamp-1' && w.requests[0].payload.mix.name === 'Lindner' && w.requests[0].payload.brand === undefined && w.requests[0].payload.force === false, JSON.stringify( w.requests[0]?.payload ) );
 

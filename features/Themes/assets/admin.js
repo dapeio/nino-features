@@ -2075,7 +2075,7 @@
 		Nino.adminUi.confirm( 'big', {
 			title    : word( brand === true ? 'confirm/brand-title' : 'confirm/save-title' ),
 			message    : ( brand === true ? word('confirm/brand') : word( 'confirm/save', S.theme.name ) )+ ' '+ replacesLast(),
-			yes      : word('label/save'),
+			yes      : word( brand === true ? 'confirm/brand-title' : 'confirm/save-title' ),
 			no      : Nino.content.getText('/_admin/common/label/cancel'),
 			opener    : opener,
 			onChoose  : function( ok ) { if( ok === true ) go(); else done( false ) },
@@ -2263,10 +2263,11 @@
 					Nino.adminUi.choiceDialog( {
 						title		: word('confirm/duplicate-changed-title'),
 						message		: word( 'msg/duplicate-changed', source.name ),
+						escape		: 'cancel',
 						choices		: [
-							{ value : 'copy', label : word('label/copy-as-saved'), kind : 'primary' },
-							{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
 							{ value : 'reload', label : word('label/reload'), kind : 'secondary' },
+							{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
+							{ value : 'copy', label : word('label/copy-as-saved'), kind : 'primary' },
 						],
 						onChoose	: function( value ) {
 
@@ -2531,14 +2532,16 @@
 	};
 
 	/**
-	 *	The name of an own theme, asked in a dialog with a field: Enter in the field saves. What was wrong with the last name is said at the field
+	 *	The name of an own theme, asked in the form dialog of the workbench: Enter in the field sends. What was wrong with the last name is said at the field
 	 *	and the dialog is drawn once more, so that it stays where it was. The dialog says what is done and - where there is a last state that is kept -
-	 *	that it is replaced, as every question of the panel that writes does
+	 *	that it is replaced, as every question of the panel that writes does. The dialog is closed before the name is handed on: what is done with it
+	 *	may ask a question of its own
 	 *
 	 *	@param		{string}		suggestion
 	 *	@param		{string}		problem				What was wrong with the last name, said at the field; '' for none
 	 *	@param		{Function}	then					Called with the name, or null where the dialog was left
 	 *	@param		{Object}		[about]				{ title, message } - what the dialog is for; the draft of the theme that is open saved under a name where none is given
+	 *	@param		{Element}		[opener]
 	 *
 	 *	@return		{void}
 	 */
@@ -2546,54 +2549,38 @@
 
 		about = about ?? { title : word('label/save-as'), message : word( 'msg/save-as', S.theme.name, mixSummary(), shownNow() ) };
 
-		const content = el('div');
 		const field = Nino.adminUi.textField( { label : word('label/name'), id : 'themes-name', value : suggestion, required : true, maxLength : 60 } );
 		const input = field.querySelector('input');
-		const message = about.message+ ( replacesLast() === '' ? '' : ' '+ replacesLast() );
+		const body = el('div');
 
 		input.name = 'name';
-		content.appendChild( Nino.adminUi.hint( message ) );
-		content.appendChild( field );
+		body.appendChild( field );
 
 		if( problem !== '' )
 			Nino.adminUi.fieldError( field, input, 'themes-name-error', problem );
 
-		Nino.adminUi.choiceDialog( {
+		Nino.adminUi.formDialog( {
 			title		: about.title,
-			message		: message,
-			content		: content,
-			opener		: opener,
-			choices		: [ { value : 'save', label : word('label/save'), kind : 'primary' }, { value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' } ],
-			onChoose	: function( value ) {
+			message	: about.message+ ( replacesLast() === '' ? '' : ' '+ replacesLast() ),
+			body		: body,
+			submit	: about.title,
+			cancel	: Nino.content.getText('/_admin/common/label/cancel'),
+			opener	: opener,
+			onSubmit	: function( values, ctl ) {
 
-				if( value !== 'save' ) {
-					then( null );
+				// A name that says nothing is no answer: said at the field, and the dialog stays
+				if( input.value.trim() === '' ) {
+					Nino.adminUi.fieldError( field, input, 'themes-name-error', word('error/name-empty') );
+					input.focus();
+					ctl.idle();
 					return;
 				}
 
-				// A name that says nothing is no answer: the same dialog, with the sentence at the field
-				if( input.value.trim() === '' )
-					askName( '', word('error/name-empty'), then, about, opener );
-				else
-					then( input.value.trim() );
+				ctl.close();
+				then( input.value.trim() );
 			},
+			onCancel	: function() { then( null ) },
 		} );
-
-		input.addEventListener( 'keydown', function( event ) {
-
-			if( event.key !== 'Enter' )
-				return;
-
-			const dialog = input.closest('dialog');
-			const primary = dialog === null ? null : dialog.querySelector('.nino-admin-btn-primary');
-
-			event.preventDefault();
-
-			if( primary !== null )
-				primary.click();
-		} );
-
-		input.focus();
 	};
 
 	/**
@@ -2809,7 +2796,7 @@
 			Nino.adminUi.confirm( 'destructive', {
 				title	: word('confirm/foreign-title'),
 				message	: Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ),
-				yes		: word('label/replace'),
+				yes		: word('confirm/foreign-title'),
 				no		: Nino.content.getText('/_admin/common/label/cancel'),
 				kind	: 'danger',
 				onChoose : function( ok ) { if( ok === true ) force(); else if( typeof done === 'function' ) done( false ) },

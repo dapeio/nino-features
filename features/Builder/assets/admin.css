@@ -215,9 +215,8 @@
 	min-height: 1.75rem;
 }
 
-/* The dialog "Insert block" stands in the root of the workbench and not in the panel: its classes are its own */
+/* The dialog "Insert block" stands in the root of the workbench and not in the panel: its class is its own, and keeps its height while the tabs change */
 .builder-insert-dialog {
-	width: min(60rem, calc(100vw - 2rem));
 	height: min(46rem, calc(100vh - 2rem));
 	height: min(46rem, calc(100dvh - 2rem));
 }
@@ -418,11 +417,6 @@
 	tab-size: 2;
 }
 
-/* The dialog that offers the components of a place stands in the root of the workbench */
-.builder-offer-dialog {
-	width: min(32rem, calc(100vw - 2rem));
-}
-
 .builder-offer {
 	display: grid;
 	gap: .5rem;
@@ -477,13 +471,6 @@
 	flex: 0 0 100%;
 	order: 10;
 	padding-inline-start: 1.9rem;
-}
-
-/* The dialogs Source, Own block and New page stand in the root of the workbench too */
-.builder-source-dialog,
-.builder-own-dialog,
-.builder-new-dialog {
-	width: min(40rem, calc(100vw - 2rem));
 }
 
 .builder-source-body,
