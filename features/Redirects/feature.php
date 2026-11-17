@@ -16,12 +16,12 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Redirects' => [
-				'en_US' => 'Keeps the rules (old address, target, 301 or 302, with or without everything below) and shows the addresses nothing answered, with a button that turns one into a rule.',
-				'de_DE' => 'Pflegt die Regeln (alte Adresse, Ziel, 301 oder 302, mit oder ohne alles darunter) und zeigt die Adressen, die nichts beantwortet hat, mit einem Knopf, der eine Regel daraus macht.',
+				'en_US' => 'Keeps the rules in a table with a search, one rule in a dialog, and lists the addresses nothing answered in a tab, each with a button that makes a rule of it.',
+				'de_DE' => 'Pflegt die Regeln in einer Tabelle mit Suche, eine Regel in einem Dialog, und listet die Adressen, die nichts beantwortet hat, in einem Reiter, je mit einem Knopf, der eine Regel daraus macht.',
 			],
 			'Probe' => [
-				'en_US' => 'Asks what a visitor would meet at an address: a page, a rule, or the 404 page.',
-				'de_DE' => 'Fragt, was ein Besucher unter einer Adresse träfe: eine Seite, eine Regel oder die 404-Seite.',
+				'en_US' => 'Asks, in a view of its own, what a visitor would meet at an address: a page, a rule or the 404 page.',
+				'de_DE' => 'Fragt in einer eigenen Ansicht, was ein Besucher unter einer Adresse träfe: eine Seite, eine Regel oder die 404-Seite.',
 			],
 		],
 		'callbacks' => [
@@ -33,8 +33,8 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'system',
-	'version'			=> '1.1.1',
-	'nino'				=> '^1.8',
+	'version'			=> '2.0.0',
+	'nino'				=> '^2.0',
 	'requires'		=> [],
 	'settings'		=> [
 		'record' => [

@@ -12,14 +12,15 @@ namespace Nino\Modules\Redirects {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Redirects\Admin		The "Redirects" panel. Two screens:
+	 *	Redirects\Admin		The "Redirects" panel. Two tabs and a view:
 	 *
 	 *										  Rules			every rule, what it answers and where it
-	 *														sends, with the editor under it and a probe
-	 *														that says which rule would catch a path
-	 *										  Missing		the addresses nothing answered, most asked
+	 *														sends, with a dialog for one rule
+	 *										  Unanswered	the addresses nothing answered, most asked
 	 *														for first, each with the one button that
 	 *														turns it into a rule
+	 *										  Probe			a view of its own that says which rule would
+	 *														catch a path
 	 *
 	 *										The second is why the first is usable. A redirect
 	 *										nobody knows is missing does not get written, and the
@@ -81,15 +82,13 @@ namespace Nino\Modules\Redirects {
 			return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>';
 		}
 
+		// The list with its two tabs, and the probe: two levels of the pane, one shown at a time
 		public static function panes(): array {
-			return [ 'redirects-rules', 'redirects-misses' ];
+			return [ 'redirects-list', 'redirects-probe' ];
 		}
 
 		public static function assets(): array {
-			return [
-				\Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.js' ),
-				\Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.css' ),
-			];
+			return [ \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.js' ) ];
 		}
 
 		// The panel's own strings, one <locale>.php per interface language
@@ -187,6 +186,22 @@ namespace Nino\Modules\Redirects {
 
 			if( $loop !== '' ) {
 				\Nino\Http::fail( $request, 400, 'the rule would send a visitor back into itself', $loop );
+				return;
+			}
+
+			// A rule that would close a ring with the others - A to B and B to A - is refused like one that sends an address to itself: the visitor would be sent round
+			$before = $appData['./redirects/rules'] ?? null;
+			$others = array_values( array_filter( Rules::read( $appData )['rules'], static fn( array $rule ): bool => $rule['from'] !== $from && $rule['from'] !== $was ) );
+			$appData['./redirects/rules'] = [ 'rules' => array_merge( $others, [ [ 'from' => $from, 'to' => $to, 'status' => $status, 'subtree' => $subtree, 'hits' => 0, 'last' => '' ] ] ), 'misses' => [], 'format' => Rules::FORMAT ];
+			$ring = Rules::answer( $appData, $to, $subtree ) === 'loop';
+
+			if( $before === null )
+				unset( $appData['./redirects/rules'] );
+			else
+				$appData['./redirects/rules'] = $before;
+
+			if( $ring === true ) {
+				\Nino\Http::fail( $request, 400, 'the rule would send a visitor round a ring of rules', 'redirects_loop_chain' );
 				return;
 			}
 

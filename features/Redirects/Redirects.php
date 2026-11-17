@@ -130,6 +130,11 @@ namespace Nino\Modules {
 				that (see Modules\Cache, which leaves a Location alone). A target
 				the kernel will not send (a warning, the response left as it was)
 				is no rule that was followed, and counts for nothing	*/
+			// A target the kernel would refuse - the rest of a path that moved to the front page can spell '//host' - is no redirect: it is not tried,
+			// since every try is a line in the log that anybody can make by asking for the address again
+			if( \Nino\Http::isSitePath( $match['to'] ) === false && \Nino\Fetch::isHttpsUrl( $match['to'] ) === false )
+				return;
+
 			\Nino\Http::redirect( $appData, $request, $match['to'], $match['status'] );
 
 			if( isset( $request['/nino/http/response']['header']['Location'] ) === true )

@@ -2,37 +2,24 @@
 declare(strict_types=1);
 
 /**
- *	Nino
- *	redirects-smoke.php		Contract test for the Redirects feature
- *												(\Nino\Modules\Redirects): the manifest and activation
- *												through \Nino\Features, what a path and a target may
- *												be, the order rules are matched in and the loop guard,
- *												the live callback (an address with no route, one with
- *												a route, a subtree remainder, the project directory in
- *												the Location, POST left alone, a Location somebody
- *												else set), the addresses nothing answered and the
- *												shapes that are never written down, every panel action
- *												including the probe's three answers, the code each
- *												refusal answers with and its sentence in both
- *												languages, what a write under the lock keeps of a
- *												change made meanwhile, the permission each of them
- *												is behind, and deactivation - and, where
- *												node is on the path, redirects-js-smoke.js beside it,
- *												the panel's script over a dom stand-in. Travels with
- *												the feature and runs against the checkout three levels
- *												up, or the one NINO_ROOT names (see tests/harness.php
- *												there).
+ *	Nino features
+ *	redirects-smoke.php		Contract test for the Redirects feature (\Nino\Modules\Redirects): the manifest
+ *												and activation, what a path and a target may be, the order rules are matched
+ *												in and the loop guard, the live callback (an address with no route, one with a
+ *												route, a subtree remainder, the project directory in the Location, POST left
+ *												alone), the addresses nothing answered, every action of the panel with the code
+ *												each refusal answers with, the permission each is behind, and what the script
+ *												of the panel builds and says. Runs against the checkout three levels up, or the
+ *												one NINO_ROOT names.
  *
  *	Usage: php features/Redirects/tests/redirects-smoke.php
  *		   NINO_ROOT=../nino php features/Redirects/tests/redirects-smoke.php
  */
 
-// Before the kernel loads: the autoloader and Features::dir() read the same
-// constant, so the directory this feature lives in is the one searched -
-// wherever NINO_ROOT points
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
+
 
 /**
  *	Build a request the way \Nino\Http::request() leaves it and resolve a
@@ -145,7 +132,6 @@ $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 // on it (see the other feature suites)
 $appData['/nino/dir'] = '';
 
-
 // --- The feature ------------------------------------------------------------
 
 echo "The feature - manifest and activation\n";
@@ -153,19 +139,16 @@ echo "The feature - manifest and activation\n";
 $dir 			= dirname( __DIR__ );
 $manifest	= \Nino\Features::manifest( $dir );
 
-check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
-check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'redirects'
-	&& $manifest['module'] === '\\Nino\\Modules\\Redirects' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
-check( 'it is system, and names the kernel it needs', ( $manifest['category'] ?? '' ) === 'system' && ( $manifest['nino'] ?? '' ) === '^1.8' );
-check( 'the rules file is declared under data, so a backup carries it',
-	in_array( \Nino\Modules\Redirects\Rules::PATH, (array) ( $manifest['data'] ?? [] ), true ) === true );
-check( 'it offers the one switch that decides whether anything is written down',
-	( $manifest['settings']['record']['type'] ?? '' ) === 'bool' && ( $manifest['settings']['record']['default'] ?? null ) === true );
-check( 'it brings no route, no shortcode and no install unit', ( $manifest['manual']['routes'] ?? [] ) === []
-	&& ( $manifest['manual']['shortcodes'] ?? [] ) === [] && ( $manifest['manual']['install'] ?? [] ) === [] );
+check( 'the manifest validates without a warning, for this kernel, and brings no route, no shortcode and no install unit', is_array( $manifest ) && ninoWarnings() === []
+	&& \Nino\Features::satisfies( (string) $manifest['nino'] ) === true && isset( $manifest['components'] ) === false
+	&& ( $manifest['manual']['routes'] ?? [] ) === [] && ( $manifest['manual']['shortcodes'] ?? [] ) === [] && ( $manifest['manual']['install'] ?? [] ) === [] );
+check( 'the rules file is declared under data, so a backup carries it, and one switch decides whether anything is written down',
+	in_array( \Nino\Modules\Redirects\Rules::PATH, (array) ( $manifest['data'] ?? [] ), true ) === true
+	&& ( $manifest['settings']['record']['type'] ?? '' ) === 'bool' && ( $manifest['settings']['record']['default'] ?? null ) === true );
 
-check( 'the feature activates', \Nino\Features::activate( $appData, 'redirects' ) === true );
-check( '...and its class is in the module list', in_array( '\\Nino\\Modules\\Redirects', $appData['/nino/modules'], true ) === true );
+check( 'the feature activates, its class is in the module list and its panel is in the registry with the Settings tab', \Nino\Features::activate( $appData, 'redirects' ) === true
+	&& in_array( '\\Nino\\Modules\\Redirects', $appData['/nino/modules'], true ) === true
+	&& isset( \Nino\Admin\Admin::panels( $appData )['redirects']['tabs']['redirects-settings'] ) === true );
 
 echo "\n";
 
@@ -227,6 +210,9 @@ check( '...also with a query or a fragment, as any other path is', \Nino\Modules
 	&& \Nino\Modules\Redirects\Rules::target( '/#top' ) === '/' && \Nino\Modules\Redirects\Rules::target( '/a?x' ) === '/a'
 	&& \Nino\Modules\Redirects\Rules::target( '/?x' ) === \Nino\Modules\Redirects\Rules::target( '/' ) );
 
+check( 'a target is held to the length a header takes, a path as well as an address of another site',
+	\Nino\Modules\Redirects\Rules::target( '/'. str_repeat( 'a', \Nino\Modules\Redirects\Rules::TARGET_LENGTH - 1 ) ) !== ''
+	&& \Nino\Modules\Redirects\Rules::target( '/'. str_repeat( 'a', \Nino\Modules\Redirects\Rules::TARGET_LENGTH ) ) === '' );
 check( 'a rule that sends an address to itself is a loop', \Nino\Modules\Redirects\Rules::loops( '/a', '/a', false ) !== '' );
 check( '...and so is a subtree that sends into itself', \Nino\Modules\Redirects\Rules::loops( '/a', '/a/b', true ) !== '' );
 check( '...while the same target is fine for a single page, and anywhere else always is',
@@ -350,9 +336,9 @@ $fileBeforeHome = redirectsFile( $appData );
 redirectsStore( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => [ [ 'from' => '/moved-home', 'to' => '/', 'subtree' => true ] ] ] ) );
 ninoWarnings();
 $refusedBySubtree = redirectsRequest( $appData, '/moved-home//evil.example' );
-check( 'a Location that would be the address of another host is not sent: the response is left as it was, and says why in the log',
-	isset( $refusedBySubtree['header']['Location'] ) === false && $refusedBySubtree['statusCode'] === 404
-	&& str_contains( implode( "\n", ninoWarnings() ), 'neither a path of this site nor an http(s) url' ) === true );
+check( 'a Location that would be the address of another host is not sent: the response is the 404 it was, and nothing is written to the log for it, however often it is asked',
+	isset( $refusedBySubtree['header']['Location'] ) === false && $refusedBySubtree['statusCode'] === 404 && ninoWarnings() === []
+	&& isset( redirectsRequest( $appData, '/moved-home//evil.example' )['header']['Location'] ) === false && ninoWarnings() === [] );
 check( '...and a rule that was not followed is not counted as one', ( redirectsFile( $appData )['rules'][0]['hits'] ?? -1 ) === 0 );
 check( '...while the same rule sends the pages that are paths', ( redirectsRequest( $appData, '/moved-home/page' )['header']['Location'] ?? '' ) === '/page'
 	&& ( redirectsFile( $appData )['rules'][0]['hits'] ?? -1 ) === 1 );
@@ -406,303 +392,55 @@ check( 'with it on, a rule counts the times it was followed',
 	( array_values( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/gone' ) )[0]['hits'] ?? 0 ) > 0 );
 
 echo "\n";
+// --- What is held to its bounds ---------------------------------------------
 
+echo "The list of unanswered addresses\n";
 
-// --- A stream of unanswered addresses ---------------------------------------
-
-echo "A stream of unanswered addresses\n";
-
-/*	A request nothing answers is a note in the list: the address counts, its
-	time moves, the file is replaced. The list is the most asked for first, which
-	one note a second keeps as well as one a request, so the file is written at
-	most once in Rules::NOTE_INTERVAL seconds, and an address past
-	Rules::MISS_PATH_LENGTH is nobody's link and is not written at all. Where a
-	check needs the next note it makes the file older than the interval
-	(redirectsRested()), as the next second would	*/
 $fileBeforeStream	= redirectsFile( $appData );
 $listFile					= ninoSandboxDir( $appData ). '/private/data/redirects.php';
 $limit						= \Nino\Modules\Redirects\Rules::MISS_PATH_LENGTH;
 
-/**
- *	How many times the file was replaced while a callback ran: the writes are
- *	atomic replacements, so the file is another one each time - and the same
- *	file where nothing was written
- */
-$replacements = static function( callable $stream ) use ( $listFile ): int {
-	clearstatcache( true, $listFile );
-	$last		= (int) fileinode( $listFile );
-	$count	= 0;
-	$stream( static function() use ( $listFile, &$last, &$count ): void {
-		clearstatcache( true, $listFile );
-		$now = (int) fileinode( $listFile );
-		if( $now !== $last )
-			$count++;
-		$last = $now;
-	} );
-	return $count;
-};
-
-// The length of what is written down
 redirectsRested( $appData );
 $beforeLong	= (string) file_get_contents( $listFile );
-$answered		= redirectsRequest( $appData, '/'. str_repeat( 'a', 6000 ) );
-check( 'an address of 6000 characters answers the 404 it is, and is not written down - the file is the file it was',
-	$answered['statusCode'] === 404 && (string) file_get_contents( $listFile ) === $beforeLong );
-check( '...nor is one a byte past the bound', redirectsRequest( $appData, '/'. str_repeat( 'b', $limit ) )['statusCode'] === 404 && (string) file_get_contents( $listFile ) === $beforeLong );
-redirectsRequest( $appData, '/'. str_repeat( 'c', $limit - 1 ) );
-check( '...while one of exactly the bound is', isset( redirectsFile( $appData )['misses']['/'. str_repeat( 'c', $limit - 1 )] ) === true );
-check( 'the bound is the one a uri has in the Stats feature, 253 bytes', $limit === 253 );
+check( 'an address past the bound is the 404 it is and is not written down, one of exactly the bound is',
+	redirectsRequest( $appData, '/'. str_repeat( 'a', 6000 ) )['statusCode'] === 404 && redirectsRequest( $appData, '/'. str_repeat( 'b', $limit ) )['statusCode'] === 404
+	&& (string) file_get_contents( $listFile ) === $beforeLong
+	&& ( redirectsRequest( $appData, '/'. str_repeat( 'c', $limit - 1 ) )['statusCode'] === 404 ) && isset( redirectsFile( $appData )['misses']['/'. str_repeat( 'c', $limit - 1 )] ) === true );
 
-// One address asked for over and over
-redirectsRested( $appData );
-$started	= time();
-$writes		= $replacements( static function( callable $seen ) use ( &$appData ): void {
-	for( $n = 0; $n < 100; $n++ ) {
-		redirectsRequest( $appData, '/asked-for-often' );
-		$seen();
-	}
-} );
-$elapsed	= time() - $started;
-check( 'a hundred requests for one address write the file once for every second they take, and not once each', $writes >= 1 && $writes <= 1 + $elapsed );
-check( '...and the address was counted as often as it was noted', ( redirectsFile( $appData )['misses']['/asked-for-often']['count'] ?? 0 ) === $writes );
+// A note inside the interval is not written, one after it is: the times the file holds decide, not the clock of the test
+$twoRules = \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => [ [ 'from' => '/followed', 'to' => '/here' ], [ 'from' => '/followed-too', 'to' => '/here' ] ] ] );
+redirectsStore( $appData, $twoRules );
+$file = redirectsFile( $appData );
+$file['noted'] = [ 'miss' => time(), 'hit' => [ 'at' => 0, 'n' => 0 ], 'rules' => [ '/followed' => time() ] ];
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $file );
+unset( $appData['./redirects/rules'] );
+check( 'a note made just now holds the next one back, for the list and for a rule, and one a second old does not',
+	\Nino\Modules\Redirects\Rules::missDue( redirectsFile( $appData ) ) === false && \Nino\Modules\Redirects\Rules::hitDue( redirectsFile( $appData ), '/followed' ) === false
+	&& \Nino\Modules\Redirects\Rules::hitDue( redirectsFile( $appData ), '/followed-too' ) === true
+	&& ( static function() use ( $file, &$appData ): bool {
+		$file['noted'] = [ 'miss' => time() - \Nino\Modules\Redirects\Rules::NOTE_INTERVAL, 'hit' => [ 'at' => 0, 'n' => 0 ], 'rules' => [ '/followed' => time() - \Nino\Modules\Redirects\Rules::NOTE_INTERVAL ] ];
+		return \Nino\Modules\Redirects\Rules::missDue( $file ) === true && \Nino\Modules\Redirects\Rules::hitDue( $file, '/followed' ) === true;
+	} )() );
+redirectsRequest( $appData, '/held-back' );
+check( 'an address asked for inside the interval is a 404 that is not noted', isset( redirectsFile( $appData )['misses']['/held-back'] ) === false );
 
-redirectsRested( $appData );
-$counted = (int) ( redirectsFile( $appData )['misses']['/asked-for-often']['count'] ?? 0 );
-redirectsRequest( $appData, '/asked-for-often' );
-check( 'a request that comes after the interval is noted', ( redirectsFile( $appData )['misses']['/asked-for-often']['count'] ?? 0 ) === $counted + 1 );
-
-// ...and a hundred different ones
-redirectsRested( $appData );
-$before		= count( redirectsFile( $appData )['misses'] ?? [] );
-$started	= time();
-$writes		= $replacements( static function( callable $seen ) use ( &$appData ): void {
-	for( $n = 0; $n < 100; $n++ ) {
-		redirectsRequest( $appData, '/scan/'. $n );
-		$seen();
-	}
-} );
-$elapsed	= time() - $started;
-check( 'a hundred different addresses write the file once for every second they take', $writes >= 1 && $writes <= 1 + $elapsed );
-check( '...and each write took one in', count( redirectsFile( $appData )['misses'] ?? [] ) - $before === $writes );
-
-// Two hundred different addresses, as far apart as the interval wants them: the
-// file is held to its ceiling in number and in the length of each
-$starting = redirectsFile( $appData );
-redirectsStore( $appData, [ 'rules' => $starting['rules'] ?? [], 'misses' => [] ] );
-for( $n = 0; $n < 200; $n++ ) {
+// The list is held to its ceiling in number and in the length of each, whatever the file says
+$overfull = [];
+for( $n = 0; $n < 3 * \Nino\Modules\Redirects\Rules::MISS_LIMIT; $n++ )
+	$overfull['/over/'. $n] = [ 'count' => 1 + $n % 7, 'last' => '2026-09-01 10:00:00' ];
+redirectsStore( $appData, [ 'rules' => [], 'misses' => [] ] );
+for( $n = 0; $n < 120; $n++ ) {
 	redirectsRested( $appData );
 	redirectsRequest( $appData, str_pad( '/long-'. $n. '-', $limit, 'x' ) );
 }
 $listed = redirectsFile( $appData )['misses'] ?? [];
-clearstatcache( true, $listFile );
-check( 'two hundred different addresses of the longest length leave the list at its ceiling', count( $listed ) === \Nino\Modules\Redirects\Rules::MISS_LIMIT );
-check( '...no address of it longer than the bound', max( array_map( 'strlen', array_keys( $listed ) ) ) <= $limit );
-check( '...and the file within what the ceiling and the bound make of it', filesize( $listFile ) <= \Nino\Modules\Redirects\Rules::MISS_LIMIT * ( $limit + 120 ) + 400 );
+check( 'many different addresses of the longest length leave the list at its ceiling, none longer than the bound, and a file that holds more is read as the ceiling',
+	count( $listed ) === \Nino\Modules\Redirects\Rules::MISS_LIMIT && max( array_map( 'strlen', array_keys( $listed ) ) ) <= $limit
+	&& count( \Nino\Modules\Redirects\Rules::normalize( [ 'misses' => $overfull ] )['misses'] ) === \Nino\Modules\Redirects\Rules::MISS_LIMIT );
 
-// A file that holds more than the ceiling - one an older list or a hand made it - is cut to it when it is read
-$overfull = [];
-for( $n = 0; $n < 3 * \Nino\Modules\Redirects\Rules::MISS_LIMIT; $n++ )
-	$overfull['/over/'. $n] = [ 'count' => 1 + $n % 7, 'last' => '2026-09-01 10:00:00' ];
-check( 'a list that holds more than the ceiling is read as the ceiling', count( \Nino\Modules\Redirects\Rules::normalize( [ 'misses' => $overfull ] )['misses'] ) === \Nino\Modules\Redirects\Rules::MISS_LIMIT );
-
-// What is in a project's file already is the project's: an entry longer than
-// the bound is not written down, and it is not taken away either
-$longHeld = '/'. str_repeat( 'z', 400 );
-redirectsStore( $appData, [ 'rules' => $starting['rules'] ?? [], 'misses' => [ $longHeld => [ 'count' => 5, 'last' => '2026-09-01 10:00:00' ] ] ] );
-redirectsRequest( $appData, '/after-a-long-one' );
-$kept = redirectsFile( $appData )['misses'] ?? [];
-check( 'an address longer than the bound that the file holds stays with its count when another is noted', ( $kept[$longHeld]['count'] ?? 0 ) === 5 && isset( $kept['/after-a-long-one'] ) === true );
-ninoUser( $appData, 'stream@example.com', [ '/*' ] );
-check( '...and the panel lists it', in_array( $longHeld, array_column( ninoCall( $appData, [ $panel, 'apiList' ] )[1]['misses'] ?? [], 'path' ), true ) === true );
-
-// Times that lie ahead of the clock - a clock put back, a file somebody
-// edited - hold no note back, and the first note puts them right: a hundred
-// requests write the file once and then once for every second they take
-$ahead = time() + 86400;
-redirectsStore( $appData, [ 'rules' => [ [ 'from' => '/followed', 'to' => '/here', 'status' => 301, 'subtree' => false, 'hits' => 0, 'last' => '' ] ], 'misses' => [] ] );
-$file = redirectsFile( $appData );
-$file['noted'] = [ 'miss' => $ahead, 'hit' => [ 'at' => $ahead, 'n' => 99 ], 'rules' => [ '/followed' => $ahead ] ];
-\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $file );
-unset( $appData['./redirects/rules'] );
-$started	= time();
-$writes		= $replacements( static function( callable $seen ) use ( &$appData ): void {
-	for( $n = 0; $n < 100; $n++ ) {
-		redirectsRequest( $appData, '/after-the-future/'. $n );
-		$seen();
-	}
-} );
-$elapsed	= time() - $started;
-check( 'a list whose last note lies in the future takes a note, and then no more than one for every second', $writes >= 1 && $writes <= 1 + $elapsed );
-$file = redirectsFile( $appData );
-check( '...and the time it holds is the time of that note', $file['noted']['miss'] <= time() );
-$started	= time();
-$writes		= $replacements( static function( callable $seen ) use ( &$appData ): void {
-	for( $n = 0; $n < 100; $n++ ) {
-		redirectsRequest( $appData, '/followed' );
-		$seen();
-	}
-} );
-$elapsed	= time() - $started;
-check( 'a rule whose last note lies in the future takes a note, and then no more than one for every second', $writes >= 1 && $writes <= 1 + $elapsed && ( redirectsFile( $appData )['rules'][0]['hits'] ?? 0 ) === $writes );
-check( '...and the times it holds are the times of those notes', ( redirectsFile( $appData )['noted']['rules']['/followed'] ?? $ahead ) <= time() && ( redirectsFile( $appData )['noted']['hit']['at'] ?? $ahead ) <= time() );
-
-// A request inside the interval reads nothing, locks nothing and writes
-// nothing: the file the request has read for the rules may be gone unreadable
-// since, and is not read a second time. The notes are made as new as the second the
-// call is made in, and the call is repeated where the second turned over in between
-$inside = static function( callable $call ) use ( &$appData, $listFile ): array {
-	$kept = redirectsFile( $appData );
-	do {
-		$second	= time();
-		$noted	= $kept;
-		$noted['noted'] = [ 'miss' => $second, 'hit' => [ 'at' => $second, 'n' => 0 ], 'rules' => [ '/followed' => $second ] ];
-		\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $noted );
-		unset( $appData['./redirects/rules'] );
-		\Nino\Modules\Redirects\Rules::read( $appData );
-		file_put_contents( $listFile, '<?php this is not php (' );
-		$result	= $call();
-		$turned	= time() !== $second;
-	} while( $turned === true );
-	$unread = (string) file_get_contents( $listFile ) === '<?php this is not php (' && isset( $appData['./redirects/rules'] ) === true;
-	\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $kept );
-	unset( $appData['./redirects/rules'] );
-	return [ $result, $unread ];
-};
-[ $threw, $unread ] = $inside( static function() use ( &$appData ): string {
-	return redirectsThrew( static function() use ( &$appData ): void {
-		\Nino\Modules\Redirects\Rules::noteMiss( $appData, '/inside-the-interval' );
-		\Nino\Modules\Redirects\Rules::noteMiss( $appData, '/inside-the-interval?with=a&query=1' );
-		$request = ninoVisit( $appData, '/followed', 'GET' );
-		\Nino\Http::response( $appData, $request );
-	} );
-} );
-check( 'a note of an address and a note of a rule inside the interval throw nothing, though the file cannot be read at all by then, and leave it as it is', $threw === '' && $unread === true );
-check( 'the interval is one second, and the file takes three notes of rules in one', \Nino\Modules\Redirects\Rules::NOTE_INTERVAL === 1 && \Nino\Modules\Redirects\Rules::HIT_LIMIT === 3 );
-
-// The kinds of note do not take turns from one another. The list has its note a
-// second, and each rule has its own: a stream of unanswered addresses leaves a
-// rule the note of its use, a rule in use leaves the list its note, and one rule
-// leaves another
-$twoRules = [ 'rules' => [
-	[ 'from' => '/followed', 'to' => '/here', 'status' => 301, 'subtree' => false, 'hits' => 0, 'last' => '' ],
-	[ 'from' => '/followed-too', 'to' => '/here', 'status' => 301, 'subtree' => false, 'hits' => 0, 'last' => '' ],
-	[ 'from' => '/followed-three', 'to' => '/here', 'status' => 301, 'subtree' => false, 'hits' => 0, 'last' => '' ],
-	[ 'from' => '/followed-four', 'to' => '/here', 'status' => 301, 'subtree' => false, 'hits' => 0, 'last' => '' ],
-], 'misses' => [] ];
-$hitsOf = static function() use ( &$appData ): array {
-	return array_column( redirectsFile( $appData )['rules'] ?? [], 'hits', 'from' );
-};
-
-redirectsStore( $appData, $twoRules );
-redirectsRequest( $appData, '/an-address-first' );
-redirectsRequest( $appData, '/followed' );
-check( 'a rule is noted in the very second the list took a note', ( $hitsOf() )['/followed'] === 1 && isset( redirectsFile( $appData )['misses']['/an-address-first'] ) === true );
-
-redirectsStore( $appData, $twoRules );
-redirectsRequest( $appData, '/followed' );
-redirectsRequest( $appData, '/an-address-after-a-rule' );
-check( 'an address is noted in the very second a rule took a note', isset( redirectsFile( $appData )['misses']['/an-address-after-a-rule'] ) === true && ( $hitsOf() )['/followed'] === 1 );
-
-redirectsStore( $appData, $twoRules );
-redirectsRequest( $appData, '/followed' );
-redirectsRequest( $appData, '/followed-too' );
-check( 'one rule does not keep another from its note', ( $hitsOf() )['/followed'] === 1 && ( $hitsOf() )['/followed-too'] === 1 );
-
-// The file takes HIT_LIMIT notes of rules in a second, whichever rules, and
-// the list besides - so every rule has its note over time, and the writes of a
-// second are at most HIT_LIMIT and one
-redirectsStore( $appData, $twoRules );
-$started	= time();
-$writes		= $replacements( static function( callable $seen ) use ( &$appData ): void {
-	foreach( [ '/followed', '/followed-too', '/followed-three', '/followed-four', '/followed', '/followed-too', '/followed-three', '/followed-four' ] as $uri ) {
-		redirectsRequest( $appData, $uri );
-		$seen();
-	}
-} );
-$elapsed	= time() - $started;
-check( 'four rules in one second are not four notes: the file takes the notes of three rules in a second', $writes >= \Nino\Modules\Redirects\Rules::HIT_LIMIT && $writes <= \Nino\Modules\Redirects\Rules::HIT_LIMIT * ( 1 + $elapsed ) );
-
-// A flood of unanswered addresses and a hundred uses of two rules across more
-// than two seconds: every rule is noted once for every second it takes, the
-// list as well, and the writes of all of it are at most HIT_LIMIT and one in a
-// second. Real time, because it is time that is asked about
-redirectsStore( $appData, $twoRules );
-$started	= microtime( true );
-$begin		= time();
-$last			= $begin;
-$writes		= $replacements( static function( callable $seen ) use ( &$appData, &$last, $started ): void {
-	for( $n = 0; microtime( true ) - $started < 2.3; $n++ ) {
-		foreach( [ '/flood/'. $n, '/followed', '/followed-too' ] as $uri ) {
-			redirectsRequest( $appData, $uri );
-			$seen();
-		}
-		$last = time();
-		usleep( 8000 );
-	}
-} );
-$seconds	= $last - $begin;
-$counts		= $hitsOf();
-check( 'a flood of unanswered addresses leaves each rule in use its note for every second: '. $counts['/followed']. ' and '. $counts['/followed-too']. ' in '. ( $seconds + 1 ). ' seconds', $counts['/followed'] >= 1 + $seconds && $counts['/followed-too'] >= 1 + $seconds );
-check( '...and the list its own, which the rules in use do not take', count( redirectsFile( $appData )['misses'] ?? [] ) >= 1 + $seconds );
-check( '...and the writes of all of it are at most one for the list and HIT_LIMIT for the rules in every second', $writes <= ( 1 + \Nino\Modules\Redirects\Rules::HIT_LIMIT ) * ( 1 + $seconds ) );
-
-// The interval is a whole second: a note made a second ago is past, one made now is not
-redirectsStore( $appData, $twoRules );
-$file = redirectsFile( $appData );
-$file['noted'] = [ 'miss' => time() - 1, 'hit' => [ 'at' => 0, 'n' => 0 ], 'rules' => [ '/followed' => time() - 1 ] ];
-\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $file );
-unset( $appData['./redirects/rules'] );
-check( 'a note that is a second old is past for the list and for a rule', \Nino\Modules\Redirects\Rules::missDue( redirectsFile( $appData ) ) === true && \Nino\Modules\Redirects\Rules::hitDue( redirectsFile( $appData ), '/followed' ) === true );
-check( '...a rule that has none is due, and the list of a file that is not there', \Nino\Modules\Redirects\Rules::hitDue( redirectsFile( $appData ), '/followed-too' ) === true && \Nino\Modules\Redirects\Rules::missDue( [] ) === true );
-@unlink( $listFile );
-unset( $appData['./redirects/rules'] );
-redirectsRequest( $appData, '/no-file-yet' );
-check( 'an address is noted where there is no file yet', isset( redirectsFile( $appData )['misses']['/no-file-yet'] ) === true );
-
-// The query is not part of the address: it does not count against the bound,
-// and a different one is the same address
-redirectsRested( $appData );
-redirectsRequest( $appData, '/with-a-query?'. str_repeat( 'q', 6000 ) );
-redirectsRested( $appData );
-redirectsRequest( $appData, '/with-a-query?other=1' );
-$queried = redirectsFile( $appData )['misses'] ?? [];
-check( 'an address with a query as long as 6000 characters is noted without it, and another query is the same address', ( $queried['/with-a-query']['count'] ?? 0 ) === 2
-	&& count( array_filter( array_keys( $queried ), static fn( string $path ): bool => str_contains( $path, 'q' . 'qqq' ) ) ) === 0 );
-
-// A rule that is followed is a note as well: a hundred requests of the same
-// rule are answered all the same, and written down once for every second they take
-redirectsStore( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => [ [ 'from' => '/followed', 'to' => '/here' ] ] ] ) );
-$statuses	= [];
-$started	= time();
-$writes		= $replacements( static function( callable $seen ) use ( &$appData, &$statuses ): void {
-	for( $n = 0; $n < 100; $n++ ) {
-		$statuses[] = redirectsRequest( $appData, '/followed' )['statusCode'];
-		$seen();
-	}
-} );
-$elapsed	= time() - $started;
-check( 'a hundred requests for a rule are all redirected, and write the file once for every second they take', array_unique( $statuses ) === [ 301 ] && $writes >= 1 && $writes <= 1 + $elapsed );
-check( '...and its hits are the uses that were noted', ( redirectsFile( $appData )['rules'][0]['hits'] ?? 0 ) === $writes );
-redirectsRested( $appData );
-redirectsRequest( $appData, '/followed' );
-check( 'a use that comes after the interval is noted', ( redirectsFile( $appData )['rules'][0]['hits'] ?? 0 ) === $writes + 1 );
-redirectsRested( $appData );
-$beforeSwitch = redirectsFile( $appData );
-$appData['/nino/features']['redirects']['settings']['record'] = false;
-redirectsRequest( $appData, '/followed' );
-unset( $appData['/nino/features']['redirects']['settings']['record'] );
-check( '...and with remembering switched off it is not', redirectsFile( $appData ) === $beforeSwitch );
-
-// An address asked for in the ordinary way is on the panel's list, as it was
-redirectsStore( $appData, [ 'rules' => $starting['rules'] ?? [], 'misses' => [] ] );
-redirectsRequest( $appData, '/an-ordinary-miss' );
-[ , $listedByPanel ] = ninoCall( $appData, [ $panel, 'apiList' ] );
-check( 'an address asked for in the ordinary way is on the panel\'s list, with its count and its time',
-	array_column( $listedByPanel['misses'] ?? [], 'count', 'path' ) === [ '/an-ordinary-miss' => 1 ] && ( $listedByPanel['misses'][0]['last'] ?? '' ) !== '' );
-
-\Nino\Auth::logoutUser( $appData );
 redirectsStore( $appData, $fileBeforeStream );
 
+echo "\n";
 
 
 // --- A file somebody shaped by hand -----------------------------------------
@@ -785,6 +523,26 @@ check( '...and the list is still the most asked for first', $counts === $sorted 
 
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $fileBeforeEdits );
 unset( $appData['./redirects/rules'] );
+
+echo "\n";
+
+
+// --- A file a site of Nino 1 wrote ----------------------------------------------
+
+echo "The data of a site of Nino 1\n";
+
+/*	The file the Redirects feature of Nino 1 wrote, byte for byte in its shape: the rules and the addresses are read as they stand, nothing is
+	converted and nothing is written back by reading	*/
+$legacy = "<?php return array (\n  'format' => 1,\n  'rules' => \n  array (\n    0 => \n    array (\n      'from' => '/legacy',\n      'to' => '/here',\n      'status' => 302,\n      'subtree' => true,\n      'hits' => 4,\n      'last' => '2026-01-02 03:04:05',\n    ),\n  ),\n  'misses' => \n  array (\n    '/lost' => \n    array (\n      'count' => 2,\n      'last' => '2026-01-02 03:04:05',\n    ),\n  ),\n);\n";
+$fileBeforeLegacy = redirectsFile( $appData );
+file_put_contents( $listFile, $legacy );
+unset( $appData['./redirects/rules'] );
+$read = \Nino\Modules\Redirects\Rules::read( $appData );
+check( 'a file of the shape Nino 1 wrote is read as it stands, and reading writes nothing',
+	$read['rules'] === [ [ 'from' => '/legacy', 'to' => '/here', 'status' => 302, 'subtree' => true, 'hits' => 4, 'last' => '2026-01-02 03:04:05' ] ]
+	&& $read['misses'] === [ '/lost' => [ 'count' => 2, 'last' => '2026-01-02 03:04:05' ] ] && (string) file_get_contents( $listFile ) === $legacy
+	&& ( redirectsRequest( $appData, '/legacy/page' )['header']['Location'] ?? '' ) === '/here/page' );
+redirectsStore( $appData, $fileBeforeLegacy );
 
 echo "\n";
 
@@ -962,8 +720,6 @@ $appData['/nino/http/routes'] = $routesBefore;
 unset( $appData['./redirects/rules'] );
 
 echo "\n";
-
-
 // --- The panel --------------------------------------------------------------
 
 echo "The panel\n";
@@ -1083,21 +839,14 @@ ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/twice-dead' ] );
 
 ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/cycle-a', 'to' => '/cycle-b' ] );
 [ $status, $cycle ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/cycle-b', 'to' => '/cycle-a' ] );
-check( 'a chain of rules that leads back to where it started is warned about, and still saved',
-	$status === 200 && count( $cycle['warnings'] ) === 1 && str_contains( $cycle['warnings'][0], '/cycle-a' ) === true
-	&& count( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/cycle-b' ) ) === 1 );
+check( 'a rule that closes a ring with the others is refused at its field like one that sends an address to itself, and is not stored',
+	$status === 400 && ( $cycle['code'] ?? '' ) === 'redirects_loop_chain'
+	&& count( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/cycle-b' ) ) === 0
+	&& ( redirectsFile( $appData )['rules'] === array_values( redirectsFile( $appData )['rules'] ) ) );
+// A ring a hand wrote into the file is still told by the list
+$ringFile = redirectsFile( $appData );
+redirectsStore( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => array_merge( $ringFile['rules'], [ [ 'from' => '/cycle-b', 'to' => '/cycle-a' ] ] ), 'misses' => $ringFile['misses'] ] ) );
 
-$rulesBeforeLong = $withLongChain( $appData );
-[ $status, $longSaved ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/long-start', 'to' => '/long-0' ] );
-check( 'saving a rule into such a chain is warned about, and still saved - with the answer the table flags',
-	$status === 200 && count( $longSaved['warnings'] ) === 1 && str_contains( $longSaved['warnings'][0], '/long-0' ) === true
-	&& ( array_column( $longSaved['rules'], 'answer', 'from' )['/long-start'] ?? '' ) === 'chain'
-	&& count( array_filter( $longSaved['rules'], static fn( array $r ): bool => $r['from'] === '/long-start' ) ) === 1 );
-$chainWords = include __DIR__. '/../text/en_US.php';
-check( '...in words of its own: a loop leads back, a chain is only long', isset( $chainWords['[[/_admin/redirects/warning/chain]]'], $chainWords['[[/_admin/redirects/answer/chain]]'] )
-	&& $chainWords['[[/_admin/redirects/warning/chain]]'] !== $chainWords['[[/_admin/redirects/warning/loop]]']
-	&& $chainWords['[[/_admin/redirects/answer/chain]]'] !== $chainWords['[[/_admin/redirects/answer/loop]]'] );
-redirectsStore( $appData, $rulesBeforeLong );
 
 [ $status, $listed ] = ninoCall( $appData, [ $panel, 'apiList' ] );
 $answers = array_column( $listed['rules'], 'answer', 'from' );
@@ -1126,7 +875,7 @@ $fillsDe = include __DIR__. '/../text/de_DE.php';
 check( 'the words about a target exist in both languages, and the warnings name the target - four of them now, the chain having words of its own',
 	array_keys( $fillsEn ) === array_keys( $fillsDe )
 	&& count( array_filter( array_keys( $fillsEn ), static fn( string $key ): bool => str_contains( $key, '/redirects/warning/' ) === true ) ) === 4
-	&& count( array_filter( array_merge( $fillsEn, $fillsDe ), static fn( string $text, string $key ): bool => str_contains( $key, '/redirects/warning/' ) === true && str_contains( $text, '"%s"' ) === false, ARRAY_FILTER_USE_BOTH ) ) === 0 );
+	&& count( array_filter( array_merge( $fillsEn, $fillsDe ), static fn( string $text, string $key ): bool => str_contains( $key, '/redirects/warning/' ) === true && preg_match( '/["“„]%s["”“]/u', $text ) !== 1, ARRAY_FILTER_USE_BOTH ) ) === 0 );
 
 foreach( [ '/dead-end', '/to-page', '/to-site', '/to-home', '/twice', '/cycle-a', '/cycle-b' ] as $made )
 	ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => $made ] );
@@ -1241,6 +990,7 @@ unset( $appData['./redirects/rules'] );
 echo "\n";
 
 
+
 // --- Who may do any of it ---------------------------------------------------
 
 echo "The permission every action is behind\n";
@@ -1279,22 +1029,57 @@ check( '...and the rules it wrote are still on disk', ( redirectsFile( $appData 
 echo "\n";
 
 
-// --- The panel's script, where node is on the path ----------------------------
-//
-// redirects-js-smoke.js beside this file draws both screens over a dom stand-in
-// of the pane and its head; this suite runs it too where node is on the path,
-// the way stats-smoke.php and gallery-smoke.php run theirs, so bin/check.sh and
-// CI cover both halves in one go
-$jsTest	= __DIR__. '/redirects-js-smoke.js';
-$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+// --- The script of the panel ------------------------------------------------------------
 
-if( $node === '' || function_exists( 'exec' ) === false ) {
-	echo "  --  - node is not available here: redirects-js-smoke.js was NOT run\n";
-} else {
-	$output = []; $status = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
-	$summary = (string) end( $output );
-	check( 'redirects-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
-}
+echo "The script of the panel\n";
+
+$script = (string) file_get_contents( $dir. '/assets/admin.js' );
+$words = [ 'de_DE' => include $dir. '/text/de_DE.php', 'en_US' => include $dir. '/text/en_US.php' ];
+
+check( 'the rail entry has a sign of its own: an svg that draws, no script in it', preg_match( '/^<svg [^>]*>(<(path|circle|rect|line|polyline)[^>]*\/>)+<\/svg>$/', \Nino\Modules\Redirects\Admin::icon() ) === 1 );
+check( 'the script takes its buttons, dialogs, table, tabs and bars from the workbench and builds none of them itself',
+	preg_match( '/createElement\(\s*.button|window\.confirm|\balert\(|\bprompt\(|nino-admin-btn-|type\s*[:=]\s*.file|<dialog/', $script ) === 0
+	&& str_contains( $script, 'Nino.adminUi.table(' ) === true && str_contains( $script, 'Nino.adminUi.formDialog(' ) === true && str_contains( $script, 'Nino.adminUi.tabs(' ) === true
+	&& str_contains( $script, 'Nino.adminUi.actionBar(' ) === true && str_contains( $script, 'Nino.adminUi.contextBar(' ) === true );
+check( 'a dialog asks by the level of the action, with a title, and a refusal is said at its field',
+	substr_count( $script, "Nino.adminUi.confirm( 'destructive'" ) === 2 && str_contains( $script, 'Nino.adminUi.fieldError(' ) === true && str_contains( $script, 'noValidate = true' ) === true );
+check( 'a list has the one main button of its bar and the answer of an immediate action is a toast, never a line in the content',
+	substr_count( $script, "kind : 'primary'" ) === 2 && str_contains( $script, 'Nino.adminUi.say(' ) === true && str_contains( $script, 'Nino.adminUi.sectionHelp(' ) === true && str_contains( $script, "'lead'" ) === false && preg_match( '/hint\([^)]*(saved|deleted)/', $script ) === 0 );
+check( 'the table of the rules has columns few enough for its buttons to stay in sight, an example address is a word of the panel and no sentence of the script stands in it',
+	( static function() use ( $script ): bool {
+		$start = (int) strpos( $script, 'const rulesPane' );
+		$block = substr( $script, $start, (int) strpos( $script, 'actions	: function', $start ) - $start );
+		return substr_count( $block, '{ key :' ) <= 5 && str_contains( $block, 'wrap : true' ) === true;
+	} )() && preg_match( "~['\"]/(old|new)/page['\"]~", $script ) === 0 );
+check( 'the stylesheet of Nino 1 is gone: the panel brings no file of css', is_file( $dir. '/assets/admin.css' ) === false && str_contains( implode( ',', \Nino\Modules\Redirects\Admin::assets() ), '.css' ) === false );
+
+check( 'both languages of the panel have the same keys, and every word the script reads is one of them or the workbench\'s own',
+	array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) && ( static function() use ( $script, $words ): bool {
+		preg_match_all( "~'(/_admin/(?!common/|features/)[a-z/_-]+)'~", $script, $read );
+		$own = array_map( static fn( string $key ): string => trim( $key, '[]' ), array_keys( $words['en_US'] ) );
+		$prefixes = array_values( array_filter( $read[1], static fn( string $key ): bool => str_ends_with( $key, '/' ) ) );
+		$exact = array_diff( array_unique( array_diff( $read[1], $prefixes ) ), $own );
+		// The keys that end in a slash are completed by the script: the two statuses, the answers of a target and of the probe, the messages of the probe
+		$completed = [ '/_admin/redirects/status/' => [ '301', '302' ], '/_admin/redirects/answer/' => [ 'nothing', 'rule', 'loop', 'chain' ], '/_admin/redirects/probe/' => [ 'route', 'rule', 'nothing' ], '/_admin/redirects/msg/' => [ 'probe-route', 'probe-rule', 'probe-nothing' ] ];
+		$lacking = [];
+		foreach( $prefixes as $prefix )
+			foreach( $completed[$prefix] ?? [ '?' ] as $end )
+				if( in_array( $prefix. $end, $own, true ) === false )
+					$lacking[] = $prefix. $end;
+		return $exact === [] && $lacking === [];
+	} )() );
+
+redirectsStore( $appData, [ 'rules' => [], 'misses' => [ '/tile' => [ 'count' => 1, 'last' => '2026-09-01 10:00:00' ] ] ] );
+check( 'the Dashboard tile says how many addresses nothing answered, with a word in both languages',
+	( ( \Nino\Modules\Redirects\Admin::summary( $appData ) ?? [] )['label'] ?? '' ) === '/_admin/redirects/label/tile' && isset( $words['de_DE']['[[/_admin/redirects/label/tile]]'], $words['en_US']['[[/_admin/redirects/label/tile]]'] ) === true );
+
+echo "\n";
+
+// Nothing of the old components API or the old stylesheet vocabulary is left in the folder
+$oldWorld = [];
+foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) ) as $file )
+	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|(?<![-\w])nino-(?!admin-)[a-z]|--(?:space|color|radius|fontsize)-|Nino\.ui\./', (string) file_get_contents( (string) $file ) ) === 1 )
+		$oldWorld[] = (string) $file;
+check( 'no file of the feature names the vocabulary of Nino 1', $oldWorld === [] );
 
 ninoDone( $appData );

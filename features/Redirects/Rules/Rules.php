@@ -83,6 +83,9 @@ namespace Nino\Modules\Redirects {
 		// address it has been at is another thing, and is called a loop
 		public const int HOPS = 8;
 
+		// The longest a target may be, a path or an address of another site, in bytes
+		public const int TARGET_LENGTH = 2048;
+
 		/**
 		 *	The stored file, normalised
 		 *
@@ -324,7 +327,8 @@ namespace Nino\Modules\Redirects {
 
 				$path = self::path( $value );
 
-				return preg_match( '#^/[^/]*:#', $path ) === 1 ? '' : $path;
+				// The same length as an address of another site may have: a header takes no more
+				return preg_match( '#^/[^/]*:#', $path ) === 1 || strlen( $path ) > self::TARGET_LENGTH ? '' : $path;
 			}
 
 			if( str_starts_with( $value, 'https://' ) === false )
