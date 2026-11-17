@@ -7,7 +7,7 @@
  *							of facts, one under the other. Bundled while the feature is on (see
  *							the panel's assets()), so the same layer rules apply - the shell's
  *							stylesheet fixes the layer order, this one only ever adds to
- *							nino.tool, scoped to the card's own id.
+ *							nino.tool, scoped to the card's own class.
  */
 
 @layer nino.tool {
@@ -15,29 +15,28 @@
 /* The greeting: a large line, a sentence and a small line of facts, one under
    the other on the card, in the shell's own text colours so both themes keep
    their contrast. It is static text - nothing here moves */
-#admin-dashboard-greeting {
+.greeting-card {
 	display: grid;
-	gap: .3rem;
+	gap: var(--nino-admin-space-2);
 }
-#admin-dashboard-greeting p {
+.greeting-card p {
 	margin: 0;
 	overflow-wrap: anywhere;
 }
-#admin-dashboard-greeting .nino-admin-greeting-hello {
+.greeting-card .greeting-hello {
 	color: var(--editor-text);
-	font-size: 1.5rem;
-	font-weight: 650;
+	font-size: var(--nino-admin-text-xl);
+	font-weight: var(--nino-admin-weight-strong);
 	line-height: 1.25;
 }
-#admin-dashboard-greeting .nino-admin-greeting-sentence {
+.greeting-card .greeting-sentence {
 	color: var(--editor-text);
-	font-size: .95rem;
+	font-size: var(--nino-admin-text-lg);
 	line-height: 1.45;
 }
-#admin-dashboard-greeting .nino-admin-greeting-facts {
-	margin-top: .15rem;
+.greeting-card .greeting-facts {
 	color: var(--editor-text-secondary);
-	font-size: .8rem;
+	font-size: var(--nino-admin-text-sm);
 	line-height: 1.4;
 }
 

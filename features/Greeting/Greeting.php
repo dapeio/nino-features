@@ -12,9 +12,8 @@ namespace Nino\Modules {
 	 *												and the sentences, and nothing else - the words, the hour and
 	 *												the dice are the script's (see assets/admin.js)
 	 *
-	 *												The three switches are keys of config.php, and the sentences
-	 *												the elements of the type TYPE: a project that holds them
-	 *												keeps them under these names
+	 *												The three lines are the settings hello, sentence and facts of
+	 *												the manifest, and the sentences the elements of the type TYPE
 	 */
 	class Greeting {
 
@@ -22,12 +21,8 @@ namespace Nino\Modules {
 		// its three fields that say when it fits
 		public const string TYPE = '/greetings';
 
-		// The three lines of the card and the key of config.php that switches each off, on until it is
-		public const array LINES = [
-			'hello' 		=> '/nino/admin/greeting/hello',
-			'sentence' 	=> '/nino/admin/greeting/sentence',
-			'facts' 		=> '/nino/admin/greeting/facts',
-		];
+		// The three lines of the card; each is a setting of the manifest of the same name
+		public const array LINES = [ 'hello', 'sentence', 'facts' ];
 
 		private const array PHASES 		= [ 'any', 'early', 'morning', 'noon', 'afternoon', 'evening', 'night' ];
 		private const array DAYS 			= [ 'any', 'monday', 'friday', 'weekend' ];
@@ -61,15 +56,15 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Whether a line is on: every one is until a project switched it off
+		 *	Whether a line is on: the setting of that name, on until it is switched off
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$line					One of the keys of LINES
+		 *	@param		string		$line					One of LINES
 		 *
 		 *	@return 	bool
 		 */
 		public static function lineOn( array &$appData, string $line ): bool {
-			return ( $appData[ self::LINES[$line] ] ?? true ) !== false;
+			return \Nino\Features::setting( $appData, 'greeting', $line, true ) === true;
 		}
 
 		/**
@@ -88,7 +83,7 @@ namespace Nino\Modules {
 		public static function card( array &$appData ): array {
 
 			$show = [];
-			foreach( array_keys( self::LINES ) as $line )
+			foreach( self::LINES as $line )
 				$show[$line] = self::lineOn( $appData, $line );
 
 			$current 	= \Nino\Auth::getCurrentUser( $appData );

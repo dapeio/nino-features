@@ -1,8 +1,7 @@
 /**
  *	Nino features
  *	admin.js		The Greeting feature in the workbench, two things in one script:
- *							the card the Dashboard opens with, and the panel that switches its
- *							three lines.
+ *							the card the Dashboard opens with, and the panel that shows it.
  *
  *							The card is an area at the head of the Dashboard
  *							(Nino.admin.dashboard.head, answered by the callback of
@@ -14,7 +13,9 @@
  *							workbench does not sit in the time zone of the server. now() and
  *							random() are the two things a test replaces.
  *
- *							The panel is three switches, saved in one request.
+ *							The panel shows the same card for this account. The three lines are
+ *							settings of the manifest, which the Features panel puts in the panel
+ *							as its Settings tab.
  */
 
 ( function(wn,dc) {
@@ -26,7 +27,7 @@
 	const greeting = {
 
 		// The last sentence shown, in the session of the browser tab - nothing that outlives it
-		memory : 'nino-admin-greeting',
+		memory : 'greeting-last',
 
 		/**
 		 *	@return		{Date}										The clock of the browser
@@ -286,11 +287,11 @@
 
 			const element = dc.createElement('div');
 			element.id = 'admin-dashboard-greeting';
-			element.className = 'nino-admin-card nino-admin-greeting';
+			element.className = 'nino-admin-card greeting-card';
 
 			lines.forEach( function( line ) {
 				const p = dc.createElement('p');
-				p.className = 'nino-admin-greeting-'+ line[0];
+				p.className = 'greeting-'+ line[0];
 				p.textContent = line[1];
 				element.appendChild( p );
 			} );
@@ -310,91 +311,21 @@
 
 	// --- the panel -----------------------------------------------------------
 
-	// The three lines, in the order the card has them: the key of the answer and of the word of its label
-	const LINES = [ 'hello', 'sentence', 'facts' ];
-
-	let boxes = {};
-	let line = null;
-	let saved = {};
-
-	const current = function() {
-		const now = {};
-		LINES.forEach( function( name ) { now[name] = boxes[name].checked === true } );
-		return now;
-	};
-
-	const isDirty = function() {
-		return LINES.some( function( name ) { return boxes[name] !== undefined && boxes[name].checked !== saved[name] } );
-	};
-
-	const save = function( done ) {
-
-		line.saving();
-
-		Nino.admin.greeting.call( 'save', { lines : current() }, function( status, response ) {
-
-			if( status !== 200 ) {
-				line.error( status, response, '/_admin/greeting/error/save' );
-				done( false );
-				return;
-			}
-
-			LINES.forEach( function( name ) {
-				boxes[name].checked = saved[name] = response.lines[name] === true;
-			} );
-			line.saved();
-			if( typeof Nino.admin.dirty === 'object' )
-				Nino.admin.dirty.refresh();
-			done( true );
-		} );
-	};
-
+	// The card as the Dashboard draws it for this account, or the sentence that says all three lines are off
 	Nino.admin.greeting = Nino.adminUi.panel( {
 		uri		: 'greeting',
 		mount	: 'greeting-list',
-		dirty	: { isDirty : isDirty, save : save, discard : function() { LINES.forEach( function( name ) { boxes[name].checked = saved[name] } ) } },
+		show	: 'always',
 		render	: function( data, panel ) {
 
 			const mount = panel.mount();
-			const form = dc.createElement('form');
-			const bar = Nino.adminUi.actionBar( Nino.adminUi.el( 'div' ) );
-
-			boxes = {};
-			saved = {};
-
-			if( hasHead() === false )
-				form.appendChild( Nino.adminUi.notice( Nino.content.getText('/_admin/greeting/hint/head') ) );
-
-			const intro = dc.createElement('p');
-			intro.className = 'nino-admin-hint';
-			intro.textContent = Nino.content.getText('/_admin/greeting/intro');
-			form.appendChild( intro );
-
-			LINES.forEach( function( name ) {
-
-				const field = Nino.adminUi.switchField( {
-					key 			: name,
-					checked 	: data.lines[name] === true,
-					label 		: Nino.content.getText('/_admin/greeting/label/'+ name),
-					hint 			: Nino.content.getText('/_admin/greeting/hint/'+ name),
-				} );
-
-				boxes[name] = field.querySelector('input');
-				saved[name] = boxes[name].checked;
-				form.appendChild( field );
-			} );
-
-			line = Nino.adminUi.status( Nino.adminUi.el( 'span' ) );
-			line.bind( form, isDirty );
-
-			form.addEventListener( 'submit', function( ev ) { ev.preventDefault(); save( function() {} ) } );
-
-			bar.appendChild( line.element );
-			bar.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/greeting/label/save'), function() { save( function() {} ) }, { className : 'nino-admin-btn-primary' } ) );
-			form.appendChild( bar );
+			const card = greeting.render( data );
 
 			mount.innerHTML = '';
-			mount.appendChild( form );
+			mount.appendChild( card !== null ? card : Nino.adminUi.emptyState(
+				Nino.content.getText('/_admin/greeting/empty'),
+				Nino.adminUi.button( Nino.content.getText('/_admin/features/tab/settings'), function() { wn.location.hash = '#greeting-settings' } )
+			) );
 		},
 	} );
 

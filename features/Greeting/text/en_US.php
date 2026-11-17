@@ -10,18 +10,9 @@ return [
 	// The rail entry, named by Admin::nav() - and the name the head over the panel's screen shows
 	'[[/_admin/greeting/nav]]'	=> 'Greeting',
 
-	// The panel: what it says of the card and of each of its three lines, the button, and what it says of a failure the server gave no word for
-	'[[/_admin/greeting/intro]]'	=> 'The card the dashboard greets you with has three lines. Each can be switched off on its own; with all three off, the card is not drawn.',
-	'[[/_admin/greeting/label/hello]]'	=> 'Greeting with the name',
-	'[[/_admin/greeting/hint/hello]]'	=> 'The large line: the greeting for the time of day and the name the account carries under Users.',
-	'[[/_admin/greeting/label/sentence]]'	=> 'Sentence of the day',
-	'[[/_admin/greeting/hint/sentence]]'	=> 'A random sentence for the hour, the weekday or the occasion. The sentences are the element type Greetings and can be changed there.',
-	'[[/_admin/greeting/label/facts]]'	=> 'Facts about the last visit',
-	'[[/_admin/greeting/hint/facts]]'	=> 'The small line: when you were last here, what the log has recorded since and how old the last backup is.',
-	'[[/_admin/greeting/label/save]]'	=> 'Save',
+	// The panel: the card as the Dashboard draws it, the sentence for a card with all three lines off, and what it says of a failure the server gave no word for
+	'[[/_admin/greeting/empty]]'	=> 'All three lines of the card are switched off, so the Dashboard draws none.',
 	'[[/_admin/greeting/error/load]]'	=> 'It could not be loaded.',
-	'[[/_admin/greeting/error/save]]'	=> 'It could not be saved.',
-	'[[/_admin/greeting/hint/head]]'	=> 'This Nino has no place at the head of its Dashboard for the card of a feature: the Dashboard draws its own greeting, and the three switches are the ones that greeting reads. Update Nino to have this feature draw the card.',
 
 	// The words of the card itself: the formula of the time of day, and the facts about the last visit
 	'[[/_admin/greeting/hello/early]]'	=> 'Good morning',

@@ -10,18 +10,9 @@ return [
 	// The rail entry, named by Admin::nav() - and the name the head over the panel's screen shows
 	'[[/_admin/greeting/nav]]'	=> 'Begrüßung',
 
-	// The panel: what it says of the card and of each of its three lines, the button, and what it says of a failure the server gave no word for
-	'[[/_admin/greeting/intro]]'	=> 'Die Karte, mit der das Dashboard Dich begrüßt, hat drei Zeilen. Jede lässt sich einzeln abschalten; sind alle drei aus, erscheint die Karte nicht.',
-	'[[/_admin/greeting/label/hello]]'	=> 'Gruß mit Namen',
-	'[[/_admin/greeting/hint/hello]]'	=> 'Die große Zeile: die Grußformel zur Tageszeit und der Name, den das Konto unter Nutzer trägt.',
-	'[[/_admin/greeting/label/sentence]]'	=> 'Satz zum Tag',
-	'[[/_admin/greeting/hint/sentence]]'	=> 'Ein zufälliger Satz zur Tageszeit, zum Wochentag oder zum Anlass. Die Sätze sind der Elementtyp Begrüßungen und lassen sich dort ändern.',
-	'[[/_admin/greeting/label/facts]]'	=> 'Angaben zum letzten Besuch',
-	'[[/_admin/greeting/hint/facts]]'	=> 'Die kleine Zeile: wann Du zuletzt hier warst, was seitdem im Protokoll steht und wie alt das letzte Backup ist.',
-	'[[/_admin/greeting/label/save]]'	=> 'Speichern',
+	// The panel: the card as the Dashboard draws it, the sentence for a card with all three lines off, and what it says of a failure the server gave no word for
+	'[[/_admin/greeting/empty]]'	=> 'Alle drei Zeilen der Karte sind ausgeschaltet, das Dashboard zeichnet also keine.',
 	'[[/_admin/greeting/error/load]]'	=> 'Es konnte nicht geladen werden.',
-	'[[/_admin/greeting/error/save]]'	=> 'Es konnte nicht gespeichert werden.',
-	'[[/_admin/greeting/hint/head]]'	=> 'Dieses Nino hat am Kopf seines Dashboards keinen Platz für die Karte eines Features: Das Dashboard zeichnet seine eigene Begrüßung, und die drei Schalter sind die, die diese Begrüßung liest. Aktualisiere Nino, damit dieses Feature die Karte zeichnet.',
 
 	// The words of the card itself: the formula of the time of day, and the facts about the last visit
 	'[[/_admin/greeting/hello/early]]'	=> 'Guten Morgen',
