@@ -45,6 +45,18 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The link to the script bundle of a page that is the picture of a block: none
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template			The link, as the bundle's shortcode has it
+		 *
+		 *	@return 	string
+		 */
+		public static function noScript( array &$appData, string $template ): string {
+			return '';
+		}
+
+		/**
 		 *	The first stage of a request: does it ask for the draft of a page, and may it have it. A request without the query is not looked at; one with it that
 		 *	may not have the draft - another session, an account without the right, a token that ran out - is the page as the visitors have it
 		 *
@@ -58,7 +70,15 @@ namespace Nino\Modules {
 			if( isset( $request['/nino/http/request']['query'][\Nino\Preview::QUERY] ) === false )
 				return;
 
+			// A draft of a page, or the small picture of a block in the dialog: a page that is drawn without the trace, and without the scripts of the site
 			$held = \Nino\Preview::held( $appData, $request, self::KIND, self::PERM );
+			$tile = false;
+
+			if( $held === null ) {
+
+				$held = \Nino\Preview::held( $appData, $request, \Nino\Modules\Builder\Library::KIND, self::PERM );
+				$tile = true;
+			}
 
 			if( $held === null )
 				return;
@@ -68,7 +88,11 @@ namespace Nino\Modules {
 			if( is_string( $draft['template'] ?? null ) === false || is_string( $draft['source'] ?? null ) === false || is_array( $draft['fills'] ?? null ) === false )
 				return;
 
-			\Nino\Preview::trace( $appData );
+			if( $tile === true )
+				\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/js', [ self::class, 'noScript' ] );
+			else
+				\Nino\Preview::trace( $appData );
+
 			\Nino\Modules\Template::swap( $appData, '/templates/'. $draft['template'], $draft['source'] );
 
 			// The language of the view: the words of the draft are the ones of that language, and the page is drawn in it for this request only

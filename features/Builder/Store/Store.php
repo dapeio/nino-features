@@ -90,10 +90,11 @@ namespace Nino\Modules\Builder {
 		 *	@param		mixed			$tree					What the person sent
 		 *	@param		mixed			$texts				key => language => text
 		 *	@param		mixed			$copies				slot of a copy => the slot of the original it is made from
+		 *	@param		mixed			$inserted			id of the root of a block that was put in => the key of the block, which \Nino\Blocks is asked for
 		 *
-		 *	@return 	array											'source', 'tree', 'sources', 'formats', 'texts' (key => language => text as it is kept), 'slots' (the slots of the copies, uri => slot) - or 'failure' => [ status, message, code, params, field ]
+		 *	@return 	array											'source', 'draft' (the source as a draft draws it), 'tree', 'sources', 'formats', 'texts' (key => language => text as it is kept), 'slots' (the slots of the copies and of the blocks put in, uri => slot), 'files' - or 'failure' => [ status, message, code, params, field ]
 		 */
-		public static function prepare( array &$appData, string $template, array $state, mixed $tree, mixed $texts, mixed $copies = [] ): array {
+		public static function prepare( array &$appData, string $template, array $state, mixed $tree, mixed $texts, mixed $copies = [], mixed $inserted = [] ): array {
 
 			$registry = \Nino\Components::components( $appData );
 			$canonical = \Nino\Modules\Builder\Tree::canonical( $appData, $tree );
@@ -107,7 +108,25 @@ namespace Nino\Modules\Builder {
 
 			$taken = \Nino\Modules\Builder\Tree::taken( $old, $registry, array_merge( array_keys( $state['texts'] ), array_keys( $state['slots'] ) ) );
 
-			if( ( $why = \Nino\Modules\Builder\Tree::refused( $old, $nodes, $registry, $frame, $taken ) ) !== null )
+			// The blocks that are put in: each is a block that \Nino\Blocks offers now, and the rule holds the tree to it
+			$blocks = [];
+			$offers = [];
+
+			if( is_array( $inserted ) === false || count( $inserted ) > self::MAX_KEYS )
+				return [ 'failure' => [ 400, 'the blocks are none', 'builder_block', [], 'blocks' ] ];
+
+			foreach( $inserted as $id => $key ) {
+
+				$block = is_string( $id ) === true && \Nino\Modules\Builder\Tree::isId( $id ) === true && is_string( $key ) === true ? \Nino\Modules\Builder\Library::block( $appData, $key ) : null;
+
+				if( $block === null )
+					return [ 'failure' => [ 403, 'the block is none that is offered', 'builder_block', [], 'blocks' ] ];
+
+				$blocks[$id] = $block;
+				$offers[$id] = $block['tree'][0];
+			}
+
+			if( ( $why = \Nino\Modules\Builder\Tree::refused( $old, $nodes, $registry, $frame, $taken, $offers ) ) !== null )
 				return [ 'failure' => [ 403, 'the page may not be changed like that: '. $why, 'builder_refused_'. $why, [], 'tree' ] ];
 
 			$nodes = self::_fixed( $nodes, $registry );
@@ -122,6 +141,32 @@ namespace Nino\Modules\Builder {
 
 			$sources = \Nino\Modules\Builder\Tree::sources( $nodes, $registry, $template );
 			$formats = [];
+
+			// The blocks that were put in and are on the top level with an id the page did not have: the words they read in an attribute - the text of a link, an alt - are
+			// words of the block as well, as plain text
+			$fresh = [];
+
+			foreach( $nodes as $node )
+				if( isset( $node['n'] ) === true && ( $idName = \Nino\Modules\Builder\Tree::idAttribute( $registry[$node['n']] ?? [] ) ) !== '' && is_string( $node['a'][$idName] ?? null ) === true
+					&& isset( $blocks[$node['a'][$idName]] ) === true && in_array( $node['a'][$idName], $taken, true ) === false )
+					$fresh[$node['a'][$idName]] = $blocks[$node['a'][$idName]];
+
+			// What they bring for those words, by language; and which id of a copy is which id of the block it was made from, whose words it takes
+			$brought = [];
+			$copyOf = [];
+
+			foreach( $fresh as $id => $block )
+				foreach( \Nino\Modules\Builder\Library::places( $block, $id, $template ) as $place )
+					if( $place['kind'] === 'text' )
+						$brought[$place['key']] = array_map( static fn( array $words ): mixed => $words[$place['name']] ?? null, $block['texts'] );
+
+			foreach( $nodes as $node )
+				if( isset( $node['n'] ) === true && ( $idName = \Nino\Modules\Builder\Tree::idAttribute( $registry[$node['n']] ?? [] ) ) !== '' && is_string( $node['a'][$idName] ?? null ) === true && in_array( $node['a'][$idName], $taken, true ) === false )
+					foreach( $old as $original )
+						if( isset( $original['n'] ) === true && \Nino\Modules\Builder\Tree::likeBlock( $node, $original, $registry ) === true ) {
+							$copyOf += \Nino\Modules\Builder\Tree::pairs( $original, $node, $registry );
+							break;
+						}
 
 			foreach( $sources as $entry )
 				if( $entry['editable'] === true && $entry['key'] !== '' )
@@ -147,8 +192,26 @@ namespace Nino\Modules\Builder {
 				if( isset( $reads[$key] ) === false )
 					continue;
 
-				if( isset( $formats[$key] ) === false )
-					return [ 'failure' => [ 403, 'the key is not one of a text', 'builder_key', [], 'texts' ] ];
+				// A word that a call reads in an attribute - the text of a link, an alt - is no word the page is written in: it is kept as it is saved, and it is new only as the
+				// block that was put in brings it or as the original of the copy has it, never as a person wrote it, and never as an address that runs a script or leaves the site
+				if( isset( $formats[$key] ) === false ) {
+
+					if( $values === array_intersect_key( (array) ( $state['texts'][$key] ?? [] ), $values ) )
+						continue;
+
+					$parts = explode( '/', $key );
+					$origin = count( $parts ) === 5 && isset( $copyOf[$parts[3]] ) === true ? '/template/'. $template. '/'. $copyOf[$parts[3]]. '/'. $parts[4] : '';
+					$may = isset( $brought[$key] ) === true || $origin !== '';
+
+					foreach( $values as $locale => $text )
+						$may = $may && is_string( $text ) === true && preg_match( '#^\s*(?:(?:javascript|data|vbscript):|//)#i', $text ) !== 1
+							&& ( $text === ( $brought[$key][$locale] ?? null ) || $text === ( $brought[$key][\Nino\Blocks::FALLBACK] ?? null ) || $text === ( $state['texts'][$origin][$locale] ?? null ) );
+
+					if( $may === false )
+						return [ 'failure' => [ 403, 'the key is not one of a text', 'builder_key', [], 'texts' ] ];
+
+					$formats[$key] = 'plain';
+				}
 
 				foreach( $values as $locale => $text ) {
 
@@ -196,7 +259,31 @@ namespace Nino\Modules\Builder {
 				}
 			}
 
-			return [ 'source' => $source, 'tree' => $nodes, 'sources' => $sources, 'formats' => $formats, 'texts' => $kept, 'raw' => $raw, 'reads' => array_keys( $reads ), 'images' => array_keys( $images ), 'slots' => $slots, 'shown' => $shown, 'files' => $files, 'registry' => $registry ];
+			// The slots of the blocks that were put in: each picture of the block is a slot of the namespace of its new id, with the size and the name the block says and
+			// the picture of the kernel as its file. Where the page has the slot already - it was copied above, or the id was the page's - nothing is made
+			$pictures = [];
+			$locale = \Nino\Locales::getNativeLocale( $appData );
+
+			foreach( $fresh as $id => $block ) {
+
+				foreach( \Nino\Modules\Builder\Library::places( $block, $id, $template ) as $place ) {
+
+					$spec = $block['images'][$place['name']] ?? null;
+
+					if( $place['kind'] !== 'image' || $spec === null || isset( $images[$place['key']] ) === false || isset( $slots[$place['key']] ) === true || isset( $state['slots'][$place['key']] ) === true )
+						continue;
+
+					$file = ltrim( $place['key'], '/' ). '.svg';
+					$label = (string) ( $spec['label'][$locale] ?? $spec['label'][\Nino\Blocks::FALLBACK] ?? reset( $spec['label'] ) );
+					$slots[$place['key']] = [ 'label' => $label, 'width' => $spec['width'], 'height' => $spec['height'], 'filename' => $file ];
+					$files[$file] = $spec['placeholder'];
+					$pictures[$place['key']] = $spec['placeholder'];
+				}
+			}
+
+			$draft = $pictures === [] ? $source : \Nino\Markup::write( \Nino\Modules\Builder\Tree::shown( $nodes, $sources, $pictures ), \Nino\Components::containers( $appData ) );
+
+			return [ 'source' => $source, 'draft' => $draft, 'tree' => $nodes, 'sources' => $sources, 'formats' => $formats, 'texts' => $kept, 'raw' => $raw, 'reads' => array_keys( $reads ), 'images' => array_keys( $images ), 'slots' => $slots, 'shown' => $shown, 'files' => $files, 'registry' => $registry ];
 		}
 
 		/**
@@ -439,7 +526,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		array			&$target			(reference) The state to write, whose slots get the name of their file
-		 *	@param		array			$files				new file => the file it is made from
+		 *	@param		array			$files				new file => the file it is made from, or the reference of the picture of the kernel it is
 		 *	@param		array			&$made				(reference) What was made
 		 *
 		 *	@return 	void
@@ -448,7 +535,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( $files as $new => $old ) {
 
-				$bytes = \Nino\Images::read( $appData, (string) $old );
+				$bytes = isset( \Nino\Images::PLACEHOLDERS[(string) $old] ) === true ? \Nino\Images::PLACEHOLDERS[(string) $old]['svg'] : \Nino\Images::read( $appData, (string) $old );
 
 				if( $bytes !== false && \Nino\Images::restore( $appData, (string) $new, $bytes ) === true ) {
 					$made[] = (string) $new;

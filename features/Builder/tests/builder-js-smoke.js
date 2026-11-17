@@ -4,7 +4,8 @@
  *											past a locked piece, the copy with the ids of the rule and its words, the steps of the undo - and what it says:
  *
  *											A. the words: every key the script asks for is a fill of both interface languages, and none is written into it
- *											B. the model: a move, a copy, a removal, a text, and twenty mixed steps there and back to the tree they began with
+ *											B. the model: a move, a copy, a removal, a text, and twenty mixed steps there and back to the tree they began with; a block that is put
+ *											   in - its ids by the rule, its words in the languages of the site, the places where it can be put in, its undo
  *
  *											The script runs in a context of its own with the few names of the workbench it touches while it is loaded; the screen it draws
  *											is looked at in a browser. builder-smoke.php runs this where node is on the path.
@@ -50,6 +51,10 @@ const words = {
 	[ 'copy', 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key+ '-short' ) } );
 	[ 'section-wrap', 'header-wrap', 'footer-wrap' ].forEach( function( key ) { asked.add( 'kind/'+ key ) } );
 	[ 'mobile', 'tablet', 'desktop', 'frame-header', 'frame-footer' ].forEach( function( key ) { asked.add( 'word/'+ key ) } );
+	// The places of the dialog: the categories, the origins and the two ways a place is named
+	[ 'all', 'intro', 'content', 'trust', 'offer', 'action', 'contact' ].forEach( function( key ) { asked.add( 'insert/cat-'+ key ) } );
+	[ 'basis', 'project' ].forEach( function( key ) { asked.add( 'insert/origin-'+ key ) } );
+	[ 'before', 'after' ].forEach( function( key ) { asked.add( 'label/insert-'+ key ) } );
 	// The failure of a load is the one the shell's panel() asks for by the name of the panel
 	asked.add('error/load');
 	Array.from( asked ).filter( function( key ) { return key.slice( -1 ) === '-' } ).forEach( function( key ) { asked.delete( key ) } );
@@ -72,7 +77,7 @@ const context = {
 	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' } },
 };
 
-context.window = { Nino : { admin : {}, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text } }, content : { getText : function() { return '' } } }, document : context.document };
+context.window = { Nino : { admin : {}, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className ) { const attributes = {}; return { tag : tag, className : className, attributes : attributes, dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} } } }, content : { getText : function() { return '' } } }, document : context.document };
 context.Nino = context.window.Nino;
 vm.createContext( context );
 vm.runInContext( script, context );
@@ -206,6 +211,95 @@ check( 'B. a text that is only clicked is no change and no step of the undo, one
 	const written = builder.settle( entry, '', 'Servus', 'Hallo' );
 
 	return clicked === false && steps === 0 && written === true && S.undo.length === 1 && S.texts['/template/page-home/hero/title'].de_DE === 'Servus' && builder.isDirty() === true;
+} )() );
+
+// --- the dialog: a block that is put in --------------------------------------------------------------------
+
+const heroBlock = function() {
+	return { key : 'hero-full', id : 'hero', known : { 'section-wrap' : S.known['section-wrap'], 'section-col' : S.known['section-col'], 'section-title' : S.known['section-title'] },
+		tree : [ section( 'hero', 'T' ) ],
+		texts : { de_DE : { title : 'Titel', text : 'Text', '1-text' : 'Innen' }, en_US : { title : 'Title', text : 'Text', '1-text' : 'Inside' } },
+		slots : [ { name : 'title', scope : '', word : 'title', kind : 'text' }, { name : '1-text', scope : '1', word : 'text', kind : 'text' }, { name : 'background', scope : '', word : 'background', kind : 'image' } ] };
+};
+
+check( 'B. a block is put in with its own id where the page has none, with the next number where it has, and what is inside begins with the id of the root - hero-2 and hero-2-1', ( function() {
+	fresh();
+	S.oldIds = new Set( [ 'hero', 'start' ] );
+	S.locales = [ { locale : 'de_DE', active : true }, { locale : 'en_US', active : true } ];
+	S.native = 'de_DE';
+	const place = builder.points().find( function( spot ) { return spot.carry === 'after' && S.top[spot.block].a.id === 'start' } );
+	const ok = builder.insert( place, heroBlock() );
+	return ok === true && idsOf().join() === 'hero,start,hero-2' && S.top.find( function( node ) { return node.a !== undefined && node.a.id === 'hero-2' } ).c[3].a.id === 'hero-2-1' && S.inserted['hero-2'] === 'hero-full';
+} )() );
+check( 'B. its words are under the keys of the new ids, each language with its own, and the picture is no word', ( function() {
+	return S.texts['/template/page-home/hero-2/title'].de_DE === 'Titel' && S.texts['/template/page-home/hero-2-1/text'].en_US === 'Inside' && S.texts['/template/page-home/hero-2/background'] === undefined;
+} )() );
+check( 'B. the languages of the site get what the block has: the native one the English text where the block has none for it, any other none', ( function() {
+	fresh();
+	S.locales = [ { locale : 'de_DE', active : true }, { locale : 'fr_FR', active : true }, { locale : 'en_US', active : false } ];
+	S.native = 'de_DE';
+	const block = heroBlock();
+	delete block.texts.de_DE;
+	builder.insert( builder.points()[0], block );
+	const words = S.texts['/template/page-home/hero-2/title'] ?? S.texts['/template/page-home/hero-3/title'] ?? S.texts['/template/page-home/hero-4/title'];
+	return Object.keys( words ).join() === 'de_DE' && words.de_DE === 'Title';
+} )() );
+check( 'B. a block is put in at each seam between the calls of the frames - behind the first, up to the last -, the button of a seam is carried by the block beside it, and a frame has none', ( function() {
+	fresh();
+	const spots = builder.points().map( function( spot ) { return spot.b+ ':'+ spot.carry+ ':'+ ( spot.block === null ? '' : S.top[spot.block].a.id ) } ).join();
+	S.frame = true;
+	const none = builder.points().length === 0;
+	S.frame = false;
+	return spots === '1:before:hero,2:after:hero,3:after:start' && none === true;
+} )() );
+check( 'B. a page that has no block has a place - at its top, between its pieces and at its end, anywhere where it has no call of a frame - and a block put in there stands where the place is', ( function() {
+	fresh();
+	S.top = [ { t : '<p>Impressum</p>' } ];
+	S.oldIds = new Set();
+	S.locales = [ { locale : 'de_DE', active : true } ];
+	S.native = 'de_DE';
+	const spots = builder.points();
+	const ok = builder.insert( spots[spots.length - 1], heroBlock() );
+	return spots.length === 2 && ok === true && S.top.length === 2 && S.top[1].a.id === 'hero-2' && S.refocus.at === 1;
+} )() );
+check( 'B. the focus is set where the new block will be before the page is drawn: the page is drawn by the change, and the button that had the focus is gone with it', ( function() {
+	fresh();
+	S.oldIds = new Set( [ 'hero', 'start' ] );
+	S.locales = [ { locale : 'de_DE', active : true } ];
+	S.native = 'de_DE';
+	let seen = null;
+	S.view = { bar : { set : function() {} }, buttons : { undo : {}, redo : {} }, split : { settings : { contains : function() { return false }, appendChild : function() {}, querySelectorAll : function() { return [] }, set innerHTML( value ) { seen = JSON.stringify( S.refocus ) } } }, preview : { schedule : function() {} } };
+	builder.insert( builder.points()[1], heroBlock(), 'outline' );
+	S.view = null;
+	return seen !== null && JSON.parse( seen ).from === 'outline' && S.top[JSON.parse( seen ).at].a.id === 'hero-2';
+} )() );
+check( 'B. a name is the kind and the first words where they are short, the kind and the id where they are not, and the title of it is the whole of them', ( function() {
+	fresh();
+	S.texts['/template/page-home/hero/title'] = { de_DE : 'Eine klare Überschrift für Deine Seite' };
+	return builder.titleOf( S.top[3] ) === 'Section \u00B7 hero' && builder.titleOf( S.top[3], true ) === 'Section \u00B7 Eine klare Überschrift für Deine Seite';
+} )() );
+check( 'B. the picture of a tile is a frame that has no right at all: a script of the site does not run in it', ( function() {
+	let frame = null;
+	builder.tileFrame( { appendChild : function( made ) { frame = made } }, { address : '/', query : 'nino-preview=0123' } );
+	return frame !== null && frame.attributes.sandbox === '';
+} )() );
+check( 'B. a block that was put in is one step of the undo, its copy is a block that was put in too, and what the server is told is the blocks that are still on the page', ( function() {
+	fresh();
+	S.oldIds = new Set( [ 'hero', 'start' ] );
+	S.locales = [ { locale : 'de_DE', active : true } ];
+	S.native = 'de_DE';
+	const begin = JSON.stringify( [ S.top, S.texts ] );
+	builder.insert( builder.points()[1], heroBlock() );
+	const copied = builder.duplicate( S.top.findIndex( function( node ) { return node.a !== undefined && node.a.id === 'hero-2' } ) );
+	const told = Object.keys( builder.insertedNow() ).sort().join();
+	builder.undo();
+	const half = Object.keys( builder.insertedNow() ).join();
+	builder.undo();
+	return copied === true && told === 'hero-2,hero-3' && half === 'hero-2' && JSON.stringify( [ S.top, S.texts ] ) === begin && Object.keys( builder.insertedNow() ).length === 0;
+} )() );
+check( 'B. the dialog asks for as many pictures as the server keeps, and the script does not have a bigger number than the class', ( function() {
+	const php = fs.readFileSync( path.join( featureDir, 'Library/Library.php' ), 'utf8' );
+	return Number( ( /const int TILES = (\d+);/.exec( php ) ?? [] )[1] ) === Number( ( /const TILES\s*= (\d+);/.exec( script ) ?? [] )[1] );
 } )() );
 
 done();

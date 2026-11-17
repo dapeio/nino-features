@@ -11,6 +11,9 @@ namespace Nino\Modules\Builder {
 	//	builder/preview		a draft - a tree and words, not saved - as a token, the query that names it and the address of the page it is shown on
 	//	builder/save			the tree and the words in one step: the last state, the words, the slots, the template
 	//	builder/restore		the last state in place of this one, and this one in place of the last
+	//	builder/blocks		the blocks of the dialog "Insert block": what \Nino\Blocks offers for a page, and what it left out for a feature that is off
+	//	builder/block			one block as it is put in: its tree laid out, its texts in every language and where its sources are
+	//	builder/tile			a draft of a page with one block in it, for the small picture of the block in the dialog
 	class Admin {
 
 		public static function perm(): string {
@@ -25,6 +28,9 @@ namespace Nino\Modules\Builder {
 				'builder/preview'	=> [ self::class, 'apiPreview' ],
 				'builder/save'		=> [ self::class, 'apiSave' ],
 				'builder/restore'	=> [ self::class, 'apiRestore' ],
+				'builder/blocks'	=> [ self::class, 'apiBlocks' ],
+				'builder/block'		=> [ self::class, 'apiBlock' ],
+				'builder/tile'		=> [ self::class, 'apiTile' ],
 			];
 		}
 
@@ -92,7 +98,7 @@ namespace Nino\Modules\Builder {
 				'tree'			=> $nodes,
 				'sources'		=> Tree::sources( $nodes, $registry, $template ),
 				'texts'			=> $state['texts'],
-				'known'			=> self::_known( $nodes, $registry ),
+				'known'			=> Tree::known( $nodes, $registry ),
 				'slots'			=> array_keys( $state['slots'] ),
 				'stamp'			=> Store::stamp( $state ),
 				'address'		=> self::_address( $appData, $template, $locale ),
@@ -112,7 +118,7 @@ namespace Nino\Modules\Builder {
 				return;
 
 			[ $template, $state ] = $opened;
-			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [] );
+			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [] );
 
 			if( isset( $prepared['failure'] ) === true ) {
 				self::_fail( $request, $prepared['failure'] );
@@ -141,7 +147,7 @@ namespace Nino\Modules\Builder {
 					$fills[$key] = $text;
 			}
 
-			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Builder::KIND, self::perm(), [ 'template' => $template, 'source' => $prepared['source'], 'fills' => $fills, 'slots' => $prepared['shown'], 'locale' => $locale ], \Nino\Admin\Admin::postString( $data, 'token' ) );
+			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Builder::KIND, self::perm(), [ 'template' => $template, 'source' => $prepared['draft'], 'fills' => $fills, 'slots' => $prepared['shown'], 'locale' => $locale ], \Nino\Admin\Admin::postString( $data, 'token' ) );
 
 			if( $token === '' ) {
 				self::_fail( $request, [ 500, 'the preview could not be written', 'builder_preview', [], '' ] );
@@ -163,7 +169,7 @@ namespace Nino\Modules\Builder {
 				return;
 
 			[ $template, $state ] = $opened;
-			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [] );
+			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [] );
 
 			if( isset( $prepared['failure'] ) === true ) {
 				self::_fail( $request, $prepared['failure'] );
@@ -235,7 +241,7 @@ namespace Nino\Modules\Builder {
 			$back = Tree::read( $appData, $previous['source'] );
 			$taken = Tree::taken( $back, $registry, array_merge( array_keys( $previous['texts'] ), array_keys( $previous['slots'] ) ) );
 
-			if( ( $why = Tree::refused( $back, $nodes, $registry, Store::named( $template )['frame'], $taken ) ) !== null ) {
+			if( ( $why = Tree::refused( $back, $nodes, $registry, Store::named( $template )['frame'], $taken, Library::offers( $appData, $nodes, $taken ) ) ) !== null ) {
 				self::_fail( $request, [ 403, 'the last state may not be put back: '. $why, 'builder_refused_'. $why, [], 'tree' ] );
 				return;
 			}
@@ -254,6 +260,59 @@ namespace Nino\Modules\Builder {
 			}
 
 			\Nino\Http::ok( $request, [ 'restored' => true ] + self::_after( $appData, $template ) );
+		}
+
+		public static function apiBlocks( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return;
+
+			\Nino\Http::ok( $request, Library::all( $appData ) );
+		}
+
+		public static function apiBlock( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return;
+
+			$block = Library::block( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' ) );
+
+			if( $block === null ) {
+				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $block );
+		}
+
+		public static function apiTile( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$opened = self::_open( $appData, $request );
+
+			if( $opened === null )
+				return;
+
+			[ $template ] = $opened;
+			$locale = \Nino\Admin\Admin::contentLocale( $appData );
+			$tile = Store::named( $template )['frame'] === true ? null : Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale );
+
+			if( $tile === null ) {
+				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );
+				return;
+			}
+
+			$token = \Nino\Preview::issue( $appData, Library::KIND, self::perm(), $tile, \Nino\Admin\Admin::postString( $data, 'token' ), Library::TILES );
+
+			if( $token === '' ) {
+				self::_fail( $request, [ 500, 'the preview could not be written', 'builder_preview', [], '' ] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'address' => self::_address( $appData, $template, $locale ) ] );
 		}
 
 		/**
@@ -294,25 +353,6 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The names of the calls in a tree
-		 *
-		 *	@param		array			$nodes
-		 *	@param		array			&$names				(reference)
-		 *
-		 *	@return 	void
-		 */
-		private static function _names( array $nodes, array &$names ): void {
-
-			foreach( $nodes as $node )
-				if( isset( $node['n'] ) === true ) {
-					$names[$node['n']] = true;
-
-					if( is_array( $node['c'] ?? null ) === true )
-						self::_names( $node['c'], $names );
-				}
-		}
-
-		/**
 		 *	What the screen needs of the language: the one of the view, and the languages that have words
 		 *
 		 *	@param		array 		&$appData
@@ -321,28 +361,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		private static function _view( array &$appData, string $locale ): array {
-			return [ 'contentLocale' => $locale, 'locales' => \Nino\Admin\Admin::textLocales( $appData ), 'dir' => (string) ( $appData['/nino/dir'] ?? '' ) ];
-		}
-
-		/**
-		 *	What the screen knows of the calls of a tree: for each name the register has, its label and the attribute that is its id
-		 *
-		 *	@param		array			$nodes
-		 *	@param		array			$registry
-		 *
-		 *	@return 	array											name => [ 'label' => ..., 'id' => attribute or '', 'source' => text, image, link or none ]
-		 */
-		private static function _known( array $nodes, array $registry ): array {
-
-			$names = [];
-			self::_names( $nodes, $names );
-			$known = [];
-
-			foreach( array_keys( $names ) as $name )
-				if( isset( $registry[$name] ) === true )
-					$known[$name] = [ 'label' => $registry[$name]['label'], 'id' => Tree::idAttribute( $registry[$name] ), 'source' => (string) ( $registry[$name]['source'] ?? 'none' ) ];
-
-			return $known;
+			return [ 'contentLocale' => $locale, 'native' => \Nino\Locales::getNativeLocale( $appData ), 'locales' => \Nino\Admin\Admin::textLocales( $appData ), 'dir' => (string) ( $appData['/nino/dir'] ?? '' ) ];
 		}
 
 		/**
@@ -391,7 +410,7 @@ namespace Nino\Modules\Builder {
 			$nodes = $state === null ? [] : Tree::read( $appData, $state['source'] );
 			$registry = \Nino\Components::components( $appData );
 
-			return [ 'last' => self::_last( $appData, $template ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => self::_known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ) ];
+			return [ 'last' => self::_last( $appData, $template ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => Tree::known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ) ];
 		}
 
 		private static function _changed(): array {

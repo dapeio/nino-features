@@ -25,11 +25,19 @@ return [
 				'en_US' => 'Any page of the site, asked with the token of a draft by the session that holds it, shows the draft with its blocks marked while the token lasts.',
 				'de_DE' => 'Jede Seite der Website, mit dem Token eines Entwurfs von der Sitzung aufgerufen, die ihn hält, zeigt den Entwurf mit markierten Blocks, solange das Token gilt.',
 			],
+			'?nino-preview=<token> (tile)' => [
+				'en_US' => 'The same query with the token of a tile draws one block alone on a bare page, small and without scripts, for the picture of the block in the dialog Insert block.',
+				'de_DE' => 'Dieselbe Abfrage mit dem Token einer Kachel zeichnet einen Block allein auf einer nackten Seite, klein und ohne Skripte, für das Bild des Blocks im Dialog Block einfügen.',
+			],
 		],
 		'panel' => [
 			'Builder' => [
 				'en_US' => 'The screen of the workbench for the pages: the list, and for a page the page itself with a bar on each block; the right is /_admin/builder/manage.',
 				'de_DE' => 'Der Bildschirm der Werkbank für die Seiten: die Liste, und je Seite die Seite selbst mit einer Leiste an jedem Block; das Recht: /_admin/builder/manage.',
+			],
+			'+ Insert block' => [
+				'en_US' => 'Between the blocks, at the end of the page and in the outline: a dialog of the available blocks by category, each drawn in the active theme, put in as a draft until Save.',
+				'de_DE' => 'Zwischen den Blocks, am Ende der Seite und in der Gliederung: ein Dialog der verfügbaren Blocks nach Kategorie, jeder im aktiven Theme gezeichnet, bis zum Speichern nur ein Entwurf.',
 			],
 		],
 		'callbacks' => [],

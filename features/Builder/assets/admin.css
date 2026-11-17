@@ -198,4 +198,148 @@
 	}
 }
 
+
+/* A place in the outline where a block is put in: a thin dashed button between the rows */
+#builder-app .builder-insert-row {
+	display: flex;
+	margin: .2rem 0 0;
+}
+
+#builder-app .builder-row + .builder-insert-row,
+#builder-app .builder-insert-row + .builder-row {
+	margin-top: .2rem;
+}
+
+#builder-app .builder-insert {
+	border-style: dashed;
+	min-height: 1.75rem;
+}
+
+/* The dialog "Insert block" stands in the root of the workbench and not in the panel: its classes are its own */
+.builder-insert-dialog {
+	width: min(60rem, calc(100vw - 2rem));
+	height: min(46rem, calc(100vh - 2rem));
+	height: min(46rem, calc(100dvh - 2rem));
+}
+
+.builder-insert-body {
+	display: grid;
+	gap: .75rem;
+	min-width: 0;
+}
+
+.builder-insert-note {
+	margin: 0;
+}
+
+.builder-cats {
+	flex-wrap: wrap;
+	margin: 0;
+}
+
+.builder-cats .nino-admin-tab {
+	padding: .55rem .9rem;
+}
+
+.builder-tilelist {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+	gap: .75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.builder-tile {
+	display: flex;
+	min-width: 0;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg);
+}
+
+.builder-tile-pick {
+	display: flex;
+	flex-direction: column;
+	gap: .5rem;
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: .5rem;
+	border: 0;
+	border-radius: inherit;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.builder-tile-pick:hover {
+	background: var(--editor-blue-soft);
+}
+
+.builder-tile-pick:focus-visible {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: -2px;
+}
+
+.builder-tile--off {
+	flex-direction: column;
+	gap: .5rem;
+	padding: .5rem;
+	border-style: dashed;
+}
+
+/* The picture of a block: the page with the block in it, laid out as a desktop lays it out and scaled into the box (Nino.adminUi.scaleFrame()); it is a picture and no control */
+.builder-tile-thumb {
+	position: relative;
+	display: block;
+	overflow: hidden;
+	aspect-ratio: 16 / 10;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-elevated);
+	pointer-events: none;
+}
+
+.builder-tile--off .builder-tile-thumb {
+	opacity: .6;
+	background: repeating-linear-gradient(135deg, var(--editor-bg-elevated), var(--editor-bg-elevated) .5rem, var(--editor-bg) .5rem, var(--editor-bg) 1rem);
+}
+
+.builder-tile-frame {
+	position: absolute;
+	border: 0;
+	background: #fff;
+	transform-origin: 0 0;
+}
+
+.builder-tile-text {
+	display: flex;
+	flex-direction: column;
+	gap: .25rem;
+	min-width: 0;
+}
+
+.builder-tile-name {
+	overflow-wrap: anywhere;
+}
+
+.builder-tile-about,
+.builder-tile-note {
+	display: block;
+	margin: 0;
+}
+
+.builder-tile-note {
+	font-weight: 600;
+}
+
+.builder-tile-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .25rem;
+}
+
 }

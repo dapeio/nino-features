@@ -8,6 +8,11 @@
  *										The address is #builder (the list), #builder/<page> (a page: its template without page-) and #builder/@header or #builder/@footer
  *										(a frame of the site).
  *
+ *										A block is put in with "Insert block": between the blocks of the page, at its end and in the outline. The dialog lists what the server offers,
+ *										by category, with a small picture of each block drawn by the website in the theme that is active; the block that is chosen is asked for
+ *										as a tree with its texts in every language, its ids are made free by the rule (hero, hero-2 - what is inside begins with the new id of the
+ *										root), and it stands in the working state like any other change until Save.
+ *
  *										The tree is the one \Nino\Markup reads, kept canonical (a text that follows a text is one node), so that the position of a node in it
  *										is the position the trace of the drawing names. A block is a node on the top level that the register has; free markup and a call
  *										that has no schema are locked, stand where they are and are never copied. Moving a block swaps it with the next block - never past
@@ -37,8 +42,16 @@
 	// How long a text typed in the page may be, in characters: the server keeps 20000 bytes of what a format makes of it
 	const MAX_TEXT	= 5000;
 
+	// How long the words in the name of a block are, in characters
+	const NAMED			= 24;
+
 	// The blanks the server calls a gap
 	const BLANKS		= /^[ \t\r\n]*$/;
+
+	// The page a tile of the insert dialog is drawn at, in pixels, and how long before its time is out a draft is asked for again, in milliseconds
+	const TILE			= { width : 960, height : 600 };
+	const TILES			= 12;
+	const GRACE			= 30000;
 
 	/**
 	 *	What the panel holds: the list, the page that is open with its tree and words as they are saved and as they are being worked on, the steps
@@ -75,6 +88,13 @@
 		place			: null,
 		savedTexts	: {},
 		copies			: {},
+		inserted		: {},
+		oldIds			: new Set(),
+		native			: '',
+		catalog			: null,
+		tiles				: {},
+		category		: '',
+		looking			: null,
 	};
 
 	const word = function( key, ...params ) {
@@ -226,18 +246,29 @@
 		return -1;
 	};
 
-	// The id of a copy: the id of its root with the number after it that is the first free one - a number is no part of the base, hero-2 is hero again
-	const freeId = function( id, taken ) {
+	// Whether an id is free: it is no id of the page - the one that is saved and the one that is worked on - and no key or slot of the page has it for a scope
+	const isFree = function( candidate, taken ) {
+
+		const prefix = '/template/'+ S.template+ '/'+ candidate+ '/';
+
+		return candidate.length <= MAX_ID && taken.has( candidate ) === false && S.oldIds.has( candidate ) === false
+			&& Object.keys( S.texts ).concat( S.slots, Object.keys( S.copies ) ).some( function( key ) { return key.indexOf( prefix ) === 0 } ) === false;
+	};
+
+	// The id of a copy: the id of its root with the number after it that is the first free one - a number is no part of the base, hero-2 is hero again. A block
+	// that is put in has its own id first, where that is free
+	const freeId = function( id, taken, own ) {
 
 		const base = id.replace( /-\d+$/, '' );
-		const keys = Object.keys( S.texts ).concat( S.slots );
+
+		if( own === true && isFree( id, taken ) === true )
+			return id;
 
 		for( let count = 2; count < 10000; count++ ) {
 
 			const candidate = base+ '-'+ count;
-			const prefix = '/template/'+ S.template+ '/'+ candidate+ '/';
 
-			if( candidate.length <= MAX_ID && taken.has( candidate ) === false && keys.some( function( key ) { return key.indexOf( prefix ) === 0 } ) === false )
+			if( isFree( candidate, taken ) === true )
 				return candidate;
 		}
 
@@ -285,7 +316,7 @@
 	};
 
 	const snap = function() {
-		return { top : clone( S.top ), texts : clone( S.texts ), copies : clone( S.copies ) };
+		return { top : clone( S.top ), texts : clone( S.texts ), copies : clone( S.copies ), inserted : clone( S.inserted ) };
 	};
 
 	const stateOf = function() {
@@ -346,6 +377,7 @@
 		S.top = now.top;
 		S.texts = now.texts;
 		S.copies = now.copies;
+		S.inserted = now.inserted;
 		changed( true );
 	};
 
@@ -421,6 +453,10 @@
 
 			S.top.splice( at + 1, 0, { t : '\n' }, copy );
 
+			// A copy of a block that is put in and not saved is that block as well: the server holds it to the block it was made from
+			if( root !== '' && S.inserted[root] !== undefined )
+				S.inserted[ idOf( copy ) ] = S.inserted[root];
+
 			Object.keys( S.texts ).forEach( function( key ) {
 
 				const parts = key.split('/');
@@ -471,6 +507,135 @@
 		return true;
 	};
 
+	/**
+	 *	The places of the page a block can be put in: each seam of the top level between the calls of the frames - behind the first and up to the last - and, where
+	 *	the page has no frame calls, each seam there is, the top and the end of the page and an empty page too. A place knows the row before it and the row behind it,
+	 *	the block that carries its button in the page - the one before it, else the one behind it - and the name the person knows its neighbour by. A frame has none
+	 *
+	 *	@return		{Array}										[ { b, after, before, block, carry : 'after'|'before'|'', name } ]
+	 */
+	const points = function() {
+
+		const list = [];
+
+		if( S.frame === true )
+			return list;
+
+		const rows = items();
+		const calls = rows.map( function( row, at ) { return row.kind === 'frame' ? at : -1 } ).filter( function( at ) { return at !== -1 } );
+
+		for( let b = 0; b <= rows.length; b++ ) {
+
+			if( calls.length > 0 && ( b <= calls[0] || ( calls.length > 1 && b > calls[calls.length - 1] ) ) )
+				continue;
+
+			const above = rows[b - 1];
+			const below = rows[b];
+
+			list.push( {
+				b			: b,
+				after	: above === undefined ? null : above.last,
+				before	: below === undefined ? null : below.at,
+				block	: above !== undefined && above.kind === 'block' ? above.at : ( below !== undefined && below.kind === 'block' ? below.at : null ),
+				carry	: above !== undefined && above.kind === 'block' ? 'after' : ( below !== undefined && below.kind === 'block' ? 'before' : '' ),
+				name	: above !== undefined ? titleOf( above.node ) : ( below !== undefined ? titleOf( below.node ) : S.name ),
+			} );
+		}
+
+		return list;
+	};
+
+	// The text of a block in the languages of the site, as the block has it: each language its own, the native one the English where the block has none for it, any
+	// other language none - the page then shows the text of the native language
+	const wordsOf = function( block, name ) {
+
+		const out = {};
+
+		S.locales.filter( function( entry ) { return entry.active === true } ).forEach( function( entry ) {
+
+			const own = ( block.texts[entry.locale] ?? {} )[name];
+			const text = typeof own === 'string' ? own : ( entry.locale === S.native ? ( block.texts.en_US ?? {} )[name] : undefined );
+
+			if( typeof text === 'string' )
+				out[entry.locale] = text;
+		} );
+
+		return out;
+	};
+
+	/**
+	 *	Put a block in the page: the tree of the block with ids that are free - its root has its own id or the first number behind it that nobody has, what is inside
+	 *	begins with it - laid out as the server wrote it, and the texts of the block under the keys of the new ids, each language with its own
+	 *
+	 *	@param		{Object}		place					One of points()
+	 *	@param		{Object}		block					The answer of the server: key, id, tree, known, texts, slots
+	 *	@param		{string}		[from]				Where the action was started: outline or frame
+	 *
+	 *	@return		{boolean}
+	 */
+	const insert = function( place, block, from ) {
+
+		if( S.frame === true )
+			return false;
+
+		Object.assign( S.known, block.known );
+
+		const now = freeId( block.id, idsOf( S.top, new Set() ), true );
+
+		if( now === '' )
+			return false;
+
+		const map = {};
+		const copy = copied( block.tree[0], block.id, now, map );
+
+		if( idsOf( [ copy ], new Set() ).size !== Object.keys( map ).length )
+			return false;
+
+		// Behind the row before the place, else in front of the row behind it, else at the end
+		const at = place.after !== null ? place.after + 1 : ( place.before !== null ? place.before : S.top.length );
+
+		change( function() {
+
+			if( place.after !== null )
+				S.top.splice( at, 0, { t : '\n' }, copy );
+			else
+				S.top.splice( at, 0, copy, { t : '\n' } );
+
+			// The focus is put on the new block before the page is drawn - the button that had it is gone with the drawing -, where the blanks that were joined left it
+			S.refocus = { at : normalize( S.top ).indexOf( copy ), action : 'copy', from : from ?? 'frame' };
+
+			block.slots.filter( function( slot ) { return slot.kind === 'text' } ).forEach( function( slot ) {
+
+				const was = slot.scope === '' ? block.id : block.id+ '-'+ slot.scope;
+				const id = was === block.id ? now : innerId( was, block.id, now );
+				const words = wordsOf( block, slot.name );
+
+				if( Object.keys( words ).length > 0 )
+					S.texts[ '/template/'+ S.template+ '/'+ id+ '/'+ slot.word ] = words;
+			} );
+
+			S.inserted[now] = block.key;
+		} );
+
+		return true;
+	};
+
+	// The blocks that were put in and are still on the top level of the page: what the server is told, so that it holds each to the block it is
+	const insertedNow = function() {
+
+		const out = {};
+
+		S.top.forEach( function( node ) {
+
+			const id = node.n === undefined ? '' : idOf( node );
+
+			if( id !== '' && S.inserted[id] !== undefined )
+				out[id] = S.inserted[id];
+		} );
+
+		return out;
+	};
+
 	// The node a position names, 'a.b.c' - the indices from the top level down - or null
 	const nodeAt = function( path ) {
 
@@ -497,11 +662,11 @@
 	// --- the blocks of the page: their names and the outline ------------------------------------------------------
 
 	// The words of a text for a title: no markup, one line, cut at a word where it is long
-	const shortened = function( text ) {
+	const shortened = function( text, most ) {
 
 		const plain = String( text ).replace( /<[^>]*>/g, ' ' ).replace( /&[a-z#0-9]+;/gi, ' ' ).replace( /\s+/g, ' ' ).trim();
 
-		return plain.length <= 36 ? plain : plain.slice( 0, 36 ).replace( /\s+\S*$/, '' )+ '…';
+		return plain.length <= most ? plain : plain.slice( 0, most ).replace( /\s+\S*$/, '' )+ '…';
 	};
 
 	/**
@@ -512,7 +677,7 @@
 	 *
 	 *	@return		{string}
 	 */
-	const firstText = function( nodes, scope ) {
+	const firstText = function( nodes, scope, most ) {
 
 		for( const node of nodes ) {
 
@@ -527,11 +692,11 @@
 				const written = typeof node.s === 'string' ? node.s : '';
 				const value = typeof ( node.a ?? {} ).text === 'string' ? node.a.text : ( written.charAt(0) === '~' && id !== '' ? textOf( '/template/'+ S.template+ '/'+ id+ '/'+ written.slice( 1 ) ) : '' );
 
-				if( shortened( value ) !== '' )
-					return shortened( value );
+				if( shortened( value, most ) !== '' )
+					return shortened( value, most );
 			}
 
-			const inner = Array.isArray( node.c ) === true ? firstText( node.c, id ) : '';
+			const inner = Array.isArray( node.c ) === true ? firstText( node.c, id, most ) : '';
 
 			if( inner !== '' )
 				return inner;
@@ -549,14 +714,15 @@
 	};
 
 	// The name of a block: its kind and, behind it, the first text it shows or - where it shows none - its id
-	const titleOf = function( node ) {
+	const titleOf = function( node, whole ) {
 
 		if( kindOf( node ) !== 'block' )
 			return node.n === 'template' ? word('word/frame') : ( kindOf( node ) === 'call' ? word( 'word/call', node.n ) : word('word/free') );
 
 		// A header and a footer are what they are called: the first words in them are a button or a link
-		const text = node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : firstText( [ node ], '' );
-		const label = text !== '' ? text : ( node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : idOf( node ) );
+		// A name is the kind and the first words: where they are longer than a name is, the kind and the id - the whole of the words is the title of the name
+		const text = node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : firstText( [ node ], '', 120 );
+		const label = text !== '' && ( whole === true || text.length <= NAMED ) ? text : ( node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : idOf( node ) );
 
 		return label === '' ? kindName( node ) : kindName( node )+ ' · '+ label;
 	};
@@ -643,15 +809,38 @@
 		return action === 'up' ? neighbour( at, -1 ) !== -1 : ( action === 'down' ? neighbour( at, 1 ) !== -1 : true );
 	};
 
-	// The outline in the column of the split view: every block with its bar, the frame and the free markup as the lines they are
+	// The place to put a block in as a row of the outline: one button, named for the block it stands by
+	const insertRow = function( place ) {
+
+		const row = el( 'li', 'builder-insert-row' );
+		const button = Nino.adminUi.button( word('label/insert-short'), function() { openInsert( place, button, 'outline' ) }, { className : 'nino-admin-btn--small builder-insert', name : word( place.after === null && place.before !== null ? 'label/insert-before' : 'label/insert-after', place.name ) } );
+
+		button.dataset.insert = String( place.b );
+		row.appendChild( button );
+
+		return row;
+	};
+
+	// The outline in the column of the split view: every block with its bar, the frame and the free markup as the lines they are, and between the blocks the places
+	// where a block is put in
 	const outline = function() {
 
 		const list = el( 'ol', 'builder-outline' );
+		const spots = points();
+		const rows = items();
+		const spotAt = function( b ) { return spots.find( function( spot ) { return spot.b === b } ) };
 
-		items().forEach( function( item ) {
+		rows.forEach( function( item, b ) {
+
+			const before = spotAt( b );
+
+			if( before !== undefined )
+				list.appendChild( insertRow( before ) );
 
 			const row = el( 'li', 'builder-row builder-row--'+ item.kind );
 			const label = el( 'span', 'builder-row-name', titleOf( item.node ) );
+
+			label.title = titleOf( item.node, true );
 
 			row.dataset.at = String( item.at );
 			row.appendChild( label );
@@ -690,6 +879,11 @@
 			list.appendChild( row );
 		} );
 
+		const end = spotAt( rows.length );
+
+		if( end !== undefined )
+			list.appendChild( insertRow( end ) );
+
 		return list;
 	};
 
@@ -707,7 +901,9 @@
 		+ '.name{flex:1 1 auto;min-width:0;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
 		+ 'button{box-sizing:border-box;min-width:28px;min-height:28px;margin:0;padding:0 6px;border:1px solid #6b7d99;border-radius:4px;background:#2c3a4f;color:#fff;font:600 14px/1 system-ui,sans-serif;cursor:pointer}'
 		+ 'button:hover{background:#3d4f6b}button:focus-visible{outline:3px solid #ffd54a;outline-offset:1px}button:disabled{opacity:.55;cursor:default}'
-		+ '.frame{position:absolute;pointer-events:none;border:1px dashed rgba(47,111,237,.7);box-sizing:border-box}';
+		+ '.frame{position:absolute;pointer-events:none;border:1px dashed rgba(47,111,237,.7);box-sizing:border-box}'
+		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);padding:0 12px;border:1px dashed #b7c4da;border-radius:14px;background:#1b2330;box-shadow:0 1px 4px rgba(0,0,0,.4);white-space:nowrap}'
+		+ 'button.insert:hover{background:#3d4f6b}';
 
 	/**
 	 *	The blocks and the texts of the page in the frame, from the comments the trace of the drawing writes: a block is the elements between the comment
@@ -986,6 +1182,7 @@
 
 		const doc = frame.contentDocument;
 		const win = frame.contentWindow;
+		const spots = points();
 		const host = doc.createElement('nino-builder-bars');
 		const shadow = host.attachShadow( { mode : 'open' } );
 		const style = doc.createElement('style');
@@ -998,6 +1195,23 @@
 		shadow.appendChild( style );
 		host.setAttribute( 'role', 'region' );
 		host.setAttribute( 'aria-label', word('label/bars') );
+
+		// The button that puts a block in at a place: the words are written out where there is room for them and where a phone has to have them
+		const pillOf = function( spot ) {
+
+			const pill = doc.createElement('button');
+			const name = word( spot.after === null && spot.before !== null ? 'label/insert-before' : 'label/insert-after', spot.name );
+
+			pill.type = 'button';
+			pill.className = 'insert';
+			pill.textContent = word('label/insert-short');
+			pill.title = name;
+			pill.setAttribute( 'aria-label', name );
+			pill.dataset.insert = String( spot.b );
+			pill.addEventListener( 'click', function() { openInsert( spot, pill, 'frame' ) } );
+
+			return pill;
+		};
 
 		blocks.forEach( function( block ) {
 
@@ -1016,6 +1230,7 @@
 			bar.setAttribute( 'aria-label', word( 'label/block-bar', title ) );
 			label.className = 'name';
 			label.textContent = title;
+			label.title = titleOf( node, true );
 			frameBox.className = 'frame';
 
 			if( wide === true )
@@ -1048,9 +1263,21 @@
 				bar.appendChild( lock );
 			}
 
+			const first = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'before' } );
+			const last = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'after' } );
+			const pills = { before : first === undefined ? null : pillOf( first ), after : last === undefined ? null : pillOf( last ) };
+
 			shadow.appendChild( frameBox );
+
+			if( pills.before !== null )
+				shadow.appendChild( pills.before );
+
 			shadow.appendChild( bar );
-			placed.push( { block : block, bar : bar, box : frameBox } );
+
+			if( pills.after !== null )
+				shadow.appendChild( pills.after );
+
+			placed.push( { block : block, bar : bar, box : frameBox, pills : pills } );
 		} );
 
 		// The page is laid out at a width and scaled into the pane where the person chose a width the pane has not: a bar is scaled back, so that it is as large
@@ -1064,6 +1291,13 @@
 			placed.forEach( function( item ) {
 
 				const box = boxOf( item.block.elements, win );
+
+				const hidden = box === null ? 'none' : '';
+
+				[ item.pills.before, item.pills.after ].forEach( function( pill ) {
+					if( pill !== null )
+						pill.style.display = hidden;
+				} );
 
 				if( box === null ) {
 					item.bar.style.display = 'none';
@@ -1088,6 +1322,19 @@
 				item.bar.style.top = ( low === true ? box.top + box.height + 2 * back : box.top + 8 * back )+ 'px';
 				item.bar.style.left = Math.max( box.left, box.left + box.width - width - 8 * back )+ 'px';
 				item.height = height;
+
+				// The places for a block stand on the left, where the bar is not: the one before the first block of a run inside the top of it, the one behind a block
+				// at its foot - or, where the block is low, below it like its bar
+				[ item.pills.before, item.pills.after ].forEach( function( pill, which ) {
+
+					if( pill === null )
+						return;
+
+					pill.style.transformOrigin = '0 0';
+					pill.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
+					pill.style.left = ( box.left + 8 * back )+ 'px';
+					pill.style.top = ( which === 0 ? box.top + 4 * back : ( low === true ? box.top + box.height + 2 * back : box.top + box.height - pill.offsetHeight * back - 4 * back ) )+ 'px';
+				} );
 			} );
 		};
 
@@ -1283,6 +1530,304 @@
 		}
 	};
 
+	// --- the dialog "Insert block" ----------------------------------------------------------------------------------
+
+	// Where a block comes from, as a chip says it
+	const originWord = function( origin ) {
+
+		if( origin.kind === 'basis' || origin.kind === 'project' )
+			return word( 'insert/origin-'+ origin.kind );
+
+		return origin.kind === 'feature' ? word( 'insert/origin-feature', localized( origin.name ) ) : word( 'insert/origin-theme', String( origin.name ) );
+	};
+
+	// The frame of a tile, once there is an address for it: the page with the block in it, laid out as a desktop lays it out and scaled into the box
+	const tileFrame = function( box, held ) {
+
+		const frame = el( 'iframe', 'builder-tile-frame' );
+
+		// A picture, not a page: no script of the site runs in it, and nothing in it reaches the workbench - the frame has no right at all
+		frame.setAttribute( 'sandbox', '' );
+		frame.setAttribute( 'loading', 'lazy' );
+		frame.setAttribute( 'tabindex', '-1' );
+		frame.setAttribute( 'aria-hidden', 'true' );
+		frame.setAttribute( 'src', S.dir+ held.address+ ( held.address.indexOf('?') === -1 ? '?' : '&' )+ held.query );
+		box.appendChild( frame );
+		Nino.adminUi.scaleFrame( frame, box, TILE.width, TILE.height );
+	};
+
+	/**
+	 *	The picture of a tile is asked for when its box is on screen, and once for as long as the draft holds. The server keeps the newest TILES drafts of the session and
+	 *	drops the others, so what is held here is the newest as well
+	 *
+	 *	@param		{Element}		box
+	 *
+	 *	@return		{void}
+	 */
+	const tileAsk = function( box ) {
+
+		const key = box.dataset.block+ '|'+ S.locale;
+		const held = S.tiles[key];
+
+		if( box.querySelector('iframe') !== null )
+			return;
+
+		if( held !== undefined && Date.now() < held.until ) {
+			tileFrame( box, held );
+			return;
+		}
+
+		api( 'tile', { key : box.dataset.block, token : held === undefined ? '' : held.token }, function( status, response ) {
+
+			if( status !== 200 )
+				return;
+
+			delete S.tiles[key];
+			S.tiles[key] = { token : response.token, query : response.query, address : response.address, until : Date.now() + response.ttl * 1000 - GRACE };
+
+			Object.keys( S.tiles ).slice( 0, Math.max( 0, Object.keys( S.tiles ).length - TILES ) ).forEach( function( old ) { delete S.tiles[old] } );
+
+			if( box.isConnected !== false && box.querySelector('iframe') === null )
+				tileFrame( box, S.tiles[key] );
+		} );
+	};
+
+	/**
+	 *	A block of the dialog: the button that puts it in, with its picture, its name, what it is for, where it comes from and - where the theme does not have a
+	 *	variant it names - the one it appears as. A block that is left out because a feature is off is no button: it says which one
+	 *
+	 *	@param		{Object}		entry					An entry of the answer of the server
+	 *	@param		{Function}	pick					Called with the entry that was chosen
+	 *
+	 *	@return		{Element}
+	 */
+	const tileOf = function( entry, pick ) {
+
+		const item = el( 'li', 'builder-tile'+ ( entry.off === null ? '' : ' builder-tile--off' ) );
+		const thumb = el( 'span', 'builder-tile-thumb' );
+		const text = el( 'span', 'builder-tile-text' );
+		const name = el( 'strong', 'builder-tile-name', localized( entry.name ) );
+		const about = el( 'span', 'nino-admin-hint builder-tile-about', localized( entry.description ) );
+		const chips = el( 'span', 'builder-tile-chips' );
+		const note = entry.off !== null ? word( 'insert/off', entry.off.map( localized ).join(', ') ) : ( entry.hint === null ? '' : word('insert/variant') );
+		const described = [];
+
+		thumb.setAttribute( 'aria-hidden', 'true' );
+		chips.appendChild( el( 'span', 'nino-admin-badge', originWord( entry.origin ) ) );
+		about.id = 'builder-tile-'+ entry.key+ '-about';
+		described.push( about.id );
+		text.appendChild( name );
+		text.appendChild( about );
+		text.appendChild( chips );
+
+		if( note !== '' ) {
+
+			const line = el( 'span', 'nino-admin-hint builder-tile-note', note );
+
+			line.id = 'builder-tile-'+ entry.key+ '-note';
+			described.push( line.id );
+			text.appendChild( line );
+		}
+
+		if( entry.off !== null ) {
+			item.appendChild( thumb );
+			item.appendChild( text );
+			return item;
+		}
+
+		const button = el( 'button', 'builder-tile-pick' );
+
+		thumb.dataset.block = entry.key;
+		button.type = 'button';
+		button.dataset.block = entry.key;
+		button.setAttribute( 'aria-label', word( 'insert/pick', localized( entry.name ) ) );
+		button.setAttribute( 'aria-describedby', described.join(' ') );
+		button.addEventListener( 'click', function() { pick( entry ) } );
+		button.appendChild( thumb );
+		button.appendChild( text );
+		item.appendChild( button );
+
+		return item;
+	};
+
+	/**
+	 *	The dialog: the categories as tabs - the arrows walk them - and the blocks of the one that is chosen, each as a tile. A block that is chosen closes the dialog,
+	 *	is asked for and put in; Cancel and Escape give the focus back to what opened it
+	 *
+	 *	@param		{Object}		catalog				The answer of the server: blocks, categories
+	 *	@param		{Object}		place					One of points()
+	 *	@param		{Element}		opener
+	 *	@param		{string}		from
+	 *
+	 *	@return		{void}
+	 */
+	const insertDialog = function( catalog, place, opener, from ) {
+
+		const body = el( 'div', 'builder-insert-body' );
+		const strip = el( 'div', 'nino-admin-tabs nino-admin-tabs--bar builder-cats' );
+		const panel = el( 'div', 'nino-admin-tabpanel builder-tiles' );
+		const by = {};
+		const buttons = {};
+		let picked = null;
+		let looking = null;
+
+		catalog.categories.forEach( function( category ) { by[category] = [] } );
+		catalog.blocks.forEach( function( entry ) {
+			if( by[entry.category] !== undefined )
+				by[entry.category].push( entry );
+		} );
+
+		const cats = [ 'all' ].concat( catalog.categories.filter( function( category ) { return by[category].length > 0 } ) );
+
+		by.all = catalog.blocks.filter( function( entry ) { return by[entry.category] !== undefined } );
+
+		const close = function( entry ) {
+
+			picked = entry;
+
+			const dialog = body.closest('dialog');
+
+			if( dialog !== null )
+				dialog.close();
+		};
+
+		const draw = function( category ) {
+
+			S.category = category;
+
+			if( looking !== null )
+				looking.disconnect();
+
+			panel.innerHTML = '';
+			panel.setAttribute( 'aria-labelledby', 'builder-cat-'+ category );
+
+			const list = el( 'ul', 'builder-tilelist' );
+
+			by[category].forEach( function( entry ) { list.appendChild( tileOf( entry, close ) ) } );
+			panel.appendChild( list );
+
+			const boxes = Array.from( list.querySelectorAll('.builder-tile-thumb[data-block]') );
+
+			looking = typeof wn.IntersectionObserver === 'function' ? new wn.IntersectionObserver( function( seen ) {
+
+				seen.forEach( function( entry ) {
+
+					if( entry.isIntersecting === true ) {
+						looking.unobserve( entry.target );
+						tileAsk( entry.target );
+					}
+				} );
+			}, { rootMargin : '120px' } ) : null;
+
+			boxes.forEach( function( box ) {
+				if( looking === null )
+					tileAsk( box );
+				else
+					looking.observe( box );
+			} );
+		};
+
+		body.appendChild( el( 'p', 'nino-admin-hint builder-insert-note', word('insert/note') ) );
+
+		if( by.all.length === 0 )
+			body.appendChild( Nino.adminUi.emptyState( word('insert/empty') ) );
+		else {
+
+			strip.setAttribute( 'role', 'tablist' );
+			strip.setAttribute( 'aria-label', word('insert/categories') );
+			panel.id = 'builder-cat-panel';
+			panel.setAttribute( 'role', 'tabpanel' );
+
+			cats.forEach( function( category ) {
+
+				const tab = el( 'button', 'nino-admin-tab builder-cat', word( 'insert/cat-'+ category ) );
+
+				tab.type = 'button';
+				tab.id = 'builder-cat-'+ category;
+				tab.setAttribute( 'role', 'tab' );
+				tab.setAttribute( 'aria-controls', 'builder-cat-panel' );
+				buttons[category] = tab;
+				strip.appendChild( tab );
+			} );
+
+			const active = cats.indexOf( S.category ) !== -1 ? S.category : cats[0];
+
+			Nino.adminUi.buttonRow( buttons, active, draw, 'aria-selected' );
+			body.appendChild( strip );
+			body.appendChild( panel );
+			draw( active );
+		}
+
+		Nino.adminUi.choiceDialog( {
+			title			: word('insert/title'),
+			message		: word('insert/note'),
+			content		: body,
+			className	: 'nino-admin-dialog--manual builder-insert-dialog',
+			opener		: opener,
+			choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
+			onChoose	: function() {
+
+				if( looking !== null )
+					looking.disconnect();
+
+				if( picked !== null )
+					put( picked, place, from );
+			},
+		} );
+
+		// The dialog has its own scrolling content, where the browser puts the focus: the arrows are the tabs' - the active one has it
+		if( buttons[S.category] !== undefined )
+			buttons[S.category].focus();
+	};
+
+	// The block that was chosen is asked for - its tree, its texts in every language - and put in; what the server says of it is what stands
+	const put = function( entry, place, from ) {
+
+		api( 'block', { key : entry.key }, function( status, response ) {
+
+			if( status !== 200 ) {
+				S.view.bar.line.error( status, response );
+				return;
+			}
+
+			if( insert( place, response, from ) === true )
+				S.view.bar.line.idle( word( 'msg/inserted', localized( entry.name ) ) );
+			else
+				S.view.bar.line.fail( word('error/insert') );
+		} );
+	};
+
+	/**
+	 *	Open the dialog at a place: the blocks are asked for once for a page that is open, and kept
+	 *
+	 *	@param		{Object}		place					One of points()
+	 *	@param		{Element}		opener				What has the focus back when the dialog is closed
+	 *	@param		{string}		from					Where the action was started: outline or frame
+	 *
+	 *	@return		{void}
+	 */
+	const openInsert = function( place, opener, from ) {
+
+		if( S.frame === true || S.view === null )
+			return;
+
+		if( S.catalog !== null ) {
+			insertDialog( S.catalog, place, opener, from );
+			return;
+		}
+
+		api( 'blocks', {}, function( status, response ) {
+
+			if( status !== 200 ) {
+				S.view.bar.line.fail( Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/blocks' ) );
+				return;
+			}
+
+			S.catalog = response;
+			insertDialog( response, place, opener, from );
+		} );
+	};
+
 	const api = function( action, payload, done ) {
 		Nino.admin.builder.call( action, Object.assign( { template : S.template }, payload ), done );
 	};
@@ -1300,6 +1845,8 @@
 		S.saved = stateOf();
 		S.savedTexts = clone( S.texts );
 		S.copies = {};
+		S.inserted = {};
+		S.oldIds = idsOf( S.top, new Set() );
 
 		if( Array.isArray( response.slots ) === true )
 			S.slots = response.slots;
@@ -1324,7 +1871,7 @@
 	};
 
 	const send = function( token, done ) {
-		api( 'preview', { tree : S.top, texts : S.texts, slots : S.copies, token : token }, function( status, response ) {
+		api( 'preview', { tree : S.top, texts : S.texts, slots : S.copies, inserted : insertedNow(), token : token }, function( status, response ) {
 
 			if( status === 200 ) {
 				S.pending = response.sources;
@@ -1342,7 +1889,7 @@
 		S.force = false;
 		endEdit( true );
 
-		api( 'save', { tree : S.top, texts : changedTexts(), slots : S.copies, base : S.stamp, force : forced }, function( status, response ) {
+		api( 'save', { tree : S.top, texts : changedTexts(), slots : S.copies, inserted : insertedNow(), base : S.stamp, force : forced }, function( status, response ) {
 
 			if( status === 200 ) {
 
@@ -1641,6 +2188,8 @@
 
 		S.top = was[0];
 		S.texts = was[1];
+		S.copies = {};
+		S.inserted = {};
 		S.undo = [];
 		S.redo = [];
 		paint();
@@ -1697,6 +2246,9 @@
 			S.address = response.address;
 			S.locale = response.contentLocale;
 			S.locales = response.locales;
+			S.native = response.native;
+			S.catalog = null;
+			S.tiles = {};
 			S.undo = [];
 			S.redo = [];
 			S.name = nameOfPage( template );
@@ -1789,7 +2341,7 @@
 		model : {
 			state : S, normalize : normalize, kindOf : kindOf, neighbour : neighbour, move : move, duplicate : duplicate, remove : remove,
 			undo : undo, redo : redo, isDirty : isDirty, nodeAt : nodeAt, templateOf : templateOf, addressOf : addressOf,
-			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible,
+			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
 		},
 
 		go : function( parts ) {

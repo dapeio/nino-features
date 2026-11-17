@@ -12,7 +12,9 @@ declare(strict_types=1);
  *											E. the stamp: a page changed meanwhile is a 409, force does not lift the rule, a failing step puts the state back
  *											F. the draft: the page drawn from it with the trace, for the session that asked and for nobody else
  *											G. rights: every action wants the right and the token of the session, and a request that asks for nothing is not looked at
- *											H. what is measured, which is printed and never held to a limit
+ *											H. insert block: the list of the dialog, every block put in with ids by the rule and its words and pictures, the rule that holds a new
+ *											   block to the block it is, the tile of the dialog, the blocks that are left out and the hint of a variant
+ *											I. what is measured, which is printed and never held to a limit
 											   and the suite of the script of the panel, where node is
  *
  *									Runs against one sandbox with the kernel's own Basis; the pages are the three of tests/fixtures/pages, copied in - the start
@@ -74,6 +76,122 @@ function builderSnapshot( array &$appData ): array {
 	return $list;
 }
 
+/**
+ *	A block put in as the panel does it: the tree of the block with its ids made free - its own id first, then the first number behind it that nobody has - laid
+ *	out as the server wrote it, and the texts of the block in each language under the keys of the new ids
+ *
+ *	@param		array 		&$appData
+ *	@param		array			$page					[ 'tree', 'texts' => key => language => text, 'slots' => the uris of the slots ] as the page is now
+ *	@param		string		$key
+ *	@param		int				$at						Where in the top level of the tree
+ *	@param		string|null	$id					The id of the root, for one that is not the rule's
+ *
+ *	@return 	array											'tree', 'texts' (what the block brings), 'inserted' (id => key), 'id', 'block'
+ */
+function builderInsert( array &$appData, array $page, string $key, int $at, ?string $id = null ): array {
+
+	[ , $block ] = builderCall( $appData, 'builder/block', [ 'key' => $key ] );
+	$registry = \Nino\Components::components( $appData );
+	$taken = Tree::taken( $page['tree'], $registry, array_merge( array_keys( $page['texts'] ), $page['slots'] ) );
+	$base = (string) preg_replace( '/-\d+$/', '', $block['id'] );
+	$now = $id;
+
+	for( $count = 1; $now === null; $count++ ) {
+
+		$candidate = $count === 1 ? $block['id'] : $base. '-'. $count;
+		$now = in_array( $candidate, $taken, true ) === true || array_filter( array_keys( $page['texts'] ), static fn( string $name ): bool => str_starts_with( $name, '/template/page-home/'. $candidate. '/' ) ) !== [] ? null : $candidate;
+	}
+
+	$walk = static function( array $nodes ) use ( &$walk, $registry, $block, $now ): array {
+
+		foreach( $nodes as $index => $node ) {
+
+			$name = isset( $node['n'] ) === true && isset( $registry[$node['n']] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
+
+			if( $name !== '' && isset( $node['a'][$name] ) === true )
+				$nodes[$index]['a'][$name] = $node['a'][$name] === $block['id'] ? $now : Tree::inner( $node['a'][$name], $block['id'], $now );
+
+			if( is_array( $node['c'] ?? null ) === true )
+				$nodes[$index]['c'] = $walk( $node['c'] );
+		}
+
+		return $nodes;
+	};
+
+	$tree = $page['tree'];
+	array_splice( $tree, $at, 0, [ $walk( $block['tree'] )[0], [ 't' => "\n" ] ] );
+	$texts = [];
+
+	foreach( $block['slots'] as $slot ) {
+
+		if( $slot['kind'] !== 'text' )
+			continue;
+
+		$was = $slot['scope'] === '' ? $block['id'] : $block['id']. '-'. $slot['scope'];
+		$scope = $was === $block['id'] ? $now : Tree::inner( $was, $block['id'], $now );
+
+		foreach( $block['texts'] as $locale => $words )
+			$texts['/template/page-home/'. $scope. '/'. $slot['word']][$locale] = $words[$slot['name']];
+	}
+
+	return [ 'tree' => $tree, 'texts' => $texts, 'inserted' => [ $now => $key ], 'id' => $now, 'block' => $block ];
+}
+
+/**
+ *	A block of the page copied as the panel does it: the first free number behind the base of its id, the ids inside begin with it, the words of every id of the block
+ *	under the new ids and a slot for each picture made from the original's
+ *
+ *	@param		array 		&$appData
+ *	@param		array			$open					As builder/open answers
+ *	@param		string		$id						The id of the block
+ *
+ *	@return 	array											'tree', 'texts' (what the copy has), 'slots' (new uri => uri), 'id'
+ */
+function builderCopy( array &$appData, array $open, string $id ): array {
+
+	$registry = \Nino\Components::components( $appData );
+	$at = builderAt( $open['tree'], $id );
+	$taken = Tree::taken( $open['tree'], $registry, array_merge( array_keys( $open['texts'] ), $open['slots'] ) );
+	$base = (string) preg_replace( '/-\d+$/', '', $id );
+
+	for( $count = 2; in_array( $base. '-'. $count, $taken, true ) === true; $count++ );
+
+	$now = $base. '-'. $count;
+	$map = [];
+	$walk = static function( array $nodes ) use ( &$walk, $registry, $id, $now, &$map ): array {
+
+		foreach( $nodes as $index => $node ) {
+
+			$name = isset( $node['n'] ) === true && isset( $registry[$node['n']] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
+
+			if( $name !== '' && isset( $node['a'][$name] ) === true ) {
+				$map[$node['a'][$name]] = $node['a'][$name] === $id ? $now : Tree::inner( $node['a'][$name], $id, $now );
+				$nodes[$index]['a'][$name] = $map[$node['a'][$name]];
+			}
+
+			if( is_array( $node['c'] ?? null ) === true )
+				$nodes[$index]['c'] = $walk( $node['c'] );
+		}
+
+		return $nodes;
+	};
+
+	$tree = $open['tree'];
+	array_splice( $tree, $at + 1, 0, [ [ 't' => "\n" ], $walk( [ $open['tree'][$at] ] )[0] ] );
+	$texts = [];
+	$slots = [];
+
+	foreach( $open['texts'] as $key => $values )
+		if( isset( $map[explode( '/', $key )[3]] ) === true )
+			$texts['/template/page-home/'. $map[explode( '/', $key )[3]]. '/'. explode( '/', $key )[4]] = $values;
+
+	foreach( $open['slots'] as $uri )
+		if( isset( $map[explode( '/', $uri )[3]] ) === true )
+			$slots['/template/page-home/'. $map[explode( '/', $uri )[3]]. '/'. explode( '/', $uri )[4]] = $uri;
+
+	return [ 'tree' => $tree, 'texts' => $texts, 'slots' => $slots, 'id' => $now ];
+}
+
 /** The top-level index of the first block with an id, in a tree */
 function builderAt( array $tree, string $id ): int {
 
@@ -98,7 +216,7 @@ check( 'the manifest is the one of a feature that is written for the kernel of N
 check( 'the right is /_admin/builder/manage, and the manual of the feature names the panel', \Nino\Modules\Builder::PERM === '/_admin/builder/manage' && str_contains( $manifest['manual']['panel']['Builder']['en_US'], '/_admin/builder/manage' ) === true );
 
 $words = [ 'de_DE' => require $feature. '/text/de_DE.php', 'en_US' => require $feature. '/text/en_US.php' ];
-$codes = [ 'unknown', 'unreadable', 'tree', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_frame', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing' ];
+$codes = [ 'unknown', 'unreadable', 'tree', 'block', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_frame', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing' ];
 
 check( 'every failure code the API answers has its sentence in both interface languages, and the two files have the same keys',
 	array_filter( $codes, static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/builder_'. $code. ']]'], $words['en_US']['[[/_admin/error/builder_'. $code. ']]'] ) === false ) === [] && array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) );
@@ -682,6 +800,9 @@ $every = [
 	'builder/preview'	=> [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [] ],
 	'builder/save'		=> [ 'template' => 'page-home', 'tree' => $tree, 'texts' => $edit, 'base' => 'x', 'force' => true ],
 	'builder/restore'	=> [ 'template' => 'page-home', 'base' => 'x', 'force' => true ],
+	'builder/blocks'	=> [],
+	'builder/block'		=> [ 'key' => 'hero-full' ],
+	'builder/tile'		=> [ 'template' => 'page-home', 'key' => 'hero-full' ],
 ];
 
 ninoUser( $site, 'editor@example.com', [ '/_admin/elements/manage', '/_admin/text/manage' ] );
@@ -691,7 +812,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = builderCall( $site, $action, $data )[0];
 
-check( 'an account without the right gets 403 on every one of the five actions - the Editor of the starter site has not - and nothing is read or written', array_unique( array_values( $answers ) ) === [ 403 ] && builderSnapshot( $site ) === $snapshot );
+check( 'an account without the right gets 403 on every one of the eight actions - the Editor of the starter site has not - and nothing is read or written', array_unique( array_values( $answers ) ) === [ 403 ] && builderSnapshot( $site ) === $snapshot );
 
 \Nino\Auth::logoutUser( $site );
 $answers = [];
@@ -725,7 +846,310 @@ ninoVisit( $cheap, '/?other=1' );
 check( 'a request that carries no query of a preview is not looked at: no draft held, no trace', \Nino\Preview::active( $cheap ) === false );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
-echo "\nH. What is measured\n";
+echo "\nH. Insert block\n";
+
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$registry = \Nino\Components::components( $site );
+$page = [ 'tree' => $open['tree'], 'texts' => $open['texts'], 'slots' => $open['slots'] ];
+$offered = array_filter( \Nino\Blocks::all( $site ), static fn( array $block ): bool => $block['wrap'] === 'section-wrap' );
+
+[ $status, $dialog ] = builderCall( $site, 'builder/blocks' );
+
+check( 'the dialog lists each block that the kernel offers for a page, in its order - the frames are none of them -, each with its origin, and every category of it is one the dialog has',
+	$status === 200 && array_column( $dialog['blocks'], 'key' ) === array_keys( $offered ) && in_array( 'frame', $dialog['categories'], true ) === false
+	&& array_diff( array_column( $dialog['blocks'], 'category' ), $dialog['categories'] ) === [] && array_unique( array_column( array_column( $dialog['blocks'], 'origin' ), 'kind' ) ) === [ 'basis' ] );
+
+// every block of the dialog is put in, one after the other, into one page: the ids of the rule, the words in each language, a slot of its own for each picture
+$at = builderAt( $page['tree'], 'start' ) + 2;
+$inserted = [];
+$words = [];
+
+foreach( array_keys( $offered ) as $key ) {
+
+	$put = builderInsert( $site, $page + [ 'texts' => $page['texts'] + $words ], $key, $at );
+	$page['tree'] = $put['tree'];
+	$words += $put['texts'];
+	$inserted += $put['inserted'];
+	$at += 2;
+}
+
+$ids = array_keys( $inserted );
+$snapshot = builderSnapshot( $site );
+[ $status, $drafted ] = builderCall( $site, 'builder/preview', [ 'template' => 'page-home', 'tree' => $page['tree'], 'texts' => $words, 'inserted' => $inserted ] );
+$shown = $status === 200 ? $draw( $site, $drafted['query'] ) : '';
+$heroTitle = '/template/page-home/'. $ids[0]. '/title';
+
+check( 'a block that is put in is drawn in the draft before anything is saved - its words, the trace round it, the pictures of the kernel in the place of the files it has not yet - and no file is written for it',
+	$status === 200 && str_contains( $shown, $words[$heroTitle]['de_DE'] ) === true && str_contains( $shown, '<!--nino:n page-home:' ) === true && str_contains( $shown, 'data:image/svg+xml' ) === true && builderSnapshot( $site ) === $snapshot );
+
+[ $status, $saved ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $page['tree'], 'texts' => $words, 'inserted' => $inserted, 'base' => $open['stamp'] ] );
+$file = (string) file_get_contents( builderFile( $site, 'page-home' ) );
+$config = \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/html/images'] ?? [];
+$values = \Nino\Text::values( $site, '/template/page-home' );
+$missing = [];
+
+foreach( $words as $key => $byLocale )
+	foreach( $byLocale as $locale => $text )
+		// a text of a block that has paragraphs is kept in the form of its source, the words are the same
+		if( trim( strip_tags( (string) ( $values[$key][$locale] ?? '' ) ) ) !== $text )
+			$missing[] = $key. ' '. $locale;
+
+$slots = [];
+
+foreach( $inserted as $id => $key ) {
+
+	$block = \Nino\Blocks::get( $site, $key );
+
+	foreach( $block['slots'] as $slot )
+		if( $slot['kind'] === 'image' ) {
+
+			$uri = '/template/page-home/'. ( $slot['scope'] === '' ? $id : $id. '-'. $slot['scope'] ). '/'. substr( $slot['source'], 1 );
+			$spec = $block['images'][$slot['name']];
+			$made = $config[$uri] ?? [];
+			$slots[$uri] = ( $made['width'] ?? 0 ) === $spec['width'] && ( $made['height'] ?? 0 ) === $spec['height'] && ( $made['filename'] ?? '' ) === ltrim( $uri, '/' ). '.svg' && \Nino\Images::read( $site, (string) ( $made['filename'] ?? '' ) ) === \Nino\Images::PLACEHOLDERS[$spec['placeholder']]['svg'];
+		}
+}
+
+check( 'saved in one step, the blocks are in the template with the ids of the rule - the id of the block where the page has none, hero-2 behind it - and each has its words in German and in English',
+	$status === 200 && $saved['changed'] === true && count( $ids ) === count( $offered ) && count( array_unique( $ids ) ) === count( $ids ) && $missing === []
+	&& array_filter( $ids, static fn( string $id ): bool => str_contains( $file, 'id="'. $id. '"' ) === false ) === []
+	&& preg_match( '/^[a-z]+(?:-\d+)?$/D', $ids[0] ) === 1 && str_contains( $file, 'id="hero-2"' ) === true && str_contains( $file, 'id="hero-2-' ) === false );
+check( 'and each picture of them is a slot of the namespace of its id - the size and the file the block says, the file the picture of the kernel - and the page is the one that was kept as the last state',
+	$slots !== [] && array_filter( $slots, static fn( bool $ok ): bool => $ok === false ) === [] && Store::previous( $site, 'page-home' )['source'] === (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+
+// a block that was saved is the page's: naming its id as a block that is put in makes none of its words a thing to write, and the last state comes back to a page that holds blocks
+$link = '/template/page-home/'. $ids[0]. '/link';
+\Nino\Text::put( $site, [ $link => [ 'de_DE' => 'page:/elsewhere' ] ] );
+[ , $held ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$snapshot = builderSnapshot( $site );
+[ $named ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $held['tree'], 'texts' => [ $link => [ 'de_DE' => $words[$link]['de_DE'] ] ], 'inserted' => [ $ids[0] => 'hero-full' ], 'base' => $held['stamp'], 'force' => true ] );
+$linked = ( $held['texts'][$link]['de_DE'] ?? '' ) === 'page:/elsewhere';
+[ $back ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-home', 'base' => $held['stamp'] ] );
+
+check( 'a block that is on the page is not a block that is put in whatever the request names: its link is not a word to write - nothing is written - and the last state comes back to a page that holds blocks of the kernel',
+	$linked === true && $named === 403 && $back === 200 && (string) file_get_contents( builderFile( $site, 'page-home' ) ) === (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+
+// a block with a link and paragraphs is put in, saved, copied and saved: the copy has the link of the original, the paragraphs stay
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$both = builderInsert( $site, [ 'tree' => $open['tree'], 'texts' => $open['texts'], 'slots' => $open['slots'] ], 'hero-full', builderAt( $open['tree'], 'start' ) + 2 );
+$long = builderInsert( $site, [ 'tree' => $both['tree'], 'texts' => $open['texts'] + $both['texts'], 'slots' => $open['slots'] ], 'text-narrow', builderAt( $both['tree'], $both['id'] ) + 2 );
+$words = $both['texts'] + $long['texts'];
+$words['/template/page-home/'. $long['id']. '/text'] = [ 'de_DE' => '<p>Erster Absatz</p><p>Zweiter <strong>Absatz</strong></p>' ];
+[ $first ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $long['tree'], 'texts' => $words, 'inserted' => $both['inserted'] + $long['inserted'], 'base' => $open['stamp'] ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$copy = builderCopy( $site, $open, $both['id'] );
+[ $second ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $copy['tree'], 'texts' => $copy['texts'], 'slots' => $copy['slots'], 'base' => $open['stamp'] ] );
+$kept = \Nino\Text::values( $site, '/template/page-home' );
+$told = $kept['/template/page-home/'. $long['id']. '/text']['de_DE'] ?? '';
+
+check( 'a block that was put in, saved and copied is saved again: its copy has the link and the words of the original, and the paragraphs a text was written in are kept the way its source keeps them',
+	$first === 200 && $second === 200 && ( $kept['/template/page-home/'. $copy['id']. '/link'] ?? [] ) === $kept['/template/page-home/'. $both['id']. '/link'] && substr_count( $told, '<p>' ) === 2 && str_contains( $told, '<strong>' ) === true );
+
+// the rule: a new block is the block of its key and nothing else - each way round it is refused, and nothing is written
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+\Nino\Text::put( $site, [ '/template/page-home/hero-5/title' => [ 'de_DE' => 'Alt' ] ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$page = [ 'tree' => $open['tree'], 'texts' => $open['texts'], 'slots' => $open['slots'] ];
+$at = builderAt( $page['tree'], 'start' ) + 2;
+$good = builderInsert( $site, $page, 'hero-full', $at );
+$send = static fn( array $put, array $more = [] ): array => $more + [ 'template' => 'page-home', 'tree' => $put['tree'], 'texts' => $put['texts'], 'inserted' => $put['inserted'], 'base' => $open['stamp'], 'force' => true ];
+$tries = [];
+
+$smuggled = $good;
+$smuggled['tree'][$at]['c'][] = [ 'n' => 'html', 's' => '', 'a' => [], 'c' => [ [ 't' => '<script>alert(1)</script>' ] ] ];
+$tries['another tree under the key of a block'] = [ $send( $smuggled ), 403, 'refused_free' ];
+
+$changed = $good;
+$changed['tree'][$at]['a']['ground'] = 'light';
+$tries['an attribute of the block that is not the block\'s'] = [ $send( $changed ), 403, 'refused_block' ];
+
+$edited = $send( $good );
+$edited['texts']['/template/page-home/'. $good['id']. '/link'] = [ 'de_DE' => 'https://evil.example/phish' ];
+$tries['a link target that the block does not bring'] = [ $edited, 403, 'key' ];
+
+$leading = builderInsert( $site, $page, 'hero-full', builderAt( $page['tree'], 'hero' ) - 2 );
+$tries['a block before the call of the header'] = [ $send( $leading ), 403, 'refused_block' ];
+
+$trailing = builderInsert( $site, $page, 'hero-full', count( $page['tree'] ) );
+$tries['a block after the call of the footer'] = [ $send( $trailing ), 403, 'refused_block' ];
+
+$padded = builderInsert( $site, $page, 'hero-full', $at, 'hero-007' );
+$tries['a number with a zero in front of it'] = [ $send( $padded ), 403, 'refused_id' ];
+
+$tries['a key of no block'] = [ $send( $good, [ 'inserted' => [ $good['id'] => 'no-such-block' ] ] ), 403, 'block' ];
+$tries['the key of a frame, which is no block of a page'] = [ $send( $good, [ 'inserted' => [ $good['id'] => 'header-line' ] ] ), 403, 'block' ];
+$tries['a block that nobody said is a block'] = [ $send( $good, [ 'inserted' => [] ] ), 403, 'refused_block' ];
+
+$renamed = builderInsert( $site, $page, 'hero-full', $at, 'neu' );
+$tries['an id of its own for the block'] = [ $send( $renamed ), 403, 'refused_id' ];
+
+$taken = builderInsert( $site, $page, 'hero-full', $at, 'hero-5' );
+$tries['an id that has words on the page'] = [ $send( $taken ), 403, 'refused_id' ];
+
+$old = builderInsert( $site, $page, 'hero-full', $at, 'hero' );
+$tries['the id of a block that is on the page'] = [ $send( $old ), 403, 'refused_ids' ];
+
+$inside = $page;
+$inside['tree'][builderAt( $page['tree'], 'start' )]['c'][] = $good['tree'][$at];
+$tries['a block inside a block'] = [ $send( [ 'tree' => $inside['tree'], 'texts' => [], 'inserted' => $good['inserted'] ] ), 403, 'refused_block' ];
+
+$foreign = $send( $good );
+$foreign['texts']['/template/page-contact/'. $good['id']. '/title'] = [ 'de_DE' => 'Fremd' ];
+$tries['words in the namespace of another page'] = [ $foreign, 403, 'key' ];
+
+$slotsOf = $send( $good, [ 'slots' => [ '/template/page-contact/'. $good['id']. '/background' => '/template/page-home/hero/background' ] ] );
+$tries['a picture slot in the namespace of another page'] = [ $slotsOf, 403, 'key' ];
+
+[ $frameStatus, $frameOpen ] = builderCall( $site, 'builder/open', [ 'template' => 'frame-footer' ] );
+$snapshot = builderSnapshot( $site );
+$answers = [];
+
+foreach( $tries as $label => [ $data, $want, $why ] ) {
+
+	[ $status, $body ] = builderCall( $site, 'builder/save', $data );
+	$answers[$label] = $status === $want && str_ends_with( (string) ( $body['code'] ?? '' ), $why ) === true;
+}
+
+check( 'a new block is the block of its key and nothing else: another tree under a valid key, a key that is none or is a frame\'s, no word of it at all, an id that is not the rule\'s or has words or is a block\'s, a block inside a block and what is not of the namespace are each refused with their word - and nothing is written',
+	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && builderSnapshot( $site ) === $snapshot );
+
+// a block of the catalogue put in before a block of the same shape is the new one, and the one that was there stays what it was: the old ones are settled first
+$twinAt = builderAt( $page['tree'], 'hero' );
+$twin = builderInsert( $site, $page, 'hero-full', $twinAt, 'hero-7' );
+
+check( 'a new block that stands before an old block of its shape is the new one - the old block is not taken for the copy - and it is saved',
+	builderCall( $site, 'builder/save', $send( $twin, [ 'force' => false ] ) )[0] === 200 && preg_match( '/id="hero-7".*id="hero"/s', (string) file_get_contents( builderFile( $site, 'page-home' ) ) ) === 1 );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$snapshot = builderSnapshot( $site );
+
+// in a frame no block is put in, and a frame is a page that has none to give
+$frameTree = $frameOpen['tree'];
+$frameBlock = builderInsert( $site, [ 'tree' => $frameTree, 'texts' => [], 'slots' => [] ], 'hero-full', 0, 'hero' );
+[ $status ] = builderCall( $site, 'builder/save', [ 'template' => 'frame-footer', 'tree' => $frameBlock['tree'], 'texts' => $frameBlock['texts'], 'inserted' => $frameBlock['inserted'], 'base' => $frameOpen['stamp'], 'force' => true ] );
+
+[ $frameKey ] = builderCall( $site, 'builder/block', [ 'key' => 'header-line' ] );
+
+check( 'a frame takes no block, whatever the request says of it, and the block of a frame is none that is put in anywhere', $frameStatus === 200 && $frameKey === 404 && $status === 403 && builderSnapshot( $site ) === $snapshot );
+
+// a word that no call of the page reads is not kept, and one block that is put in leaves the others as they are
+\Nino\Text::put( $site, [], [ '/template/page-home/hero-5/title' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$good = builderInsert( $site, [ 'tree' => $open['tree'], 'texts' => $open['texts'], 'slots' => $open['slots'] ], 'hero-full', builderAt( $open['tree'], 'start' ) + 2 );
+$extra = $good['texts'] + [ '/template/page-home/'. $good['id']. '/nothing-reads-this' => [ 'de_DE' => 'x' ] ];
+builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $good['tree'], 'texts' => $extra, 'inserted' => $good['inserted'], 'base' => $open['stamp'] ] );
+
+check( 'only what the block reads is written under its id: a word that no call reads is left out', \Nino\Text::values( $site, '/template/page-home/'. $good['id'] )['/template/page-home/'. $good['id']. '/nothing-reads-this'] ?? null === null && isset( \Nino\Text::values( $site, '/template/page-home' )['/template/page-home/'. $good['id']. '/title'] ) === true );
+
+// the tile: the page with the block in it, as a draft of its own that holds nothing the person sent, and no more of them than the kernel keeps
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$before = builderSnapshot( $site );
+[ $status, $tile ] = builderCall( $site, 'builder/tile', [ 'template' => 'page-home', 'key' => 'text-narrow', 'tree' => [ [ 't' => '<script>alert(1)</script>' ] ], 'source' => '<script>alert(2)</script>', 'texts' => [ 'x' => 'y' ] ] );
+$page = $status === 200 ? $draw( $site, $tile['query'] ) : '';
+$narrow = \Nino\Blocks::get( $site, 'text-narrow' );
+
+$asked = builderReboot( $site );
+ninoVisit( $asked, '/?'. ( $status === 200 ? $tile['query'] : '' ) );
+$silenced = in_array( [ \Nino\Modules\Builder::class, 'noScript' ], \Nino\Callbacks::registered( $asked, '/nino/shortcodes/assets/output/js' ), true ) === true;
+
+check( 'the tile of a block is drawn by the website with the words of the block and nothing the request carried, without the trace and without the scripts of the site, and nothing is written for it but the draft',
+	$status === 200 && str_contains( $page, $narrow['texts']['de_DE']['title'] ) === true && str_contains( $page, 'alert(' ) === false && str_contains( $page, '<!--nino:' ) === false && $silenced === true && builderSnapshot( $site ) === $before );
+
+$request = builderReboot( $site );
+$request['./nino/test/tile'] = true;
+$mine = \Nino\Filesystem::path( $site, \Nino\Preview::DIR. '/'. \Nino\Modules\Builder\Library::KIND );
+
+for( $count = 0; $count < \Nino\Modules\Builder\Library::TILES + 4; $count++ )
+	builderCall( $site, 'builder/tile', [ 'template' => 'page-home', 'key' => array_keys( $offered )[$count % count( $offered )] ] );
+
+[ $nothing ] = builderCall( $site, 'builder/tile', [ 'template' => 'page-home', 'key' => 'no-such-block' ] );
+[ $aFrame ] = builderCall( $site, 'builder/tile', [ 'template' => 'frame-footer', 'key' => 'hero-full' ] );
+
+check( 'a session holds at most the number of tiles the kernel is told, whatever was asked, and a block that is not offered or a frame has no tile',
+	count( glob( $mine. '/*', GLOB_ONLYDIR ) ?: [] ) === \Nino\Modules\Builder\Library::TILES && $nothing === 404 && $aFrame === 404 );
+
+ninoUser( $site, 'other@example.com', [ '/_admin/builder/manage' ] );
+$others = $draw( $site, $tile['query'] );
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+
+check( 'the tile of one session is the page as it is for another', str_contains( $others, $narrow['texts']['de_DE']['title'] ) === false );
+
+// what the tile draws is what a save takes: the root of the block is the block of the kernel - laid out, with the pictures of the kernel in the place of the slots
+$same = true;
+
+foreach( array_keys( $offered ) as $key ) {
+
+	$block = \Nino\Modules\Builder\Library::block( $site, $key );
+	$draft = \Nino\Modules\Builder\Library::tile( $site, 'page-home', $key, 'de_DE' );
+	$nodes = Tree::read( $site, (string) $draft['source'] );
+	$pictures = [];
+
+	foreach( \Nino\Modules\Builder\Library::places( $block, (string) $block['id'], 'page-home' ) as $place )
+		if( $place['kind'] === 'image' )
+			$pictures[$place['key']] = $block['images'][$place['name']]['placeholder'];
+
+	$found = array_values( array_filter( $nodes, static fn( array $node ): bool => ( $node['a']['id'] ?? null ) === $block['id'] ) )[0] ?? null;
+	$want = Tree::shown( $block['tree'], Tree::sources( $block['tree'], $registry, 'page-home' ), $pictures )[0];
+	$same = $same && $found !== null && json_encode( $found ) === json_encode( $want ) && \Nino\Components::check( $site, [ $found ] ) === [] && str_contains( (string) $draft['source'], '[template' ) === false;
+}
+
+check( 'the tile of every block that is offered draws its block as it is put in - the same tree, laid out, with nothing against it by the register - so that it draws nothing a save would refuse, and nothing of the header and the footer of the site', $same === true );
+
+// a block that is left out: a feature it needs is off - it is told with the name of the feature - and any other block that is refused is not told at all
+$dir = ninoSandboxDir( $site ). '/private/blocks';
+$write = static function( string $name, string $tpl, array $words = [ 'title' => 'Word' ] ) use ( $dir ): void {
+
+	@mkdir( $dir. '/'. $name. '/text', 0777, true );
+	file_put_contents( $dir. '/'. $name. '/block.json', json_encode( [ 'name' => [ 'de_DE' => 'Ein '. $name, 'en_US' => 'A '. $name ], 'description' => [ 'de_DE' => 'Beschreibung', 'en_US' => 'Description' ], 'category' => 'content', 'rank' => 5, 'images' => (object) [] ] ) );
+	file_put_contents( $dir. '/'. $name. '/block.tpl', $tpl );
+
+	foreach( [ 'de_DE', 'en_US' ] as $locale )
+		file_put_contents( $dir. '/'. $name. '/text/'. $locale. '.json', json_encode( $words ) );
+};
+$write( 'needs-lists', "[section-wrap id=\"lists\"]\n\t[section-row]\n\t\t[section-col]\n\t\t\t[section-title ~title]\n\t\t\t[collection-list]\n\t\t[/section-col]\n\t[/section-row]\n[/section-wrap]" );
+$write( 'evil-link', "[section-wrap id=\"evil\"]\n\t[section-row]\n\t\t[section-col]\n\t\t\t[button ~label href=\"~href\"]\n\t\t[/section-col]\n\t[/section-row]\n[/section-wrap]", [ 'label' => 'Go', 'href' => 'javascript:alert(1)' ] );
+$write( 'sneaky', "[section-wrap id=\"sneaky\"]\n\t[section-row]\n\t\t[section-col]\n\t\t\t[section-title ~title]\n\t\t\t<script>alert(1)</script>\n\t\t[/section-col]\n\t[/section-row]\n[/section-wrap]" );
+$write( 'has-band', "[section-wrap id=\"band\" variant=\"band\"]\n\t[section-row]\n\t\t[section-col]\n\t\t\t[section-title ~title]\n\t\t[/section-col]\n\t[/section-row]\n[/section-wrap]" );
+$ignored = ninoWarnings();
+\Nino\Blocks::all( $site );
+$site['./nino/blocks/state'] = null;
+unset( $site['./nino/blocks/state'], $site['./nino/blocks/said'] );
+[ , $dialog ] = builderCall( $site, 'builder/blocks' );
+$entries = array_column( $dialog['blocks'], null, 'key' );
+$collections = \Nino\Features::all( $site )['collections']['name'] ?? '';
+
+check( 'a block that needs a feature that is off is in the dialog with the name of the feature and cannot be put in, and a block that was left out for any other reason is not in it at all',
+	( $entries['needs-lists']['off'] ?? null ) === [ $collections ] && isset( $entries['sneaky'] ) === false
+	&& builderCall( $site, 'builder/block', [ 'key' => 'needs-lists' ] )[0] === 404 && builderCall( $site, 'builder/tile', [ 'template' => 'page-home', 'key' => 'needs-lists' ] )[0] === 404 );
+
+$put = builderInsert( $site, [ 'tree' => $open['tree'], 'texts' => [], 'slots' => [] ], 'hero-full', 1, 'lists' );
+[ $status ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $put['tree'], 'texts' => [], 'inserted' => [ 'lists' => 'needs-lists' ], 'base' => $open['stamp'], 'force' => true ] );
+
+check( 'and it is not put in by naming its key either', $status === 403 );
+
+// an address that runs a script or leaves the site is never written, even where the block brings it
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$evil = builderInsert( $site, [ 'tree' => $open['tree'], 'texts' => $open['texts'], 'slots' => $open['slots'] ], 'evil-link', builderAt( $open['tree'], 'start' ) + 2 );
+$snapshot = builderSnapshot( $site );
+
+check( 'an address that runs a script is not written even where the block brings it - the block is listed, put in and refused with its words - and nothing is written',
+	isset( $entries['evil-link'] ) === true && builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $evil['tree'], 'texts' => $evil['texts'], 'inserted' => $evil['inserted'], 'base' => $open['stamp'] ] )[0] === 403 && builderSnapshot( $site ) === $snapshot );
+
+// the hint of a variant: the one the mix has not got, with the one it appears as - and none where the Themes are off
+$band = \Nino\Blocks::all( $site )['has-band'] ?? [];
+\Nino\Callbacks::registerCallback( $site, \Nino\Components::VARIANTS, static function( array &$appData, array $asked ): array {
+	return $asked['name'] === 'section-wrap' ? [ 'name' => 'section-wrap', 'variants' => array_merge( $asked['variants'], [ 'soft' ] ), 'standard' => 'soft' ] : $asked;
+} );
+$said = \Nino\Modules\Builder\Library::hint( $site, $band, true );
+
+check( 'a block that names a variant the active mix has not got says which one it appears as, and with the Themes off it says nothing', $band !== [] && $said === [ 'variant' => 'band', 'standard' => 'soft' ] && \Nino\Modules\Builder\Library::hint( $site, $band, false ) === null && array_key_exists( 'hint', $entries['has-band'] ) === true && $entries['has-band']['hint'] === null );
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nI. What is measured\n";
 
 \Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
 [ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );

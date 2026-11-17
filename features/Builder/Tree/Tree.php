@@ -316,6 +316,83 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The names of the calls in a tree
+		 *
+		 *	@param		array			$nodes
+		 *	@param		array			&$names				(reference) name => true
+		 *
+		 *	@return 	void
+		 */
+		public static function names( array $nodes, array &$names ): void {
+
+			foreach( $nodes as $node )
+				if( isset( $node['n'] ) === true ) {
+
+					$names[$node['n']] = true;
+
+					if( is_array( $node['c'] ?? null ) === true )
+						self::names( $node['c'], $names );
+				}
+		}
+
+		/**
+		 *	What the screen knows of the calls of a tree: for each name the register has, its label and the attribute that is its id
+		 *
+		 *	@param		array			$nodes
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array											name => [ 'label' => ..., 'id' => attribute or '', 'source' => text, image, link or none ]
+		 */
+		public static function known( array $nodes, array $registry ): array {
+
+			$names = [];
+			self::names( $nodes, $names );
+			$known = [];
+
+			foreach( array_keys( $names ) as $name )
+				if( isset( $registry[$name] ) === true )
+					$known[$name] = [ 'label' => $registry[$name]['label'], 'id' => self::idAttribute( $registry[$name] ), 'source' => (string) ( $registry[$name]['source'] ?? 'none' ) ];
+
+			return $known;
+		}
+
+		/**
+		 *	A tree as a draft draws it: the source of each picture that has no file yet is the picture the kernel brings for it, so that the page shows what it will
+		 *	have and nothing is written for it
+		 *
+		 *	@param		array			$nodes
+		 *	@param		array			$sources			As sources() answers them for the nodes
+		 *	@param		array			$pictures			key of a picture => the reference of the kernel's picture
+		 *
+		 *	@return 	array
+		 */
+		public static function shown( array $nodes, array $sources, array $pictures ): array {
+
+			foreach( $sources as $entry )
+				if( $entry['kind'] === 'image' && isset( $pictures[$entry['key']] ) === true )
+					$nodes = self::_put( $nodes, array_map( 'intval', explode( '.', (string) $entry['path'] ) ), (string) $entry['attribute'], (string) $pictures[$entry['key']] );
+
+			return $nodes;
+		}
+
+		private static function _put( array $nodes, array $path, string $attribute, string $value ): array {
+
+			$at = array_shift( $path );
+
+			if( isset( $nodes[$at] ) === false )
+				return $nodes;
+
+			if( $path !== [] )
+				$nodes[$at]['c'] = is_array( $nodes[$at]['c'] ?? null ) === true ? self::_put( $nodes[$at]['c'], $path, $attribute, $value ) : ( $nodes[$at]['c'] ?? null );
+			else if( $attribute === '' )
+				$nodes[$at]['s'] = $value;
+			else
+				$nodes[$at]['a'][$attribute] = $value;
+
+			return $nodes;
+		}
+
+		/**
 		 *	The ids of the ids a tree names, the first of them for each call that has any: what must be told apart. A second one is the answer, null where all differ
 		 *
 		 *	@param		array			$nodes
@@ -422,15 +499,20 @@ namespace Nino\Modules\Builder {
 		 *	root has the id of the original with the next number - an id that is no id of the page and has no words or slots - and what is inside has that id in front
 		 *	(inner()). No id stands twice. A frame has the blocks it had - as many, with the names they had, in their order - and no copy
 		 *
+		 *	A block that is none of the old ones is a new one where $offers has the tree of a block for its id: it is that tree but for the ids and the fixed texts, and
+		 *	its root has the id of the block or the first number behind it that is no id of the page and has no words or slots, as a copy has. It stands in a run of the
+		 *	top level like any other block; a frame takes none
+		 *
 		 *	@param		array			$old
 		 *	@param		array			$new
 		 *	@param		array			$registry			The schemas
 		 *	@param		bool			$frame				A frame of the site
 		 *	@param		array			$taken				What the old page uses as an id, see taken()
+		 *	@param		array			$offers				id of the root of a new block => the root of the block it is, laid out as it is put in
 		 *
 		 *	@return 	string|null								What is refused: 'ids', 'free', 'block', 'copy', 'id' or 'frame'; null where it is the old page made new
 		 */
-		public static function refused( array $old, array $new, array $registry, bool $frame, array $taken = [] ): ?string {
+		public static function refused( array $old, array $new, array $registry, bool $frame, array $taken = [], array $offers = [] ): ?string {
 
 			if( self::twice( $new, $registry ) !== null )
 				return 'ids';
@@ -462,8 +544,15 @@ namespace Nino\Modules\Builder {
 					return 'free';
 			}
 
+			// A new block stands between the calls of the frames of the page - the header and the footer -, and anywhere where the page has none
+			$frames = [];
+
+			foreach( $kept[0] as $at => $piece )
+				if( isset( $piece['n'] ) === true && isset( $registry[$piece['n']] ) === false && $piece['n'] === 'template' )
+					$frames[] = $at;
+
 			foreach( $runs[1] as $run => $news )
-				foreach( self::_run( $runs[0][$run] ?? [], $news, $registry, $frame, $taken ) as $why )
+				foreach( self::_run( $runs[0][$run] ?? [], $news, $registry, $frame, $taken, $offers, $frames === [] || ( $run > $frames[0] && ( count( $frames ) === 1 || $run <= end( $frames ) ) ) ) as $why )
 					return $why;
 
 			// A frame has the blocks it had: as many, with the names they had, in the order they had
@@ -484,54 +573,110 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$olds
 		 *	@param		array			$news
 		 *	@param		array			$registry
+		 *	@param		bool			$frame
+		 *	@param		array			$taken
+		 *	@param		array			$offers				See refused()
+		 *	@param		bool			$room					Whether a new block may stand in this run
 		 *
-		 *	@return 	array											[ 'block' ] or [ 'copy' ] for what is refused, [] for nothing
+		 *	@return 	array											[ 'block' ], [ 'frame' ] or [ 'id' ] for what is refused, [] for nothing
 		 */
-		private static function _run( array $olds, array $news, array $registry, bool $frame, array $taken ): array {
+		private static function _run( array $olds, array $news, array $registry, bool $frame, array $taken, array $offers, bool $room ): array {
 
-			$used = [];
+			// The blocks that are the old ones come first: a copy that stands before its original is not mistaken for it
+			$settled = [];
 
-			foreach( $news as $block ) {
-
-				$pick = null;
-				$copy = true;
-
+			foreach( $news as $at => $block )
 				foreach( $olds as $index => $original ) {
 
 					$ids = [ self::_id( $original, $registry ), self::_id( $block, $registry ) ];
 
-					if( self::_alike( $original, $block, $registry, $ids ) === false )
-						continue;
+					if( $ids[0] === $ids[1] && isset( $settled[$index] ) === false && self::_alike( $original, $block, $registry, $ids ) === true ) {
+						$settled[$index] = $at;
+						break;
+					}
+				}
 
-					if( $ids[0] === $ids[1] && isset( $used[$index] ) === false ) {
+			$kept = array_flip( $settled );
+
+			foreach( $news as $at => $block ) {
+
+				if( isset( $kept[$at] ) === true )
+					continue;
+
+				$pick = null;
+				$now = self::_id( $block, $registry );
+
+				foreach( $olds as $index => $original )
+					if( self::_alike( $original, $block, $registry, [ self::_id( $original, $registry ), $now ] ) === true ) {
 						$pick = $index;
-						$copy = false;
 						break;
 					}
 
-					$pick ??= $index;
-				}
+				if( $pick === null ) {
 
-				if( $pick === null )
-					return [ 'block' ];
+					if( $frame === true || $room === false || $now === '' || isset( $offers[$now] ) === false )
+						return [ 'block' ];
 
-				$used[$pick] = true;
+					// A block that is put in: the tree of its block, with an id that nobody uses
+					if( self::_alike( $offers[$now], $block, $registry, [ self::_id( $offers[$now], $registry ), $now ] ) === false )
+						return [ 'block' ];
 
-				if( $copy === false )
+					if( self::isId( $now ) === false || in_array( $now, $taken, true ) === true || preg_match( '/^'. preg_quote( (string) preg_replace( '/-\d+$/', '', self::_id( $offers[$now], $registry ) ), '/' ). '(?:-[1-9]\d*)?$/D', $now ) !== 1 )
+						return [ 'id' ];
+
 					continue;
-
-				$was = self::_id( $olds[$pick], $registry );
-				$now = self::_id( $block, $registry );
+				}
 
 				if( $frame === true )
 					return [ 'frame' ];
 
 				// The id of a copy is the one the rule makes: the base of the original and the next number, one nobody uses
-				if( $was !== '' && ( $now === $was || self::isId( $now ) === false || preg_match( '/^'. preg_quote( (string) preg_replace( '/-\d+$/', '', $was ), '/' ). '-\d+$/D', $now ) !== 1 || in_array( $now, $taken, true ) === true ) )
+				$was = self::_id( $olds[$pick], $registry );
+
+				if( $was !== '' && ( $now === $was || self::isId( $now ) === false || preg_match( '/^'. preg_quote( (string) preg_replace( '/-\d+$/', '', $was ), '/' ). '-[1-9]\d*$/D', $now ) !== 1 || in_array( $now, $taken, true ) === true ) )
 					return [ 'id' ];
 			}
 
 			return [];
+		}
+
+		/**
+		 *	Whether a block is a block of the catalogue that was put in: the tree of the block but for the ids, which are the root's new one and what follows it, and
+		 *	the fixed texts
+		 *
+		 *	@param		array			$block				A block of the page
+		 *	@param		array			$expected			The root of the block of the catalogue
+		 *	@param		array			$registry
+		 *
+		 *	@return 	bool
+		 */
+		public static function likeBlock( array $block, array $expected, array $registry ): bool {
+			return self::_alike( $expected, $block, $registry, [ self::_id( $expected, $registry ), self::_id( $block, $registry ) ] );
+		}
+
+		/**
+		 *	Which id of a copy is which id of the original: a block and its copy have the same calls, so the ids come in pairs
+		 *
+		 *	@param		array			$old					The original
+		 *	@param		array			$new					The copy
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array											id of the copy => id of the original
+		 */
+		public static function pairs( array $old, array $new, array $registry ): array {
+
+			$pairs = [];
+			$one = self::_id( $old, $registry );
+			$two = self::_id( $new, $registry );
+
+			if( $one !== '' && $two !== '' )
+				$pairs[$two] = $one;
+
+			foreach( (array) ( $old['c'] ?? [] ) as $at => $node )
+				if( isset( $node['n'] ) === true && isset( $new['c'][$at]['n'] ) === true )
+					$pairs += self::pairs( $node, $new['c'][$at], $registry );
+
+			return $pairs;
 		}
 
 		private static function _id( array $block, array $registry ): string {
