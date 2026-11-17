@@ -7,6 +7,11 @@ declare(strict_types=1);
 // directory. The panel's own words are a different set, in features/Hello/text/.
 return [
 
+	// The words of the page the route /hello answers: its name in the Builder and the Routes panel, its title and its description
+	'[[/_nino/webpage/hello/name]]'	=> 'Hello World',
+	'[[/_nino/webpage/hello/title]]'	=> 'Hello World',
+	'[[/_nino/webpage/hello/description]]'	=> 'A greeting that a feature stores and draws.',
+
 	'[[/template/page-hello/intro/title]]'	=> 'Hello World',
 	'[[/template/page-hello/intro/text]]'	=> 'This page and the greeting below it came with a feature. Both are yours now: the words are in the Text panel, the page in templates/page-hello.tpl.',
 ];

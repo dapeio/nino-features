@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Gruß mit Überschrift", "en_US": "Greeting with a headline" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und der Gruß an den Namen aus dem Panel.", "en_US": "A headline, a sentence and the greeting of the name of the panel." },
+	"category": "content",
+	"rank": 90,
+	"images": {}
+}

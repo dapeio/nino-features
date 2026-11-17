@@ -13,7 +13,8 @@ return [
 	'[[/_admin/hello/nav]]'			=> 'Hallo Welt',
 
 	'[[/_admin/hello/label/name]]'	=> 'Name',
-	'[[/_admin/hello/label/save]]'	=> 'Speichern',
+	'[[/_admin/hello/label/greeting]]'	=> 'Gruß',
+	'[[/_admin/hello/hint/name]]'	=> 'Wen der Gruß nennt, wo ein Aufruf keinen Namen trägt.',
 
 	// Was das Panel zu einem Fehler sagt, für den der Server kein Wort hatte: die
 	// Liste, der Schlüssel, den Nino.adminUi.panel() für ein Laden nimmt, das

@@ -1,0 +1,8 @@
+[section-wrap ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[hello name="Ada"]
+			[hello name="Grace" shout]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

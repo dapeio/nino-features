@@ -8,6 +8,11 @@ declare(strict_types=1);
 // features/Hello/text/.
 return [
 
+	// Die Worte der Seite, die die Route /hello beantwortet: ihr Name im Builder und im Panel Routen, ihr Titel und ihre Beschreibung
+	'[[/_nino/webpage/hello/name]]'	=> 'Hallo Welt',
+	'[[/_nino/webpage/hello/title]]'	=> 'Hallo Welt',
+	'[[/_nino/webpage/hello/description]]'	=> 'Ein Gruß, den ein Feature speichert und zeichnet.',
+
 	'[[/template/page-hello/intro/title]]'	=> 'Hallo Welt',
 	'[[/template/page-hello/intro/text]]'	=> 'Diese Seite und der Gruß darunter kamen mit einem Feature. Beides gehört jetzt Dir: die Worte stehen im Panel Texte, die Seite in templates/page-hello.tpl.',
 ];

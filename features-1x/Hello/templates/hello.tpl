@@ -1,1 +1,0 @@
-<p class="nino-hello[[classes]]">[[text]]</p>

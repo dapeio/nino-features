@@ -1,0 +1,5 @@
+/*	hello - the standard part: the greeting as a quiet box with a line of the accent at its start	*/
+:root {
+	--hello-space: var(--page-space-2);
+}
+.hello { margin: 0; padding: var(--hello-space); border-inline-start: 3px solid var(--brand-accent); border-radius: var(--page-radius); background: var(--brand-ground-alt); color: var(--brand-ink); }

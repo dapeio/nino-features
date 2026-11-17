@@ -12,7 +12,8 @@ return [
 	'[[/_admin/hello/nav]]'			=> 'Hello World',
 
 	'[[/_admin/hello/label/name]]'	=> 'Name',
-	'[[/_admin/hello/label/save]]'	=> 'Save',
+	'[[/_admin/hello/label/greeting]]'	=> 'Greeting',
+	'[[/_admin/hello/hint/name]]'	=> 'Who the greeting names where a call carries no name.',
 
 	// What the panel says of a failure the server gave no word for: the list,
 	// which is the key Nino.adminUi.panel() takes for a failed load, and the save
