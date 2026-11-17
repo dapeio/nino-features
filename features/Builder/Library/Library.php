@@ -42,7 +42,7 @@ namespace Nino\Modules\Builder {
 					'name'				=> $block['name'],
 					'description'	=> $block['description'],
 					'category'		=> $block['category'],
-					'origin'			=> self::_origin( $features, (string) $block['origin'] ),
+					'origin'			=> self::_origin( $features, (string) $block['origin'], $block['label'] ?? null ),
 					'own'					=> (string) $block['origin'] === 'project',
 					'hint'				=> $missing === [] ? self::hint( $appData, $block, ( $features['themes']['active'] ?? false ) === true ) : null,
 					'off'					=> $missing === [] ? null : $missing,
@@ -191,22 +191,19 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Where a block comes from, in the words the dialog has for it: Basis, the project, a feature or a theme
+		 *	Where a block comes from, as the kernel labels it: the kind - basis, project, feature or theme - and the label the origin has, a text or a locale => text map
 		 *
 		 *	@param		array			$features			\Nino\Features::all()
 		 *	@param		string		$origin				What \Nino\Blocks says
+		 *	@param		mixed			$label				What \Nino\Blocks says a person reads for the origin
 		 *
-		 *	@return 	array											[ 'kind' => basis, project, feature or theme, 'name' => the name of the feature as the manifest has it, the key of the theme, '' for the others ]
+		 *	@return 	array											[ 'kind' => basis, project, feature or theme, 'label' => the label ]
 		 */
-		private static function _origin( array $features, string $origin ): array {
+		private static function _origin( array $features, string $origin, mixed $label ): array {
 
-			if( $origin === 'project' )
-				return [ 'kind' => 'project', 'name' => '' ];
+			$kind = $origin === 'project' ? 'project' : ( $origin === 'basis' ? 'basis' : ( isset( $features[$origin] ) === true ? 'feature' : 'theme' ) );
 
-			if( isset( $features[$origin] ) === true )
-				return [ 'kind' => $origin === 'basis' ? 'basis' : 'feature', 'name' => $origin === 'basis' ? '' : $features[$origin]['name'] ];
-
-			return [ 'kind' => 'theme', 'name' => $origin ];
+			return [ 'kind' => $kind, 'label' => is_array( $label ) === true || is_string( $label ) === true ? $label : $origin ];
 		}
 
 		/**
@@ -217,7 +214,7 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$block				As \Nino\Blocks::all() has it
 		 *	@param		bool			$themes				Whether the Themes are on
 		 *
-		 *	@return 	array|null								[ 'variant', 'standard' ]
+		 *	@return 	array|null								[ 'variant', 'standard', 'labels' => [ 'variant', 'standard' ] - the label the register has for each, a text or a locale => text map, or null ]
 		 */
 		public static function hint( array &$appData, array $block, bool $themes ): ?array {
 
@@ -233,11 +230,11 @@ namespace Nino\Modules\Builder {
 				if( $schema === null )
 					continue;
 
-				[ $list, $standard ] = Tree::variants( $appData, (string) $name );
+				[ $list, $standard, $labels ] = Tree::variants( $appData, (string) $name );
 
 				foreach( (array) $words as $word )
 					if( in_array( $word, $list, true ) === false )
-						return [ 'variant' => (string) $word, 'standard' => $standard ];
+						return [ 'variant' => (string) $word, 'standard' => $standard, 'labels' => [ 'variant' => $labels[(string) $word] ?? null, 'standard' => $labels[$standard] ?? null ] ];
 			}
 
 			return null;

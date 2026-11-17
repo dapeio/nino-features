@@ -270,6 +270,25 @@ check( 'the alt of a picture is a source like a text: a new key of the page, sav
 
 check( 'a template whose reading stops says the line where it does - the block that is not closed stands in line 3 - as a 409 with the name of the page, and nothing is changed', $status === 409 && ( $broken['code'] ?? '' ) === 'builder_unreadable' && ( $broken['params'][0] ?? '' ) === 'page-broken' && ( $broken['params'][1] ?? 0 ) === 3 );
 
+// ...and the page it is said of is called by its name where it has one, and by its frame's name for a frame
+$homeSource = (string) file_get_contents( $sandbox. '/private/templates/page-home.tpl' );
+$homeUri = (string) ( array_values( array_filter( \Nino\Pages::all( $site ), static fn( array $page ): bool => $page['template'] === 'page-home' ) )[0]['uri'] ?? '' );
+foreach( [ 'de_DE' => 'Startseite', 'en_US' => 'Start page' ] as $language => $name ) {
+
+	$texts = \Nino\Filesystem::getFileContent( $site, '/text/'. $language. '.php', [] );
+	$texts['[[/_nino/webpage'. $homeUri. '/name]]'] = $name;
+	\Nino\Filesystem::putFileContent( $site, '/text/'. $language. '.php', $texts );
+}
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', "[template /templates/html-header]\n[section-wrap id=\"x\"]\n\t[section-row]\n[/section-wrap]\n" );
+[ , $named ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$homeNames = array_column( array_filter( \Nino\Pages::all( $site ), static fn( array $page ): bool => $page['template'] === 'page-home' ), 'names' );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $homeSource );
+\Nino\Filesystem::putFileContent( $site, '/templates/frame-header.tpl', "[header-wrap id=\"header\"]\n\t[header-logo]\n" );
+[ , $frameBroken ] = sourceCall( $site, 'builder/open', [ 'template' => 'frame-header' ] );
+
+check( 'the sentence of a template that cannot be read names the page by the name it has in the language of the view - and a frame by its own word - and never by the file',
+	$homeNames !== [] && ( $named['params'][0] ?? '' ) === ( $homeNames[0][\Nino\Admin\Admin::contentLocale( $site )] ?? '' ) && ( $named['params'][0] ?? '' ) !== 'page-home' && ( $frameBroken['params'][0] ?? '' ) === 'Header' );
+
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nB. The pictures\n";
@@ -551,14 +570,20 @@ $answers = [
 	'a page that is there'				=> sourceCall( $site, 'builder/create', $page ),
 ];
 $told = array_map( static fn( array $answer ): array => [ $answer[0], $answer[1]['code'] ?? '', $answer[1]['field'] ?? '' ], $answers );
+$folders = glob( $sandbox. '/public/images/template/page-team*' ) ?: [];
 
-check( 'what the kernel refuses is said at the field it is about - an address that is taken is a 400 at the address of the language, an address of the system a 409, a name that is missing a 400 at the name, a page that is there a 400 - and nothing is left of the page: no word, no picture, no file, no route',
+check( 'what the kernel refuses is said at the field it is about - an address that is taken is a 400 at the address of the language, an address of the system a 409, a name that is missing a 400 at the name, a page that is there a 400 - and nothing is left of the page: no word, no picture, no file, no folder of the pictures, no route',
 	$told['an address of a page the module routes'] === [ 409, 'builder_page_http_uri_taken', 'httpUri-de_DE' ] && $told['an address that is taken'] === [ 400, 'builder_page_duplicate_http_uri', 'httpUri-en_US' ] && $told['an address of the system'][0] === 409 && $told['an address of the system'][2] === 'httpUri-en_US' && $told['a name that is missing'] === [ 400, 'builder_page_missing_name', 'name-en_US' ] && $told['a page that is there'][0] === 400
-	&& sourceSnapshot( $site ) === $before && $start === 403 && $stays === true && \Nino\Text::values( $site, '/template/page-team' ) === $wordsBefore && ( \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/html/images']['/template/page-team/hero/background'] ?? null ) === null );
+	&& sourceSnapshot( $site ) === $before && $folders === [] && $start === 403 && $stays === true && \Nino\Text::values( $site, '/template/page-team' ) === $wordsBefore && ( \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/html/images']['/template/page-team/hero/background'] ?? null ) === null );
 
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nE. A link that reads a text\n";
+
+// the type of example elements of the kernel is a type a loop may name - the blocks of Collections loop it - and a name like it that is none is not
+check( 'a loop may name the type of example elements the kernel brings, as a block that is put in does, and no other name that is no type of the project',
+	\Nino\Modules\Builder\Tree::sourced( $site, (string) array_key_first( \Nino\Elements::PLACEHOLDERS ), 'type', true, '', null ) === true
+	&& \Nino\Modules\Builder\Tree::sourced( $site, '/_nothing', 'type', true, '', null ) === false && \Nino\Modules\Builder\Tree::sourced( $site, '/no-such-type', 'type', true, '', null ) === false );
 
 // what a block brings may name a page the site has not yet - the contact page of the blocks of Basis - and a target a person sets names one that is there
 check( 'a page that is not there is a target a block may bring and none a person sets, and a script is neither', \Nino\Modules\Builder\Tree::linkTarget( $site, 'page:/no-such-page', false ) === true

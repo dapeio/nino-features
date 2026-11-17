@@ -6,23 +6,21 @@
  *										is a change of the working state - the tree of the template and the words of its namespace - and nothing is written before Save.
  *
  *										The address is #builder (the list), #builder/<page> (a page: its template without page-) and #builder/@header or #builder/@footer
- *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components, and #builder/<page>/<block>/@block
- *										its settings - and of one component #builder/<page>/<block>/<path>/<section>, the path being the position of the component in the
- *										block; the frames are the same views at #builder/<page>/@header and #builder/<page>/@footer. They are for the account that may design.
+ *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components, and
+ *										#builder/<page>/<block>/@block its settings - and of one component #builder/<page>/<block>/<path>/<section>, the path being the
+ *										position of the component in the block; the frames are the same views at #builder/<page>/@header and #builder/<page>/@footer. They
+ *										are for the account that may design.
  *
- *										A block is put in with "Insert block": between the blocks of the page, at its end and in the outline. The dialog lists what the server offers,
- *										by category, with a small picture of each block drawn by the website in the theme that is active; the block that is chosen is asked for
- *										as a tree with its texts in every language, its ids are made free by the rule (hero, hero-2 - what is inside begins with the new id of the
- *										root), and it stands in the working state like any other change until Save.
+ *										A block is put in with "Insert block": between the blocks of the page, at its end and in the outline. The dialog lists what the
+ *										server offers, by category, each with a small picture drawn by the website in the active theme; the block that is chosen is asked
+ *										for as a tree with its texts in every language, its ids are made free by the rule (hero, hero-2 - what is inside begins with the
+ *										new id of the root), and it stands in the working state like any other change until Save.
  *
- *										The tree is the one \Nino\Markup reads, kept canonical (a text that follows a text is one node), so that the position of a node in it
- *										is the position the trace of the drawing names. A block is a node on the top level that the register has; free markup and a call
- *										that has no schema are locked, stand where they are and are never copied. Moving a block swaps it with the next block - never past
- *										a locked piece - and the blanks between the nodes stay where they are.
- *
- *										The extended view works on the same tree: a component is put in where the register says it may stand (the server is asked at the
- *										place), moved among its neighbours, taken out - which asks nothing, the undo brings it back - and has its settings by the schema of its
- *										component. Free markup and calls without a schema are locked pieces there too: they are moved and taken out, never changed.
+ *										The tree is the one \Nino\Markup reads, kept canonical (a text that follows a text is one node), so that the position of a node
+ *										in it is the position the trace of the drawing names. A block is a node on the top level that the register has; free markup and a
+ *										call that has no schema are locked and stay where they are. Moving a block swaps it with the next block - never past a locked
+ *										piece. The extended view works on the same tree: a component is put in where the register says it may stand, moved among its
+ *										neighbours, taken out - the undo brings it back - and has its settings by the schema of its component.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -33,11 +31,15 @@
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	// How many steps the undo goes back, the widths of the preview and the width the page is laid out at for each of them - the desktop is as wide as the pane,
-	// which is the page at its own size and not a larger one made smaller
+	// How many steps the undo goes back, the widths of the preview and the width the page is laid out at for each: in the page the desktop is as wide as the pane,
+	// beside the tree of the extended view the pane is narrow and the desktop is laid out at DESKTOP and scaled into it, as the preview of the themes does
 	const MAX_STEPS	= 200;
 	const WIDTHS		= [ 'mobile', 'tablet', 'desktop' ];
 	const LAYOUT		= { mobile : 390, tablet : 768, desktop : null };
+	const DESKTOP		= 1280;
+
+	// The step that writes the markup in a call of html
+	const DEVELOP		= 3;
 
 	// Below this width of the preview a person who has chosen no width is shown the page as a phone shows it
 	const NARROW		= 520;
@@ -83,6 +85,7 @@
 		undo			: [],
 		redo			: [],
 		last			: 0,
+		unback		: '',
 		view			: null,
 		width			: 'desktop',
 		chosen		: false,
@@ -96,6 +99,8 @@
 		savedTexts	: {},
 		copies			: {},
 		inserted		: {},
+		named				: {},
+		fresh				: {},
 		oldIds			: new Set(),
 		native			: '',
 		catalog			: null,
@@ -211,9 +216,12 @@
 	// Whether a block holds free markup or a call that has no schema: such a block stays where it is, as it is - it is locked like a piece of the top level
 	const lockedInside = function( node ) {
 
+		// The text a call of html holds is its content for the account that may develop, no free markup
+		const own = node.n === 'html' && S.level >= DEVELOP;
+
 		return ( node.c ?? [] ).some( function( inner ) {
 
-			if( inner.f !== undefined || ( inner.t !== undefined && BLANKS.test( inner.t ) === false ) )
+			if( inner.f !== undefined || ( inner.t !== undefined && BLANKS.test( inner.t ) === false && own === false ) )
 				return true;
 
 			return inner.n !== undefined && ( S.known[inner.n] === undefined || lockedInside( inner ) === true );
@@ -432,6 +440,10 @@
 		S.inserted = now.inserted;
 		S.pictures = now.pictures;
 		changed( true );
+
+		// What the bar said of a change is not true of a page that is back to what is saved
+		if( S.view !== null && isDirty() === false )
+			S.view.bar.line.idle();
 	};
 
 	const undo = function() {
@@ -504,6 +516,9 @@
 			// A copy of a block that is put in and not saved is that block as well: the server holds it to the block it was made from
 			if( root !== '' && S.inserted[root] !== undefined )
 				S.inserted[ idOf( copy ) ] = S.inserted[root];
+
+			if( root !== '' && S.named[root] !== undefined )
+				S.named[ idOf( copy ) ] = S.named[root];
 
 			Object.keys( S.texts ).forEach( function( key ) {
 
@@ -616,9 +631,10 @@
 	 *	@param		{Object}		place					One of points()
 	 *	@param		{Object}		block					The answer of the server: key, id, tree, known, texts, slots
 	 *	@param		{string}		[from]				Where the action was started: outline or frame
+	 *	@param		{string|Object}	[name]		What the dialog calls the block
 	 *
 	 */
-	const insert = function( place, block, from ) {
+	const insert = function( place, block, from, name ) {
 
 		if( S.frame === true )
 			return false;
@@ -650,17 +666,34 @@
 			// The focus is put on the new block before the page is drawn - the button that had it is gone with the drawing -, where the blanks that were joined left it
 			S.refocus = { at : normalize( S.top ).indexOf( copy ), action : 'copy', from : from ?? 'frame' };
 
-			block.slots.filter( function( slot ) { return slot.kind === 'text' } ).forEach( function( slot ) {
+			block.slots.forEach( function( slot ) {
 
 				const was = slot.scope === '' ? block.id : block.id+ '-'+ slot.scope;
 				const id = was === block.id ? now : innerId( was, block.id, now );
+				const key = '/template/'+ S.template+ '/'+ id+ '/'+ slot.word;
+
+				if( slot.kind === 'image' ) {
+
+					// The slot is made when the page is saved; until then the panel knows its label and size, so that a file can be chosen
+					const spec = ( block.images ?? {} )[slot.name];
+
+					if( spec !== undefined )
+						S.pictures[key] = { label : localized( spec.label ) || slot.word, width : spec.width, height : spec.height };
+
+					return;
+				}
+
 				const words = wordsOf( block, slot.name );
 
 				if( Object.keys( words ).length > 0 )
-					S.texts[ '/template/'+ S.template+ '/'+ id+ '/'+ slot.word ] = words;
+					S.texts[key] = words;
 			} );
 
 			S.inserted[now] = block.key;
+
+			// The block is called what the dialog called it until it has words to be called by
+			if( name !== undefined )
+				S.named[now] = name;
 		} );
 
 		return true;
@@ -766,7 +799,8 @@
 		// A header and a footer are what they are called: the first words in them are a button or a link
 		// A name is the kind and the first words: where they are longer than a name is, the kind and the id - the whole of the words is the title of the name
 		const text = node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : firstText( [ node ], '', 120 );
-		const label = text !== '' && ( whole === true || text.length <= NAMED ) ? text : ( node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : idOf( node ) );
+		const named = S.named[idOf( node )];
+		const label = text !== '' && ( whole === true || text.length <= NAMED ) ? text : ( node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : ( named !== undefined ? localized( named ) : idOf( node ) ) );
 
 		return label === '' ? kindName( node ) : kindName( node )+ ' · '+ label;
 	};
@@ -1367,6 +1401,16 @@
 			placed.push( { block : block, bar : bar, box : frameBox, pills : pills } );
 		} );
 
+		// A page of free markup only has its places in the frame too: the first under the header of the site, the others above its footer
+		const loose = spots.filter( function( spot ) { return spot.block === null } ).map( function( spot ) {
+
+			const button = pillOf( spot );
+
+			shadow.appendChild( button );
+
+			return button;
+		} );
+
 		// The picture a call reads as an attribute: a button in the foot corner of the call
 		behind.forEach( function( item ) {
 
@@ -1402,6 +1446,21 @@
 				pic.button.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
 				pic.button.style.top = ( box.top + box.height - pic.button.offsetHeight * back - 8 * back )+ 'px';
 				pic.button.style.left = Math.max( box.left, box.left + box.width - pic.button.offsetWidth * back - 8 * back )+ 'px';
+			} );
+
+			loose.forEach( function( button, which ) {
+
+				const header = doc.querySelector('header');
+				const footer = doc.querySelector('footer');
+
+				button.style.transformOrigin = '0 0';
+				button.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
+				button.style.left = ( 8 * back )+ 'px';
+
+				if( which === 0 )
+					button.style.top = ( ( header === null ? 0 : header.getBoundingClientRect().bottom + win.scrollY ) + 4 * back )+ 'px';
+				else
+					button.style.top = ( ( footer === null ? doc.documentElement.scrollHeight : footer.getBoundingClientRect().top + win.scrollY ) - button.offsetHeight * back - 4 * back )+ 'px';
 			} );
 
 			placed.forEach( function( item ) {
@@ -1666,7 +1725,7 @@
 			return;
 		}
 
-		view.bar.set( { dirty : isDirty(), restorable : S.last > 0 } );
+		paintBar( view );
 		view.buttons.undo.disabled = S.undo.length === 0;
 		view.buttons.redo.disabled = S.redo.length === 0;
 		fill( view.split.settings, outline() );
@@ -1706,13 +1765,9 @@
 
 	// --- the dialog "Insert block" ----------------------------------------------------------------------------------
 
-	// Where a block comes from, as a chip says it
+	// Where a block comes from, as a chip says it: the label the kernel gives the origin
 	const originWord = function( origin ) {
-
-		if( origin.kind === 'basis' || origin.kind === 'project' )
-			return word( 'insert/origin-'+ origin.kind );
-
-		return origin.kind === 'feature' ? word( 'insert/origin-feature', localized( origin.name ) ) : word( 'insert/origin-theme', String( origin.name ) );
+		return localized( origin.label );
 	};
 
 	// The frame of a tile, once there is an address for it: the page with the block in it, laid out as a desktop lays it out and scaled into the box
@@ -1771,6 +1826,19 @@
 	 *	@param		{Function}	pick					Called with the entry that was chosen
 	 *
 	 */
+	// A variant of a hint, as the register labels it, else as the panel does, else as the word it is
+	const hintWord = function( hint, which ) {
+
+		const label = ( hint.labels ?? {} )[which];
+
+		if( label !== undefined && label !== null )
+			return localized( label );
+
+		const own = Nino.content.getText( '/_admin/builder/variant/'+ hint[which] );
+
+		return own !== '' ? own : hint[which];
+	};
+
 	const tileOf = function( entry, pick, drop ) {
 
 		const item = el( 'li', 'builder-tile'+ ( entry.off === null ? '' : ' builder-tile--off' ) );
@@ -1779,7 +1847,7 @@
 		const name = el( 'strong', 'builder-tile-name', localized( entry.name ) );
 		const about = el( 'span', 'nino-admin-hint builder-tile-about', localized( entry.description ) );
 		const chips = el( 'span', 'builder-tile-chips' );
-		const note = entry.off !== null ? word( 'insert/off', entry.off.map( localized ).join(', ') ) : ( entry.hint === null ? '' : word('insert/variant') );
+		const note = entry.off !== null ? word( 'insert/off', entry.off.map( localized ).join(', ') ) : ( entry.hint === null ? '' : word( 'insert/variant', hintWord( entry.hint, 'variant' ), hintWord( entry.hint, 'standard' ) ) );
 		const described = [];
 
 		thumb.setAttribute( 'aria-hidden', 'true' );
@@ -1998,7 +2066,7 @@
 				return;
 			}
 
-			if( insert( place, response, from ) === true )
+			if( insert( place, response, from, entry.name ) === true )
 				S.view.bar.line.idle( word( 'msg/inserted', localized( entry.name ) ) );
 			else
 				S.view.bar.line.fail( word('error/insert') );
@@ -2077,6 +2145,7 @@
 		S.known = Object.assign( {}, S.known, response.known );
 		S.stamp = response.stamp;
 		S.last = response.last ?? 0;
+		S.unback = response.unback ?? '';
 		S.sources = response.sources;
 		S.pending = response.sources;
 		S.pictures = {};
@@ -2134,6 +2203,7 @@
 	const save = function( done ) {
 
 		const forced = S.force;
+		const pressed = S.view !== null && dc.activeElement === S.view.bar.save;
 
 		S.force = false;
 		endEdit( true );
@@ -2148,6 +2218,13 @@
 				S.view.preview.schedule();
 				done( true );
 				paint();
+
+				// The pressed button is off now and takes the focus with it: it goes to the state of the bar
+				if( pressed === true && ( dc.activeElement === null || dc.activeElement === dc.body ) ) {
+					S.view.bar.state.tabIndex = -1;
+					S.view.bar.state.focus();
+				}
+
 				return;
 			}
 
@@ -2175,9 +2252,11 @@
 	// The last state takes the place of this one, and this one becomes the last: the question is asked, as it is where the Themes do the same
 	const askRestore = function( opener ) {
 
+		const frame = S.frame === true ? nameOfPage( S.template ) : '';
+
 		Nino.adminUi.confirm( 'destructive', {
-			title		: word('confirm/restore-title'),
-			message	: word('confirm/restore-message'),
+			title		: frame === '' ? word('confirm/restore-title') : word( 'confirm/restore-title-frame', frame ),
+			message	: frame === '' ? word('confirm/restore-message') : word( 'confirm/restore-message-frame', frame ),
 			yes			: word('label/restore'),
 			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
 			kind		: 'danger',
@@ -2225,8 +2304,8 @@
 		} );
 	};
 
-	// The name of a language in that language - Deutsch, English - and its code behind it; the code alone where the browser knows no name
-	const languageName = function( locale ) {
+	// The name of a language in that language - Deutsch, English - with its code behind it, or alone where plain
+	const languageName = function( locale, plain ) {
 
 		const code = locale.split('_')[0];
 		let name = '';
@@ -2237,7 +2316,7 @@
 			name = '';
 		}
 
-		return name === '' || name === code ? locale : name.charAt( 0 ).toUpperCase()+ name.slice( 1 )+ ' ('+ locale+ ')';
+		return name === '' || name === code ? locale : name.charAt( 0 ).toUpperCase()+ name.slice( 1 )+ ( plain === true ? '' : ' ('+ locale+ ')' );
 	};
 
 	// The language the page is written in: the working language of the workbench, which is changed there and is the one the other panels write in
@@ -2335,17 +2414,36 @@
 		to.focus();
 	};
 
+	// The width the page is laid out at, for each width of the preview
+	const layoutsOf = function( advanced ) {
+		return advanced === true ? Object.assign( {}, LAYOUT, { desktop : DESKTOP } ) : LAYOUT;
+	};
+
+	// Where "back" goes from the view, and whether it keeps the draft: the extended view of a page is one draft with the page; that of a frame goes to the page it was opened from
+	const backOf = function( advanced ) {
+
+		if( advanced === false )
+			return { parts : [], keep : false };
+
+		return S.frame === true ? { parts : [ S.page !== '' ? S.page : addressOf( S.template ) ], keep : false } : { parts : [ S.adv.slug ], keep : true };
+	};
+
 	const build = function( level ) {
 
 		level.innerHTML = '';
 
 		// The extended view goes back to the page it is of - or the frame -, the page to the list
 		const advanced = S.mode === 'advanced';
-		const home = advanced === true ? [ S.frame === true ? addressOf( S.template ) : S.adv.slug ] : [];
+		const layouts = layoutsOf( advanced );
+		const home = backOf( advanced ).parts;
 		const back = el( 'a', 'nino-admin-back-link', advanced === true ? word('label/back-page') : word('label/back-list') );
 
 		back.href = Nino.admin.router.href( 'builder', home );
 		back.id = 'builder-back-list';
+
+		if( backOf( advanced ).keep === true )
+			back.setAttribute( 'data-keep-draft', '' );
+
 		back.addEventListener( 'click', function( event ) {
 			event.preventDefault();
 			Nino.admin.builder.go( home );
@@ -2374,7 +2472,7 @@
 			id			: 'builder-split',
 			settings	: settings,
 			tools		: toolbox.el,
-			preview		: { src : 'about:blank', title : word('label/preview-title'), width : LAYOUT[S.width] ?? undefined },
+			preview		: { src : 'about:blank', title : word('label/preview-title'), width : layouts[S.width] ?? undefined },
 			onLoad		: instrument,
 			onView		: function( view ) {
 
@@ -2389,7 +2487,7 @@
 		const preview = Nino.adminUi.previewFrame( {
 			split		: split,
 			send		: send,
-			widths	: LAYOUT,
+			widths	: layouts,
 			address	: function( query ) { return S.dir+ S.address+ ( S.address.indexOf('?') === -1 ? '?' : '&' )+ query },
 			onError	: function( status, response ) { bar.line.error( status, response ) },
 		} );
@@ -2454,6 +2552,17 @@
 		preview.width( S.width );
 	};
 
+	// Restore is on the bar where the page has a last state, and off - with the reason - where this account may not put it back
+	const paintBar = function( view ) {
+
+		view.bar.set( { dirty : isDirty(), restorable : S.last > 0 } );
+
+		if( S.last > 0 && S.unback !== '' ) {
+			view.bar.restore.disabled = true;
+			view.bar.restore.title = word('msg/no-restore');
+		}
+	};
+
 	// The work is dropped: the page as it is saved
 	const discard = function() {
 
@@ -2508,6 +2617,7 @@
 		S.built = false;
 		S.template = template;
 		S.page = target.page;
+		S.named = {};
 
 		Nino.admin.builder.call( 'open', { template : template, page : target.page }, function( status, response ) {
 
@@ -2525,6 +2635,7 @@
 			S.dir = response.dir;
 			S.address = response.address;
 			S.locale = response.contentLocale;
+			S.fresh = response.fresh ?? {};
 			S.locales = response.locales;
 			S.native = response.native;
 			S.catalog = null;
@@ -2860,6 +2971,9 @@
 			if( entry[0] === 'variant' )
 				return word( 'finding/variant', schema === undefined ? entry[1] : variantLabel( schema, entry[1] ) );
 
+			if( entry[0] === 'unknown' )
+				return entry[2] === undefined ? word( 'finding/nofeature', component( entry[1] ) ) : word( 'finding/unknown', component( entry[1] ), localized( entry[2] ) );
+
 			return word( 'finding/'+ entry[0], component( entry[1] ) );
 		};
 
@@ -3106,7 +3220,7 @@
 				fresh.s = '~'+ name;
 
 				if( schema.source === 'text' )
-					S.texts[ '/template/'+ S.template+ '/'+ scope+ '/'+ name ] = { [S.locale] : word('new/text') };
+					S.texts[ '/template/'+ S.template+ '/'+ scope+ '/'+ name ] = { [S.locale] : freshText() };
 			}
 			else if( schema.source === 'text' )
 				fresh.a.text = word('new/text');
@@ -3305,6 +3419,11 @@
 		} );
 
 		return used;
+	};
+
+	// The words of a new text, in the language the page is written in - which is not always the one of the workbench
+	const freshText = function() {
+		return typeof S.fresh[S.locale] === 'string' ? S.fresh[S.locale] : word('new/text');
 	};
 
 	// The text the page shows where the language of the view has none: the next language that has one, the native language first - what the website does
@@ -3630,7 +3749,7 @@
 				else
 					text.type = 'text';
 
-				text.value = spec.kind === 'link' ? '' : word('new/text');
+				text.value = spec.kind === 'link' ? '' : freshText();
 				field.appendChild( text );
 				box.appendChild( field );
 			}
@@ -3846,7 +3965,7 @@
 			},
 		} );
 
-		holder.querySelector('button').focus();
+		( holder.querySelector('button') ?? holder ).focus();
 	};
 
 	/**
@@ -4423,11 +4542,44 @@
 	};
 
 	// The words of a component: a text written in the language of the view - a fixed one for all - and in a sentence where it is read
+	// The markup a call of html holds, for the account that may develop - the component cleans it where it draws it; with calls inside it is shown and not changed
+	const htmlBody = function( rel, node ) {
+
+		const body = el( 'div', 'builder-adv-content' );
+		const field = el( 'label', 'nino-admin-field' );
+		const control = el( 'textarea', 'nino-admin-input' );
+		const calls = ( node.c ?? [] ).some( function( inner ) { return inner.t === undefined } );
+
+		field.appendChild( el( 'span', 'builder-field-label', word('field/content') ) );
+		field.appendChild( el( 'span', 'nino-admin-badge builder-field-chip', word('field/all-languages') ) );
+		control.value = ( node.c ?? [] ).map( function( inner ) { return inner.t ?? '' } ).join('');
+		control.rows = 10;
+		control.dataset.key = rel+ ':content';
+
+		if( calls === true ) {
+			control.readOnly = true;
+			control.setAttribute( 'aria-readonly', 'true' );
+		}
+		else
+			control.addEventListener( 'change', function() {
+				change( function() { relNode( rel ).c = control.value === '' ? [] : [ { t : control.value } ] } );
+			} );
+
+		field.appendChild( control );
+		body.appendChild( field );
+		body.appendChild( el( 'p', 'nino-admin-hint builder-source', word( calls === true ? 'field/html-calls' : 'field/html-note' ) ) );
+
+		return body;
+	};
+
 	const contentBody = function( rel ) {
 
 		const node = relNode( rel );
 		const source = sourceOf( rel );
 		const body = el( 'div', 'builder-adv-content' );
+
+		if( node.n === 'html' && S.level >= DEVELOP )
+			return htmlBody( rel, node );
 
 		// A loop shows the elements of a type: the type is its source
 		if( source === null && S.schemas[node.n].loop === true )
@@ -4477,7 +4629,7 @@
 		const sentence = source.written.charAt(0) === '.' ? sayOf( { kind : source.kind }, source.written, rel ) : source.kind === 'fixed' ? word('source/fixed')
 			: ( source.kind === 'image' ? word('source/image')
 			: ( source.kind === 'link' ? word('source/link')
-			: ( source.editable === true ? word('source/own') : ( source.key === '' ? word('source/none') : word('source/other') ) ) ) );
+			: ( source.editable === true ? word( S.frame === true ? 'source/own-frame' : 'source/own' ) : ( source.key === '' ? word('source/none') : word('source/other') ) ) ) );
 		const line = el( 'p', 'nino-admin-hint builder-source', sentence );
 
 		body.appendChild( line );
@@ -4499,7 +4651,7 @@
 
 		const given = typeof node.s === 'string' ? node.s : '';
 		const line = el( 'p', 'nino-admin-hint builder-source', '' );
-		const say = function() { line.textContent = given === '' ? word('type/none') : word( 'type/is', ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : given } ).title ) };
+		const say = function() { line.textContent = given === '' ? word('type/none') : word( 'type/is', ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : given.indexOf('/_') === 0 ? word('type/example') : given } ).title ) };
 		const choose = Nino.adminUi.button( word('type/change'), function() { openType( rel, choose ) }, { className : 'nino-admin-btn--small' } );
 
 		choose.dataset.key = rel+ ':source:';
@@ -4647,7 +4799,7 @@
 			label			: word('adv/tree-label'),
 			items			: itemsNow(),
 			selected	: S.marked === '' ? 'root' : S.marked,
-			onSelect	: function( id ) { Nino.admin.builder.go( partsOf( id, id === 'root' || ( S.schemas[relNode( id ).n].source === 'none' ) ? 'look' : 'content' ), { focus : 'back' } ) },
+			onSelect	: function( id ) { Nino.admin.builder.go( partsOf( id, sectionOf( id ) ), { focus : 'back' } ) },
 			onAction	: function( key, id ) {
 
 				const opener = S.tree.el.querySelector( '[data-key="'+ key+ '"]' );
@@ -4734,7 +4886,7 @@
 		if( finding !== undefined )
 			holder.appendChild( Nino.adminUi.notice( finding.text ) );
 
-		if( schema.source !== 'none' || schema.loop === true )
+		if( schema.source !== 'none' || schema.loop === true || ( node.n === 'html' && S.level >= DEVELOP ) )
 			keys.unshift( 'content' );
 
 		const open = keys.indexOf( section ) === -1 ? keys[0] : section;
@@ -4761,6 +4913,14 @@
 		S.adv.accordion = accordion;
 
 		return holder;
+	};
+
+	// The section of a component that opens first: its content where it has one, else its settings
+	const sectionOf = function( rel ) {
+
+		const node = relNode( rel );
+
+		return rel === 'root' || node === null || ( S.schemas[node.n].source === 'none' && ( node.n !== 'html' || S.level < DEVELOP ) ) ? 'look' : 'content';
 	};
 
 	const variantSummary = function( node ) {
@@ -4828,7 +4988,7 @@
 
 		const view = S.view;
 
-		view.bar.set( { dirty : isDirty(), restorable : S.last > 0 } );
+		paintBar( view );
 		view.buttons.undo.disabled = S.undo.length === 0;
 		view.buttons.redo.disabled = S.redo.length === 0;
 
@@ -4931,7 +5091,7 @@
 			const node = relNode( rel );
 
 			if( node !== null && S.schemas[node.n] !== undefined )
-				Nino.admin.builder.go( partsOf( rel, rel === 'root' || S.schemas[node.n].source === 'none' ? 'look' : 'content' ), { focus : 'back' } );
+				Nino.admin.builder.go( partsOf( rel, sectionOf( rel ) ), { focus : 'back' } );
 		}, true );
 
 		S.mark( true );
@@ -4969,7 +5129,7 @@
 
 		mount.innerHTML = '';
 
-		data.pages.forEach( function( page ) { pages.appendChild( rowOf( page.template, page.name, page.path, page.locales ) ) } );
+		data.pages.forEach( function( page ) { pages.appendChild( rowOf( page.template, page.name, page.path, page.locales.map( function( locale ) { return languageName( locale, true ) } ) ) ) } );
 		data.frames.forEach( function( frame ) { frames.appendChild( rowOf( frame.template, word( 'word/frame-'+ frame.key ), word('hint/frame-short'), [], data.pages.length > 0 ? [ addressOf( data.pages[0].template ), addressOf( frame.template ) ] : undefined ) ) } );
 
 		mount.appendChild( el( 'h3', 'builder-heading', word('label/pages') ) );
@@ -5020,7 +5180,7 @@
 			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
-			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets,
+			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar,
 		},
 
 		go : function( parts, options ) {

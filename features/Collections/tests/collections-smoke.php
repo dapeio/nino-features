@@ -21,6 +21,7 @@ declare(strict_types=1);
  *													F. the script of the filter, run over the kernel's stand-in of a page, in collections-js-smoke.js
  *													G. words, activation, sizes, and the cost of a loop of a thousand elements - what the register costs it
 												H. the demo of the group: read without a note, and drawn over the type of example elements the kernel brings
+ *													I. the two blocks of the feature, a list and a table over elements: listed with the feature as their origin, valid, drawn
  *
  *												Runs against an isolated sandbox directory. The kernel is the checkout's own; the feature is the one this
  *												file sits in, which the kernel reads from the directory it is told (NINO_FEATURES_DIR) and registers as it
@@ -1118,6 +1119,49 @@ check( '...whatever types the project has: with none of its own the demo is draw
 
 		return $plain( \Nino\Html::renderSource( $demoSite, $demoSource ) ) === $plain( $demoHtml );
 	} )() );
+
+// --- I. The blocks ----------------------------------------------------------------------------------------
+
+echo "\nI. The blocks\n";
+
+$blockSite = collectionsSite( 'en_US' );
+$blockKeys = [ 'list-over-elements', 'table-over-elements' ];
+$blockAll = \Nino\Blocks::all( $blockSite );
+$blockManifest = (array) require $featureDir. '/feature.php';
+check( 'the feature brings a list and a table over elements as blocks: both are listed with the feature as their origin and its name as the label, can be put in, and none of the feature\'s folders is refused',
+	array_diff( $blockKeys, array_keys( $blockAll ) ) === [] && array_unique( array_column( array_intersect_key( $blockAll, array_flip( $blockKeys ) ), 'origin' ) ) === [ 'collections' ]
+	&& array_unique( array_map( 'json_encode', array_column( array_intersect_key( $blockAll, array_flip( $blockKeys ) ), 'label' ) ) ) === [ json_encode( $blockManifest['name'] ) ]
+	&& array_column( array_intersect_key( $blockAll, array_flip( $blockKeys ) ), 'missing' ) === [ [], [] ]
+	&& array_filter( array_keys( \Nino\Blocks::rejected( $blockSite ) ), static fn( string $where ): bool => str_starts_with( $where, 'collections/' ) ) === [] );
+
+$blockDrawn = [];
+$blockWalk = static function( array $nodes, string $type ) use ( &$blockWalk ): ?array {
+
+	foreach( $nodes as $node )
+		if( isset( $node['n'] ) === true && ( $node['s'] === $type || ( $found = $blockWalk( (array) ( $node['c'] ?? [] ), $type ) ) !== null ) )
+			return $node['s'] === $type ? $node : $found;
+
+	return null;
+};
+
+foreach( $blockKeys as $blockKey ) {
+
+	$block = \Nino\Blocks::get( $blockSite, $blockKey );
+	$fills = [];
+
+	foreach( (array) ( $block['slots'] ?? [] ) as $slot )
+		$fills['/template/page-x/'. $block['id']. '/'. substr( (string) $slot['source'], 1 )] = (string) $block['texts']['en_US'][$slot['name']];
+
+	\Nino\Html::addFills( $blockSite, $fills, 'en_US' );
+	$blockDrawn[$blockKey] = $block === null ? '' : collectionsDraw( $blockSite, (string) $block['source'] );
+	check( 'the block "'. $blockKey. '" is a section whose loop reads the type of example elements, and the register finds nothing against its template',
+		$block !== null && $block['wrap'] === 'section-wrap' && ( $blockWalk( $block['tree'], $demoType )['s'] ?? '' ) === $demoType && \Nino\Components::check( $blockSite, $block['tree'] ) === [] );
+}
+
+check( 'drawn, the list has one row and the table one row for each element of the type and a heading for each of its four columns, and no bracket is left in either',
+	substr_count( $blockDrawn['list-over-elements'], '<li class="collection-list-row"' ) === $demoElements && substr_count( $blockDrawn['table-over-elements'], '<tr class="collection-table-row"' ) === $demoElements
+	&& preg_match_all( '#<th class="collection-col[^"]*" scope="col">[^<]+</th>#', $blockDrawn['table-over-elements'] ) === 4
+	&& str_contains( $blockDrawn['list-over-elements']. $blockDrawn['table-over-elements'], '[' ) === false && ninoWarnings() === [] );
 
 foreach( $sandboxes as $sandbox )
 	if( is_dir( $sandbox ) === true )

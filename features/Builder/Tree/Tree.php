@@ -525,7 +525,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	What check() finds in a tree, as the screen says it: position => [ [ code, detail ], ... ] - the findings of the pieces that are locked and of the call of html
+		 *	What check() finds in a tree, as the screen says it: position => [ [ code, detail, and for a component of a feature that is off the name of the feature ], ... ] - the findings of the pieces that are locked and of the call of html
 		 *	are left out, the screen shows those as locked
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -538,12 +538,46 @@ namespace Nino\Modules\Builder {
 			$out = [];
 			$skip = [ \Nino\Components::CODE_BARE, \Nino\Components::CODE_FREE, \Nino\Components::CODE_HTML ];
 
+			$absent = null;
+
 			foreach( \Nino\Components::check( $appData, $nodes ) as $position => $found )
-				foreach( $found as $finding )
-					if( in_array( $finding['code'], $skip, true ) === false )
+				foreach( $found as $finding ) {
+
+					if( in_array( $finding['code'], $skip, true ) === true )
+						continue;
+
+					// A component that no feature that is on brings is said with the feature that is off and has it, where there is one
+					if( $finding['code'] === \Nino\Components::CODE_UNKNOWN && ( $absent ??= self::absent( $appData ) ) !== [] && isset( $absent[$finding['detail']] ) === true )
+						$out[(string) $position][] = [ $finding['code'], $finding['detail'], $absent[$finding['detail']] ];
+					else
 						$out[(string) $position][] = [ $finding['code'], $finding['detail'] ];
+				}
 
 			return $out;
+		}
+
+		/**
+		 *	The components that the features which are off bring, each with the name of its feature, as the manifest has it: a call of one is a name nobody registered
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											component => the name of the feature, a text or a locale => text map
+		 */
+		public static function absent( array &$appData ): array {
+
+			$absent = [];
+
+			foreach( \Nino\Features::all( $appData ) as $feature ) {
+
+				if( $feature['active'] === true || is_dir( $feature['dir']. '/components' ) === false )
+					continue;
+
+				foreach( @scandir( $feature['dir']. '/components' ) ?: [] as $entry )
+					if( $entry[0] !== '.' && preg_match( \Nino\Components::NAME, $entry ) === 1 && isset( $absent[$entry] ) === false && is_dir( $feature['dir']. '/components/'. $entry ) === true )
+						$absent[$entry] = $feature['name'];
+			}
+
+			return $absent;
 		}
 
 		/**
@@ -750,7 +784,8 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	What a person who may design may do to a template, and the one who may develop: the new tree differs from the old as far as it likes, in what the register
 		 *	holds, and in nothing else. The register is asked of both (\Nino\Components::check()) and the new tree may have nothing against it that the old one had not
-		 *	by the same name and attributes. Free markup and calls without a schema - and for the one who may not develop the call of html and what it holds - are
+		 *	by the same name and attributes - but for a variant the active mix has not got, which is a hint for each step. What the call of html holds is its own for the one
+		 *	who may develop. Free markup and calls without a schema - and for the one who may not develop the call of html and what it holds - are
 		 *	pieces of the old tree to the byte, and the pieces that follow one another are one unit: it stays in its container, whole and in its order, and is moved
 		 *	or taken out as a whole, never split, never put in another container, never made twice. No id stands twice, a new id is no id of the page and has no
 		 *	words or slots. An address that runs a script or leaves the site and a textfill in a value are the old ones or none, where old means the same attribute of
@@ -763,7 +798,7 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$taken				What the old page uses as an id, see taken()
 		 *	@param		bool			$develop			Whether the call of html may be new
 		 *
-		 *	@return 	string|null								What is refused: 'ids', 'html', 'free', 'unit', 'check', 'link', 'value' or 'id'; null where the tree is taken
+		 *	@return 	string|null								What is refused: 'ids', 'html', 'free', 'unit', 'check', 'link', 'value', 'image' or 'id'; null where the tree is taken
 		 */
 		public static function designed( array &$appData, array $old, array $new, array $registry, array $taken, bool $develop ): ?string {
 
@@ -811,7 +846,7 @@ namespace Nino\Modules\Builder {
 			self::_values( $new, $registry, $given );
 			$known = array_count_values( array_column( $known, 0 ) );
 
-			foreach( $given as [ $key, $value, $link ] ) {
+			foreach( $given as [ $key, $value, $link, $picture ] ) {
 
 				if( ( $known[$key] ?? 0 ) > 0 ) {
 					$known[$key]--;
@@ -823,6 +858,10 @@ namespace Nino\Modules\Builder {
 
 				if( $link === true && self::linkTarget( $appData, $value ) === false )
 					return 'link';
+
+				// A picture is a place for a picture: the page draws none from an address, so a new one is no picture the page would show
+				if( $picture === true && preg_match( '#^\s*(?:[a-z][a-z0-9+.\-]*:|//)#i', $value ) === 1 )
+					return 'image';
 			}
 
 			$here = self::taken( $old, $registry, [] );
@@ -875,7 +914,8 @@ namespace Nino\Modules\Builder {
 				}
 				else if( isset( $node['f'] ) === true )
 					$piece = [ (string) json_encode( $node ), false ];
-				else if( isset( $node['t'] ) === true && trim( (string) $node['t'], " \t\r\n" ) !== '' )
+				// What the call of html holds is its content: for the one who may develop it is the call's own, as the markup of any call is that of its schema, and no free markup
+				else if( isset( $node['t'] ) === true && trim( (string) $node['t'], " \t\r\n" ) !== '' && ( $develop === false || str_ends_with( $parent, '/html' ) === false ) )
 					$piece = [ (string) json_encode( [ 't' => trim( (string) $node['t'], " \t\r\n" ) ] ), false ];
 
 				if( $piece !== null ) {
@@ -907,8 +947,10 @@ namespace Nino\Modules\Builder {
 
 				foreach( $found as $finding ) {
 
-					// What is not in the register - html, a call without a schema, free markup - is the pieces' rule
-					if( in_array( $finding['code'], [ \Nino\Components::CODE_HTML, \Nino\Components::CODE_BARE, \Nino\Components::CODE_FREE, \Nino\Components::CODE_UNKNOWN ], true ) === true )
+					// What is not in the register - html, a call without a schema, free markup - is the pieces' rule. A variant the active mix has not got is a hint, never a
+					// refusal, for any step of permission: the call keeps its word, the page draws the standard variant, and a word that is drawn as nothing but a choice among the
+					// register's own cannot carry anything onto the page. So a block of a theme that is not active is put in, saved, copied and restored like any other
+					if( in_array( $finding['code'], [ \Nino\Components::CODE_HTML, \Nino\Components::CODE_BARE, \Nino\Components::CODE_FREE, \Nino\Components::CODE_UNKNOWN, \Nino\Components::CODE_VARIANT ], true ) === true )
 						continue;
 
 					$value = in_array( $finding['code'], [ \Nino\Components::CODE_OUTSIDE, \Nino\Components::CODE_FOREIGN ], true ) === true ? (string) json_encode( $node['a'][$finding['detail']] ?? null ) : '';
@@ -1004,7 +1046,9 @@ namespace Nino\Modules\Builder {
 				return true;
 
 			if( $kind === 'type' )
-				return preg_match( self::TYPE, $written ) === 1 && ( isset( \Nino\Elements::PLACEHOLDERS[$written] ) === true || \Nino\Elements::getElementModel( $appData, $written ) !== [] );
+				// The type of example elements the kernel brings is one as well - a block that loops it is put in, and the person chooses what it shows after that.
+				// Its name is none a type of the project has, so it is asked for by itself
+				return isset( \Nino\Elements::PLACEHOLDERS[$written] ) === true || ( preg_match( self::TYPE, $written ) === 1 && \Nino\Elements::getElementModel( $appData, $written ) !== [] );
 
 			// An attribute that is written like no reference - a space in it, a dot and no field - is the text it is
 			if( $first === false && $written[0] !== '.' && preg_match( self::SHAPE, $written ) !== 1 )
@@ -1121,7 +1165,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Whether every source a tree names that the old tree did not name - by the call, the place and what is written - is a source (see sourced()). What stood
+		 *	Whether every source a tree names that the old tree did not name - by the call, the attribute and what is written - is a source (see sourced()). What stood
 		 *	there is left as it is: the register draws it as it does. Neither a key of the wrong form nor a field outside a loop nor a field the type has no such field
 		 *	of is written
 		 *
@@ -1144,10 +1188,9 @@ namespace Nino\Modules\Builder {
 
 				$mark = $name. "\0". $attribute. "\0". $written;
 
-				if( ( $had[$mark] ?? 0 ) > 0 ) {
-					$had[$mark]--;
+				// What the old tree read at this call, in this attribute, in these words is known to every call of that name: a copy reads what its original reads
+				if( ( $had[$mark] ?? 0 ) > 0 )
 					continue;
-				}
 
 				if( self::sourced( $appData, $written, $kind, $attribute === '', $scope, $loop ) === false )
 					return false;
@@ -1158,11 +1201,11 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	The values of the attributes of the calls of a tree that have a schema, each with the name of the call and of the attribute - which is what makes it
-		 *	known - and whether the attribute is a link
+		 *	known - and whether the attribute is a link and whether it is a picture
 		 *
 		 *	@param		array			$nodes
 		 *	@param		array			$registry
-		 *	@param		array			&$out					(reference) [ [ call, attribute and value as one string, value, link ], ... ]
+		 *	@param		array			&$out					(reference) [ [ call, attribute and value as one string, value, link, picture ], ... ]
 		 *
 		 *	@return 	void
 		 */
@@ -1175,11 +1218,11 @@ namespace Nino\Modules\Builder {
 
 				// The first word of a call that reads an address is held to the same rule as the value of an attribute that does
 				if( is_string( $node['s'] ?? null ) === true && $node['s'] !== '' && ( $registry[$node['n']]['source'] ?? 'none' ) === 'link' )
-					$out[] = [ $node['n']. "\0\0". $node['s'], $node['s'], true ];
+					$out[] = [ $node['n']. "\0\0". $node['s'], $node['s'], true, false ];
 
 				foreach( (array) ( $node['a'] ?? [] ) as $name => $value )
 					if( is_string( $value ) === true )
-						$out[] = [ $node['n']. "\0". $name. "\0". $value, $value, ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'link' ];
+						$out[] = [ $node['n']. "\0". $name. "\0". $value, $value, ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'link', ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'image' ];
 
 				if( is_array( $node['c'] ?? null ) === true )
 					self::_values( $node['c'], $registry, $out );

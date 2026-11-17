@@ -1,0 +1,8 @@
+[section-wrap id="list" ground="base"]
+	[section-row]
+		[section-col]
+			[section-title ~title tag="h2" size="m"]
+			[collection-list /_placeholder variant="check" sort="title"][text .title][/collection-list]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

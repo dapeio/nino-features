@@ -1,0 +1,8 @@
+[section-wrap id="table" ground="base"]
+	[section-row]
+		[section-col]
+			[section-title ~title tag="h2" size="m"]
+			[collection-table /_placeholder sort="-date" caption="~caption"][collection-col .title title="~heading-title" rowhead][collection-col .date title="~heading-date" as="date"][collection-col .price title="~heading-price" as="currency" align="end"][collection-col .text title="~heading-text"][/collection-table]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

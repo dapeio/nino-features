@@ -45,6 +45,24 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	What a page is called in the language of the view: its name, else its title, else its template. A frame has no name of its own and keeps the template
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *	@param		string		$locale
+		 *
+		 *	@return 	string
+		 */
+		public static function label( array &$appData, string $template, string $locale ): string {
+
+			foreach( self::all( $appData, $locale ) as $page )
+				if( $page['template'] === $template )
+					return (string) $page['name'];
+
+			return $template;
+		}
+
+		/**
 		 *	The words of a name or an address as a name of a template: lower case letters and digits, joined by hyphens - the umlauts of German as the words they
 		 *	are written out as, any other letter with a mark as the letter
 		 *
@@ -286,7 +304,7 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$set					key => language => text, what was written
 		 *	@param		array			$before				What Text::put() answered, key => language => the text it was
 		 *	@param		array			$slots				What Images::putSlot() answered for each slot that was written: what it was, [] for one that was not there
-		 *	@param		array			$made					The files made
+		 *	@param		array			$made					The files made, below /images/
 		 *
 		 *	@return 	void
 		 */
@@ -314,8 +332,15 @@ namespace Nino\Modules\Builder {
 				else
 					\Nino\Images::putSlot( $appData, (string) $uri, $was );
 
-			foreach( $made as $file )
+			// The folders that were made for the files go with them, as far as they are empty: a page that is refused leaves no folder of its pictures
+			foreach( $made as $file ) {
+
 				\Nino\Images::delete( $appData, (string) $file );
+
+				for( $folder = dirname( (string) $file ); $folder !== '.' && $folder !== '/' && $folder !== 'template' && str_starts_with( $folder, 'template/' ) === true; $folder = dirname( $folder ) )
+					if( @rmdir( \Nino\Filesystem::path( $appData, '/images/'. $folder ) ) === false )
+						break;
+			}
 		}
 	}
 }

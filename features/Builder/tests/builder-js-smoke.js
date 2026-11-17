@@ -47,7 +47,7 @@ const words = {
 		asked.add( match[1] );
 
 	// A word chosen between two - word( picture ? 'source/a' : 'source/b' ) - is read as the literal it is
-	const either = /'((?:own|page|picture|source|insert|confirm|hint|msg)\/[a-z0-9-]+)'/g;
+	const either = /'((?:own|page|picture|source|insert|confirm|hint|msg|field)\/[a-z0-9-]+)'/g;
 
 	while( ( match = either.exec( script ) ) !== null )
 		asked.add( match[1] );
@@ -57,9 +57,8 @@ const words = {
 	[ 'copy', 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key+ '-short' ) } );
 	[ 'section-wrap', 'header-wrap', 'footer-wrap' ].forEach( function( key ) { asked.add( 'kind/'+ key ) } );
 	[ 'mobile', 'tablet', 'desktop', 'frame-header', 'frame-footer' ].forEach( function( key ) { asked.add( 'word/'+ key ) } );
-	// The places of the dialog: the categories, the origins and the two ways a place is named
+	// The places of the dialog: the categories and the two ways a place is named
 	[ 'all', 'intro', 'content', 'trust', 'offer', 'action', 'contact' ].forEach( function( key ) { asked.add( 'insert/cat-'+ key ) } );
-	[ 'basis', 'project' ].forEach( function( key ) { asked.add( 'insert/origin-'+ key ) } );
 	[ 'before', 'after' ].forEach( function( key ) { asked.add( 'label/insert-'+ key ) } );
 	// The words of the extended view that are put together: what the register has against a place and why a component is grey, the three rows of a width, the
 	// two variants that have a word, what a field says of the id and the picture - and the three steps of the roles tab, which the kernel reads
@@ -239,7 +238,8 @@ const heroBlock = function() {
 	return { key : 'hero-full', id : 'hero', known : { 'section-wrap' : S.known['section-wrap'], 'section-col' : S.known['section-col'], 'section-title' : S.known['section-title'] },
 		tree : [ section( 'hero', 'T' ) ],
 		texts : { de_DE : { title : 'Titel', text : 'Text', '1-text' : 'Innen' }, en_US : { title : 'Title', text : 'Text', '1-text' : 'Inside' } },
-		slots : [ { name : 'title', scope : '', word : 'title', kind : 'text' }, { name : '1-text', scope : '1', word : 'text', kind : 'text' }, { name : 'background', scope : '', word : 'background', kind : 'image' } ] };
+		slots : [ { name : 'title', scope : '', word : 'title', kind : 'text' }, { name : '1-text', scope : '1', word : 'text', kind : 'text' }, { name : 'background', scope : '', word : 'background', kind : 'image' } ],
+		images : { background : { placeholder : '/nino/placeholder/landscape', width : 1920, height : 1080, label : { de_DE : 'Hintergrundbild', en_US : 'Background picture' } } } };
 };
 
 check( 'B. a block is put in with its own id where the page has none, with the next number where it has, and what is inside begins with the id of the root - hero-2 and hero-2-1', ( function() {
@@ -292,6 +292,94 @@ check( 'B. the focus is set where the new block will be before the page is drawn
 	builder.insert( builder.points()[1], heroBlock(), 'outline' );
 	S.view = null;
 	return seen !== null && JSON.parse( seen ).from === 'outline' && S.top[JSON.parse( seen ).at].a.id === 'hero-2';
+} )() );
+check( 'B. the picture of a block that is put in is known to the panel with its label and size before the page is saved - the server is told it, so that another file can be chosen for it - and the undo takes it back', ( function() {
+	fresh();
+	S.oldIds = new Set( [ 'hero', 'start' ] );
+	S.locales = [ { locale : 'de_DE', active : true } ];
+	S.native = 'de_DE';
+	builder.insert( builder.points()[1], heroBlock() );
+	const key = '/template/page-home/hero-2/background';
+	const told = JSON.stringify( builder.picturesNow()[key] );
+	builder.undo();
+	return told === JSON.stringify( { label : 'Background picture', width : 1920, height : 1080 } ) && S.pictures[key] === undefined;
+} )() );
+check( 'B. a block that is put in is called what the dialog called it until it has words to be called by, and its copy is called so too', ( function() {
+	fresh();
+	S.oldIds = new Set( [ 'hero', 'start' ] );
+	S.locales = [ { locale : 'de_DE', active : true } ];
+	S.native = 'de_DE';
+	S.named = {};
+	const block = heroBlock();
+	block.texts.de_DE.title = 'Eine klare Überschrift für Deine Seite';
+	builder.insert( builder.points()[1], block, 'frame', { de_DE : 'Hero mit Band', en_US : 'Hero with band' } );
+	const at = S.top.findIndex( function( node ) { return node.a !== undefined && node.a.id === 'hero-2' } );
+	builder.duplicate( at );
+	const copy = S.top.findIndex( function( node ) { return node.a !== undefined && node.a.id === 'hero-3' } );
+	return builder.titleOf( S.top[at] ) === 'Section \u00B7 Hero with band' && builder.titleOf( S.top[copy] ) === 'Section \u00B7 Hero with band' && builder.titleOf( S.top[3] ) === 'Section \u00B7 Hallo';
+} )() );
+check( 'B. the extended view lays the desktop out at 1280 and scales it into its narrow pane, the page does not: its desktop is as wide as the pane', ( function() {
+	const advanced = builder.layoutsOf( true );
+	const basic = builder.layoutsOf( false );
+	return advanced.desktop === 1280 && advanced.tablet === 768 && advanced.mobile === 390 && basic.desktop === null && basic.tablet === 768;
+} )() );
+check( 'B. what the call of html holds is the account\'s that may develop: for the others the block that holds text in it is locked, for that account it is a block like any other - and the words of a new text are the ones of the language of the page', ( function() {
+	fresh();
+	const html = { n : 'html', s : '', a : {}, c : [ { t : '<p>x</p>' } ] };
+	const block = { n : 'section-wrap', s : '', a : { id : 'raw' }, c : [ { t : '\n' }, html, { t : '\n' } ] };
+	S.known.html = { label : 'HTML', id : '', source : 'none' };
+	S.level = 2;
+	const closed = builder.free( block );
+	S.level = 3;
+	const open = builder.free( block );
+	S.level = 1;
+	S.fresh = { de_DE : 'Neuer Text', en_US : 'New text' };
+	S.locale = 'en_US';
+	return closed === false && open === true && builder.freshText() === 'New text';
+} )() );
+check( 'B. back from the extended view of a page keeps the draft and goes to the page, back from that of a frame goes to the page it was opened from and asks, back from the page goes to the list', ( function() {
+	fresh();
+	S.adv = { slug : 'home' };
+	const page = builder.backOf( true );
+	S.frame = true;
+	S.template = 'frame-header';
+	S.page = 'contact';
+	const frame = builder.backOf( true );
+	S.page = '';
+	const alone = builder.backOf( true );
+	S.frame = false;
+	S.page = '';
+	S.template = 'page-home';
+	S.adv = null;
+	return JSON.stringify( page ) === '{"parts":["home"],"keep":true}' && JSON.stringify( frame ) === '{"parts":["contact"],"keep":false}' && alone.parts[0] === '@header' && JSON.stringify( builder.backOf( false ) ) === '{"parts":[],"keep":false}';
+} )() );
+check( 'B. the bar offers the last state where there is one, and has it off with its reason where the account may not put it back', ( function() {
+	fresh();
+	const made = function( last, unback ) {
+		const restore = { disabled : false, title : null };
+		S.last = last;
+		S.unback = unback;
+		builder.paintBar( { bar : { set : function() {}, restore : restore } } );
+		return restore;
+	};
+	const may = made( 1, '' );
+	const may2 = made( 1, 'builder_restore_develop' );
+	const none = made( 0, 'builder_restore_develop' );
+	S.last = 0;
+	S.unback = '';
+	return may.disabled === false && may2.disabled === true && may2.title !== null && may.title === null && none.disabled === false;
+} )() );
+check( 'B. what the bar said of a change is gone where the undo takes the whole of it back, and stays while something is left', ( function() {
+	fresh();
+	const lines = [];
+	S.view = { bar : { set : function() {}, line : { idle : function() { lines.push( 'idle' ) } }, restore : {} }, buttons : { undo : {}, redo : {} }, preview : { schedule : function() {} }, split : { settings : { contains : function() { return false }, appendChild : function() {}, querySelectorAll : function() { return [] }, set innerHTML( value ) {} } } };
+	builder.duplicate( 3 );
+	builder.duplicate( 3 );
+	builder.undo();
+	const half = lines.length;
+	builder.undo();
+	S.view = null;
+	return half === 0 && lines.length === 1;
 } )() );
 check( 'B. a name is the kind and the first words where they are short, the kind and the id where they are not, and the title of it is the whole of them', ( function() {
 	fresh();

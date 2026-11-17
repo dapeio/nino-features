@@ -61,6 +61,10 @@ return [
 		'panel' => [],
 		'callbacks' => [],
 		'install' => [
+			'blocks/<key>/' => [
+				'en_US' => 'Two blocks for the Builder, a list and a table over elements, which show the example elements until you choose what they show.',
+				'de_DE' => 'Zwei Blocks für den Builder, eine Liste und eine Tabelle über Elemente, die die Beispielelemente zeigen, bis Du wählst, was sie zeigen.',
+			],
 			'text/<locale>.php' => [
 				'en_US' => 'Puts the four words of the filter and the table - All, Filter, Showing, Table - into the Text panel, for the buttons and the names a screen reader reads.',
 				'de_DE' => 'Bringt die vier Worte von Filter und Tabelle - Alle, Filter, Angezeigt, Tabelle - ins Panel Texte, für die Knöpfe und die Namen, die ein Screenreader liest.',

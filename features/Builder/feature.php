@@ -40,8 +40,8 @@ return [
 				'de_DE' => 'An einem Block der Seite: der Baum seiner Komponenten, die eingefügt, verschoben und entfernt werden, wo das Register es erlaubt, und die Einstellungen jeder nach ihrem Schema.',
 			],
 			'/_admin/builder/*' => [
-				'en_US' => 'The door /_admin/builder/manage lets an account design, and a role needs it as well; content/*, design/* and develop/* below it make that blocks and texts, components and frames, or everything.',
-				'de_DE' => 'Die Tür /_admin/builder/manage lässt ein Konto gestalten und gehört zu jeder Rolle; content/*, design/* und develop/* darunter machen daraus Blocks und Texte, Komponenten und Rahmen oder alles.',
+				'en_US' => 'The door /_admin/builder/manage is needed by every role; content/*, design/* and develop/* below it make that blocks and texts, components and frames, or also the markup of html.',
+				'de_DE' => 'Die Tür /_admin/builder/manage braucht jede Rolle; content/*, design/* und develop/* darunter machen daraus Blocks und Texte, Komponenten und Rahmen oder auch das Markup von html.',
 			],
 			'Source' => [
 				'en_US' => 'Where the text, the address or the picture of a component comes from: a text that is there or a new one, a fixed text, a page, an address, a picture slot or a field of the element of a loop.',

@@ -80,12 +80,13 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key					The key below /_admin/builder/
+		 *	@param		string		$locale				The language of the word; '' for the one of the workbench
 		 *
 		 *	@return 	string
 		 */
-		private static function _word( array &$appData, string $key ): string {
+		private static function _word( array &$appData, string $key, string $locale = '' ): string {
 
-			$locale = \Nino\Locales::getCurrentLocale( $appData );
+			$locale = $locale === '' ? \Nino\Locales::getCurrentLocale( $appData ) : $locale;
 			$file = dirname( __DIR__ ). '/text/'. ( preg_match( '/^[a-z]{2}_[A-Z]{2}$/D', $locale ) === 1 && is_file( dirname( __DIR__ ). '/text/'. $locale. '.php' ) === true ? $locale : 'en_US' ). '.php';
 			$words = require $file;
 
@@ -182,6 +183,8 @@ namespace Nino\Modules\Builder {
 				'stamp'			=> Store::stamp( $state ),
 				'address'		=> self::_address( $appData, $template, $locale, $page ),
 				'last'			=> self::_last( $appData, $template ),
+				'unback'		=> self::_unbacked( $appData, $template, $state, $nodes, $level ),
+				'fresh'			=> array_combine( \Nino\Locales::getTextLocales( $appData ), array_map( static fn( string $text ): string => self::_word( $appData, 'new/text', $text ), \Nino\Locales::getTextLocales( $appData ) ) ),
 			] + self::_more( $appData, $nodes, $registry, $level, $locale ) + self::_view( $appData, $locale, $level ) );
 		}
 
@@ -327,6 +330,43 @@ namespace Nino\Modules\Builder {
 				return;
 			}
 
+			$failure = self::_unback( $appData, $template, $state, $nodes, $previous, $level );
+
+			if( $failure !== null ) {
+				self::_fail( $request, $failure );
+				return;
+			}
+
+			$target = [
+				'source'	=> $previous['source'],
+				'texts'		=> array_filter( $previous['texts'], static fn( mixed $key ): bool => is_string( $key ) === true && Tree::own( $key, $template ) === true, ARRAY_FILTER_USE_KEY ),
+				'slots'		=> array_filter( $previous['slots'], static fn( mixed $uri ): bool => is_string( $uri ) === true && Tree::own( $uri, $template ) === true, ARRAY_FILTER_USE_KEY ),
+			];
+
+			$failed = Store::commit( $appData, $template, $state, $target, null, [], null, [], $level );
+
+			if( $failed !== null ) {
+				self::_fail( $request, $failed === 'changed' ? self::_changed() : [ 500, 'the page could not be written, and is as it was', 'builder_write', [], '' ] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'restored' => true ] + self::_after( $appData, $template, $level ) );
+		}
+
+		/**
+		 *	Whether the last state of a page may be put back by an account of this step of permission, as a restore holds it - and what is against it where it may not
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *	@param		array			$state				As Store::state() answers
+		 *	@param		array			$nodes				The tree of the page as it is
+		 *	@param		array			$previous			As Store::previous() answers, not null
+		 *	@param		int				$level
+		 *
+		 *	@return 	array|null								The failure as _fail() takes it; null where the last state may be put back
+		 */
+		private static function _unback( array &$appData, string $template, array $state, array $nodes, array $previous, int $level ): ?array {
+
 			// What the last state brings back is held to the rule of the step of the account, as a save of it would be: for the content the page as it is must be the
 			// last state with its blocks moved, copied or left out - that is how it came to be -; for the design and the development the last state is the tree that
 			// is written, and pieces the account may not put in are not brought back. Only the words and the slots of the namespace of the page are written, whatever
@@ -352,8 +392,7 @@ namespace Nino\Modules\Builder {
 			if( $why !== null ) {
 
 				$code = $level < \Nino\Modules\Builder::LEVEL_DEVELOP && in_array( $why, [ 'html', 'free', 'unit' ], true ) === true ? 'builder_restore_develop' : 'builder_refused_'. $why;
-				self::_fail( $request, [ 403, 'the last state may not be put back: '. $why, $code, [], 'tree' ] );
-				return;
+				return [ 403, 'the last state may not be put back: '. $why, $code, [], 'tree' ];
 			}
 
 			// What the last state brings back is held to the rule for where a link goes, as a save of this step is
@@ -365,24 +404,28 @@ namespace Nino\Modules\Builder {
 						$links = $links === true && Tree::linkTarget( $appData, (string) $word ) === true;
 
 			if( $links === false ) {
-				self::_fail( $request, [ 403, 'the last state may not be put back: link', 'builder_refused_link', [], 'tree' ] );
-				return;
+				return [ 403, 'the last state may not be put back: link', 'builder_refused_link', [], 'tree' ];
 			}
 
-			$target = [
-				'source'	=> $previous['source'],
-				'texts'		=> array_filter( $previous['texts'], static fn( mixed $key ): bool => is_string( $key ) === true && Tree::own( $key, $template ) === true, ARRAY_FILTER_USE_KEY ),
-				'slots'		=> array_filter( $previous['slots'], static fn( mixed $uri ): bool => is_string( $uri ) === true && Tree::own( $uri, $template ) === true, ARRAY_FILTER_USE_KEY ),
-			];
+			return null;
+		}
 
-			$failed = Store::commit( $appData, $template, $state, $target, null, [], null, [], $level );
+		/**
+		 *	The code of what keeps this account from putting the last state of a page back, '' where nothing does or there is no last state: the screen leaves the button off and says why
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *	@param		array			$state
+		 *	@param		array			$nodes
+		 *	@param		int				$level
+		 *
+		 *	@return 	string
+		 */
+		private static function _unbacked( array &$appData, string $template, array $state, array $nodes, int $level ): string {
 
-			if( $failed !== null ) {
-				self::_fail( $request, $failed === 'changed' ? self::_changed() : [ 500, 'the page could not be written, and is as it was', 'builder_write', [], '' ] );
-				return;
-			}
+			$previous = Store::previous( $appData, $template );
 
-			\Nino\Http::ok( $request, [ 'restored' => true ] + self::_after( $appData, $template, $level ) );
+			return $previous === null ? '' : (string) ( self::_unback( $appData, $template, $state, $nodes, $previous, $level )[2] ?? '' );
 		}
 
 		public static function apiBlocks( array &$appData, array &$request ): void {
@@ -815,7 +858,7 @@ namespace Nino\Modules\Builder {
 
 				$offset = $notes !== [] ? (int) ( $notes[0]['offset'] ?? 0 ) : strspn( $state['source'] ^ $written, "\0" );
 
-				self::_fail( $request, [ 409, 'the template cannot be read as it stands', 'builder_unreadable', [ $template, Store::line( $state['source'], $offset ) ], 'template' ] );
+				self::_fail( $request, [ 409, 'the template cannot be read as it stands', 'builder_unreadable', [ Store::shown( Store::named( $template )['frame'] === true ? self::_word( $appData, 'word/'. $template ) : Pages::label( $appData, $template, \Nino\Admin\Admin::contentLocale( $appData ) ) ), Store::line( $state['source'], $offset ) ], 'template' ] );
 				return null;
 			}
 
@@ -887,7 +930,7 @@ namespace Nino\Modules\Builder {
 			$nodes = $state === null ? [] : Tree::read( $appData, $state['source'] );
 			$registry = \Nino\Components::components( $appData );
 
-			return [ 'last' => self::_last( $appData, $template ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => Tree::known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ), 'images' => Pictures::shown( $appData, $state['slots'] ?? [] ) ]
+			return [ 'last' => self::_last( $appData, $template ), 'unback' => $state === null ? '' : self::_unbacked( $appData, $template, $state, $nodes, $level ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => Tree::known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ), 'images' => Pictures::shown( $appData, $state['slots'] ?? [] ) ]
 				+ ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'findings' => Tree::findings( $appData, $nodes ), 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ] : [] );
 		}
 

@@ -1,0 +1,13 @@
+{
+	"name": {
+		"de_DE": "Tabelle über Elemente",
+		"en_US": "Table over elements"
+	},
+	"description": {
+		"de_DE": "Eine Überschrift und eine Tabelle mit einer Zeile je Element eines Typs. Welche Elemente sie zeigt, wählst Du in der erweiterten Ansicht.",
+		"en_US": "A headline and a table with one row for each element of a type. You choose in the extended view which elements it shows."
+	},
+	"category": "content",
+	"rank": 50,
+	"images": {}
+}
