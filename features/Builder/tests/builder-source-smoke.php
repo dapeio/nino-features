@@ -11,6 +11,9 @@ declare(strict_types=1);
  *														B. the pictures: an upload is made at once and given to its slot by the save, never the file of another slot, what nobody gets is taken away
  *														C. the blocks of the project: made only where the kernel takes them, only below private/blocks/, never over another, taken away only if they are the project's
  *														D. a new page: the template, the routes, the menu entry and the words in one step - and nothing where one of them is refused
+ *														E. a link that reads a text, F. what the panel offers and what the content step writes
+ *														G. a page copied and taken away: the right and the names the actions hold to, what a page that is taken leaves of the Builder's own, what a new page
+ *														   does not write over, the copy and what it is answered with
  *
  *														One sandbox with the kernel's Basis and the collections; the pages are written into it as the starter site has them.
  *
@@ -163,7 +166,7 @@ $site['/nino/html/images']['/template/page-home/hero/background'] = [ 'label' =>
 $site['/nino/html/images']['/template/page-loop/list/picture'] = [ 'label' => 'Picture', 'width' => 640, 'height' => 480, 'filename' => null ];
 \Nino\Images::restore( $site, 'template/page-home/hero/background.svg', '<svg xmlns="http://www.w3.org/2000/svg"><!-- the original --></svg>' );
 // The pages the links of the blocks go to: a page of the site is one the site has
-$site['/nino/http/routes'] = [ 'GET://contact' => [ 'uri' => '/contact', 'body' => '[template /templates/page-contact]' ], 'GET://home' => [ 'uri' => '/home', 'body' => '[template /templates/page-home]' ] ];
+$site['/nino/http/routes'] = [ 'GET://contact' => [ 'uri' => '/contact', 'body' => '[template /templates/page-contact]' ], 'GET://home' => [ 'uri' => '/home', 'body' => '[template /templates/page-home]' ], 'GET://loop' => [ 'uri' => '/loop', 'body' => '[template /templates/page-loop]' ] ];
 \Nino\Filesystem::putFileContent( $site, '/config.php', [ '/nino/html/images' => $site['/nino/html/images'], '/nino/html/navs' => [ 'main' ], '/nino/http/routes' => $site['/nino/http/routes'] ] );
 
 ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
@@ -695,5 +698,354 @@ check( 'the content step writes the alt of a picture of the page and no other at
 	$designed === 200 && $refused === [ 403, 403 ] && $target === 403 && $same === true && $allowed === 200 && $words['/template/page-loop/list/alt']['de_DE'] === 'Neue Karte' && $words['/template/page-loop/list/cap']['de_DE'] === 'Unterschrift' );
 ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
 
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nG. A page copied and taken away\n";
+
+/** The drafts of one kind as the kernel keeps them: the token of each and the template it is a draft of */
+$drafts = static function( string $kind ) use ( $sandbox ): array {
+
+	$list = [];
+
+	foreach( (array) glob( $sandbox. '/private/data/.preview/'. $kind. '/*', GLOB_ONLYDIR ) as $folder ) {
+
+		$draft = json_decode( (string) @file_get_contents( $folder. '/draft.json' ), true );
+		$list[basename( (string) $folder )] = is_array( $draft ) === true ? (string) ( $draft['template'] ?? '' ) : '';
+	}
+
+	return $list;
+};
+
+ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+
+$kept = [ 'names' => [ 'de_DE' => 'Gehalten', 'en_US' => 'Kept' ], 'addresses' => [ 'de_DE' => '/gehalten', 'en_US' => '/kept' ], 'navs' => [ 'main' ], 'block' => 'hero-full' ];
+[ $status, $made ] = sourceCall( $site, 'builder/create', $kept );
+$template = (string) ( $made['template'] ?? '' );
+
+// a page whose template reads a word of the first one, so that the word stays where the page is taken away
+\Nino\Filesystem::putFileContent( $site, '/templates/page-reader.tpl', "<!-- nino:template-name Reader -->\n[section-title text=\"[[/template/". $template. "/hero/title]]\"]\n" );
+$site['/nino/http/routes']['GET://reader'] = [ 'uri' => '/reader', 'body' => '[template /templates/page-reader]' ];
+$config = \Nino\Filesystem::getFileContent( $site, '/config.php', [] );
+$config['/nino/http/routes'] = $site['/nino/http/routes'] + (array) ( $config['/nino/http/routes'] ?? [] );
+\Nino\Filesystem::putFileContent( $site, '/config.php', $config );
+$site['/nino/http/routes'] = $config['/nino/http/routes'];
+unset( $site['./nino/filesystem/cache'] );
+
+// the Builder keeps a last state and the drafts of its previews for the page - and for another page, which stay
+[ , $open ] = sourceCall( $site, 'builder/open', [ 'template' => $template ] );
+[ , $homeOpen ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+\Nino\Modules\Builder\Store::keep( $site, $template, \Nino\Modules\Builder\Store::state( $site, $template ) );
+\Nino\Modules\Builder\Store::keep( $site, 'page-home', \Nino\Modules\Builder\Store::state( $site, 'page-home' ) );
+sourceCall( $site, 'builder/preview', [ 'template' => $template, 'tree' => $open['tree'], 'texts' => [] ] );
+sourceCall( $site, 'builder/preview', [ 'template' => 'page-home', 'tree' => $homeOpen['tree'], 'texts' => [] ] );
+sourceCall( $site, 'builder/tile', [ 'template' => $template, 'key' => 'hero-full' ] );
+$previous = $sandbox. '/private/data/builder/previous';
+
+// who may ask, and which names: nothing is read or written for an account that holds the step of the design alone, or the right of the routes with the content, or for a name that
+// is no page - a frame, a path, a name with a capital, a byte that is none, a name too long
+$every = [
+	'builder/copyof'		=> [ 'template' => $template ],
+	'builder/duplicate'	=> [ 'from' => $template, 'names' => [ 'de_DE' => 'X', 'en_US' => 'X' ], 'addresses' => [ 'de_DE' => '/x-de', 'en_US' => '/x-en' ], 'navs' => [] ],
+	'builder/uses'			=> [ 'template' => $template ],
+	'builder/remove'		=> [ 'template' => $template ],
+];
+$answers = [];
+$same = true;
+
+foreach( [ [ 'only-design@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] ], [ 'only-routes@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*', '/_admin/routes/manage' ] ] ] as [ $mail, $rights ] ) {
+
+	ninoUser( $site, $mail, $rights );
+	$before = sourceSnapshot( $site );
+
+	foreach( $every as $action => $data )
+		$answers[$mail. ' '. $action] = sourceCall( $site, $action, $data )[0];
+
+	$same = $same && sourceSnapshot( $site ) === $before;
+}
+
+ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+
+check( 'the four actions need the step of the design and the right of the routes, both: with the one alone each is 403 and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 8 && $same === true && is_file( $previous. '/'. $template. '.php' ) === true );
+
+$hostile = [ 'frame-header', '../config', 'page-Kept', "page-kept\0", 'page-'. str_repeat( 'a', 120 ), 'html-header', '', 'page-', 'mail-owner' ];
+$answers = [];
+$before = sourceSnapshot( $site );
+
+foreach( $hostile as $name )
+	foreach( [ 'builder/copyof' => 'template', 'builder/uses' => 'template', 'builder/remove' => 'template', 'builder/duplicate' => 'from' ] as $action => $field )
+		$answers[] = sourceCall( $site, $action, [ $field => $name ] + $every['builder/duplicate'] )[0];
+
+check( 'a name that is no page - a frame, a path, a capital, a byte that is none, a name too long, a template of another kind - is refused by each of the four with 4xx, and nothing is written: the frame is there, the files are as they were', array_filter( $answers, static fn( int $status ): bool => $status < 400 || $status > 499 ) === [] && sourceSnapshot( $site ) === $before );
+
+// what asking costs: nothing is written, and the answer names who reads what stays and who links
+$before = sourceSnapshot( $site );
+[ $status, $asked ] = sourceCall( $site, 'builder/uses', [ 'template' => $template ] );
+$readers = array_merge( ...array_column( (array) ( $asked['kept'] ?? [] ), 'by' ) );
+
+check( 'what taking a page away would do is asked without writing anything: the page by name and address, the words that stay with who reads them, who links to it - a list each, and the reader here is the template that was written to read it', $status === 200 && $asked['template'] === $template && $asked['name'] === 'Gehalten' && $asked['path'] === '/gehalten' && $asked['remnant'] === false
+	&& $asked['linked'] === [] && $readers !== [] && array_filter( $readers, static fn( mixed $by ): bool => str_contains( (string) $by, 'page-reader' ) === true ) !== [] && sourceSnapshot( $site ) === $before );
+
+// the two pages the kernel never takes away are refused with the kernel's own code, in the kernel's words, and are told apart in the list
+$config = \Nino\Filesystem::getFileContent( $site, '/config.php', [] );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-start.tpl', "<!-- nino:template-name Start -->\n[template /templates/html-header]\n[template /templates/html-footer]\n" );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-missing.tpl', "<!-- nino:template-name Missing -->\n[template /templates/html-header]\n[template /templates/html-footer]\n" );
+$config['/nino/http/routes']['GET://'] = [ 'uri' => '/start', 'body' => '[template /templates/page-start]' ];
+$config['/nino/http/routes']['GET://404'] = [ 'uri' => '/404', 'body' => '[template /templates/page-missing]', 'statusCode' => 404 ];
+\Nino\Filesystem::putFileContent( $site, '/templates/page-maintenance.tpl', "<!-- nino:template-name Maintenance -->\n[template /templates/html-header]\n[template /templates/html-footer]\n" );
+$config['/nino/http/routes']['GET://maintenance'] = [ 'uri' => '/maintenance', 'body' => '[template /templates/page-maintenance]' ];
+\Nino\Filesystem::putFileContent( $site, '/config.php', $config );
+$site['/nino/http/routes'] = $config['/nino/http/routes'];
+$before = sourceSnapshot( $site );
+$refusals = [ 'page-start' => sourceCall( $site, 'builder/remove', [ 'template' => 'page-start' ] ), 'page-missing' => sourceCall( $site, 'builder/uses', [ 'template' => 'page-missing' ] ), 'page-maintenance' => sourceCall( $site, 'builder/remove', [ 'template' => 'page-maintenance' ] ) ];
+$locked = array_column( sourceCall( $site, 'builder/list' )[1]['pages'], 'locked', 'template' );
+
+check( 'the start page, the page of the status 404 and a page the kernel draws by itself are refused with 409 and the code of the kernel - for the deletion and for the question - and nothing is written; the list says which they are, and no other page',
+	$refusals['page-start'][0] === 409 && $refusals['page-start'][1]['code'] === 'routes_remove_home' && $refusals['page-missing'][0] === 409 && $refusals['page-missing'][1]['code'] === 'routes_remove_not_found' && $refusals['page-maintenance'][0] === 409 && $refusals['page-maintenance'][1]['code'] === 'routes_remove_runtime' && sourceSnapshot( $site ) === $before
+	&& $locked['page-start'] === 'home' && $locked['page-missing'] === 'not-found' && $locked['page-maintenance'] === 'runtime' && $locked['page-home'] === '' && $locked[$template] === '' );
+
+// the page at the address /: what the form of its copy starts from is free - its Element-URI is a name that is taken too - and is sent as it stands
+[ $status, $home ] = sourceCall( $site, 'builder/copyof', [ 'template' => 'page-start' ] );
+[ $made ] = sourceCall( $site, 'builder/duplicate', [ 'from' => 'page-start', 'names' => [ 'de_DE' => 'Start Kopie', 'en_US' => 'Start copy' ], 'addresses' => $home['addresses'], 'navs' => $home['navs'] ] );
+$uris = array_map( static fn( array $each ): string => $each['uri'], \Nino\Pages::all( $site ) );
+
+check( 'the copy of the page at the address / is made from the form as the server proposed it: the proposal is no address and no Element-URI that a page has, and sent as it stands it is a page',
+	$status === 200 && $made === 200 && in_array( '/start-2', $uris, true ) === true && array_intersect( array_map( 'strtolower', $home['addresses'] ), [ '/start', '/' ] ) === [] );
+
+// what the form of a copy starts from: the names with the word of a copy behind them, an address for each language that no page has and no other language of the form has, the menus
+sourceCall( $site, 'builder/create', [ 'names' => [ 'de_DE' => 'Zwei', 'en_US' => 'Two' ], 'addresses' => [ 'de_DE' => '/zwei-de', 'en_US' => '/kept-2' ], 'navs' => [], 'block' => '' ] );
+[ $status, $start ] = sourceCall( $site, 'builder/copyof', [ 'template' => $template ] );
+$used = [];
+
+foreach( \Nino\Pages::all( $site ) as $each )
+	foreach( $each['addresses'] as $address )
+		$used[strtolower( rtrim( (string) $address, '/' ) )] = true;
+
+$proposed = array_map( static fn( string $address ): string => strtolower( rtrim( $address, '/' ) ), (array) ( $start['addresses'] ?? [] ) );
+
+check( 'the form of a copy starts from the page: a name in each language that begins with the name of the page and says more, the next address for each language that no page has - the one after the one that is taken - and that is not the address of another language of the form, the menus of the page, and the page named for the view',
+	$status === 200 && array_keys( (array) $start['names'] ) === [ 'de_DE', 'en_US' ] && str_starts_with( $start['names']['de_DE'], 'Gehalten' ) && $start['names']['de_DE'] !== 'Gehalten' && str_starts_with( $start['names']['en_US'], 'Kept' ) && $start['names']['en_US'] !== 'Kept'
+	&& count( $proposed ) === 2 && count( array_unique( $proposed ) ) === 2 && array_intersect_key( array_flip( $proposed ), $used ) === [] && $start['addresses']['en_US'] === '/kept-3' && $start['navs'] === [ 'main' ] && $start['label'] === 'Gehalten' && $start['template'] === $template );
+
+// the copy: the kernel makes it, the answer names the template of the new page, and the words and the picture of the first are the ones of the copy as well
+$copy = [ 'from' => $template, 'names' => [ 'de_DE' => 'Kopie', 'en_US' => 'Copy' ], 'addresses' => [ 'de_DE' => '/kopie', 'en_US' => '/copy' ], 'navs' => [ 'main' ] ];
+$words = \Nino\Text::values( $site, '/template/'. $template );
+[ $status, $made ] = sourceCall( $site, 'builder/duplicate', $copy );
+$config = \Nino\Filesystem::getFileContent( $site, '/config.php', [] );
+$site['/nino/http/routes'] = $config['/nino/http/routes'];
+$copied = \Nino\Text::values( $site, '/template/page-kopie' );
+[ , $listing ] = sourceCall( $site, 'builder/list' );
+
+check( 'a page is copied by the kernel: the answer names the template and the word of the new page and counts what was copied, the copy has the words of the first - each key of the first once, in both languages - and a route for each language and the menu, the list has it, and the page it was made from is as it was',
+	$status === 200 && $made['template'] === 'page-kopie' && $made['slug'] === 'kopie' && ( $made['copied']['texts'] ?? 0 ) === count( $words ) && count( $words ) > 0 && array_values( array_map( static fn( array $each ): array => array_keys( $each ), $copied ) ) === array_values( array_map( static fn( array $each ): array => array_keys( $each ), $words ) )
+	&& isset( $config['/nino/http/routes']['GET://copy']['navs']['main'] ) === true && in_array( 'page-kopie', array_column( $listing['pages'], 'template' ), true ) === true && \Nino\Text::values( $site, '/template/'. $template ) === $words );
+
+// the page that is taken away: the kernel takes its template, routes, words and pictures - what another page reads stays - and the Builder takes its last state and its drafts, and nobody else's
+// a page whose name begins with the name of the page that is taken away - and a link that leads out of the folder of the drafts - is not the page: its last state and its
+// drafts are not touched
+$neighbour = $template. '-x';
+\Nino\Modules\Builder\Store::keep( $site, $neighbour, [ 'source' => '', 'texts' => [], 'slots' => [] ] );
+$token = str_repeat( 'a', 32 );
+mkdir( $sandbox. '/private/data/.preview/builder/'. $token, 0755, true );
+file_put_contents( $sandbox. '/private/data/.preview/builder/'. $token. '/draft.json', json_encode( [ 'template' => $neighbour ] ) );
+$other = file_get_contents( $previous. '/page-home.php' );
+$have = [ $drafts( 'builder' ), $drafts( 'builder-tile' ) ];
+[ $status, $gone ] = sourceCall( $site, 'builder/remove', [ 'template' => $template ] );
+
+check( 'a page is taken away whole with its last state and the drafts of its previews - of the page and of its tiles - and the last state and the drafts of the other page stay; the answer counts what the kernel took and what stays because another page reads it',
+	$status === 200 && $gone['template'] === $template && $gone['kept'] > 0 && $gone['texts'] > 0 && is_file( $sandbox. '/private/templates/'. $template. '.tpl' ) === false && is_file( $previous. '/'. $template. '.php' ) === false && \Nino\Modules\Builder\Store::previous( $site, $template ) === null
+	&& in_array( $template, $have[0], true ) === true && in_array( $template, $have[1], true ) === true && in_array( $template, $drafts( 'builder' ), true ) === false && in_array( $template, $drafts( 'builder-tile' ), true ) === false
+	&& array_diff( $have[0], [ $template ] ) === $drafts( 'builder' ) && array_diff( $have[1], [ $template ] ) === $drafts( 'builder-tile' ) && file_get_contents( $previous. '/page-home.php' ) === $other && in_array( 'page-home', $drafts( 'builder' ), true ) === true
+	&& is_file( $previous. '/'. $neighbour. '.php' ) === true && ( $drafts( 'builder' )[$token] ?? '' ) === $neighbour );
+
+// the kind of a draft that is a link leads out of the folder of the drafts: the drafts there are not the Builder's to take away
+mkdir( $sandbox. '/outside/'. $token, 0755, true );
+file_put_contents( $sandbox. '/outside/'. $token. '/draft.json', json_encode( [ 'template' => 'page-linked' ] ) );
+rename( $sandbox. '/private/data/.preview/builder-tile', $sandbox. '/private/data/.preview/builder-tile-moved' );
+symlink( $sandbox. '/outside', $sandbox. '/private/data/.preview/builder-tile' );
+\Nino\Modules\Builder\Store::forget( $site, 'page-linked' );
+
+check( 'the drafts below a kind that is a link are left where they are', is_file( $sandbox. '/outside/'. $token. '/draft.json' ) === true );
+
+// the listener: a name outside the rule for the name of a page touches nothing - not a frame, not a file below data/builder that a path would reach, not a draft of a frame
+\Nino\Modules\Builder\Store::keep( $site, 'frame-header', \Nino\Modules\Builder\Store::state( $site, 'frame-header' ) ?? [ 'source' => '', 'texts' => [], 'slots' => [] ] );
+file_put_contents( $sandbox. '/private/data/builder/outside.php', '<?php return [];' );
+file_put_contents( $previous. '/page-Mixed.php', '<?php return [];' );
+$before = [ glob( $sandbox. '/private/data/builder/*' ), glob( $previous. '/*' ), $drafts( 'builder' ), $drafts( 'builder-tile' ) ];
+
+foreach( [ 'frame-header', '../outside', '../previous/page-home', 'page-Mixed', 'page-home/../page-home', "page-home\0", '', 'page-', str_repeat( 'page-a', 40 ) ] as $name ) {
+	$event = [ 'template' => $name ];
+	\Nino\Modules\Builder::removed( $site, $event );
+}
+
+foreach( [ [], [ 'template' => 7 ], [ 'template' => [ 'page-home' ] ] ] as $event )
+	\Nino\Modules\Builder::removed( $site, $event );
+
+check( 'the listener of the removal touches nothing for a name outside the rule for the name of a page - a frame, a path, a capital, a byte that is none, a name too long, no name at all: the files and the drafts are what they were',
+	$before === [ glob( $sandbox. '/private/data/builder/*' ), glob( $previous. '/*' ), $drafts( 'builder' ), $drafts( 'builder-tile' ) ] && is_file( $sandbox. '/private/data/builder/outside.php' ) === true && is_file( $previous. '/frame-header.php' ) === true && is_file( $previous. '/page-home.php' ) === true );
+
+// a new page of a name that something stands under - the words another page reads stayed - takes the next word, and the words that stayed are not written over; a copy takes the same way
+$stayed = \Nino\Text::values( $site, '/template/'. $template );
+
+/** What stays of the page under its name, as the files hold it: the raw words of each language, the formats, the slots and the bytes of the pictures */
+$held = static function() use ( &$site, $sandbox, $template ): array {
+
+	unset( $site['./nino/filesystem/cache'] );
+	$own = static fn( array $list ): array => array_filter( $list, static fn( mixed $key ): bool => str_contains( (string) $key, '/template/'. $template. '/' ), ARRAY_FILTER_USE_KEY );
+	$kept = [];
+
+	foreach( [ 'de_DE', 'en_US' ] as $locale )
+		$kept[$locale] = $own( (array) require $sandbox. '/private/text/'. $locale. '.php' );
+
+	$meta = $sandbox. '/private/text/meta.php';
+	$kept['meta'] = is_file( $meta ) === true ? $own( (array) require $meta ) : [];
+	$kept['slots'] = $own( (array) \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/html/images'] );
+	$kept['files'] = array_map( 'hash_file', array_fill( 0, count( $files = glob( $sandbox. '/public/images/template/'. $template. '/*/*' ) ?: [] ), 'sha256' ), $files );
+
+	return $kept;
+};
+$snapshot = $held();
+[ $status, $again ] = sourceCall( $site, 'builder/create', $kept );
+$after = \Nino\Text::values( $site, '/template/'. $template );
+$bytes = $held();
+$next = (string) ( $again['template'] ?? '' );
+sourceCall( $site, 'builder/remove', [ 'template' => $next ] );
+[ $copyStatus, $second ] = sourceCall( $site, 'builder/duplicate', [ 'from' => 'page-kopie', 'addresses' => [ 'de_DE' => '/gehalten', 'en_US' => '/kept' ] ] + $copy );
+
+check( 'a page that is made under the name of words that stayed takes the next free word - the template, the word and the Element-URI with it - and the words that stayed are the same to the byte; the copy of a page onto the same name takes the one after that',
+	$stayed !== [] && $status === 200 && $next === $template. '-2' && ( $again['slug'] ?? '' ) === substr( $next, 5 ) && $after === $stayed && $bytes === $snapshot && $bytes['de_DE'] !== [] && is_file( $sandbox. '/private/templates/'. $next. '.tpl' ) === true
+	&& $copyStatus === 200 && ( $second['template'] ?? '' ) === $template. '-2' && $held() === $snapshot );
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nH. Writers that run beside a save and beside a page that is made\n";
+
+/** A second process on this sandbox, in the background: what it does is named by the first word (see fixtures/second.php) */
+$beside = static function( string $what, string ...$arguments ) use ( $sandbox, $root ): void {
+	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( PHP_BINARY ). ' '. escapeshellarg( __DIR__. '/fixtures/second.php' ). ' '. escapeshellarg( $sandbox ). ' '. $what. ' '. implode( ' ', array_map( 'escapeshellarg', $arguments ) ). ' > /dev/null 2>&1 &' );
+};
+
+/** Wait for a file, a fixed number of rounds and no longer: whether it is there is what is asked, not how long it took */
+$await = static function( callable $there, int $rounds ): bool {
+
+	for( $round = 0; $round < $rounds && $there() === false; $round++ )
+		usleep( 10000 );
+
+	return $there();
+};
+
+/** Arm a file that a request reads: the first line of it runs the hook of that name, which is the test's and runs where the request is */
+$plant = static function( string $file, string $name ) use ( &$site ): void {
+	file_put_contents( $file, (string) preg_replace( '/^<\?php/', '<?php ( $GLOBALS[\'ninoHook\'][\''. $name. '\'] ?? static fn() => null )();', (string) file_get_contents( $file ), 1 ) );
+	unset( $site['./nino/filesystem/cache'] );
+};
+
+/** Whether the request that runs the hook is inside a function of the Builder or the kernel */
+$inside = static fn( string $function ): bool => in_array( $function, array_map( static fn( array $frame ): string => ( $frame['class'] ?? '' ). '::'. $frame['function'], debug_backtrace() ), true );
+
+ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+sourceCall( $site, 'builder/create', [ 'names' => [ 'de_DE' => 'Wettlauf', 'en_US' => 'Race' ], 'addresses' => [ 'de_DE' => '/wettlauf', 'en_US' => '/race' ], 'navs' => [], 'block' => 'hero-full' ] );
+$site['/nino/http/routes'] = \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/http/routes'];
+$t = 'page-wettlauf';
+[ , $open ] = sourceCall( $site, 'builder/open', [ 'template' => $t ] );
+$title = '/template/'. $t. '/hero/title';
+$edit = [ $title => [ 'de_DE' => 'Geändert' ] ];
+$state = \Nino\Modules\Builder\Store::state( $site, $t );
+\Nino\Modules\Builder\Store::keep( $site, $t, $state );
+
+// the page is taken away by another request while a save reads its last state: the removal waits for the save - it is one of the writers of config.php - and is done
+// when the save is, so nothing of the page is written back after it: no word, no last state, no slot, no picture
+$fired = false;
+$GLOBALS['ninoHook']['commit'] = static function() use ( &$fired, $inside, $beside, $await, $sandbox, $t ): void {
+
+	if( $fired === true || $inside( 'Nino\\Modules\\Builder\\Store::commit' ) === false )
+		return;
+
+	$fired = true;
+	$beside( 'remove', $t );
+	$await( static fn(): bool => is_file( $sandbox. '/second.done' ), 60 );
+};
+$plant( $sandbox. '/private/data/builder/previous/'. $t. '.php', 'commit' );
+[ $status ] = sourceCall( $site, 'builder/save', [ 'template' => $t, 'tree' => $open['tree'], 'texts' => $edit, 'base' => $open['stamp'] ] );
+$done = $await( static fn(): bool => is_file( $sandbox. '/second.done' ), 600 );
+unset( $site['./nino/filesystem/cache'] );
+$routes = array_filter( (array) \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/http/routes'], static fn( mixed $route ): bool => str_contains( (string) ( $route['body'] ?? '' ), $t. ']' ) );
+
+check( 'a page that another request takes away while it is saved stays away: the save is 200, the removal is done after it, and nothing of the page is written back - no template, no route, no word, no last state, no slot, no picture',
+	$fired === true && $status === 200 && $done === true && is_file( $sandbox. '/private/templates/'. $t. '.tpl' ) === false && $routes === [] && \Nino\Text::values( $site, '/template/'. $t ) === []
+	&& is_file( $sandbox. '/private/data/builder/previous/'. $t. '.php' ) === false && array_filter( array_keys( (array) \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/html/images'] ), static fn( string $uri ): bool => str_contains( $uri, $t ) ) === []
+	&& ( glob( $sandbox. '/public/images/template/'. $t. '/*/*' ) ?: [] ) === [] );
+
+// a save of a page that was taken away before it began, from a state it read before, writes nothing and says why
+$site['/nino/http/routes'] = \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/http/routes'];
+$before = sourceSnapshot( $site );
+$target = $state;
+$target['texts'][$title]['de_DE'] = 'Zu spät';
+$answer = \Nino\Modules\Builder\Store::commit( $site, $t, $state, $target, null );
+
+check( 'a save of a page that is gone writes nothing: the answer says the page is gone and the files are what they were - no word, no last state', $answer === 'gone' && sourceSnapshot( $site ) === $before && \Nino\Text::values( $site, '/template/'. $t ) === [] );
+
+// other writers while a save is in the step of the words: a word of another page, the template from another tab - which is why the save fails - and a route. What they wrote
+// is theirs: the save puts back what it wrote and nothing of theirs, and the route waits for the lock and is written when the save is done
+sourceCall( $site, 'builder/create', [ 'names' => [ 'de_DE' => 'Fremdlauf', 'en_US' => 'Foreign' ], 'addresses' => [ 'de_DE' => '/fremdlauf', 'en_US' => '/foreign-page' ], 'navs' => [], 'block' => 'hero-full' ] );
+$site['/nino/http/routes'] = \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/http/routes'];
+$t = 'page-fremdlauf';
+[ , $open ] = sourceCall( $site, 'builder/open', [ 'template' => $t ] );
+$title = '/template/'. $t. '/hero/title';
+$was = \Nino\Text::values( $site, '/template/'. $t )[$title];
+$marker = $sandbox. '/foreign.marker';
+$fired = false;
+$GLOBALS['ninoHook']['words'] = static function() use ( &$fired, $inside, $beside, $await, $marker, $t ): void {
+
+	if( $fired === true || $inside( 'Nino\\Text::put' ) === false )
+		return;
+
+	$fired = true;
+	$beside( 'foreign', $t, $marker );
+	$await( static fn(): bool => is_file( $marker ), 300 );
+};
+$plant( $sandbox. '/private/text/de_DE.php', 'words' );
+$state = \Nino\Modules\Builder\Store::state( $site, $t );
+$target = $state;
+$target['texts'][$title]['de_DE'] = 'Nur deutsch';
+$target['source'] .= "<!-- ours -->\n";
+$status = \Nino\Modules\Builder\Store::commit( $site, $t, $state, $target, null );
+$await( static fn(): bool => str_contains( (string) file_get_contents( $sandbox. '/private/config.php' ), '/foreign\'' ), 600 );
+unset( $site['./nino/filesystem/cache'] );
+$config = \Nino\Filesystem::getFileContent( $site, '/config.php', [] );
+
+check( 'what another writer wrote while a save was under way stays theirs when the save fails: their word of another page, their line in the template and their route are there, and the word the save wrote is the one it was',
+	$fired === true && $status === 'changed' && ( \Nino\Text::values( $site, '/template/page-home' )['/template/page-home/hero/title']['en_US'] ?? '' ) === 'Written by somebody else'
+	&& str_contains( (string) file_get_contents( $sandbox. '/private/templates/'. $t. '.tpl' ), 'other tab' ) === true && isset( $config['/nino/http/routes']['GET://foreign'] ) === true && \Nino\Text::values( $site, '/template/'. $t )[$title] === $was );
+
+// two pages made at the same moment under the same address, round after round: one of them is made - whole: template, words, slot, picture and route - and the other
+// is refused at the address, whichever is first
+$rounds = 6;
+$start = microtime( true ) + 1.0;
+$procs = [];
+
+foreach( [ 'A', 'B' ] as $who )
+	$procs[$who] = proc_open( [ PHP_BINARY, __DIR__. '/fixtures/second.php', $sandbox, 'racer', (string) $start, (string) $rounds, $who, 'hero-full' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes[$who], null, [ 'NINO_ROOT' => $root ] + $_ENV );
+
+$told = [];
+
+foreach( $procs as $who => $proc ) {
+	$told[$who] = (array) json_decode( (string) stream_get_contents( $pipes[$who][1] ), true );
+	proc_close( $proc );
+}
+
+unset( $site['./nino/filesystem/cache'] );
+$config = \Nino\Filesystem::getFileContent( $site, '/config.php', [] );
+$whole = [];
+
+for( $round = 1; $round <= $rounds; $round++ ) {
+
+	$made = array_values( array_filter( [ $told['A'][$round] ?? '', $told['B'][$round] ?? '' ], static fn( mixed $answer ): bool => str_starts_with( (string) $answer, 'page-' ) ) );
+	$lost = array_values( array_filter( [ $told['A'][$round] ?? '', $told['B'][$round] ?? '' ], static fn( mixed $answer ): bool => str_starts_with( (string) $answer, 'page-' ) === false ) );
+	$name = 'page-race-'. $round;
+	$file = (string) ( $config['/nino/html/images']['/template/'. $name. '/hero/background']['filename'] ?? '' );
+	$whole[] = $made === [ $name ] && count( $lost ) === 1 && is_file( $sandbox. '/private/templates/'. $name. '.tpl' ) === true && \Nino\Text::values( $site, '/template/'. $name ) !== [] && $file !== '' && is_file( $sandbox. '/public/images/'. $file ) === true
+		&& count( array_filter( (array) $config['/nino/http/routes'], static fn( mixed $route ): bool => str_contains( (string) ( $route['body'] ?? '' ), $name. ']' ) ) ) === 2;
+}
+
+check( 'two pages made at the same moment under one address, '. $rounds. ' rounds with two processes: in each round one is made whole and the other is refused', array_filter( $whole, static fn( bool $ok ): bool => $ok === false ) === [] && count( $whole ) === $rounds );
 
 ninoDone( $site );

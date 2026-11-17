@@ -11,6 +11,11 @@
  *														C. making a page: what is wrong is said at the field and in the line, nothing is sent for it, what the server refuses is said at
  *														   the field it names, the page that is made is opened and the toast says so; unsaved input is asked about, and the address of
  *														   the view is no page's
+ *														E. the two buttons of a row: only for the account that may make a page, the button to delete shut for the two pages the kernel
+ *														   never takes away, the server asked first and one question after it that names who reads and who links - at most five of
+ *														   each -, Cancel asks nothing more, a refusal is said above the table
+ *														F. the copy of a page: the row leads to the view of the copy, which starts from what the server says of the page, has the page
+ *														   in place of the block, and sends what is written with the page it is made from
  *
  *														The helpers - check(), done(), findAll(), fire(), element(), documentOf() and load() - are those of tests/harness.js
  *														of the checkout, three levels up or the one NINO_ROOT names. builder-smoke.php runs this where node is on the path.
@@ -46,6 +51,14 @@ const W = function( key, ...params ) { return String( words.en['/_admin/builder/
 /** What an element and everything in it says */
 const textOf = function( node ) { return String( node.textContent ?? '' )+ ( node.children ?? [] ).map( textOf ).join('') };
 
+/** What the server says of a page that would be taken away: the page, and who reads its words and who links to it */
+const asked = function( extra ) {
+	return Object.assign( { template : 'page-contact', name : 'Contact', path : '/contact', remnant : false, kept : [], linked : [] }, extra );
+};
+
+/** What the server says of the page a copy is made from: a name, a free address and the menus of it for each language */
+const ORIGIN = { template : 'page-about', label : 'About us', names : { de_DE : 'Über uns (Kopie)', en_US : 'About us (Copy)' }, addresses : { de_DE : '/ueber-2', en_US : '/about-2' }, navs : [ 'footer' ] };
+
 const LOCALES = [ { locale : 'de_DE', active : true }, { locale : 'en_US', active : true }, { locale : 'fr_FR', active : false } ];
 
 /** The answer of the list: three pages, one of which lacks a language, and the two frames */
@@ -53,9 +66,9 @@ const answer = function( extra ) {
 
 	return Object.assign( {
 		pages : [
-			{ template : 'page-home', name : 'Home', path : '/', locales : [ 'de_DE', 'en_US' ], navs : [ 'main' ], complete : true, blocks : 3, saved : 1763356920 },
-			{ template : 'page-contact', name : 'Contact', path : '/contact', locales : [ 'de_DE', 'en_US' ], navs : [], complete : false, blocks : 1, saved : 1763300000 },
-			{ template : 'page-about', name : 'About us', path : '/about', locales : [ 'de_DE', 'en_US' ], navs : [ 'main', 'footer' ], complete : true, blocks : 0, saved : 1763200000 },
+			{ template : 'page-home', name : 'Home', path : '/', locales : [ 'de_DE', 'en_US' ], navs : [ 'main' ], complete : true, locked : 'home', blocks : 3, saved : 1763356920 },
+			{ template : 'page-contact', name : 'Contact', path : '/contact', locales : [ 'de_DE', 'en_US' ], navs : [], complete : false, locked : '', blocks : 1, saved : 1763300000 },
+			{ template : 'page-about', name : 'About us', path : '/about', locales : [ 'de_DE', 'en_US' ], navs : [ 'main', 'footer' ], complete : true, locked : '', blocks : 0, saved : 1763200000 },
 		],
 		frames : [ { key : 'header', template : 'frame-header' }, { key : 'footer', template : 'frame-footer' } ],
 		create : true,
@@ -91,6 +104,8 @@ function world( options ) {
 	const dialogs = [];
 	const said = [];
 	const answers = [];
+	const touched = [];
+	const questions = [];
 	const state = { hash : '#builder', pushed : [], discarded : 0, saved : [] };
 
 	page.id = 'page';
@@ -193,6 +208,7 @@ function world( options ) {
 		content : { getText : function( key ) { return ( options.lang === 'de-DE' ? words.de[key] : words.en[key] ) ?? workbench[key] ?? '' } },
 		http : { sendRequest : function( uri, method, callback, data ) { requests.push( { action : data.action, payload : JSON.parse( data.data ), callback : callback } ) } },
 		admin : {
+			touch : function( topic, uri ) { touched.push( [ topic, uri ] ) },
 			router : router,
 			dirty : dirty,
 			workLocale : { current : 'de_DE', native : 'de_DE', follow : function() {}, set : function() {} },
@@ -215,11 +231,13 @@ function world( options ) {
 	// The names of the languages, which the shell hands over once
 	Nino.adminUi.locales = { native : 'de_DE', names : { de_DE : 'Deutsch', en_US : 'English (US)', fr_FR : 'Français' } };
 	Nino.adminUi.say = function( text ) { said.push( text ) };
+	// The question of the workbench is kept as it was asked: what it says, how it ends and what comes of each answer is the panel's
+	Nino.adminUi.confirm = function( level, options ) { questions.push( { level : level, options : options } ); return true };
 
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, touched : touched, questions : questions, answers : answers, state : state, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -232,7 +250,7 @@ function world( options ) {
 		/** Answer every request the panel has asked for in the way the server would */
 		serve : function( serving ) {
 
-			serving = Object.assign( { create : null }, serving ?? {} );
+			serving = Object.assign( { create : null, uses : null, remove : null, copyof : null, duplicate : null }, serving ?? {} );
 
 			while( requests.length > 0 ) {
 
@@ -246,6 +264,14 @@ function world( options ) {
 					w.reply( serving.create.status, serving.create.body );
 				else if( request.action === 'builder/create' )
 					w.reply( 200, { template : 'page-team', slug : 'team' } );
+				else if( request.action === 'builder/duplicate' )
+					w.reply( serving.duplicate?.status ?? 200, serving.duplicate?.body ?? { template : 'page-contact-2', slug : 'contact-2', copied : { texts : 1, slots : 0, files : 0 } } );
+				else if( request.action === 'builder/copyof' )
+					w.reply( serving.copyof?.status ?? 200, serving.copyof?.body ?? ORIGIN );
+				else if( request.action === 'builder/uses' )
+					w.reply( serving.uses?.status ?? 200, serving.uses?.body ?? asked( {} ) );
+				else if( request.action === 'builder/remove' )
+					w.reply( serving.remove?.status ?? 200, serving.remove?.body ?? { template : 'page-contact', texts : 3, files : 0, kept : 0, linked : 0 } );
 				else
 					w.reply( 404, { error : 'not served: '+ request.action } );
 			}
@@ -307,7 +333,7 @@ function world( options ) {
 
 	w.open('#builder');
 
-	check( 'A. a row has no button of its own: the page is opened by the row, and the table says so with its sign', w.rows().every( function( row ) { return findAll( row, function( el ) { return el.tagName === 'BUTTON' } ).length === 0 && findAll( row, function( el ) { return el.className === 'nino-admin-row-chev' } ).length === 1 } ) );
+	check( 'A. the page is opened by the row, and the table says so with its sign', w.rows().every( function( row ) { return findAll( row, function( el ) { return el.className === 'nino-admin-row-chev' } ).length === 1 } ) );
 	check( 'A. the frames are a short list under the table, each row a link to the frame that says it holds for every page', ( function() {
 		const group = w.list.querySelector('.nino-admin-list-group');
 		const links = findAll( group, function( el ) { return el.tagName === 'A' } );
@@ -315,20 +341,19 @@ function world( options ) {
 	} )() );
 	check( 'A. the bar of the list has one main button - New page - and nothing else, and the button of the old place is gone', ( function() {
 		const buttons = findAll( bar ?? element('div'), function( el ) { return el.tagName === 'BUTTON' } );
-		const rest = findAll( w.list, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-btn') !== -1 && bar.children.indexOf( el ) === -1 } );
+		const rest = findAll( w.list, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-btn') !== -1 && bar.children.indexOf( el ) === -1 && el.className.indexOf('nino-admin-btn-icon') === -1 } );
 		return bar !== null && buttons.length === 1 && buttons[0].classList.contains('nino-admin-btn-primary') && textOf( buttons[0] ) === W('page/open') && rest.length === 0 && buttons[0].classList.contains('nino-admin-btn--small') === false;
 	} )() );
-	check( 'A. the main button leads to #builder/@new, and the list has no buttons of a page that cannot be had: no delete, no duplicate', ( function() {
+	check( 'A. the main button leads to #builder/@new', ( function() {
 		fire( bar.querySelector('button'), 'click' );
-		const toNew = w.state.hash === '#builder/@new';
-		return toNew === true && findAll( w.list, function( el ) { return el.className.indexOf('nino-admin-row-actions') !== -1 } ).length === 0;
+		return w.state.hash === '#builder/@new';
 	} )() );
 
 	const poor = world( { list : answer( { create : false } ) } );
 
 	poor.open('#builder');
 
-	check( 'A. the account that may not make a page has the list without the bar', poor.list.querySelector('.nino-admin-list-actions') === null && poor.rows().length === 3 );
+	check( 'A. the account that may not make a page has the list without the bar and without the buttons of a row', poor.list.querySelector('.nino-admin-list-actions') === null && poor.rows().length === 3 && findAll( poor.list, function( el ) { return el.className.indexOf('nino-admin-row-actions') !== -1 } ).length === 0 );
 
 	const empty = world( { list : answer( { pages : [], frames : [] } ) } );
 
@@ -582,6 +607,241 @@ function world( options ) {
 	w.search( textOf( cell ) );
 
 	check( 'D. the search finds the date the row shows', w.rows().length >= 1 && w.rows().every( function( row ) { return textOf( row.children[4] ) === textOf( cell ) } ) );
+}
+
+// --- E. the buttons of a row ------------------------------------------------------------------------------------
+
+{
+	const buttonsOf = function( w, at ) { return findAll( w.rows()[at], function( el ) { return el.tagName === 'BUTTON' } ) };
+
+	{
+		const w = world();
+
+		w.open('#builder');
+
+		const own = [ 0, 1, 2 ].map( function( at ) { return buttonsOf( w, at ) } );
+
+		const last = function( buttons ) { return buttons[buttons.length - 1] };
+		const helps = function( at ) { return findAll( w.rows()[at], function( el ) { return el.className === 'nino-admin-help' } ) };
+
+		check( 'E. each row has the small button to copy first and the one that deletes last, in the danger kind, in the one group the workbench makes of them - and nothing between them but the help of a shut button',
+			own.every( function( buttons, at ) { return last( buttons ).classList.contains('nino-admin-btn-danger') && buttons[0].classList.contains('nino-admin-btn-danger') === false && buttons.length === 2 + helps( at ).length } ) );
+		check( 'E. the button to delete is shut for the page the kernel never takes away, with its reason as the title and behind a (?) that a keyboard reaches - and for no other page', last( own[0] ).disabled === true && String( last( own[0] ).title ).length > 0 && helps( 0 ).length === 1 && String( textOf( helps( 0 )[0] ) ).length > 0
+			&& last( own[1] ).disabled === false && last( own[2] ).disabled === false && helps( 1 ).length === 0 && helps( 2 ).length === 0 && own[0][0].disabled === false );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		fire( buttonsOf( w, 1 )[1], 'click' );
+
+		check( 'E. the server is asked first what the page would keep and who links to it, with the template and the language of the view - the row does not open, nothing is deleted and no question is asked yet', w.requests.length === 1 && w.requests[0].action === 'builder/uses' && w.requests[0].payload.template === 'page-contact'
+			&& typeof w.requests[0].payload.locale === 'string' && w.state.hash === '#builder' && w.questions.length === 0 );
+
+		w.serve();
+
+		const question = w.questions[0];
+
+		check( 'E. one question follows the answer: a destructive one with a title, whose way on is the danger one and which names the page and its address - and nothing else where nothing is kept and nothing links', w.questions.length === 1 && question.level === 'destructive' && question.options.title.length > 0 && question.options.kind === 'danger'
+			&& question.options.message === W( 'confirm/delete-page', 'Contact', '/contact' ) && w.requests.length === 0 );
+
+		question.options.onChoose( false );
+
+		check( 'E. Cancel asks nothing more: no deletion is sent, the table is as it was, nothing is said', w.requests.length === 0 && w.said.length === 0 && w.rows().length === 3 && w.touched.length === 0 );
+
+		question.options.onChoose( true );
+
+		check( 'E. Yes sends the deletion of that page - and only that - once', w.requests.length === 1 && w.requests[0].action === 'builder/remove' && w.requests[0].payload.template === 'page-contact' );
+
+		w.serve();
+
+		check( 'E. what came of it is said as a toast with the name, the shell is told what was written - the routes and the templates among it, with the address of the page -, and the list is asked for again', w.said.join() === W( 'msg/page-deleted', 'Contact' ) && w.touched.some( function( told ) { return told[0] === 'routes' && told[1] === '/contact' } ) && w.touched.some( function( told ) { return told[0] === 'templates' } ) );
+	}
+
+	{
+		const readers = [ 1, 2, 3, 4, 5, 6, 7 ].map( function( number ) { return { key : '/template/page-contact/hero/title', by : [ 'reader-'+ number+ '.tpl' ] } } );
+		const links = [ 1, 2, 3 ].map( function( number ) { return { by : 'linker-'+ number+ '.tpl', key : '' } } );
+		const w = world();
+
+		w.open('#builder');
+		fire( buttonsOf( w, 1 )[1], 'click' );
+		w.serve( { uses : { status : 200, body : asked( { kept : readers, linked : links } ) } } );
+
+		const message = w.questions[0].options.message;
+
+		check( 'E. what is kept is counted and its readers are listed - at most five, the rest counted - and who links is listed the same way: each name once, in the order the server gave', ( message.match( /reader-\d\.tpl/g ) ?? [] ).join() === 'reader-1.tpl,reader-2.tpl,reader-3.tpl,reader-4.tpl,reader-5.tpl'
+			&& ( message.match( /linker-\d\.tpl/g ) ?? [] ).join() === 'linker-1.tpl,linker-2.tpl,linker-3.tpl' && message.indexOf( W( 'confirm/delete-kept', 7, '' ).split(' (')[0] ) !== -1 && message.indexOf( W( 'confirm/more', 2 ) ) !== -1 && message.indexOf( W( 'confirm/more', 1 ) ) === -1 );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		fire( buttonsOf( w, 1 )[1], 'click' );
+		// the same page reads twice - the file of its template and a text of its - and a page of the list is named by its name, where the list has it
+		w.serve( { uses : { status : 200, body : asked( { kept : [ { key : 'a', by : [ 'page-about.tpl' ] }, { key : 'b', by : [ 'page-about.tpl', 'file-of-nobody.tpl' ] }, { key : 'c', by : [ 'page-about.tpl' ] } ] } ) } } );
+
+		const message = w.questions[0].options.message;
+
+		check( 'E. who reads is told once and by the name of the page where the list has it - the number is the number of the names listed, not of the texts that stay', message.indexOf('page-about.tpl') === -1 && message.indexOf('About us') !== -1 && message.indexOf('file-of-nobody.tpl') !== -1 && message.indexOf( W( 'confirm/delete-kept', 2, 'About us, file-of-nobody.tpl' ) ) !== -1 );
+	}
+
+	{
+		const w = world( { list : answer( { pages : answer().pages.concat( [ { template : 'page-legal-imprint', name : 'Imprint', path : '/imprint', locales : [ 'de_DE', 'en_US' ], navs : [], complete : true, locked : 'runtime', blocks : 0, saved : 0 } ] ) } ) } );
+
+		w.open('#builder');
+
+		const own = findAll( w.rows()[3], function( el ) { return el.tagName === 'BUTTON' } );
+
+		check( 'E. a page that the website serves itself cannot be copied either: both buttons are shut, each with the reason as its title, and the reason stands behind the one (?)', own.filter( function( button ) { return button.disabled === true && String( button.title ).length > 0 } ).length === 2 && findAll( w.rows()[3], function( el ) { return el.className === 'nino-admin-help' } ).length === 1 );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		fire( buttonsOf( w, 1 )[1], 'click' );
+		w.serve( { uses : { status : 409, body : { error : 'x', code : 'routes_remove_shared', params : [], field : 'template' } } } );
+		w.state.hash = '#builder/contact';
+		w.panel.follow();
+		w.serve();
+		w.state.hash = '#builder';
+		w.panel.follow();
+
+		check( 'E. what an action of the list said was wrong is gone when the address changes', w.list.querySelector('.builder-list-error') === null );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		fire( buttonsOf( w, 1 )[1], 'click' );
+		w.serve( { uses : { status : 200, body : asked( { template : 'page-gone', name : 'page-gone', path : '', remnant : true } ) } } );
+
+		check( 'E. a leftover with no address is asked about in the words of a leftover, not of a page at an address', w.questions[0].options.message === W( 'confirm/delete-leftover', 'page-gone' ) );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		fire( buttonsOf( w, 1 )[1], 'click' );
+		w.serve( { uses : { status : 409, body : { error : 'x', code : 'routes_remove_shared', params : [ 'page-contact', 'a, b' ], field : 'template' } } } );
+
+		const line = w.list.querySelector('.builder-list-error');
+
+		check( 'E. a refusal of the server is said above the table, as an alert, and no question is asked', line !== null && line.attributes.role === 'alert' && textOf( line ).length > 0 && w.questions.length === 0 && w.rows().length === 3 && w.list.firstChild === line );
+
+		fire( buttonsOf( w, 2 )[1], 'click' );
+
+		check( 'E. the next action takes the old sentence away', w.list.querySelector('.builder-list-error') === null );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		fire( buttonsOf( w, 1 )[1], 'click' );
+		w.serve();
+		w.questions[0].options.onChoose( true );
+		w.serve( { remove : { status : 409, body : { error : 'x', code : 'routes_remove_included', params : [ 'page-contact', 'page-about.tpl' ], field : 'template' } } } );
+
+		check( 'E. a deletion that the server refuses when it is asked is said in the same place, and says nothing of success', w.list.querySelector('.builder-list-error') !== null && w.said.length === 0 && w.touched.length === 0 );
+	}
+
+	{
+		const w = world( { list : answer( { create : false } ) } );
+
+		w.open('#builder');
+
+		check( 'E. an account that may not make a page has no button in any row', w.rows().every( function( row ) { return findAll( row, function( el ) { return el.tagName === 'BUTTON' } ).length === 0 } ) );
+	}
+}
+
+// --- F. the copy of a page --------------------------------------------------------------------------------------
+
+{
+	const copyOf = function( w, at ) { fire( findAll( w.rows()[at], function( el ) { return el.tagName === 'BUTTON' } )[0], 'click' ) };
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		copyOf( w, 2 );
+
+		check( 'F. the button of a row leads to the view of the copy, whose address names the page - and the panel asks the server what the form starts from', w.state.hash === '#builder/@new/about' && w.requests.length === 1 && w.requests[0].action === 'builder/copyof' && w.requests[0].payload.template === 'page-about' );
+
+		w.serve();
+
+		const form = w.form.querySelector('form');
+
+		check( 'F. the form starts from what the server said: the name and the address of each language, the menus of the page ticked and no other - and the page is the one the address names', w.shown( w.form ) === true && w.inputOf('name-de_DE').value === ORIGIN.names.de_DE && w.inputOf('name-en_US').value === ORIGIN.names.en_US
+			&& w.inputOf('address-de_DE').value === ORIGIN.addresses.de_DE && w.inputOf('address-en_US').value === ORIGIN.addresses.en_US && w.form.querySelector('[data-key="menu-footer"]').checked === true && w.form.querySelector('[data-key="menu-main"]').checked === false && w.state.hash === '#builder/@new/about' );
+		check( 'F. the choice of the block to start with is not there - the page it is made from stands in its place - and no list of blocks is asked for', form.querySelector('select') === null && textOf( form ).indexOf( W( 'page/copy-of', 'About us' ) ) !== -1 && w.requests.length === 0 );
+		check( 'F. what the server proposed is no input that is not saved: the view is left without a question, and a name that is changed is', ( function() {
+			const clean = w.dirty.isDirty( [ 'builder' ] ) === false;
+			w.type( 'name-de_DE', 'Anders' );
+			return clean === true && w.dirty.isDirty( [ 'builder' ] ) === true;
+		} )() );
+		check( 'F. an address that the server proposed is kept when the name is written: it is not made over from the name', w.inputOf('address-de_DE').value === ORIGIN.addresses.de_DE );
+
+		w.submit();
+
+		const sent = w.requests[0];
+
+		check( 'F. what is sent is the page it is made from and what is written - the names, the addresses and the menus - and no block', sent.action === 'builder/duplicate' && JSON.stringify( sent.payload ) === JSON.stringify( { names : { de_DE : 'Anders', en_US : ORIGIN.names.en_US }, addresses : ORIGIN.addresses, navs : [ 'footer' ], from : 'page-about' } ) );
+
+		w.reply( 200, { template : 'page-about-2', slug : 'about-2', copied : { texts : 3, slots : 0, files : 0 } } );
+		w.serve();
+
+		check( 'F. the copy is opened as a page that was made: the toast, the shell told what was written and the address of the copy', w.said.length === 1 && w.state.hash === '#builder/about-2' && w.touched.length > 0 );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder/@new/about');
+		w.serve();
+		w.submit();
+		w.reply( 409, { error : 'x', code : 'routes_http_uri_taken', params : [ '/about-2' ], field : 'httpUri-en_US' } );
+
+		const errors = findAll( w.form, function( el ) { return el.className === 'nino-admin-field-error' } );
+
+		check( 'F. what the server refuses is said at the field it names, as for a new page, and the view stays', errors.length === 1 && w.inputOf('address-en_US').attributes['aria-invalid'] === 'true' && w.shown( w.form ) === true && w.said.length === 0 );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder');
+		w.state.hash = '#builder/@new/nothing';
+		w.panel.showCurrent();
+		w.serve( { copyof : { status : 404, body : { error : 'x', code : 'builder_unknown', params : [ 'page-nothing' ], field : 'template' } } } );
+
+		check( 'F. a page the server does not know is no view: the list stands, with the refusal said above the table', w.state.hash === '#builder' && w.shown( w.list ) === true && w.shown( w.form ) === false && w.list.querySelector('.builder-list-error') !== null );
+	}
+
+	{
+		const w = world();
+
+		w.open('#builder/@new/about');
+		w.serve();
+		w.type( 'name-de_DE', 'Anders' );
+		w.answers.push( 'cancel' );
+		w.state.hash = '#builder/@new';
+		w.panel.showCurrent();
+
+		check( 'F. the view of another copy, or of a new page, is another view: what was typed is asked about first, and a turned-down question keeps the form and its address', w.dirty.asked === 1 && w.state.hash === '#builder/@new/about' && w.inputOf('name-de_DE').value === 'Anders' );
+	}
+
+	{
+		const w = world( { list : answer( { create : false } ) } );
+
+		w.open('#builder/@new/about');
+
+		check( 'F. the account that may not make a page is taken to the list by the address of a copy as well, and nothing is asked', w.state.hash === '#builder' && w.shown( w.list ) === true && w.requests.length === 0 );
+	}
 }
 
 done();

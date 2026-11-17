@@ -54,6 +54,21 @@ namespace Nino\Modules {
 
 		public static function init( array &$appData ): void {
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/request', [ self::class, 'request' ] );
+			\Nino\Callbacks::registerCallback( $appData, '/nino/pages/removed', [ self::class, 'removed' ] );
+		}
+
+		/**
+		 *	A page was removed by the kernel: what the Builder keeps of it - its last state, the drafts of its previews - goes with it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$event				(reference) What \Nino\Pages::remove() answered: 'template' is the name of the page that is gone
+		 *
+		 *	@return 	void
+		 */
+		public static function removed( array &$appData, array &$event ): void {
+
+			if( is_string( $event['template'] ?? null ) === true )
+				\Nino\Modules\Builder\Store::forget( $appData, $event['template'] );
 		}
 
 		public static function adminPanels( array &$appData ): array {

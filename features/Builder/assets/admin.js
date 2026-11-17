@@ -5,7 +5,8 @@
  *										it shows is the answer of the API (see Modules\Builder\Admin): the page as it is saved from open, the draft from preview. A change
  *										is a change of the working state - the tree of the template and the words of its namespace - and nothing is written before Save.
  *
- *										The address is #builder (the list), #builder/<page> (a page: its template without page-), #builder/@new (the view that makes one) and #builder/@header or #builder/@footer
+ *										The address is #builder (the list), #builder/<page> (a page: its template without page-), #builder/@new (the view that makes one; with a page behind it,
+ *										#builder/@new/<page>, the view that makes a copy of that page) and #builder/@header or #builder/@footer
  *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components, and
  *										#builder/<page>/<block>/@block its settings - and of one component #builder/<page>/<block>/<path>/<section>, the path being the
  *										position of the component in the block; the frames are the same views at #builder/<page>/@header and #builder/<page>/@footer. They
@@ -163,6 +164,7 @@
 		button	: null,
 		taken		: '',
 		choosing	: false,
+		source	: '',
 	};
 
 	const word = function( key, ...params ) {
@@ -4977,29 +4979,50 @@
 		return { el : field, boxes : boxes };
 	};
 
+	// What the Builder wrote of the pages - a page made, copied or taken away - is told to the shell, which lets the panels that show the same things ask again and
+	// the window beside the workbench draw the website anew; where the writer knows the address of the page, it says it
+	const announce = function( uri ) {
+		[ 'templates', 'texts', 'slots', 'routes', 'navigations' ].forEach( function( topic ) { Nino.admin.touch( topic, uri ) } );
+	};
+
+	// What stands in the place of the choice of the block in the view that makes a copy: the page it is made from, which is no choice
+	const copiedFrom = function( origin ) {
+
+		const field = el( 'div', 'nino-admin-field' );
+
+		field.appendChild( el( 'span', 'nino-admin-field-name', word('page/copy-source') ) );
+		field.appendChild( el( 'p', 'builder-new-origin', word( 'page/copy-of', origin.label ) ) );
+
+		return field;
+	};
+
 	/**
 	 *	Draw the view that makes a page, at #builder/@new: the way back to the list, a name and an address for each language of the site - the address is proposed from the
 	 *	name until it is written by hand -, the menus the page is in and the block it starts with, and the bar with the one button that makes it. What the server refuses
-	 *	is said at the field it is about; the page that is made is opened as it stands
+	 *	is said at the field it is about; the page that is made is opened as it stands. The view of a copy (#builder/@new/<page>) is the same form, filled with what the server
+	 *	proposes, with the page it is made from where the block would be chosen
 	 *
 	 *	@param		{Element}		level					The element the view is drawn in
 	 *	@param		{Object}		data					The answer of the list: the languages and the menus
+	 *	@param		{Object|null}	origin				The answer of copyof for the view that makes the copy of a page: its names and addresses and menus, which the form starts with, and the page itself in
+	 *																		place of the block to start with; null for a new page
 	 *
 	 *	@return		{Element|boolean}					Where the focus goes when the person opened the view: the name of the panel, the heading of the view
 	 */
-	const drawNew = function( level, data ) {
+	const drawNew = function( level, data, origin ) {
 
 		const locales = data.locales.filter( function( entry ) { return entry.active === true } ).map( function( entry ) { return entry.locale } );
 		const native = locales.indexOf( data.native ) !== -1 ? data.native : locales[0];
 		const form = el( 'form', 'builder-new-form' );
 		const group = el( 'fieldset', '' );
 		const names = perLanguage( { key : 'name', label : word('page/name'), help : word('page/name-help'), maxLength : 120, locales : locales } );
-		const addresses = perLanguage( { key : 'address', label : word('page/address'), help : word('page/address-hint'), example : word('page/address-example'), locales : locales } );
+		const addresses = perLanguage( { key : 'address', label : word('page/address'), help : word( origin === null || origin === undefined ? 'page/address-hint' : 'page/copy-address-hint' ), example : word('page/address-example'), locales : locales } );
 		const menus = menusField( data.navs );
-		const start = Nino.adminUi.selectField( { key : 'block', label : word('page/start'), help : word('page/start-help'), options : [ { value : '', label : word('page/start-none') } ], value : '' } );
-		const chosen = start.querySelector('select');
+		const copy = origin !== null && origin !== undefined;
+		const start = copy === true ? copiedFrom( origin ) : Nino.adminUi.selectField( { key : 'block', label : word('page/start'), help : word('page/start-help'), options : [ { value : '', label : word('page/start-none') } ], value : '' } );
+		const chosen = copy === true ? null : start.querySelector('select');
 		const message = el( 'p', '' );
-		const primary = Nino.adminUi.button( word('page/title'), null, { type : 'submit' } );
+		const primary = Nino.adminUi.button( word( copy === true ? 'page/copy-title' : 'page/title' ), null, { type : 'submit' } );
 		const bar = Nino.adminUi.actionBar( { status : { line : message, fresh : true }, primary : primary } );
 		const touched = {};
 		let sending = false;
@@ -5007,7 +5030,7 @@
 		level.innerHTML = '';
 		form.id = 'builder-new-form';
 		form.noValidate = true;
-		const legend = el( 'legend', '', word('page/open') );
+		const legend = el( 'legend', '', word( copy === true ? 'page/copy-open' : 'page/open' ) );
 
 		group.appendChild( legend );
 		group.appendChild( names.el );
@@ -5017,7 +5040,7 @@
 			group.appendChild( menus.el );
 
 		group.appendChild( start );
-		Nino.adminUi.sectionHelp( legend, group, word('page/note') );
+		Nino.adminUi.sectionHelp( legend, group, word( copy === true ? 'page/copy-note' : 'page/note' ) );
 		form.appendChild( group );
 		form.appendChild( bar.el );
 		bar.line.bind( form );
@@ -5026,6 +5049,18 @@
 			back : { to : word('label/pages'), href : Nino.admin.router.href( 'builder', [] ), onClick : function() { Nino.admin.builder.go( [] ) } },
 		} ) );
 		level.appendChild( form );
+
+		// The copy starts from the names and the addresses of the page it is made from - the addresses are the ones the server found free, and stay until a hand changes them
+		if( copy === true ) {
+
+			locales.forEach( function( locale ) {
+				names.inputs[locale].value = origin.names[locale] ?? '';
+				addresses.inputs[locale].value = origin.addresses[locale] ?? '';
+				touched[locale] = true;
+			} );
+
+			Object.keys( menus.boxes ).forEach( function( nav ) { menus.boxes[nav].checked = origin.navs.indexOf( nav ) !== -1 } );
+		}
 
 		// The address of a language is proposed from its name until a hand has written it
 		locales.forEach( function( locale ) {
@@ -5042,15 +5077,16 @@
 			} );
 		} );
 
-		Nino.admin.builder.call( 'blocks', {}, function( status, response ) {
+		if( copy === false )
+			Nino.admin.builder.call( 'blocks', {}, function( status, response ) {
 
-			if( status !== 200 )
-				return;
+				if( status !== 200 )
+					return;
 
-			response.blocks.filter( function( entry ) { return entry.off === null } ).forEach( function( entry ) {
-				chosen.appendChild( Object.assign( el( 'option', '', localized( entry.name ) ), { value : entry.key } ) );
+				response.blocks.filter( function( entry ) { return entry.off === null } ).forEach( function( entry ) {
+					chosen.appendChild( Object.assign( el( 'option', '', localized( entry.name ) ), { value : entry.key } ) );
+				} );
 			} );
-		} );
 
 		// What is wrong is said at the field it is about, in the line of the bar and in the field, which has the focus
 		const refuse = function( wrapper, input, key, text ) {
@@ -5083,7 +5119,12 @@
 				return;
 			}
 
-			const sent = { names : {}, addresses : {}, navs : Object.keys( menus.boxes ).filter( function( nav ) { return menus.boxes[nav].checked } ), block : chosen.value };
+			const sent = { names : {}, addresses : {}, navs : Object.keys( menus.boxes ).filter( function( nav ) { return menus.boxes[nav].checked } ) };
+
+			if( copy === true )
+				sent.from = origin.template;
+			else
+				sent.block = chosen.value;
 
 			locales.forEach( function( locale ) {
 				sent.names[locale] = names.inputs[locale].value;
@@ -5094,7 +5135,7 @@
 			primary.disabled = true;
 			bar.line.saving();
 
-			Nino.admin.builder.call( 'create', sent, function( status, response ) {
+			Nino.admin.builder.call( copy === true ? 'duplicate' : 'create', sent, function( status, response ) {
 
 				if( status !== 200 ) {
 
@@ -5111,7 +5152,7 @@
 						where[0].inputs[where[1]].focus();
 						bar.line.fail( word('error/create') );
 					}
-					else if( target === 'block' ) {
+					else if( target === 'block' && chosen !== null ) {
 						Nino.adminUi.fieldError( start, chosen, 'builder-new-error-block', text );
 						chosen.focus();
 						bar.line.fail( word('error/create') );
@@ -5125,6 +5166,7 @@
 
 				// The form holds what is made: nothing is lost by leaving it, and the page that was made is opened - unless the answer of a question has taken the person elsewhere
 				N.taken = valuesOf();
+				announce();
 				Nino.adminUi.say( word( 'page/made', names.inputs[ locales.indexOf( Nino.admin.workLocale.current ) !== -1 ? Nino.admin.workLocale.current : native ].value.trim() ) );
 				Nino.admin.builder.init( function() {
 
@@ -5142,7 +5184,7 @@
 
 		// What the form holds, to know whether it holds more than was taken for saved
 		const valuesOf = function() {
-			return JSON.stringify( [ locales.map( function( locale ) { return [ names.inputs[locale].value, addresses.inputs[locale].value ] } ), Object.keys( menus.boxes ).map( function( nav ) { return menus.boxes[nav].checked } ), chosen.value ] );
+			return JSON.stringify( [ locales.map( function( locale ) { return [ names.inputs[locale].value, addresses.inputs[locale].value ] } ), Object.keys( menus.boxes ).map( function( nav ) { return menus.boxes[nav].checked } ), chosen === null ? '' : chosen.value ] );
 		};
 
 		N.bar = bar;
@@ -5169,12 +5211,23 @@
 		return title === null ? true : title;
 	};
 
-	// Whether an address is the one of the view that makes a page
+	// Whether an address is the one of the view that makes a page: #builder/@new - or, with the word of a page behind it, the one that makes the copy of that page
 	const isNew = function( parts ) {
-		return parts.length === 1 && parts[0] === NEW;
+		return parts[0] === NEW && ( parts.length === 1 || ( parts.length === 2 && templateOf( parts[1] ) !== '' && parts[1][0] !== '@' ) );
 	};
 
-	// The view is shown for the account that may make a page, by the address #builder/@new: any other is taken to the list
+	// The address of the view that is open: that of a copy names the page it is made from
+	const newParts = function() {
+		return N.source === '' ? [ NEW ] : [ NEW, N.source ];
+	};
+
+	// The page a view that makes a copy is about: the word behind #builder/@new, '' for the view that makes a new page
+	const sourceOfNew = function( parts ) {
+		return parts.length === 2 ? parts[1] : '';
+	};
+
+	// The view is shown for the account that may make a page, by the address #builder/@new - or #builder/@new/<page> for the copy of a page, which asks the server for
+	// what the form starts from: any other account is taken to the list
 	const showNew = function() {
 
 		leaveView();
@@ -5183,13 +5236,39 @@
 
 		if( S.list === null || S.list.create !== true ) {
 			N.open = false;
+			N.source = '';
 			Nino.admin.builder.go( [] );
 			return;
 		}
 
+		const source = sourceOfNew( here().parts );
+
 		N.open = true;
-		Nino.admin.router.set( 'builder', [ NEW ] );
-		Nino.adminUi.showLevel( 'builder-new', { focus : drawNew( dc.getElementById('builder-new'), S.list ) } );
+		N.source = source;
+		Nino.admin.router.set( 'builder', newParts() );
+
+		if( source === '' ) {
+			Nino.adminUi.showLevel( 'builder-new', { focus : drawNew( dc.getElementById('builder-new'), S.list, null ) } );
+			return;
+		}
+
+		Nino.admin.builder.call( 'copyof', { template : templateOf( source ), locale : Nino.admin.workLocale.current }, function( status, response ) {
+
+			// The person has gone elsewhere while the answer was on its way
+			if( N.open !== true || N.source !== source )
+				return;
+
+			if( status !== 200 ) {
+
+				N.open = false;
+				N.source = '';
+				Nino.admin.builder.go( [] );
+				listFail( status, response, '/_admin/builder/error/copy' );
+				return;
+			}
+
+			Nino.adminUi.showLevel( 'builder-new', { focus : drawNew( dc.getElementById('builder-new'), S.list, response ) } );
+		} );
 	};
 
 
@@ -6059,6 +6138,161 @@
 		return cell;
 	};
 
+	// The most readers, and pages that link, a question before a page is deleted lists: the others are counted
+	const LISTED = 5;
+
+	/**
+	 *	A list of names as a sentence, at most LISTED of them, and how many more there are for the rest. What is not a name is none
+	 *
+	 *	@param		{Array}			names
+	 *
+	 *	@return		{string}
+	 */
+	const listed = function( each ) {
+
+		const shown = each.slice( 0, LISTED ).join(', ');
+
+		return each.length > LISTED ? shown+ ' '+ word( 'confirm/more', each.length - LISTED ) : shown;
+	};
+
+	// Who reads or links: each once, a template by the name of its page where the list has it
+	const whoIs = function( names ) {
+
+		const named = {};
+
+		( S.list === null ? [] : S.list.pages ).forEach( function( page ) { named[page.template+ '.tpl'] = page.name } );
+
+		return Array.from( new Set( names.filter( function( name ) { return typeof name === 'string' && name !== '' } ).map( function( name ) { return named[name] ?? name } ) ) );
+	};
+
+	/**
+	 *	The question before a page is deleted, from the answer of the server (uses): the page with its address, and where others read words or pictures of it or link to it,
+	 *	who they are - the readers and the pages that link, each at most LISTED, the rest counted. A leftover that has no address is named by its template
+	 *
+	 *	@param		{Object}		asked					The answer of uses
+	 *
+	 *	@return		{string}
+	 */
+	const deleteMessage = function( asked ) {
+
+		const lines = [ asked.remnant === true ? word( 'confirm/delete-leftover', asked.name ) : word( 'confirm/delete-page', asked.name, asked.path ) ];
+
+		// The number and the names are the same thing: the pages and files that read what stays, and the pages that link
+		const readers = whoIs( [].concat( ...asked.kept.map( function( entry ) { return entry.by } ) ) );
+		const linking = whoIs( asked.linked.map( function( entry ) { return entry.by } ) );
+
+		if( readers.length > 0 )
+			lines.push( word( 'confirm/delete-kept', readers.length, listed( readers ) ) );
+
+		if( linking.length > 0 )
+			lines.push( word( 'confirm/delete-linked', listed( linking ) ) );
+
+		return lines.join(' ');
+	};
+
+	// What an action of the list said was wrong is taken away when the next one starts
+	const clearFail = function() {
+
+		const old = dc.getElementById('builder-list').querySelector('.builder-list-error');
+
+		if( old !== null )
+			old.remove();
+	};
+
+	// What went wrong with an action of the list is said above the table, where the person is looking - and nowhere else - until the next action or a new list
+	const listFail = function( status, response, fallback ) {
+
+		const mount = dc.getElementById('builder-list');
+
+		clearFail();
+
+		const message = el( 'p', 'nino-admin-error builder-list-error', Nino.adminUi.api.errorText( status, response, fallback ) );
+
+		message.setAttribute( 'role', 'alert' );
+		mount.insertBefore( message, mount.firstChild );
+	};
+
+	/**
+	 *	Delete a page of the list: the server is asked what the deletion would keep and leave a link to - and refuses, in the kernel's words, a page that may not go -,
+	 *	then one question names all of it, and only a yes takes the page away
+	 *
+	 *	@param		{Object}		row						The row of the table
+	 *	@param		{Element}		opener				The button that was pressed: the focus returns there
+	 */
+	const askDelete = function( row, opener ) {
+
+		clearFail();
+
+		Nino.admin.builder.call( 'uses', { template : row.template, locale : Nino.admin.workLocale.current }, function( status, asked ) {
+
+			if( status !== 200 ) {
+				listFail( status, asked, '/_admin/builder/error/remove' );
+				return;
+			}
+
+			Nino.adminUi.confirm( 'destructive', {
+				title		: word('confirm/delete-page-title'),
+				message	: deleteMessage( asked ),
+				yes			: word('confirm/delete-page-title'),
+				no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+				kind		: 'danger',
+				opener	: opener,
+				onChoose : function( ok ) {
+
+					if( ok === true )
+						deletePage( asked );
+				},
+			} );
+		} );
+	};
+
+	// The page is taken away: said as a toast, the other panels and the window beside the workbench told, the table drawn again without it
+	const deletePage = function( asked ) {
+
+		Nino.admin.builder.call( 'remove', { template : asked.template }, function( status, response ) {
+
+			if( status !== 200 ) {
+				listFail( status, response, '/_admin/builder/error/remove' );
+				return;
+			}
+
+			announce( asked.path === '' ? undefined : asked.path );
+			Nino.adminUi.say( word( 'msg/page-deleted', asked.name ) );
+
+			// The row that had the focus is gone: it goes to the search over the table, or - where no page is left - to the button that makes one
+			Nino.admin.builder.reload( function() {
+
+				const mount = dc.getElementById('builder-list');
+				const next = mount.querySelector('.nino-admin-table-search') ?? N.button;
+
+				if( next !== null && next !== undefined )
+					next.focus();
+			} );
+		} );
+	};
+
+	// The buttons at the end of a row of the table, for the account that may make a page: the page is copied - the view of a copy is its address - or deleted, which the two
+	// pages the kernel never takes away say they cannot be
+	const rowButtons = function( row ) {
+
+		// A page that the website serves itself is no page to copy, and the two it never takes away are no pages to delete
+		const copy = Nino.adminUi.iconButton( 'copy', word( 'list/duplicate', row.name ), function() { Nino.admin.builder.go( [ NEW, addressOf( row.template ) ], { origin : [] } ) }, { small : true, disabled : row.locked === 'runtime' } );
+		const drop = Nino.adminUi.iconButton( 'trash-2', word( 'list/delete', row.name ), function() { askDelete( row, drop ) }, { small : true, danger : true, disabled : row.locked !== '' } );
+
+		if( row.locked === '' )
+			return [ copy, drop ];
+
+		// The reason stands as the title of the shut buttons and behind a (?) at them, which a keyboard and a touch screen reach
+		const reason = word( 'list/locked-'+ row.locked );
+
+		drop.title = reason;
+
+		if( row.locked === 'runtime' )
+			copy.title = reason;
+
+		return [ copy, Nino.adminUi.fieldHelp( reason, { name : row.name } ), drop ];
+	};
+
 	const render = function( data ) {
 
 		S.list = data;
@@ -6094,8 +6328,9 @@
 				rowKey		: 'template',
 				columns		: columns,
 				rows			: data.pages.map( function( page ) {
-					return { template : page.template, name : page.name, path : page.path, blocks : page.blocks, menus : page.navs.map( menuName ).join(', '), saved : page.saved > 0 ? isoOf( page.saved ) : '', stamp : page.saved, complete : page.complete };
+					return { template : page.template, name : page.name, path : page.path, blocks : page.blocks, menus : page.navs.map( menuName ).join(', '), saved : page.saved > 0 ? isoOf( page.saved ) : '', stamp : page.saved, complete : page.complete, locked : page.locked };
 				} ),
+				actions		: data.create === true ? rowButtons : undefined,
 				labels		: { search : word('list/search'), empty : word('msg/none'), noMatch : word('list/no-match') },
 				search		: true,
 				// The file of the template is a name of the page as well - it is what a person who has seen the files looks for -, and the date is the one the row shows
@@ -6160,7 +6395,7 @@
 		go : function( parts, options ) {
 
 			const target = targetOf( parts );
-			const leaves = ( N.open === true && isNew( parts ) === false ) || ( S.ready === true && ( parts.length === 0 || target === null || target.template !== S.template || target.page !== S.page ) );
+			const leaves = ( N.open === true && ( isNew( parts ) === false || sourceOfNew( parts ) !== N.source ) ) || ( S.ready === true && ( parts.length === 0 || target === null || target.template !== S.template || target.page !== S.page ) );
 
 			S.focusNext = ( options ?? {} ).focus ?? '';
 			S.focusFrom = ( options ?? {} ).from ?? '';
@@ -6174,6 +6409,9 @@
 
 		follow : function() {
 
+			// What an action of the list said was wrong belongs to the address it was said at
+			clearFail();
+
 			const at = here();
 			const parts = at.panel === 'builder' ? at.parts : [];
 
@@ -6186,6 +6424,7 @@
 			const from = N.open;
 
 			N.open = false;
+			N.source = '';
 
 			if( parts.length === 0 ) {
 
@@ -6233,10 +6472,10 @@
 			}
 
 			const there = targetOf( at.parts );
-			const leaving = ( N.open === true && isNew( at.parts ) === false ) || ( S.ready === true && ( at.parts.length === 0 || there === null || there.template !== S.template || there.page !== S.page ) );
+			const leaving = ( N.open === true && ( isNew( at.parts ) === false || sourceOfNew( at.parts ) !== N.source ) ) || ( S.ready === true && ( at.parts.length === 0 || there === null || there.template !== S.template || there.page !== S.page ) );
 
 			Nino.admin.router.leave( [ 'builder' ], leaving, proceed, function() {
-				Nino.admin.router.set( 'builder', N.open === true ? [ NEW ] : ( S.ready === true ? S.at : [] ) );
+				Nino.admin.router.set( 'builder', N.open === true ? newParts() : ( S.ready === true ? S.at : [] ) );
 			} );
 		},
 	} );

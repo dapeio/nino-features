@@ -7,11 +7,20 @@ namespace Nino\Modules\Builder {
 	// state, stamped, written in a fixed order and kept one step back as the last state. The files are the project's own; nothing is written but the template
 	// of the page or of the frame, the keys below /template/<template>/ and the slots below the same
 	//
-	//	the order of a save   the last state, the words, the slots, the template - and where one of the later steps fails, the state that was is put back
+	//	the order of a save   the last state, the words, the slots, the template - and where one of the later steps fails, the state that was is put back: of each file
+	//												only what this save wrote
+	//	forget()							what is kept of a page that the kernel removed - its last state and its drafts
 	class Store {
 
 		// Where the last state of a template is kept: private/data/builder/previous/<template>.php
 		public const string PREVIOUS = '/data/builder/previous';
+
+		// The lock that the writers of the Builder of a page - a save, a page that is made, a page that is copied - take one after the other: nothing else holds it, so
+		// no write of a file lets it go
+		public const string LOCK = '/data/builder/pages.lock';
+
+		// The file of the formats and limits of the words
+		private const string META = '/text/meta.php';
 
 		// The most keys and texts a request names, and the longest text of one
 		public const int MAX_KEYS = 600;
@@ -446,8 +455,55 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	Take away what the Builder keeps of a page that is gone: its last state and the drafts of its previews, the page's and the small pictures of its blocks. The
+		 *	name is held to the rule of the kernel for the name of a page - nothing is looked at for any other, a frame among them - before a path is made of it. The
+		 *	pictures of the page are the kernel's to remove, with the rest of the page
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template			The template of the page that was removed
+		 *
+		 *	@return 	void
+		 */
+		public static function forget( array &$appData, string $template ): void {
+
+			if( strlen( $template ) > \Nino\Pages::MAX_NAME || preg_match( \Nino\Pages::TEMPLATE, $template ) !== 1 )
+				return;
+
+			$kept = self::PREVIOUS. '/'. $template. '.php';
+			$real = \Nino\Filesystem::path( $appData, $kept );
+
+			if( $real !== '' && ( is_file( $real ) === true || is_link( $real ) === true ) && \Nino\Filesystem::lockFile( $appData, $kept ) === true ) {
+
+				@unlink( $real );
+				\Nino\Filesystem::unlockFile( $appData, $kept );
+				unset( $appData['./nino/filesystem/cache'][$kept] );
+			}
+
+			foreach( [ \Nino\Modules\Builder::KIND, \Nino\Modules\Builder\Library::KIND ] as $kind ) {
+
+				$base = \Nino\Filesystem::path( $appData, \Nino\Preview::DIR. '/'. $kind );
+
+				// A kind that is a link leads out of the folder of the drafts: the kernel leaves it alone when it tidies, and so does this
+				foreach( $base === '' || is_link( $base ) === true ? [] : (array) glob( $base. '/*', GLOB_ONLYDIR ) as $folder ) {
+
+					$token = basename( (string) $folder );
+
+					if( preg_match( \Nino\Preview::TOKEN, $token ) !== 1 || is_link( (string) $folder ) === true )
+						continue;
+
+					$draft = \Nino\Filesystem::getFileContent( $appData, \Nino\Preview::DIR. '/'. $kind. '/'. $token. '/draft.json', null );
+
+					if( is_array( $draft ) === true && ( $draft['template'] ?? null ) === $template )
+						\Nino\Filesystem::removeDir( (string) $folder );
+				}
+			}
+		}
+
+		/**
 		 *	Make the project hold a state: its words in every language it names, the keys of the namespace it does not have removed, its slots, its template. The
-		 *	template is written last and only where it still is what the caller saw ($seen, a sha256 of its text, '' for no check)
+		 *	template is written last and only where it still is what the caller saw ($seen, a sha256 of its text, '' for no check). Each step is noted as the bytes
+		 *	the files had right before it and the bytes it left in them (see _note()), so that a failure later puts back what this save wrote and nothing that was
+		 *	written by somebody else
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$template
@@ -456,10 +512,12 @@ namespace Nino\Modules\Builder {
 		 *	@param		array|null								$changes			As changes() answers it, or null for every difference of the two states
 		 *	@param		string		$seen
 		 *	@param		array			$formats			key => format for the keys that are new
+		 *	@param		array			&$wrote				(reference) path => the bytes this save left in it
+		 *	@param		array			&$before			(reference) path => the bytes the file had right before this save wrote it, null for no file
 		 *
 		 *	@return 	string|null								null where it was done, else 'texts', 'slots' or 'template' - the step that failed - or 'changed' (the template was written by somebody else meanwhile)
 		 */
-		public static function apply( array &$appData, string $template, array $target, array $now, ?array $changes, string $seen, array $formats = [], array &$wrote = [], array $before = [] ): ?string {
+		public static function apply( array &$appData, string $template, array $target, array $now, ?array $changes, string $seen, array $formats = [], array &$wrote = [], array &$before = [] ): ?string {
 
 			if( $changes === null ) {
 
@@ -473,43 +531,70 @@ namespace Nino\Modules\Builder {
 				$changes = [ 'set' => $set, 'drop' => array_values( array_diff( array_keys( $now['texts'] ), array_keys( $target['texts'] ) ) ), 'dropSlots' => array_values( array_diff( array_keys( $now['slots'] ), array_keys( $target['slots'] ) ) ) ];
 			}
 
-			// What a step wrote is noted as the bytes it left, so that a failure later puts back what this save wrote and nothing that was written by somebody else
-			$note = function() use ( &$appData, $template, &$wrote, $before ): void {
-
-				foreach( self::_files( $appData, $template ) as $path => $bytes )
-					if( array_key_exists( $path, $before ) === true && $bytes !== $before[$path] && array_key_exists( $path, $wrote ) === false )
-						$wrote[$path] = $bytes;
-			};
-
 			if( $changes['set'] !== [] || $changes['drop'] !== [] ) {
 
-				if( \Nino\Text::put( $appData, $changes['set'], $changes['drop'], $formats ) === null ) {
-					$note();
-					return 'texts';
-				}
+				$paths = [ self::META ];
 
-				$note();
+				foreach( $changes['set'] as $values )
+					foreach( array_keys( $values ) as $locale )
+						$paths[] = '/text/'. $locale. '.php';
+
+				// A key that is taken away is taken from every file of the words
+				if( $changes['drop'] !== [] )
+					$paths = array_merge( $paths, self::_texts( $appData ) );
+
+				$paths = array_values( array_unique( $paths ) );
+
+				if( self::_hold( $appData, $template ) !== null )
+					return 'gone';
+
+				$was = self::_files( $appData, $template, $paths );
+				$put = \Nino\Text::put( $appData, $changes['set'], $changes['drop'], $formats );
+				self::_note( $appData, $template, $was, [], $wrote, $before );
+
+				if( $put === null )
+					return 'texts';
 			}
 
+			$was = self::_files( $appData, $template, [ '/config.php' ] );
+			$failed = false;
+			$stopped = null;
+
+			// Each write of a slot lets the lock of config.php go: the next one takes it again, and finds out whether the page is still there
 			foreach( $target['slots'] as $uri => $slot )
-				if( ( $now['slots'][$uri] ?? null ) !== $slot && \Nino\Images::putSlot( $appData, (string) $uri, $slot ) === false ) {
-					$note();
-					return 'slots';
+				if( $failed === false && $stopped === null && ( $now['slots'][$uri] ?? null ) !== $slot ) {
+
+					$stopped = self::_hold( $appData, $template );
+					$failed = $stopped === null && \Nino\Images::putSlot( $appData, (string) $uri, $slot ) === false;
 				}
 
 			foreach( $changes['dropSlots'] as $uri )
-				if( isset( $target['slots'][$uri] ) === false && \Nino\Images::dropSlot( $appData, $uri ) === false ) {
-					$note();
-					return 'slots';
+				if( $failed === false && $stopped === null && isset( $target['slots'][$uri] ) === false ) {
+
+					$stopped = self::_hold( $appData, $template );
+					$failed = $stopped === null && \Nino\Images::dropSlot( $appData, $uri ) === false;
 				}
 
-			$note();
+			self::_note( $appData, $template, $was, [ '/config.php' ], $wrote, $before );
 
+			if( $stopped !== null )
+				return 'gone';
+
+			if( $failed === true )
+				return 'slots';
+
+			$file = '/templates/'. $template. '.tpl';
+
+			// A save that leaves the template as it is has seen it as well: where it was changed or taken away since, the words that were written are put back
 			if( $target['source'] === $now['source'] )
-				return null;
+				return $seen === '' || hash_equals( $seen, hash( 'sha256', (string) ( self::_files( $appData, $template, [ $file ] )[$file] ?? '' ) ) ) === true ? null : 'changed';
+
+			if( self::_hold( $appData, $template ) !== null )
+				return 'gone';
 
 			$gone = false;
-			$ok = \Nino\Filesystem::mutate( $appData, '/templates/'. $template. '.tpl', static function( mixed $text ) use ( $target, $seen, &$gone ): ?string {
+			$was = self::_files( $appData, $template, [ $file ] );
+			$ok = \Nino\Filesystem::mutate( $appData, $file, static function( mixed $text ) use ( $target, $seen, &$gone ): ?string {
 
 				if( $seen !== '' && hash_equals( $seen, hash( 'sha256', (string) $text ) ) === false ) {
 					$gone = true;
@@ -520,9 +605,59 @@ namespace Nino\Modules\Builder {
 			}, '' );
 
 			if( $ok === true )
-				$note();
+				self::_note( $appData, $template, $was, [ $file ], $wrote, $before );
 
 			return $ok === true ? null : ( $gone === true ? 'changed' : 'template' );
+		}
+
+		/**
+		 *	What one step of a save wrote: each file of the step that holds other bytes than it did right before the step is the step's, with the bytes it had and the ones
+		 *	it left. Only the files that the step writes are looked at, so that what somebody else writes to any other file while the step runs is never noted as the
+		 *	save's. A file that the save wrote in an earlier step and that still holds what that step left stays one file with the bytes it had at the start; one that was
+		 *	changed by somebody else between two steps is theirs from then on and is not noted again
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$template
+		 *	@param		array			$was					As _files() answered it for $paths right before the step
+		 *	@param		array			$paths				The files the step writes, by their virtual path; where none is named, those $was holds
+		 *	@param		array			&$wrote				(reference) path => the bytes this save left in it
+		 *	@param		array			&$before			(reference) path => the bytes the file had before this save wrote it
+		 *
+		 *	@return 	void
+		 */
+		private static function _note( array &$appData, string $template, array $was, array $paths, array &$wrote, array &$before ): void {
+
+			foreach( self::_files( $appData, $template, $paths === [] ? array_keys( $was ) : $paths ) as $path => $bytes ) {
+
+				$had = $was[$path] ?? null;
+
+				if( $bytes === $had )
+					continue;
+
+				if( array_key_exists( $path, $wrote ) === false ) {
+					$before[$path] = $had;
+					$wrote[$path] = $bytes;
+				}
+				else if( $wrote[$path] === $had )
+					$wrote[$path] = $bytes;
+			}
+		}
+
+		/**
+		 *	The files of the words, by their virtual path: one for each language that has one, the file of the words of every language and the file of the formats
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	array
+		 */
+		private static function _texts( array &$appData ): array {
+
+			$paths = [];
+
+			foreach( (array) glob( \Nino\Filesystem::path( $appData, '/text' ). '/*.php' ) as $file )
+				$paths[] = '/text/'. basename( (string) $file );
+
+			return $paths;
 		}
 
 		/**
@@ -530,15 +665,13 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		string		$template
+		 *	@param		array|null								$only					The files to read, by their virtual path; null for every one of them
 		 *
 		 *	@return 	array											virtual path => the bytes the file has, null for a file that is not there
 		 */
-		private static function _files( array &$appData, string $template ): array {
+		private static function _files( array &$appData, string $template, ?array $only = null ): array {
 
-			$paths = [ '/templates/'. $template. '.tpl', '/config.php', self::PREVIOUS. '/'. $template. '.php' ];
-
-			foreach( (array) glob( \Nino\Filesystem::path( $appData, '/text' ). '/*.php' ) as $file )
-				$paths[] = '/text/'. basename( (string) $file );
+			$paths = $only ?? array_merge( [ '/templates/'. $template. '.tpl', '/config.php', self::PREVIOUS. '/'. $template. '.php' ], self::_texts( $appData ) );
 
 			$files = [];
 
@@ -667,8 +800,30 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats = [], ?string $seen = null, array $files = [], int $level = \Nino\Modules\Builder::LEVEL_CONTENT ): ?string {
 
-			$before = self::_files( $appData, $template );
+			// The writers of the Builder follow one another. The lock of config.php is what the routes of a page are written and taken away under (\Nino\Pages), and every write
+			// of config.php lets it go: each step takes it again before it writes, and looks at the page then
+			if( \Nino\Filesystem::lockFile( $appData, self::LOCK ) === false )
+				return 'busy';
+
+			try {
+				return self::_hold( $appData, $template ) ?? self::_commit( $appData, $template, $state, $target, $changes, $formats, $seen, $files, $level );
+			} finally {
+				\Nino\Filesystem::unlockFile( $appData, self::LOCK );
+				\Nino\Filesystem::unlockFile( $appData, '/config.php' );
+			}
+		}
+
+		/**
+		 *	commit() under the locks: the page is looked at before each write - a template that is not there or a page that no route answers is a page that was taken away -
+		 *	and nothing is written for it
+		 *
+		 *	@return 	string|null								See commit(); 'gone' for a page that was taken away
+		 */
+		private static function _commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats, ?string $seen, array $files, int $level ): ?string {
+
 			$older = self::previous( $appData, $template );
+			$was = self::_files( $appData, $template, [ self::PREVIOUS. '/'. $template. '.php' ] );
+			$before = [];
 			$wrote = [];
 			$made = [];
 
@@ -677,9 +832,7 @@ namespace Nino\Modules\Builder {
 				return 'keep';
 			}
 
-			$kept = self::PREVIOUS. '/'. $template. '.php';
-			$real = \Nino\Filesystem::path( $appData, $kept );
-			$wrote[$kept] = is_file( $real ) === true ? (string) file_get_contents( $real ) : '';
+			self::_note( $appData, $template, $was, [], $wrote, $before );
 
 			self::_copies( $appData, $target, $files, $made );
 
@@ -695,6 +848,47 @@ namespace Nino\Modules\Builder {
 
 			return null;
 		}
+
+		/**
+		 *	Take the lock of config.php - the routes of a page are written and taken away under it - and look at the page: a write of a save is made under the lock, and only for
+		 *	a page that is there
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *
+		 *	@return 	string|null								null where the page is there and the lock is held; 'busy' where the lock cannot be had, 'gone' for a page that was taken away
+		 */
+		private static function _hold( array &$appData, string $template ): ?string {
+
+			if( \Nino\Filesystem::lockFile( $appData, '/config.php' ) === false )
+				return 'busy';
+
+			return self::alive( $appData, $template ) === true ? null : 'gone';
+		}
+
+		/**
+		 *	Whether a page is still there as the Builder opens it: the file of its template, and for a page a route that draws it - a frame has none
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *
+		 *	@return 	bool
+		 */
+		public static function alive( array &$appData, string $template ): bool {
+
+			if( \Nino\Filesystem::fileExists( $appData, '/templates/'. $template. '.tpl' ) === false )
+				return false;
+
+			if( ( self::named( $template )['frame'] ?? true ) === true )
+				return true;
+
+			foreach( \Nino\Pages::all( $appData ) as $page )
+				if( $page['template'] === $template )
+					return true;
+
+			return false;
+		}
+
 
 		/**
 		 *	The line a place of a text is on, counted from 1

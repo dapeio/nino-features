@@ -127,6 +127,9 @@ const words = {
 	[ 'company', 'website', 'mail', 'project', 'common', 'page', 'feature', 'other' ].forEach( function( key ) { asked.add( 'source/area-'+ key ) } );
 	[ 'id', 'uri', 'slug' ].forEach( function( key ) { asked.add( 'source/field-'+ key ) } );
 	[ 'main', 'footer', 'legal' ].forEach( function( key ) { asked.add( 'page/menu-'+ key ) } );
+	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
+	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
+	asked.add('new/copy');
 	[ 'content', 'design', 'develop', 'content-edit', 'design-edit', 'develop-edit' ].forEach( function( key ) { asked.add( 'scope/'+ key ) } );
 	// The failure of a load is the one the shell's panel() asks for by the name of the panel
 	asked.add('error/load');
@@ -149,7 +152,7 @@ const words = {
 
 const context = {
 	window : null,
-	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' }, getElementById : function() { return { innerHTML : '', appendChild : function() {} } } },
+	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' }, getElementById : function() { return { innerHTML : '', appendChild : function() {}, querySelector : function() { return null } } } },
 };
 
 // What the stand-in keeps of the list and of the way between the views: the elements made, where the router went and the calls to the server

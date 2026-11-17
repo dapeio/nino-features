@@ -286,7 +286,7 @@ check( 'the manifest is the one of a feature that is written for the kernel of N
 check( 'the right is /_admin/builder/manage, and the manual of the feature names the panel', \Nino\Modules\Builder::PERM === '/_admin/builder/manage' && str_contains( $manifest['manual']['panel']['Builder']['en_US'], '/_admin/builder/manage' ) === true );
 
 $words = [ 'de_DE' => require $feature. '/text/de_DE.php', 'en_US' => require $feature. '/text/en_US.php' ];
-$codes = [ 'unknown', 'unreadable', 'tree', 'block', 'level', 'place', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_html', 'refused_check', 'refused_link', 'refused_value', 'refused_image', 'refused_variant', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing', 'refused_source', 'picture', 'picture_gone',
+$codes = [ 'unknown', 'gone', 'unreadable', 'tree', 'block', 'level', 'place', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_html', 'refused_check', 'refused_link', 'refused_value', 'refused_image', 'refused_variant', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing', 'refused_source', 'picture', 'picture_gone',
 	'own_block', 'own_key', 'own_name', 'own_category', 'own_id', 'own_locked', 'own_html', 'own_foreign', 'own_address', 'own_picture', 'own_empty', 'own_long', 'own_taken', 'own_invalid', 'own_write',
 	'page_missing_name', 'page_invalid_uri', 'page_invalid_http_uri', 'page_missing_http_uri', 'page_reserved_http_uri', 'page_duplicate_uri', 'page_duplicate_http_uri', 'page_reserved_uri', 'page_http_uri_taken', 'page_invalid_template', 'page_reserved_template', 'page_template_exists' ];
 
@@ -324,7 +324,9 @@ $site['/nino/html/images']['/template/page-home/hero/background'] = [ 'label' =>
 \Nino\Images::restore( $site, 'template/page-home/hero/background.svg', '<svg xmlns="http://www.w3.org/2000/svg"><!-- the original --></svg>' );
 // The pages the links of the blocks go to: a page of the site is one the site has
 $site['/nino/http/routes'] = [ 'GET://contact' => [ 'uri' => '/contact', 'body' => '[template /templates/page-nowhere-a]' ], 'GET://home' => [ 'uri' => '/home', 'body' => '[template /templates/page-nowhere-b]' ] ];
-\Nino\Filesystem::putFileContent( $site, '/config.php', [ '/nino/html/images' => $site['/nino/html/images'], '/nino/http/routes' => $site['/nino/http/routes'] ] );
+// What is saved is a page that a route answers: the file has the routes of the two pages the suite works on, the request has the routes of the links
+$stored = $site['/nino/http/routes'] + [ 'GET://start' => [ 'uri' => '/start', 'body' => '[template /templates/page-home]' ], 'GET://kontakt' => [ 'uri' => '/kontakt', 'body' => '[template /templates/page-contact]' ] ];
+\Nino\Filesystem::putFileContent( $site, '/config.php', [ '/nino/html/images' => $site['/nino/html/images'], '/nino/http/routes' => $stored ] );
 
 ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
 
@@ -780,6 +782,15 @@ $now = Store::state( $site, 'page-home' );
 check( 'a save whose last step fails - the template was written by somebody else after it was looked at - says which step, and the words, the slots and the template are what they were',
 	$failed === 'changed' && $now === $state && Store::previous( $site, 'page-home' )['source'] === $state['source'] );
 
+// a save that leaves the template as it is has seen it as well: where it was written since, the words are put back
+$state = Store::state( $site, 'page-home' );
+$target = $state;
+$target['texts']['/template/page-home/hero/title']['de_DE'] = 'Wort ohne Vorlage';
+$failedWords = Store::commit( $site, 'page-home', $state, $target, null, [], str_repeat( '0', 64 ) );
+
+check( 'a save of words alone, whose template was written by somebody else after it was looked at, is a failed save - and the words are what they were',
+	$failedWords === 'changed' && Store::state( $site, 'page-home' ) === $state );
+
 // the bytes: no file of the words is sorted or cleaned by being put back, and the last state is the one it was
 $bytes = static function() use ( &$site ): array {
 
@@ -829,6 +840,27 @@ file_put_contents( $real, $state['source'] );
 check( 'the put-back leaves a file that this save did not write, and one that somebody else wrote after it did, and puts back one that still holds what it left', $untouched === true && $theirs === true && $mine === true );
 
 check( 'and the files are the same to the byte afterwards - the words that were not changed are not sorted or cleaned, the last state is the one that was before the save', $failed === 'changed' && $bytes() === $beforeBytes );
+
+// the put-back is of what this save wrote: a file that somebody else wrote after the snapshot of the save is not noted as the save's, and is not put back to what it was
+$state = Store::state( $site, 'page-home' );
+$target = $state;
+$target['source'] = (string) str_replace( 'id="start"', 'id="begin"', $state['source'] );
+$target['texts']['/template/page-home/hero/title']['de_DE'] = 'Nur deutsch';
+$files = new ReflectionMethod( Store::class, '_files' );
+$stale = $files->invokeArgs( null, [ &$site, 'page-home' ] );
+\Nino\Text::put( $site, [ '/template/page-home/start/title' => [ 'en_US' => 'Von anderswo' ] ] );
+$theirs = (string) file_get_contents( ninoSandboxDir( $site ). '/private/text/en_US.php' );
+$ours = (string) file_get_contents( ninoSandboxDir( $site ). '/private/text/de_DE.php' );
+$wrote = [];
+$older = $stale;
+$failedStep = Store::apply( $site, 'page-home', $target, $state, null, str_repeat( '0', 64 ), [], $wrote, $older );
+$changed = (string) file_get_contents( ninoSandboxDir( $site ). '/private/text/de_DE.php' );
+$put->invokeArgs( null, [ &$site, $older, $wrote, [] ] );
+file_put_contents( builderFile( $site, 'page-home' ), $state['source'] );
+
+check( 'a save notes what it wrote and nothing else: the file of the words it changed is put back to the bytes it had, and a file somebody else wrote after the snapshot of the save is not its own and stays as theirs',
+	$failedStep === 'changed' && isset( $wrote['/text/de_DE.php'] ) === true && isset( $wrote['/text/en_US.php'] ) === false && $changed !== $ours && (string) file_get_contents( ninoSandboxDir( $site ). '/private/text/de_DE.php' ) === $ours
+	&& (string) file_get_contents( ninoSandboxDir( $site ). '/private/text/en_US.php' ) === $theirs );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nF. The draft\n";
@@ -930,6 +962,10 @@ $every = [
 	'builder/blocks'	=> [],
 	'builder/block'		=> [ 'key' => 'hero-full' ],
 	'builder/tile'		=> [ 'template' => 'page-home', 'key' => 'hero-full' ],
+	'builder/copyof'	=> [ 'template' => 'page-home' ],
+	'builder/duplicate'	=> [ 'from' => 'page-home', 'names' => [ 'de_DE' => 'Kopie', 'en_US' => 'Copy' ], 'addresses' => [ 'de_DE' => '/kopie', 'en_US' => '/copy' ], 'navs' => [] ],
+	'builder/uses'		=> [ 'template' => 'page-home' ],
+	'builder/remove'	=> [ 'template' => 'page-home' ],
 ];
 
 ninoUser( $site, 'editor@example.com', [ '/_admin/elements/manage', '/_admin/text/manage' ] );
@@ -939,7 +975,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = builderCall( $site, $action, $data )[0];
 
-check( 'an account without the right gets 403 on every one of the eight actions - the Editor of the starter site has not - and nothing is read or written', array_unique( array_values( $answers ) ) === [ 403 ] && builderSnapshot( $site ) === $snapshot );
+check( 'an account without the right gets 403 on every action that reads or writes a page, those of the pages that are made, copied and taken away among them - the Editor of the starter site has not - and nothing is read or written', array_unique( array_values( $answers ) ) === [ 403 ] && builderSnapshot( $site ) === $snapshot );
 
 \Nino\Auth::logoutUser( $site );
 $answers = [];
@@ -954,7 +990,10 @@ check( 'the right is /_admin/builder/manage and nothing wider has to be held', b
 
 $snapshot = builderSnapshot( $site );
 
-// the token of the session: a request the csrf guard refused is answered with its 403 and does nothing
+// the token of the session: a request the csrf guard refused is answered with its 403 and does nothing - for an account that holds every right of the panel, so that it is the token and
+// nothing else that refuses
+ninoUser( $site, 'full@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+$snapshot = builderSnapshot( $site );
 $answers = [];
 
 foreach( $every as $action => $data ) {

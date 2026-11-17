@@ -48,6 +48,10 @@ namespace Nino\Modules\Builder {
 				'builder/blocksave'	=> [ self::class, 'apiBlockSave' ],
 				'builder/blockdrop'	=> [ self::class, 'apiBlockDrop' ],
 				'builder/create'	=> [ self::class, 'apiCreate' ],
+				'builder/copyof'	=> [ self::class, 'apiCopyOf' ],
+				'builder/duplicate'	=> [ self::class, 'apiDuplicate' ],
+				'builder/uses'		=> [ self::class, 'apiUses' ],
+				'builder/remove'	=> [ self::class, 'apiRemove' ],
 			];
 		}
 
@@ -122,6 +126,8 @@ namespace Nino\Modules\Builder {
 				'builder/blocksave'	=> 'Save Own Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
 				'builder/blockdrop'	=> 'Delete Own Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
 				'builder/create'	=> 'Create Page '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
+				'builder/duplicate'	=> 'Duplicate Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'from' ) ). ' as '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
+				'builder/remove'	=> 'Delete Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				default						=> '',
 			};
 		}
@@ -300,7 +306,7 @@ namespace Nino\Modules\Builder {
 			$failed = Store::commit( $appData, $template, $state, $target, $changes, $prepared['formats'], null, $prepared['files'], $level );
 
 			if( $failed !== null ) {
-				self::_fail( $request, $failed === 'changed' ? self::_changed() : [ 500, 'the page could not be written, and is as it was', 'builder_write', [], '' ] );
+				self::_fail( $request, self::_unsaved( $failed ) );
 				return;
 			}
 
@@ -350,7 +356,7 @@ namespace Nino\Modules\Builder {
 			$failed = Store::commit( $appData, $template, $state, $target, null, [], null, [], $level );
 
 			if( $failed !== null ) {
-				self::_fail( $request, $failed === 'changed' ? self::_changed() : [ 500, 'the page could not be written, and is as it was', 'builder_write', [], '' ] );
+				self::_fail( $request, self::_unsaved( $failed ) );
 				return;
 			}
 
@@ -810,7 +816,7 @@ namespace Nino\Modules\Builder {
 
 		public static function apiCreate( array &$appData, array &$request ): void {
 
-			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) === null || \Nino\Admin\Admin::guardPerm( $appData, $request, \Nino\Modules\Builder::ROUTES ) === false )
+			if( self::_maker( $appData, $request ) === false )
 				return;
 
 			$made = Pages::create( $appData, \Nino\Admin\Admin::postData() );
@@ -821,6 +827,94 @@ namespace Nino\Modules\Builder {
 			}
 
 			\Nino\Http::ok( $request, $made );
+		}
+
+		/**
+		 *	The door of what makes, copies and takes away a page: the step of the design and the right of the routes, both - the right that makes a page is the one that takes it
+		 *	away and copies it
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			&$request
+		 *
+		 *	@return 	bool											false after the answer that says why not
+		 */
+		private static function _maker( array &$appData, array &$request ): bool {
+			return self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) !== null && \Nino\Admin\Admin::guardPerm( $appData, $request, \Nino\Modules\Builder::ROUTES ) === true;
+		}
+
+		public static function apiCopyOf( array &$appData, array &$request ): void {
+
+			if( self::_maker( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$template = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' );
+			$origin = Pages::origin( $appData, $template );
+
+			if( $origin === null ) {
+				self::_fail( $request, [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $template ) ], 'template' ] );
+				return;
+			}
+
+			// The name of the copy is the name of the page and a word that says so, in the language of each name
+			foreach( $origin['names'] as $each => $name )
+				$origin['names'][$each] = $name === '' ? '' : $name. ' '. self::_word( $appData, 'new/copy', $each );
+
+			\Nino\Http::ok( $request, $origin + [ 'label' => Pages::label( $appData, $template, $locale ) ] );
+		}
+
+		public static function apiDuplicate( array &$appData, array &$request ): void {
+
+			if( self::_maker( $appData, $request ) === false )
+				return;
+
+			$made = Pages::duplicate( $appData, \Nino\Admin\Admin::postData() );
+
+			if( isset( $made['failure'] ) === true ) {
+				self::_fail( $request, $made['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $made );
+		}
+
+		public static function apiUses( array &$appData, array &$request ): void {
+
+			if( self::_maker( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$asked = Pages::uses( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ), $locale );
+
+			if( isset( $asked['failure'] ) === true ) {
+				self::_fail( $request, $asked['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $asked );
+		}
+
+		public static function apiRemove( array &$appData, array &$request ): void {
+
+			if( self::_maker( $appData, $request ) === false )
+				return;
+
+			$gone = Pages::remove( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) );
+
+			if( isset( $gone['failure'] ) === true ) {
+				self::_fail( $request, $gone['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $gone );
 		}
 
 		/**
@@ -1048,6 +1142,21 @@ namespace Nino\Modules\Builder {
 
 		private static function _level(): array {
 			return [ 403, 'the account does not hold the right for this', 'builder_level', [], '' ];
+		}
+
+		/**
+		 *	The failure of a commit as the panel says it: a page that was changed since it was opened, a page that was taken away meanwhile, or a write that failed
+		 *
+		 *	@param		string		$failed				What Store::commit() answered
+		 *
+		 *	@return 	array
+		 */
+		private static function _unsaved( string $failed ): array {
+
+			if( $failed === 'gone' )
+				return [ 404, 'the page was taken away meanwhile', 'builder_gone', [], 'template' ];
+
+			return $failed === 'changed' ? self::_changed() : [ 500, 'the page could not be written, and is as it was', 'builder_write', [], '' ];
 		}
 
 		private static function _changed(): array {

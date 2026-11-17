@@ -62,6 +62,22 @@
 	grid-column: 1 / -1;
 }
 
+/* The page a copy is made from stands in the place of the choice of the block, as a line of text of the form; what an action of the list says is wrong stands above the table */
+#builder-app .builder-new-origin {
+	margin: 0;
+	font-size: var(--nino-admin-text-md);
+}
+
+#builder-app .builder-list-error {
+	margin: 0 0 var(--nino-admin-space-3);
+}
+
+/* Where the buttons of a row stay at the right edge (a sticky cell), the cells of the rows below are painted over the sentence that a (?) of the row above opens: the row that
+   has one open is painted above them */
+#builder-app .nino-admin-table-actions:has( .nino-admin-help[data-open] ) {
+	z-index: 2;
+}
+
 #builder-app .builder-column {
 	min-width: 0;
 }

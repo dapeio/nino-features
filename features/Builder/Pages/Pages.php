@@ -3,12 +3,19 @@ declare(strict_types=1);
 
 namespace Nino\Modules\Builder {
 
-	// The pages of the site the Builder lists - the routes that answer with a template of a page, once for each template - and the one it makes: a template
-	// of the frame calls the site's other pages have and a block that is offered, with the route, the menu entry and the words of the block, in one step
+	// The pages of the site the Builder lists - the routes that answer with a template of a page, once for each template - the one it makes: a template
+	// of the frame calls the site's other pages have and a block that is offered, with the route, the menu entry and the words of the block, in one step -,
+	// the copy of one and the page that is taken away, which are the kernel's (\Nino\Pages::duplicate() and remove()) and asked here
 	class Pages {
 
 		// The longest word an address or a template is made of, so that page- and the word stay a name that Store::named() takes
 		public const int MAX_SLUG = 60;
+
+		// How many words a page that is made is tried with - the word, then with -2, -3, ... after it - before it is said that none is free
+		public const int TRIES = 99;
+
+		// The refusals of the kernel for a page that is made which the Builder has its own sentence for; any other code of the kernel is said in the kernel's words
+		private const array SAID = [ 'routes_missing_name', 'routes_invalid_uri', 'routes_invalid_http_uri', 'routes_missing_http_uri', 'routes_reserved_http_uri', 'routes_duplicate_uri', 'routes_duplicate_http_uri', 'routes_reserved_uri', 'routes_http_uri_taken', 'routes_invalid_template', 'routes_reserved_template', 'routes_template_exists' ];
 
 		/**
 		 *	The pages that can be opened, in the order of the routes
@@ -17,14 +24,21 @@ namespace Nino\Modules\Builder {
 		 *	@param		string		$locale				The language of the view: what a page is called, and the address it is shown at
 		 *	@param		array			$navKeys			The menus the site has, for the menus a page is in
 		 *
-		 *	@return 	array											[ [ template, name, path, locales, navs, complete ], ... ] - navs the menus the page is in, complete whether every
-		 *																		language of the site has a name and an address for it
+		 *	@return 	array											[ [ template, name, path, locales, navs, complete, locked ], ... ] - navs the menus the page is in, complete whether every
+		 *																		language of the site has a name and an address for it, locked 'home', 'not-found' or 'runtime' for the pages that the kernel never
+		 *																		removes and that can be told without asking it, '' for any other
 		 */
 		public static function all( array &$appData, string $locale, array $navKeys = [] ): array {
 
 			$texts = \Nino\Locales::getTextLocales( $appData );
 			$available = \Nino\Locales::getAvailableLocales( $appData );
 			$pages = [];
+			$runtime = [];
+
+			// The templates of the pages that a module or a feature routes by itself
+			foreach( \Nino\Pages::all( $appData ) as $entry )
+				if( $entry['runtime'] === true )
+					$runtime[(string) $entry['template']] = true;
 
 			foreach( \Nino\Modules\Routes\Admin::pages( $appData, (array) ( $appData['/nino/http/routes'] ?? [] ), $texts, $navKeys ) as $page ) {
 
@@ -44,6 +58,7 @@ namespace Nino\Modules\Builder {
 
 				$pages[$template] = [
 					'template'	=> $template,
+					'locked'		=> self::_locked( $page, isset( $runtime[$template] ) ),
 					'name'			=> $name,
 					'path'			=> (string) ( $page['httpUris'][$locale] ?? $page['httpUris'][''] ?? $page['httpUri'] ),
 					'locales'		=> in_array( '', $has, true ) === true ? $available : array_values( array_filter( $has ) ),
@@ -53,6 +68,27 @@ namespace Nino\Modules\Builder {
 			}
 
 			return array_values( $pages );
+		}
+
+		/**
+		 *	Which of the pages the kernel never removes a page is, as far as the routes and the names say it: the one at the address '/', the one every address without a page
+		 *	is answered with, and a page whose template the kernel draws by itself (the maintenance page, the pages of the legal module). The other refusals - a template
+		 *	that two pages draw or another names - are the kernel's to say when it is asked
+		 *
+		 *	@param		array			$page					An entry of \Nino\Modules\Routes\Admin::pages()
+		 *	@param		bool			$runtime			Whether a module or a feature routes a page with this template by itself
+		 *
+		 *	@return 	string										'home', 'not-found', 'runtime' or ''
+		 */
+		private static function _locked( array $page, bool $runtime ): string {
+
+			if( in_array( '/', array_values( (array) $page['httpUris'] ), true ) === true )
+				return 'home';
+
+			if( (int) $page['statusCode'] === 404 || (string) $page['uri'] === '/404' || in_array( '/404', array_values( (array) $page['httpUris'] ), true ) === true )
+				return 'not-found';
+
+			return $runtime === true || in_array( (string) $page['template'], \Nino\Pages::reserved(), true ) === true ? 'runtime' : '';
 		}
 
 		/**
@@ -174,23 +210,22 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Make a page: the template - the two calls of the frame the other pages have and the block that was chosen between them, which is a block that is offered
-		 *	and nothing a request wrote -, the route of each language, the entry in the menus, the words and the pictures of the block, all of it or none of it. The words
-		 *	and the pictures are written first and taken back where the kernel refuses the page, which is where it says what is wrong with an address
+		 *	What a form that names a page says, checked as far as the Builder can: a name and an address for each language, the menus, and the word of the page - made of
+		 *	the address of the native language, else of its name - in the first form that nothing stands under: the word of the address, else the word with -2, -3, ... after it,
+		 *	which is what keeps the words that a removed page left from being written over
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$data					names (language => name), addresses (language => address), navs (the menus), block (the key of a block, or '')
+		 *	@param		array			$data					names (language => name), addresses (language => address), navs (the menus)
 		 *
-		 *	@return 	array											[ 'template', 'slug' ] - or 'failure' => [ status, message, code, params, field ]
+		 *	@return 	array											[ 'text', 'given', 'navs', 'slug' ] - or 'failure' => [ status, message, code, params, field ]
 		 */
-		public static function create( array &$appData, array $data ): array {
+		private static function _form( array &$appData, array $data ): array {
 
 			$locales = \Nino\Locales::getAvailableLocales( $appData );
 			$native = \Nino\Locales::getNativeLocale( $appData );
 			$names = is_array( $data['names'] ?? null ) === true ? $data['names'] : [];
 			$addresses = is_array( $data['addresses'] ?? null ) === true ? $data['addresses'] : [];
 			$navs = is_array( $data['navs'] ?? null ) === true ? array_values( array_filter( $data['navs'], 'is_string' ) ) : [];
-			$key = is_string( $data['block'] ?? null ) === true ? $data['block'] : '';
 			$text = [];
 			$given = [];
 
@@ -214,9 +249,6 @@ namespace Nino\Modules\Builder {
 			if( $slug === '' )
 				return [ 'failure' => [ 400, 'invalid uri', 'builder_page_invalid_uri', [ (string) ( $given[$native] ?? '' ) ], 'httpUri-'. $native ] ];
 
-			$template = 'page-'. $slug;
-			$block = $key === '' ? null : Library::block( $appData, $key );
-
 			// The pages that a feature or a module routes at run time - the imprint, the privacy policy - are in no config.php, and the kernel does not look at them: an address
 			// of theirs is theirs, and is said at the field of its language
 			$runtime = [];
@@ -236,12 +268,80 @@ namespace Nino\Modules\Builder {
 
 			// A page that is there is not made again: nothing is written for it - not a word, not a picture - that the page that is there would lose
 			$stored = \Nino\AppData::stored( $appData, '/nino/http/routes', [] );
+			$stored = is_array( $stored ) === true ? $stored : [];
 
-			if( \Nino\Pages::keys( is_array( $stored ) === true ? $stored : [], '/'. $slug ) !== [] )
+			if( \Nino\Pages::keys( $stored, '/'. $slug ) !== [] )
 				return [ 'failure' => [ 400, 'duplicate uri: "/'. $slug. '"', 'builder_page_duplicate_uri', [ '/'. $slug ], 'uri' ] ];
 
-			if( \Nino\Filesystem::fileExists( $appData, '/templates/'. $template. '.tpl' ) === true )
-				return [ 'failure' => [ 409, 'template already exists: "'. $template. '"', 'builder_page_template_exists', [ $template ], 'template' ] ];
+			// What stands under the name of a page that is gone - its words, its slots, its pictures - is what other pages read, and a new page does not write over it
+			for( $number = 1; $number <= self::TRIES; $number++ ) {
+
+				$word = $number === 1 ? $slug : $slug. '-'. $number;
+
+				if( \Nino\Pages::taken( $appData, 'page-'. $word ) === false && ( $number === 1 || \Nino\Pages::keys( $stored, '/'. $word ) === [] ) )
+					return [ 'text' => $text, 'given' => $given, 'navs' => $navs, 'slug' => $word ];
+			}
+
+			return [ 'failure' => [ 409, 'template already exists: "page-'. $slug. '"', 'builder_page_template_exists', [ 'page-'. $slug ], 'template' ] ];
+		}
+
+		/**
+		 *	The failure of an answer of the kernel as the panel says it: the sentence the Builder has for the code of a refusal of a page that is made, else the kernel's own
+		 *	(/_admin/error/routes_...), and a failure that has no code is a failed write
+		 *
+		 *	@param		array			$error				The 'error' of the answer of \Nino\Pages
+		 *
+		 *	@return 	array											[ status, message, code, params, field ]
+		 */
+		private static function _failure( array $error ): array {
+
+			$code = (string) ( $error['code'] ?? '' );
+
+			if( in_array( $code, self::SAID, true ) === true )
+				$code = 'builder_page_'. substr( $code, 7 );
+			else if( str_starts_with( $code, 'routes_' ) === false )
+				$code = 'builder_write';
+
+			return [ (int) $error['status'], (string) $error['message'], $code, (array) ( $error['params'] ?? [] ), (string) ( $error['field'] ?? '' ) ];
+		}
+
+		/**
+		 *	Make a page: the template - the two calls of the frame the other pages have and the block that was chosen between them, which is a block that is offered
+		 *	and nothing a request wrote -, the route of each language, the entry in the menus, the words and the pictures of the block, all of it or none of it. The words
+		 *	and the pictures are written first and taken back where the kernel refuses the page, which is where it says what is wrong with an address
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$data					names (language => name), addresses (language => address), navs (the menus), block (the key of a block, or '')
+		 *
+		 *	@return 	array											[ 'template', 'slug' ] - or 'failure' => [ status, message, code, params, field ]
+		 */
+		public static function create( array &$appData, array $data ): array {
+
+			// What the word of the page is asked of and what is written for it is one step: another page that is made or copied by the Builder waits for it
+			if( \Nino\Filesystem::lockFile( $appData, Store::LOCK ) === false )
+				return [ 'failure' => [ 500, 'could not lock the pages for writing', 'builder_write', [], '' ] ];
+
+			try {
+				return self::_create( $appData, $data );
+			} finally {
+				\Nino\Filesystem::unlockFile( $appData, Store::LOCK );
+			}
+		}
+
+		private static function _create( array &$appData, array $data ): array {
+
+			$locales = \Nino\Locales::getAvailableLocales( $appData );
+			$native = \Nino\Locales::getNativeLocale( $appData );
+			$key = is_string( $data['block'] ?? null ) === true ? $data['block'] : '';
+			$form = self::_form( $appData, $data );
+
+			if( isset( $form['failure'] ) === true )
+				return $form;
+
+			[ 'text' => $text, 'given' => $given, 'navs' => $navs, 'slug' => $slug ] = $form;
+
+			$template = 'page-'. $slug;
+			$block = $key === '' ? null : Library::block( $appData, $key );
 
 			if( $key !== '' && $block === null )
 				return [ 'failure' => [ 403, 'the block is none that is offered', 'builder_block', [], 'block' ] ];
@@ -283,10 +383,6 @@ namespace Nino\Modules\Builder {
 						$spec = $block['images'][$place['name']] ?? null;
 
 						if( $spec === null )
-							continue;
-
-						// A slot that is there - of a page that was taken away, its words and pictures left - is the slot it is, and its file is no one's to write over
-						if( \Nino\Images::getSlot( $appData, $place['key'] ) !== false )
 							continue;
 
 						$file = ltrim( $place['key'], '/' ). '.svg';
@@ -345,13 +441,174 @@ namespace Nino\Modules\Builder {
 			if( isset( $put['error'] ) === true ) {
 
 				self::_undo( $appData, $set, $before, $was, $made );
-				$error = $put['error'];
-				$code = str_starts_with( (string) $error['code'], 'routes_' ) === true ? 'builder_page_'. substr( (string) $error['code'], 7 ) : 'builder_write';
 
-				return [ 'failure' => [ (int) $error['status'], (string) $error['message'], $code, (array) $error['params'], (string) $error['field'] ] ];
+				return [ 'failure' => self::_failure( $put['error'] ) ];
 			}
 
 			return [ 'template' => $template, 'slug' => $slug ];
+		}
+
+		/**
+		 *	Make a page that is the copy of another: the kernel copies the template with its words and its pictures (\Nino\Pages::duplicate()), and what the form names -
+		 *	the name and the address of each language, the menus - is the new page's. The word of the page is found as create() finds it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$data					from (the template of the page that is copied), names, addresses, navs
+		 *
+		 *	@return 	array											[ 'template', 'slug', 'copied' ] - or 'failure' => [ status, message, code, params, field ]
+		 */
+		public static function duplicate( array &$appData, array $data ): array {
+
+			if( \Nino\Filesystem::lockFile( $appData, Store::LOCK ) === false )
+				return [ 'failure' => [ 500, 'could not lock the pages for writing', 'builder_write', [], '' ] ];
+
+			try {
+				return self::_duplicate( $appData, $data );
+			} finally {
+				\Nino\Filesystem::unlockFile( $appData, Store::LOCK );
+			}
+		}
+
+		private static function _duplicate( array &$appData, array $data ): array {
+
+			$from = is_string( $data['from'] ?? null ) === true ? $data['from'] : '';
+
+			if( self::_page( $appData, $from ) === null )
+				return [ 'failure' => [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $from ) ], 'template' ] ];
+
+			$form = self::_form( $appData, $data );
+
+			if( isset( $form['failure'] ) === true )
+				return $form;
+
+			$made = \Nino\Pages::duplicate( $appData, $from, [ 'uri' => '/'. $form['slug'], 'template' => 'page-'. $form['slug'], 'httpUris' => $form['given'], 'text' => $form['text'], 'navs' => $form['navs'] ] );
+
+			if( isset( $made['error'] ) === true )
+				return [ 'failure' => self::_failure( $made['error'] ) ];
+
+			return [ 'template' => 'page-'. $form['slug'], 'slug' => $form['slug'], 'copied' => (array) ( $made['copied'] ?? [] ) ];
+		}
+
+		/**
+		 *	The entry of the kernel for the page of a template that the Builder may copy or remove: a page of a config.php, drawn by a template of the name of a page
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *
+		 *	@return 	array|null								An entry of \Nino\Pages::all(); null for any other name
+		 */
+		private static function _page( array &$appData, string $template ): ?array {
+
+			if( strlen( $template ) > \Nino\Pages::MAX_NAME || preg_match( \Nino\Pages::TEMPLATE, $template ) !== 1 )
+				return null;
+
+			foreach( \Nino\Pages::all( $appData ) as $page )
+				if( $page['template'] === $template && $page['runtime'] === false )
+					return $page;
+
+			return null;
+		}
+
+		/**
+		 *	What the form of a copy starts from: the names, the addresses and the menus of the page that is copied - the name as the page has it in each language, the address as a
+		 *	free one near it (-2, -3, ... after the address; the word of the page where the address is /), so that the form can be sent as it stands
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template			The page that is copied
+		 *
+		 *	@return 	array|null								[ 'template', 'names', 'addresses', 'navs' ], each language to a name and an address; null where there is no such page
+		 */
+		public static function origin( array &$appData, string $template ): ?array {
+
+			$page = self::_page( $appData, $template );
+
+			if( $page === null )
+				return null;
+
+			$used = [];
+
+			// An address is used by a page that has it, and so is the Element-URI of a page: the form of the copy is sent as it stands
+			foreach( \Nino\Pages::all( $appData ) as $each ) {
+
+				$used[strtolower( rtrim( (string) $each['uri'], '/' ) )] = true;
+
+				foreach( $each['addresses'] as $address )
+					$used[strtolower( rtrim( (string) $address, '/' ) )] = true;
+			}
+
+			$names = [];
+			$addresses = [];
+
+			foreach( \Nino\Locales::getAvailableLocales( $appData ) as $locale ) {
+
+				$address = rtrim( (string) ( $page['addresses'][$locale] ?? reset( $page['addresses'] ) ?: '' ), '/' );
+				$names[$locale] = (string) ( $page['names'][$locale] ?? '' );
+				$word = substr( $template, 5 );
+
+				// The page at the address / has no word of its own to put -2 behind: the word of its template is the first that is tried
+				for( $number = $address === '' ? 1 : 2; $number < self::TRIES + 2; $number++ ) {
+
+					$try = ( $address === '' ? '/'. $word : $address ). ( $number === 1 ? '' : '-'. $number );
+
+					if( isset( $used[strtolower( $try )] ) === false ) {
+						$addresses[$locale] = $try;
+						$used[strtolower( $try )] = true;
+						break;
+					}
+				}
+			}
+
+			return [ 'template' => $template, 'names' => $names, 'addresses' => $addresses, 'navs' => array_values( (array) $page['navs'] ) ];
+		}
+
+		/**
+		 *	What removing a page would take, keep and leave a link to, and whether it may go at all - the kernel's answer (\Nino\Pages::uses()) with the name of the page and
+		 *	its address in the language of the view, for the question that is asked before it is removed
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array											[ 'template', 'name', 'path', 'remnant', 'kept', 'linked' ] - or 'failure' => [ status, message, code, params, field ]
+		 */
+		public static function uses( array &$appData, string $template, string $locale ): array {
+
+			if( preg_match( \Nino\Pages::TEMPLATE, $template ) !== 1 )
+				return [ 'failure' => [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $template ) ], 'template' ] ];
+
+			$asked = \Nino\Pages::uses( $appData, $template );
+
+			if( isset( $asked['error'] ) === true )
+				return [ 'failure' => self::_failure( $asked['error'] ) ];
+
+			$listed = null;
+
+			foreach( self::all( $appData, $locale ) as $page )
+				if( $page['template'] === $template )
+					$listed = $page;
+
+			return [ 'template' => $template, 'name' => (string) ( $listed['name'] ?? $template ), 'path' => (string) ( $listed['path'] ?? '' ), 'remnant' => $asked['remnant'], 'kept' => $asked['kept'], 'linked' => $asked['linked'] ];
+		}
+
+		/**
+		 *	Take a page away whole, as the kernel does it (\Nino\Pages::remove()), which lets the Builder take what it keeps of the page away (Builder::removed())
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$template
+		 *
+		 *	@return 	array											[ 'template', 'texts', 'files', 'kept', 'linked' ] - kept and linked as the numbers of them - or 'failure' => [ status, message, code, params, field ]
+		 */
+		public static function remove( array &$appData, string $template ): array {
+
+			if( preg_match( \Nino\Pages::TEMPLATE, $template ) !== 1 )
+				return [ 'failure' => [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $template ) ], 'template' ] ];
+
+			$gone = \Nino\Pages::remove( $appData, $template );
+
+			if( isset( $gone['error'] ) === true )
+				return [ 'failure' => self::_failure( $gone['error'] ) ];
+
+			return [ 'template' => $template, 'texts' => (int) $gone['texts'], 'files' => count( (array) $gone['files'] ), 'kept' => count( (array) $gone['kept'] ), 'linked' => count( (array) $gone['linked'] ) ];
 		}
 
 		/**
