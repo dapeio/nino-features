@@ -1,0 +1,13 @@
+{
+	"name": {
+		"de_DE": "Hero mit Band",
+		"en_US": "Hero with a band"
+	},
+	"description": {
+		"de_DE": "Eine große Überschrift mit Text und einem Button auf einem Band, wie das Theme Nino es zeichnet.",
+		"en_US": "A large headline with text and a button on a band, as the theme Nino draws it."
+	},
+	"category": "intro",
+	"rank": 30,
+	"images": {}
+}

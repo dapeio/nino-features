@@ -131,10 +131,8 @@ return [
 	'[[/_admin/themes/confirm/changed-title]]'	=> 'Overwrite what was saved meanwhile?',
 	'[[/_admin/themes/confirm/reload-title]]'	=> 'Drop the draft and load the saved theme?',
 	'[[/_admin/themes/confirm/reload]]'	=> 'The changes of this draft are lost. The theme is shown as it was saved.',
-	'[[/_admin/themes/label/overwrite]]'	=> 'Overwrite',
 	'[[/_admin/themes/label/reload]]'	=> 'Reload',
 
-	'[[/_admin/themes/msg/changed]]'	=> 'Changes not saved yet.',
 	'[[/_admin/themes/msg/page-unknown]]'	=> 'The preview cannot show this page.',
 	'[[/_admin/themes/msg/shown-theme]]'	=> 'the theme "%s"',
 	'[[/_admin/themes/word/standard-parts]]'	=> 'the standard parts',
@@ -142,6 +140,7 @@ return [
 
 	'[[/_admin/error/themes_unknown]]'			=> 'There is no theme "%s".',
 	'[[/_admin/error/themes_mix]]'					=> 'The mix of the theme is not right. Reload the themes and retry.',
+	'[[/_admin/error/themes_mix_part]]'				=> 'The mix of the theme is not right at the part for "%s". Reload the themes and retry.',
 	'[[/_admin/error/themes_brand]]'				=> 'The brand value "%s" is not right.',
 	'[[/_admin/error/themes_not_own]]'			=> 'A theme of a package is not changed. Save it as an own theme instead.',
 	'[[/_admin/error/themes_name]]'					=> 'The name needs at least one letter or digit.',

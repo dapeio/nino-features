@@ -110,6 +110,9 @@ const CHANGED = '\u25CF '+ W('state/changed');
 		const unread = Object.keys( words.en ).filter( function( key ) { return key.indexOf('/_admin/themes/') === 0 && key.split('/').length === 5 && asked.has( key.slice( '/_admin/themes/'.length ) ) === false } );
 		return unread.length === 0;
 	} )() );
+	check( 'A. the sentence of a refused mix that names its part has the place of the word of the group in both languages, as the one that names none has none', [ 'en', 'de' ].every( function( locale ) {
+		return ( words[locale]['/_admin/error/themes_mix_part'].match( /%s/g ) ?? [] ).length === 1 && words[locale]['/_admin/error/themes_mix'].indexOf('%s') === -1;
+	} ) );
 	check( 'A. the same fills stand in both languages, and a placeholder is the same in both', Object.keys( words.en ).filter( function( key ) { return key.indexOf('/_admin/themes/') === 0 } ).every( function( key ) {
 		return words.de[key] !== undefined && ( words.en[key].match( /%[sdn]/g ) ?? [] ).join() === ( words.de[key].match( /%[sdn]/g ) ?? [] ).join();
 	} ) );
@@ -562,8 +565,8 @@ function world( options ) {
 		hint : function( labelledby ) { const label = findAll( w.theme, function( node ) { return node.id === labelledby } )[0]; return label === undefined ? null : w.text( w.byClass( label, 'themes-value' )[0] ) },
 		step : function( labelledby, index ) { const group = findAll( w.theme, function( node ) { return node.attributes['aria-labelledby'] === labelledby } )[0]; return group === undefined ? undefined : group.children[index] },
 		frame : function() { return w.byTag( w.theme, 'iframe' )[0] },
-		bar : function() { return w.byClass( w.theme, 'themes-bar' )[0] },
-		state_ : function() { return w.text( w.byClass( w.theme, 'themes-state' )[0] ).trim() },
+		bar : function() { return w.byClass( w.theme, 'nino-admin-savebar' )[0] },
+		state_ : function() { return w.text( w.byClass( w.theme, 'nino-admin-savebar-state' )[0] ).trim() },
 	};
 
 	return w;
@@ -580,7 +583,7 @@ function world( options ) {
 	w.panel.showCurrent();
 
 	check( 'B. showing the panel asks themes/list through the endpoint of the workbench - and nothing else', w.requests.length === 1 && w.requests[0].action === 'themes/list' && w.requests[0].uri === '/site/_admin/' );
-	check( 'B. ...and registers the panel in the dirty registry under its uri', typeof w.dirty.entries.themes === 'object' && typeof w.dirty.entries.themes.isDirty === 'function' && typeof w.dirty.entries.themes.save === 'function' && typeof w.dirty.entries.themes.discard === 'function' );
+	check( 'B. ...and the list has nothing in the dirty registry: the entry is the bar of a screen that is open', w.dirty.entries.themes === undefined );
 
 	w.serve( { active : 'nino' } );
 	w.active = 'nino';
@@ -779,6 +782,19 @@ function world( options ) {
 
 	check( 'E. a draft that cannot be made is said in the bar, with what the server said, and the change stays: the step is chosen, the state is Changed', line.dataset.state === 'error' && line.textContent.indexOf('the preview could not be written') !== -1 && w.state_() === CHANGED
 		&& w.step( 'themes-section-section-wrap-space', 3 ).attributes['aria-checked'] === 'true' );
+
+	// a mix the server refused says which part was wrong, in the word of the panel for the group - and not the English sentence the log has
+	fire( w.step( 'themes-section-section-wrap-space', 2 ), 'click' );
+	w.tick();
+	w.answer( 400, { error : 'the mix is refused: section.values: a knob is <component>.<name>, or a name for the page', code : 'themes_mix', params : [ 'section.values: a knob is <component>.<name>, or a name for the page', 'section' ], field : 'mix' } );
+
+	check( 'E. a refused mix says which part was wrong, with the word of the group in the language of the panel, and not the sentence of the log', line.dataset.state === 'error' && line.textContent === Wp( 'api/themes_mix_part', GROUP_LABEL.section.en_US ) && line.textContent.indexOf('knob is') === -1 );
+
+	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
+	w.tick();
+	w.answer( 400, { error : 'the mix is refused: mix: a mix is a name, a css and parts', code : 'themes_mix', params : [ 'mix: a mix is a name, a css and parts', '' ], field : 'mix' } );
+
+	check( 'E. a mix that is wrong as a whole, or at a group the list does not have, has the sentence that names no part', line.textContent === Wp( 'api/themes_mix' ) );
 
 	fire( w.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 	w.tick();
@@ -1124,7 +1140,7 @@ function world( options ) {
 	w.tick();
 	w.serve();
 
-	check( 'H. a change is unsaved input of the panel, for the registry', w.dirty.entries.themes.isDirty() === true && w.dirty.entries.themes.bar() === null );
+	check( 'H. a change is unsaved input of the panel, for the registry', w.dirty.entries.themes.isDirty() === true && w.dirty.entries.themes.bar() === w.bar() );
 
 	// the way back to the list asks
 	w.dirtyAnswers.push( 'cancel' );
@@ -1281,6 +1297,7 @@ function world( options ) {
 	w.tick();
 	w.serve();
 	w.stamp = 'stamp-5';
+	w.doc.activeElement = w.byClass( w.theme, 'themes-name' )[0];
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.serve();
@@ -1293,12 +1310,13 @@ function world( options ) {
 	fire( findAll( question, function( node ) { return node.textContent === CANCEL } )[0], 'click' );
 
 	check( 'J. Cancel sends nothing and leaves the draft: the state is Changed, the step is chosen', w.requests.length === 0 && w.state_() === CHANGED && w.step( 'themes-section-section-wrap-space', 3 ).attributes['aria-checked'] === 'true' );
+	check( 'J. ...and the focus is back on Save, which opened the question', w.button( w.bar(), W('label/save') ).focused === true );
 
 	// Overwrite: the stamp of what is there now, then the same save with it
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.serve();
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === W('label/overwrite') } )[0], 'click' );
+	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === workbench['/_admin/common/conflict/overwrite'] } )[0], 'click' );
 
 	check( 'J. Overwrite asks for the theme as it is now, only to have its stamp, and draws nothing of it', w.requests.length === 1 && w.requests[0].action === 'themes/open' && w.requests[0].payload.theme === 'own:lindner' );
 
@@ -1475,17 +1493,10 @@ function world( options ) {
 	fire( w.step( 'themes-section-section-wrap-space', 4 ), 'click' );
 
 	const status = w.byClass( w.theme, 'nino-admin-status' )[0];
-	const announce = function() { return w.timers.filter( function( timer ) { return timer.fn !== null && timer.ms === 4000 } ).length };
-
-	check( 'L. a change is said once, by the line of the status, at the moment it begins: the chip says the state and the line says that something changed', w.state_() === CHANGED && status.attributes.role === 'status' && w.text( status ) === 'Changes not saved yet.' && announce() === 1, w.text( status ) );
+	check( 'L. a change is said by the badge of the bar, and the line of the status is the one a screen reader hears', w.state_() === CHANGED && status.attributes.role === 'status' );
 
 	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
-
-	check( 'L. ...and not said again while the draft goes on: the line stays as it is and no second sentence is made', w.text( status ) === 'Changes not saved yet.' && announce() === 1 );
-
 	w.tick();
-
-	check( 'L. ...the sentence goes after a while, so that the chip is not said twice to the eye', w.text( status ) === '' );
 
 	w.answer( 500, { error : 'boom' } );
 
@@ -1622,7 +1633,7 @@ function world( options ) {
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	fire( findAll( w.dialogs[0], function( node ) { return node.tagName === 'BUTTON' && node.textContent === W('label/save') } )[0], 'click' );
 	w.serve();
-	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === W('label/overwrite') } )[0], 'click' );
+	fire( findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.textContent === workbench['/_admin/common/conflict/overwrite'] } )[0], 'click' );
 	w.answer( 200, Object.assign( { theme : { key : 'own:lindner', kind : 'own', name : 'Lindner' }, mix : mixOf( 'own:lindner' ), stamp : 'stamp-5', active : null }, describe( mixOf( 'own:lindner' ) ) ) );
 
 	check( 'J. Overwrite writes with the stamp that stands now and without force: it answers the stamp and says nothing about a stylesheet that somebody else wrote', w.requests.length === 1 && w.requests[0].payload.base === 'stamp-5' && w.requests[0].payload.force === false );
@@ -1817,7 +1828,7 @@ function type( node, value ) {
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	fire( byId( w.theme, 'themes-brand-back-color-1' ), 'click' );
 
-	check( 'O. M3: the first colour goes back too, the field shows the colour of the theme and the focus stands on it, and with nothing own the draft is the saved state again', byId( w.theme, 'themes-brand-color-1' ).value === '#1c5db8' && w.byClass( w.theme, 'themes-state' )[0].dataset.state !== 'warn' && w.dirty.entries.themes.isDirty() === false && byId( w.theme, 'themes-brand-color-1' ).focused === true );
+	check( 'O. M3: the first colour goes back too, the field shows the colour of the theme and the focus stands on it, and with nothing own the draft is the saved state again', byId( w.theme, 'themes-brand-color-1' ).value === '#1c5db8' && w.byClass( w.theme, 'nino-admin-savebar-state' )[0].dataset.state !== 'warn' && w.dirty.entries.themes.isDirty() === false && byId( w.theme, 'themes-brand-color-1' ).focused === true );
 	w.tick();
 	w.serve();
 }
@@ -1947,9 +1958,14 @@ function pressed( w, label ) {
 
 	check( 'P. it is asked first, whichever theme is open and whether or not it is the website\'s - the brand holds for the whole website - as a big thing, and the question says that it is the brand', seen.join() === 'big' && w.requests.length === 0 && w.text( w.dialogs[0] ).indexOf( W('confirm/brand') ) !== -1 );
 
+	// A button that is off takes no focus, as in a browser: the question gives the focus back to Save while the save is under way
+	const saveButton = w.button( w.bar(), W('label/save') );
+	const focusOf = saveButton.focus;
+
+	saveButton.focus = function() { if( saveButton.disabled !== true ) focusOf.call( saveButton ) };
 	pressed( w, CANCEL );
 
-	check( 'P. No saves nothing and the draft stays', w.requests.length === 0 && w.state_() === CHANGED );
+	check( 'P. No saves nothing and the draft stays, and the focus is on Save, which was pressed - whatever the question gave it back to', w.requests.length === 0 && w.state_() === CHANGED && w.button( w.bar(), W('label/save') ).focused === true );
 
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	pressed( w, W('label/save') );
@@ -2051,7 +2067,7 @@ function pressed( w, label ) {
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	pressed( w, W('label/save') );
 	w.serve();
-	pressed( w, W('label/overwrite') );
+	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 
 	check( 'P. Overwrite sends the save once more at once, with the stamp the other tab left - the theme was asked for before the question, for what the other tab set - and no force', w.requests.length === 1 && w.requests[0]?.action === 'themes/brand' && w.requests[0]?.payload?.brandBase === 'brand-5' && w.requests[0]?.payload?.force === false );
 
@@ -2073,9 +2089,9 @@ function pressed( w, label ) {
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
 	pressed( w, W('label/save') );
 	w.serve();
-	pressed( w, W('label/overwrite') );
+	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 	w.serve();
-	pressed( w, W('label/overwrite') );
+	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 	w.serve();
 
 	const saves = w.sent.filter( function( request ) { return request.action === 'themes/save' } );
@@ -2101,7 +2117,7 @@ function pressed( w, label ) {
 	findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Lindner';
 	pressed( w, W('label/save') );
 	w.serve();
-	pressed( w, W('label/overwrite') );
+	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 	w.serve();
 
 	const asks = w.sent.filter( function( request ) { return request.action === 'themes/save-as' } );
@@ -2372,7 +2388,7 @@ function pressed( w, label ) {
 	fire( byId( w.theme, 'themes-restore' ), 'click' );
 	pressed( w, 'Restore the last state' );
 	w.serve();
-	pressed( w, W('label/overwrite') );
+	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 	w.serve();
 
 	check( 'R. Overwrite asks the theme as it is now, to have the stamp of the state, and the restore is asked again with that stamp and with nothing else taken over', w.restored === 1 && w.sent.filter( function( request ) { return request.action === 'themes/restore' } ).slice( -1 )[0]?.payload?.base === 'state-7' && w.sent.filter( function( request ) { return request.action === 'themes/restore' } ).slice( -1 )[0]?.payload?.force === false );
@@ -2443,7 +2459,7 @@ function pressed( w, label ) {
 
 	check( 'R. a theme that another tab changed since it was opened is said in the question of the conflict before it is deleted, and the theme is there', w.text( question ).indexOf( Wp( 'api/themes_changed', 'Lindner' ) ) !== -1 && w.deleted.length === 0 );
 
-	pressed( w, W('label/overwrite') );
+	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 	w.serve();
 
 	check( 'R. Overwrite takes the stamp that stands now and deletes it with that', w.deleted.join() === 'own:lindner' && w.sent.filter( function( request ) { return request.action === 'themes/delete' } ).slice( -1 )[0]?.payload?.base === 'stamp-9' && w.sent.filter( function( request ) { return request.action === 'themes/delete' } ).slice( -1 )[0]?.payload?.force === false );
@@ -2541,7 +2557,7 @@ function said( w, node ) {
 
 	type( colour, '#abcdef' );
 
-	check( 'S. a colour at last: the reason goes from the bar, and the draft can be saved', said( w, w.byClass( w.theme, 'nino-admin-status' )[0] ) === '' && w.button( w.bar(), W('label/save') ).disabled === false );
+	check( 'S. a colour at last: the reason goes from the bar, and the draft can be saved', w.byClass( w.theme, 'nino-admin-status' )[0].dataset.state !== 'error' && w.button( w.bar(), W('label/save') ).disabled === false );
 
 	// the way back clears what is wrong with the field
 	type( colour, '#12' );
@@ -2653,7 +2669,7 @@ function said( w, node ) {
 	type( name, 'Lindner x' );
 	type( name, 'Lindner' );
 
-	check( 'S. the same name typed again is no change: the draft is the saved state, the bar does not say changed and the head of the section has no mark', w.dirty.entries.themes.isDirty() === false && w.byClass( w.theme, 'themes-state' )[0].dataset.state !== 'warn' && w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf( W('state/changed-mark') ) === -1 );
+	check( 'S. the same name typed again is no change: the draft is the saved state, the bar does not say changed and the head of the section has no mark', w.dirty.entries.themes.isDirty() === false && w.byClass( w.theme, 'nino-admin-savebar-state' )[0].dataset.state !== 'warn' && w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf( W('state/changed-mark') ) === -1 );
 
 	type( name, 'Taken' );
 	fire( w.button( w.bar(), W('label/save') ), 'click' );
@@ -2686,7 +2702,7 @@ function said( w, node ) {
 
 	check( 'S. the question says which values the two tabs changed - the first colour, and not the second, which only the other tab changed - and what Overwrite does', question.indexOf( Wp( 'msg/brand-both', W('label/color-1') ) ) !== -1 && question.indexOf( W('label/color-2') ) === -1 && question.indexOf( W('msg/brand-merge') ) !== -1 );
 
-	pressed( w, W('label/overwrite') );
+	pressed( w, workbench['/_admin/common/conflict/overwrite'] );
 
 	const sent = w.requests[0]?.payload?.brand;
 
@@ -2973,7 +2989,7 @@ function nameField( w ) {
 	w.stamp = 'stamp-9';
 	w.serve();
 
-	check( 'U. a theme that is open and was saved otherwise meanwhile is not asked about as an overwrite - a copy overwrites nothing - but as what it is: the copy would be of a theme the person has not seen; the choices are to copy it as it is saved now, to reload and to cancel', w.dialogs.length === 2 && w.text( w.dialogs[1] ).indexOf( W('label/copy-as-saved') ) !== -1 && w.text( w.dialogs[1] ).indexOf( W('label/overwrite') ) === -1 && w.text( w.dialogs[1] ).indexOf( W('label/reload') ) !== -1 );
+	check( 'U. a theme that is open and was saved otherwise meanwhile is not asked about as an overwrite - a copy overwrites nothing - but as what it is: the copy would be of a theme the person has not seen; the choices are to copy it as it is saved now, to reload and to cancel', w.dialogs.length === 2 && w.text( w.dialogs[1] ).indexOf( W('label/copy-as-saved') ) !== -1 && w.text( w.dialogs[1] ).indexOf( workbench['/_admin/common/conflict/overwrite'] ) === -1 && w.text( w.dialogs[1] ).indexOf( W('label/reload') ) !== -1 );
 
 	pressed( w, W('label/copy-as-saved') );
 	w.serve();
@@ -3294,7 +3310,7 @@ function nameField( w ) {
 
 	type( byId( w.theme, 'themes-brand-color-1' ), '#1234' );
 
-	check( 'X. a colour that is no colour changes nothing of the draft - and the state is Changed all the same, and not "Saved and active": there is something in the field that is not saved, and a reset takes it away', w.dirty.entries.themes.isDirty() === false && w.state_() === CHANGED && w.byClass( w.theme, 'themes-state' )[0].dataset.state === 'warn' && w.button( w.bar(), W('label/reset') ).disabled === false );
+	check( 'X. a colour that is no colour changes nothing of the draft - and the state is Changed all the same, and not "Saved and active": there is something in the field that is not saved, and a reset takes it away', w.dirty.entries.themes.isDirty() === true && w.state_() === CHANGED && w.byClass( w.theme, 'nino-admin-savebar-state' )[0].dataset.state === 'warn' && w.button( w.bar(), W('label/reset') ).disabled === false );
 
 	fire( w.button( w.bar(), W('label/reset') ), 'click' );
 	w.serve();

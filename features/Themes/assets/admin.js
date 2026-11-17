@@ -5,7 +5,7 @@
  *										each component - and the website beside them as the draft draws it. Everything it shows is the
  *										answer of the API (see Modules\Themes\Admin): the saved state of a theme from open, the draft
  *										from preview. A change in the panel is a change of the working mix; the mix is sent to preview
- *										once the hand has rested, and the page in the frame is loaded once more with the token the answer
+ *										once the hand has rested (Nino.adminUi.previewFrame()), and the page in the frame is loaded once more with the token the answer
  *										gives. Nothing is written before Save.
  *
  *										The address is #themes (the list: the first view of the panel, which has a strip of tabs where there is a second one -
@@ -27,16 +27,11 @@
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	// The steps of a knob, how long the hand rests before the draft is asked for, how long before a token runs out - in milliseconds - a
-	// new one is asked for, and the widths of the preview
+	// The steps of a knob, how long before a token of a thumbnail runs out - in milliseconds - a new one is asked for, and the widths of the preview
+	// (the page is laid out at the width of each, which previewFrame() knows)
 	const STEPS		= [ -2, -1, 0, 1, 2 ];
-	const QUIET		= 150;
 	const GRACE		= 5000;
-	const ANNOUNCED	= 4000;
 	const WIDTHS	= [ 'mobile', 'tablet', 'desktop' ];
-
-	// The width a page is laid out at for each of them: the frame has it and is scaled down to the room the preview has
-	const LAYOUT	= { mobile : 390, tablet : 768, desktop : 1280 };
 
 	// Below this width of the preview - in pixels - a person who has chosen no width is shown the page as a phone shows it
 	const NARROW	= 520;
@@ -89,8 +84,6 @@
 		mix				: null,
 		described	: null,
 		active		: null,
-		token			: '',
-		until			: 0,
 		query			: '',
 		picked		: {},
 		demo			: '',
@@ -101,18 +94,14 @@
 		looking		: null,
 		width			: 'desktop',
 		mark			: '',
-		timer			: null,
-		inFlight	: false,
-		again			: false,
-		waiting		: [],
 		structural : null,
+		failure		: null,
 		view			: null,
 		at				: [],
 		chosen		: false,
 		hints			: [],
 		healed		: '',
 		said			: false,
-		announced	: false,
 		stamp			: '',
 		brand			: null,
 		brandStamp	: '',
@@ -145,6 +134,28 @@
 	 */
 	const reasonText = function( why ) {
 		return word( 'why/'+ why.code, ...why.params );
+	};
+
+	/**
+	 *	What the API answered, with the part that a refused mix was wrong at said in the word of the panel: the answer carries the key of the group as
+	 *	its second param, and the sentence of the part has the label the register gives that group - the English sentence of the refusal is for the log
+	 *
+	 *	@param		{Object|null}		response			The body of a failed request
+	 *
+	 *	@return		{Object|null}
+	 */
+	const spoken = function( response ) {
+
+		if( response === null || typeof response !== 'object' || response.code !== 'themes_mix' || Array.isArray( response.params ) === false || typeof response.params[1] !== 'string' || response.params[1] === '' )
+			return response;
+
+		const group = response.params[1];
+		const known = S.list === null ? undefined : S.list.groups.find( function( candidate ) { return candidate.key === group } );
+
+		if( group !== 'page' && known === undefined )
+			return response;
+
+		return Object.assign( {}, response, { code : 'themes_mix_part', params : [ group === 'page' ? word('word/page') : localized( known.label ) ] } );
 	};
 
 	/**
@@ -725,24 +736,6 @@
 		return dir+ page+ '?'+ S.query+ ( S.mark === '' || chosen === '' ? '' : '&mark='+ encodeURIComponent( S.mark ) )+ ( chosen === '' && S.demo !== '' ? '&'+ DEMO+ '='+ encodeURIComponent( S.demo ) : '' );
 	};
 
-	const reloadFrame = function() {
-
-		if( S.view === null || S.query === '' )
-			return;
-
-		// A token that has run out draws the page as the website has it, and says nothing: the draft is asked for again, which gives a new one.
-		// The time it holds is counted from the answer, on this clock, so that a clock that is off cannot ask for ever
-		if( S.until > 0 && Date.now() >= S.until ) {
-			S.view.line.idle( word('msg/preview-renewed') );
-			flush();
-			return;
-		}
-
-		// The split view puts the page in the place of what the frame shows: a frame that is given another address adds a step to the history of
-		// the window, and the Back key would have to walk back over every reload of the preview before it came to the address of the panel
-		S.view.split.reload( previewUri() );
-	};
-
 	/**
 	 *	A page the frame has loaded that is not the draft - a link in the preview was followed: the page is taken for the one that is chosen, where the
 	 *	list has it, and loaded with the token; else the chosen page is loaded once more. A page that is loaded without the token twice in a row is
@@ -801,80 +794,52 @@
 		else
 			S.view.line.idle( word('msg/page-unknown') );
 
-		reloadFrame();
-	};
-
-	// The frame at the width that is chosen, scaled down to the room the preview has
-	const fitFrame = function() {
-
-		if( S.view !== null )
-			S.view.split.width( LAYOUT[S.width] );
+		loop.reload();
 	};
 
 	/**
-	 *	Ask for the draft as the working mix says it, one request at a time: what is changed while one is out is asked for in the
-	 *	next, once, and the frame is loaded when nothing newer is waiting
-	 *
-	 *	@param		{Function}		[then]			Called with true after the answer of the last request, false where it failed
-	 *
-	 *	@return		{void}
+	 *	The loop that keeps the preview in step with the draft (Nino.adminUi.previewFrame()): the draft is the working mix and the brand, the frame the one
+	 *	of the screen that is open - none while a theme is being opened, when the first draft is asked for before the screen is drawn. What an answer
+	 *	does to the screen is said here: the groups it describes are taken in, a part that changed redraws its settings, and what the part does not have is
+	 *	told
 	 */
-	const flush = function( then ) {
+	const loop = Nino.adminUi.previewFrame( {
+		split : {
+			reload : function( src ) { return S.view === null ? undefined : S.view.split.reload( src ) },
+			width : function( px ) { return S.view === null ? undefined : S.view.split.width( px ) },
+		},
+		send : function( token, done ) {
+			Nino.admin.themes.call( 'preview', { mix : sendable(), brand : S.brand, token : token }, done );
+		},
+		address : function( query ) {
+			S.query = query;
+			return previewUri();
+		},
+		onRenew : function() {
+			if( S.view !== null )
+				S.view.line.idle( word('msg/preview-renewed') );
+		},
+		onError : function( status, response ) {
+			S.structural = null;
+			S.failure = { status : status, response : response };
+			failed( status, response );
+		},
 
-		if( typeof then === 'function' )
-			S.waiting.push( then );
+		// An answer that is no draft is no page to load: the last picture stays, and the bar says that none is drawn for now
+		onUnavailable : function() {
+			S.structural = null;
+			S.failure = { status : 200, response : null };
 
-		if( S.inFlight === true ) {
-			S.again = true;
-			return;
-		}
-
-		S.inFlight = true;
-		S.again = false;
-
-		Nino.admin.themes.call( 'preview', { mix : sendable(), brand : S.brand, token : S.token }, function( status, response ) {
-
-			S.inFlight = false;
-
-			const finish = function( ok ) {
-				const waiting = S.waiting;
-				S.waiting = [];
-				waiting.forEach( function( call ) { call( ok ) } );
-			};
-
-			if( status !== 200 ) {
-				S.again = false;
-				S.structural = null;
-				failed( status, response );
-				finish( false );
-				return;
+			if( S.view !== null ) {
+				S.view.line.idle( word('msg/preview-unavailable') );
+				S.said = true;
 			}
+		},
+		onUpdate : function( response ) {
 
-			// An answer that is no draft - no token, nothing but a "false" - is no page to load: the last picture stays, and the bar says that none is
-			// drawn for now. The frame is loaded only on an answer that holds
-			if( response === null || typeof response !== 'object' || typeof response.token !== 'string' || typeof response.query !== 'string' ) {
-				S.again = false;
-				S.structural = null;
-
-				if( S.view !== null ) {
-					S.view.line.idle( word('msg/preview-unavailable') );
-					S.said = true;
-				}
-
-				finish( false );
-				return;
-			}
-
-			S.token		= response.token;
-			S.query		= response.query;
-			S.until		= Date.now() + response.ttl * 1000 - GRACE;
-			S.cssFaults	= Array.isArray( response.cssFaults ) === true ? response.cssFaults : [];
+			S.failure = null;
+			S.cssFaults = Array.isArray( response.cssFaults ) === true ? response.cssFaults : [];
 			paintCssFaults();
-
-			if( S.again === true ) {
-				flush();
-				return;
-			}
 
 			const dropped = take( response );
 
@@ -884,8 +849,6 @@
 				S.structural = null;
 				draw( group );
 			}
-
-			reloadFrame();
 
 			if( S.view !== null && typeof S.view.repaint === 'function' )
 				S.view.repaint();
@@ -899,23 +862,14 @@
 				S.view.line.idle();
 				S.said = false;
 			}
-
-			finish( true );
-		} );
-	};
-
-	// The hand has moved: the draft is asked for when it rests - longer where the hand types a text
-	const schedule = function( quiet ) {
-
-		wn.clearTimeout( S.timer );
-		S.timer = wn.setTimeout( function() { flush() }, quiet ?? QUIET );
-	};
+		},
+	} );
 
 	// Say what failed in the bar, and keep what is on screen: the mix is the person's, a failed draft takes nothing of it
 	const failed = function( status, response ) {
 
 		if( S.view !== null )
-			S.view.line.error( status, response, '/_admin/themes/error/preview' );
+			S.view.line.error( status, spoken( response ), '/_admin/themes/error/preview' );
 	};
 
 	// --- the screen of one theme -----------------------------------------------------------------------------
@@ -948,7 +902,7 @@
 		hint.textContent = hintOf( knob, step );
 		paintSection( group, section );
 		changed();
-		schedule();
+		loop.schedule();
 	};
 
 	// A standard variant chosen. Where it is the saved one and the saved mix says nothing, the mix says nothing again
@@ -966,7 +920,7 @@
 
 		paintSection( group, section );
 		changed();
-		schedule();
+		loop.schedule();
 	};
 
 	const paintSection = function( group, section ) {
@@ -1070,12 +1024,11 @@
 		const entry = partOf( group );
 		const before = clone( entry );
 
-		wn.clearTimeout( S.timer );
 		entry.from = value;
 		S.structural = group;
 		changed();
 
-		flush( function( ok ) {
+		loop.flush( function( ok ) {
 
 			if( ok === true )
 				return;
@@ -1164,7 +1117,7 @@
 		paintMarked();
 
 		if( quiet !== true )
-			reloadFrame();
+			loop.reload();
 	};
 
 	/**
@@ -1369,7 +1322,7 @@
 			changed();
 
 			if( cssProblem() === '' )
-				schedule( TYPING );
+				loop.schedule( TYPING );
 		} );
 
 		const faults = el( 'p', 'nino-admin-hint' );
@@ -1642,7 +1595,7 @@
 			S.view.rows[key]();
 
 		changed();
-		schedule();
+		loop.schedule();
 	};
 
 	/**
@@ -1681,7 +1634,7 @@
 
 			paint();
 			changed();
-			schedule();
+			loop.schedule();
 			land( made.focus(), S.view.title );
 		}, { className : 'nino-admin-btn--small', id : 'themes-brand-back-'+ key } );
 
@@ -1724,7 +1677,7 @@
 					S.view.rows[key]();
 
 				changed();
-				schedule();
+				loop.schedule();
 			},
 		} );
 
@@ -2110,7 +2063,7 @@
 	 *
 	 *  @return    {void}
 	 */
-	const reaching = function( go, done, newTheme ) {
+	const reaching = function( go, done, newTheme, opener ) {
 
 		const brand = brandDirty() === true && nothingShown() === false;
 
@@ -2124,6 +2077,7 @@
 			message    : ( brand === true ? word('confirm/brand') : word( 'confirm/save', S.theme.name ) )+ ' '+ replacesLast(),
 			yes      : word('label/save'),
 			no      : Nino.content.getText('/_admin/common/label/cancel'),
+			opener    : opener,
 			onChoose  : function( ok ) { if( ok === true ) go(); else done( false ) },
 		} );
 	};
@@ -2168,6 +2122,12 @@
 		go( false );
 	};
 
+	// What the questions of a save give the focus back to when they are left: the Save of the bar, which is off while the save is under way and on again
+	// when the answer to the question has ended it
+	const saver = function() {
+		return S.view === null ? undefined : S.view.save;
+	};
+
 	// The brand alone: the draft changed nothing of the theme. It is the project's, so it is written whichever theme is open
 	const saveBrand = function( done ) {
 
@@ -2175,7 +2135,7 @@
 			change( 'brand', function( force ) {
 				return { theme : S.key, brand : S.brand, brandBase : S.brandStamp, force : force };
 			}, function( response ) { afterSave( S.key, response, done ) }, done );
-		}, done );
+		}, done, false, saver() );
 	};
 
 	// "Save as own theme": the draft is a theme of its own under a name, whatever theme is open
@@ -2480,13 +2440,18 @@
 
 		const dirty	= isDirty();
 
-		// A colour that is no colour yet is not in the draft - the draft keeps the last one that was - and is not saved either: the state is not "saved"
+		// A colour that is no colour yet is not in the draft - the draft keeps the last one that was - and is not saved either: the state is not "saved".
+		// What keeps the draft from being saved is said in the bar, where the person is looking, whichever section is open; it goes when the cause does
 		const unsaved = dirty === true || Object.keys( S.invalid ).length > 0;
 
-		view.state.dataset.state = unsaved === true ? 'warn' : ( isActive() === true ? 'ok' : 'muted' );
-		view.state.textContent = unsaved === true ? '\u25CF '+ word('state/changed') : '\u2713 '+ word( isActive() === true ? 'state/applied' : 'state/saved' );
+		S.blocked = blockReason();
+		view.bar.set( { dirty : unsaved, blocked : S.blocked, calm : isActive() === true ? '' : word('state/saved') } );
+
+		// A draft that could not be made is told until the state is right again, which it is where the draft is the saved state: the bar leaves a refusal where it is
+		if( unsaved === false && S.blocked === '' && view.line.state === 'error' )
+			view.line.idle();
+
 		view.reset.disabled = unsaved === false;
-		view.save.disabled = dirty === false || blockReason() !== '';
 		view.save.textContent = S.theme.kind === 'theme' && mixDirty() === true ? word('label/save-as') : word('label/save');
 		view.apply.hidden = isActive();
 		view.apply.disabled = dirty === true;
@@ -2496,54 +2461,6 @@
 		view.rebuild.title = dirty === true ? word('hint/apply-saved') : '';
 		fill( view.head, view.title, chipsOf() );
 		paintSettings();
-
-		// What keeps the draft from being saved is said in the bar, where the person is looking, whichever section is open; it goes when the cause does
-		const why = blockReason();
-
-		if( why !== '' ) {
-
-			if( S.blocked !== why || view.line.state !== 'error' )
-				view.line.fail( why );
-
-			S.blocked = why;
-			return;
-		}
-
-		if( S.blocked !== '' ) {
-			S.blocked = '';
-
-			if( view.line.state === 'error' )
-				view.line.idle();
-		}
-
-		// The line announces the change once, where the draft begins, and is silent while it goes on: a screen reader hears the chip as a word of
-		// the page and not as a change. The sentence goes after a while, so that the chip is not said twice to the eye; a refusal goes when the state is right
-		if( dirty === true && S.announced === false ) {
-
-			const said = word('msg/changed');
-
-			S.announced = true;
-
-			if( view.line.state !== 'error' ) {
-				view.line.idle( said );
-				wn.setTimeout( function() {
-					if( S.view === view && view.line.element.textContent === said )
-						view.line.idle();
-				}, ANNOUNCED );
-			}
-		}
-		else if( dirty === false ) {
-			S.announced = false;
-
-			if( view.line.state === 'error' )
-				view.line.idle();
-		}
-	};
-
-	const flushWait = function( then ) {
-
-		wn.clearTimeout( S.timer );
-		flush( then );
 	};
 
 	// Take what an answer says of the state of the website into the screen
@@ -2625,7 +2542,7 @@
 	 *
 	 *	@return		{void}
 	 */
-	const askName = function( suggestion, problem, then, about ) {
+	const askName = function( suggestion, problem, then, about, opener ) {
 
 		about = about ?? { title : word('label/save-as'), message : word( 'msg/save-as', S.theme.name, mixSummary(), shownNow() ) };
 
@@ -2645,6 +2562,7 @@
 			title		: about.title,
 			message		: message,
 			content		: content,
+			opener		: opener,
 			choices		: [ { value : 'save', label : word('label/save'), kind : 'primary' }, { value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' } ],
 			onChoose	: function( value ) {
 
@@ -2655,7 +2573,7 @@
 
 				// A name that says nothing is no answer: the same dialog, with the sentence at the field
 				if( input.value.trim() === '' )
-					askName( '', word('error/name-empty'), then, about );
+					askName( '', word('error/name-empty'), then, about, opener );
 				else
 					then( input.value.trim() );
 			},
@@ -2713,8 +2631,8 @@
 						return;
 					}
 					saveAs( name, done );
-				} );
-			}, done, true );
+				}, undefined, saver() );
+			}, done, true, saver() );
 			return;
 		}
 
@@ -2730,7 +2648,7 @@
 
 				return posted;
 			}, function( response ) { afterSave( S.key, response, done ) }, done );
-		}, done );
+		}, done, false, saver() );
 	};
 
 	const saveAs = function( name, done ) {
@@ -2760,7 +2678,7 @@
 					done( false );
 				else
 					saveAs( again, done );
-			} );
+			}, undefined, saver() );
 
 			return true;
 		} );
@@ -2796,70 +2714,43 @@
 
 			const clash = now === null ? [] : both( now );
 
-			Nino.adminUi.choiceDialog( {
-				title    : word('confirm/changed-title'),
-				message    : Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' )+ ( now === null ? '' : ' '+ word('msg/brand-merge')+ ( clash.length === 0 ? '' : ' '+ word( 'msg/brand-both', clash.map( function( key ) { return word( 'label/'+ key ) } ).join(', ') ) ) ),
-				choices    : [
-					{ value : 'over', label : word('label/overwrite'), kind : 'danger' },
-					{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
-					{ value : 'reload', label : word('label/reload'), kind : 'secondary' },
-				],
-				onChoose  : function( value ) {
+			Nino.adminUi.conflict( {
+				opener		: saver(),
+				message		: Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' )+ ( now === null ? '' : ' '+ word('msg/brand-merge')+ ( clash.length === 0 ? '' : ' '+ word( 'msg/brand-both', clash.map( function( key ) { return word( 'label/'+ key ) } ).join(', ') ) ) ),
+				text			: { title : word('confirm/changed-title'), reloadTitle : word('confirm/reload-title'), reloadMessage : word('confirm/reload') },
+				onCancel	: function() { leave( false ) },
+				onReload	: function() {
+					open( S.key, function() {
+						show( S.at, { focus : false } );
+						land( null, S.view === null ? null : S.view.title );
+						leave( true );
+					} );
+				},
+				onOverwrite : function() {
 
-					if( value === 'over' ) {
+					// The brand of the other tab is the saved one now; what this tab set stays, what it did not touch is as the other tab saved it
+					if( now !== null ) {
 
-						// The brand of the other tab is the saved one now; what this tab set stays, what it did not touch is as the other tab saved it
-						if( now !== null ) {
+						BRAND_KEYS.forEach( function( key ) {
+							if( brandSame( S.brand, S.saved.brand.stored, key ) === true )
+								S.brand[key] = clone( now.brand.stored[key] );
+						} );
 
-							BRAND_KEYS.forEach( function( key ) {
-								if( brandSame( S.brand, S.saved.brand.stored, key ) === true )
-									S.brand[key] = clone( now.brand.stored[key] );
-							} );
+						S.saved.brand = Object.assign( {}, S.saved.brand, { stored : clone( now.brand.stored ) } );
+						force( { brandStamp : now.brandStamp } );
+						return;
+					}
 
-							S.saved.brand = Object.assign( {}, S.saved.brand, { stored : clone( now.brand.stored ) } );
-							force( { brandStamp : now.brandStamp } );
+					Nino.admin.themes.call( 'open', { theme : S.key }, function( openStatus, fresh ) {
+
+						if( openStatus !== 200 ) {
+							S.view.line.error( openStatus, fresh, '/_admin/themes/error/save' );
+							leave( false );
 							return;
 						}
 
-						Nino.admin.themes.call( 'open', { theme : S.key }, function( openStatus, fresh ) {
-
-							if( openStatus !== 200 ) {
-								S.view.line.error( openStatus, fresh, '/_admin/themes/error/save' );
-								leave( false );
-								return;
-							}
-
-							// Only what the refusal was about is taken over: a stamp the person has not been told is stale stays the one it was
-							force( response.code === 'themes_state' ? { state : fresh.state } : { stamp : fresh.stamp } );
-						} );
-
-						return;
-					}
-
-					if( value !== 'reload' ) {
-						leave( false );
-						return;
-					}
-
-					Nino.adminUi.confirm( 'destructive', {
-						title    : word('confirm/reload-title'),
-						message    : word('confirm/reload'),
-						yes      : word('label/reload'),
-						no      : Nino.content.getText('/_admin/common/label/cancel'),
-						kind    : 'danger',
-						onChoose  : function( ok ) {
-
-							if( ok === false ) {
-								leave( false );
-								return;
-							}
-
-							open( S.key, function() {
-								show( S.at, { focus : false } );
-								land( null, S.view === null ? null : S.view.title );
-								leave( true );
-							} );
-						},
+						// Only what the refusal was about is taken over: a stamp the person has not been told is stale stays the one it was
+						force( response.code === 'themes_state' ? { state : fresh.state } : { stamp : fresh.stamp } );
 					} );
 				},
 			} );
@@ -2900,9 +2791,9 @@
 
 		// Where no theme is open - an apply from the list - the list says it
 		if( S.view !== null && S.ready === true )
-			S.view.line.error( status, response, '/_admin/themes/error/save' );
+			S.view.line.error( status, spoken( response ), '/_admin/themes/error/save' );
 		else
-			Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ) );
+			Nino.admin.themes.say( Nino.adminUi.api.errorText( status, spoken( response ), '/_admin/themes/error/save' ) );
 
 		// A name that is refused is said at the field of the name too, with the name of the card it collides with, where the field is on the screen
 		if( code === 'themes_name_taken' && dc.getElementById('themes-theme-name') !== null )
@@ -3097,28 +2988,57 @@
 		changed();
 		S.view.line.idle( word('msg/reset') );
 		draw( here().parts[1] ?? '' );
-		flushWait();
+		loop.flush();
 		land( S.view.reset, S.view.title );
 	};
 
 	/**
-	 *	The bar at the foot of the screen: the state of the theme, what the last action said, and the three things to do
+	 *	The bar at the foot of the screen (Nino.adminUi.saveBar()): the state of the theme, what the last action said, and the things to do. Save stands
+	 *	after Reset, where the panel has it - the bar puts it last
 	 *
 	 *	@return		{Object}
 	 */
 	const barOf = function() {
 
-		const bar		= Nino.adminUi.actionBar( el( 'div', 'themes-bar' ) );
-		const state	= el( 'span', 'nino-admin-badge themes-state' );
-		const line	= Nino.adminUi.status( el( 'p' ) );
-		const resetButton = Nino.adminUi.button( word('label/reset'), function() { reset() } );
-		const saveButton = Nino.adminUi.button( word('label/save'), function() { save( function() {} ) }, { className : 'nino-admin-btn-primary' } );
-		const applyButton = Nino.adminUi.button( word('label/apply'), function() { apply( applyButton ) } );
-		const rebuildButton = Nino.adminUi.button( word('label/rebuild'), function() { rebuild( rebuildButton ) } );
+		const bar = Nino.adminUi.saveBar( {
+			id			: 'themes-bar',
+			restore	: false,
+			text		: { changed : word('state/changed'), saved : word('state/applied') },
+			buttons	: [
+				{ key : 'reset', label : word('label/reset'), onPress : function() { reset() } },
+				{ key : 'rebuild', label : word('label/rebuild'), onPress : function() { rebuild( bar.buttons.rebuild ) } },
+				{ key : 'apply', label : word('label/apply'), onPress : function() { apply( bar.buttons.apply ) } },
+			],
+			onSave	: function( done ) {
 
-		[ state, line.element, resetButton, saveButton, rebuildButton, applyButton ].forEach( function( piece ) { bar.appendChild( piece ) } );
+				save( function( ok ) {
 
-		return { el : bar, state : state, line : line, reset : resetButton, save : saveButton, rebuild : rebuildButton, apply : applyButton };
+					done( ok );
+
+					// Save is off while the save is under way, and a question that is left gives the focus back to a button that cannot take it: where the
+					// save ended without a write, Save - on again - has it
+					if( ok !== true && ( dc.activeElement === null || dc.activeElement === dc.body ) && bar.save.disabled === false )
+						bar.save.focus();
+				} );
+			},
+		} );
+
+		bar.el.insertBefore( bar.save, bar.buttons.rebuild );
+		bar.save.textContent = word('label/save');
+
+		return bar;
+	};
+
+	// The draft is given up where the person left the screen without saving it: what the shell's question was answered with
+	const discard = function() {
+
+		if( S.ready === false )
+			return;
+
+		dropDraft();
+		paintBar();
+		draw( here().parts[1] ?? '' );
+		loop.flush();
 	};
 
 	// --- the tools over the preview ----------------------------------------------------------------------------
@@ -3153,7 +3073,7 @@
 		pages.addEventListener( 'change', function() {
 			S.picked[S.key] = pages.value;
 			paintMarked();
-			reloadFrame();
+			loop.reload();
 		} );
 
 		// The widths are a strip of steps, so that the one that is chosen is the one that is filled; where the view is too narrow for
@@ -3170,7 +3090,7 @@
 			onChange	: function( name ) {
 				S.width = name;
 				S.chosen = true;
-				fitFrame();
+				loop.width( S.width );
 			},
 		} );
 
@@ -3223,20 +3143,19 @@
 			S.described	= response;
 			settle( response );
 
-			Nino.admin.themes.call( 'preview', { mix : sendable(), brand : S.brand, token : S.token }, function( previewStatus, preview ) {
+			// The draft of what was opened is asked for before the screen is drawn: the preview shows the theme and not the website. The screen of the
+			// theme that was open is gone by then, and no answer is drawn on it
+			S.ready = false;
+			S.view = null;
+			loop.flush( function( ok ) {
 
-				if( previewStatus !== 200 ) {
-					fail( level, previewStatus, preview );
+				if( ok !== true ) {
+					fail( level, S.failure.status, S.failure.response );
 					then( false );
 					return;
 				}
 
-				S.token		= preview.token;
-				S.query		= preview.query;
-				S.until		= Date.now() + preview.ttl * 1000 - GRACE;
-				S.cssFaults	= Array.isArray( preview.cssFaults ) === true ? preview.cssFaults : [];
-				S.ready		= true;
-				take( preview );
+				S.ready = true;
 				build( level );
 				then( true );
 			} );
@@ -3260,7 +3179,7 @@
 
 		level.appendChild( Nino.adminUi.contextBar( back ) );
 		level.appendChild( said );
-		Nino.admin.themes.fail( said, status, response );
+		Nino.admin.themes.fail( said, status, spoken( response ) );
 	};
 
 	// The chips under the name of the theme: whether the website shows it, where it comes from, what rests in it
@@ -3314,12 +3233,14 @@
 		const bar = barOf();
 		const settings = el( 'div', 'themes-column' );
 
-		S.announced = false;
 		S.blocked = '';
-		S.view = { level : level, kind : 'groups', rows : {}, one : null, repaint : null, head : head, title : title, tools : tools, settings : settings, accordion : null, group : '', marked : tools.marked, state : bar.state, line : bar.line, reset : bar.reset, save : bar.save, rebuild : bar.rebuild, apply : bar.apply, split : null, frame : null };
+		S.view = { level : level, kind : 'groups', rows : {}, one : null, repaint : null, head : head, title : title, tools : tools, settings : settings, accordion : null, group : '', marked : tools.marked, bar : bar, line : bar.line, reset : bar.buttons.reset, save : bar.save, rebuild : bar.buttons.rebuild, apply : bar.buttons.apply, split : null, frame : null };
+
+		// The shell asks the bar about unsaved input and presses its Save for the keyboard: the entry of the screen that is on is the one of its bar
+		Nino.admin.dirty.register( 'themes', bar.entry( { discard : discard } ) );
 
 		// The preview is the page laid out at the width of the choice and scaled to the room there is, which the split view does
-		const split = Nino.adminUi.split( { id : 'themes-split', settings : settings, tools : tools.el, preview : { src : previewUri(), title : word('label/preview-title'), width : LAYOUT[S.width] },
+		const split = Nino.adminUi.split( { id : 'themes-split', settings : settings, tools : tools.el, preview : { src : previewUri(), title : word('label/preview-title') },
 			onLoad : function() {
 				heal();
 				refreshHints();
@@ -3330,12 +3251,13 @@
 				if( view === 'preview' && S.chosen === false && split.frame.parentNode.getBoundingClientRect().width < NARROW ) {
 					S.width = 'mobile';
 					tools.paint( 'mobile' );
-					fitFrame();
+					loop.width( S.width );
 				}
 			} } );
 
 		S.view.split = split;
 		S.view.frame = split.frame;
+		loop.width( S.width );
 
 		head.appendChild( title );
 		head.appendChild( chipsOf() );
@@ -3447,7 +3369,7 @@
 		draw( known === true ? group : '', options.entry !== true && section === '' ? null : section );
 
 		if( previewUri() !== before )
-			reloadFrame();
+			loop.reload();
 
 		// The address says what is open: the section, or the level itself where there is none
 		S.at = [ S.key ].concat( known === true ? [ group ] : [], S.view.accordion !== null ? S.view.accordion.get() : [] );
@@ -3749,19 +3671,6 @@
 		mount	: 'themes-list',
 		render	: render,
 		onError	: function() { Nino.adminUi.showLevel( 'themes-list', { focus : false } ) },
-		dirty	: {
-			isDirty	: isDirty,
-			save	: save,
-			bar		: function() { return null },
-			discard	: function() {
-				if( S.ready === false )
-					return;
-				dropDraft();
-				paintBar();
-				draw( here().parts[1] ?? '' );
-				flushWait();
-			},
-		},
 	} );
 
 	Object.assign( Nino.admin.themes, {

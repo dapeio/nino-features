@@ -131,10 +131,8 @@ return [
 	'[[/_admin/themes/confirm/changed-title]]'	=> 'Überschreiben, was inzwischen gespeichert wurde?',
 	'[[/_admin/themes/confirm/reload-title]]'	=> 'Den Entwurf verwerfen und das gespeicherte Theme laden?',
 	'[[/_admin/themes/confirm/reload]]'	=> 'Die Änderungen dieses Entwurfs gehen verloren. Das Theme erscheint, wie es gespeichert wurde.',
-	'[[/_admin/themes/label/overwrite]]'	=> 'Überschreiben',
 	'[[/_admin/themes/label/reload]]'	=> 'Neu laden',
 
-	'[[/_admin/themes/msg/changed]]'	=> 'Änderungen noch nicht gespeichert.',
 	'[[/_admin/themes/msg/page-unknown]]'	=> 'Diese Seite kann die Vorschau nicht zeigen.',
 	'[[/_admin/themes/msg/shown-theme]]'	=> 'das Theme „%s“',
 	'[[/_admin/themes/word/standard-parts]]'	=> 'die Standard-Teile',
@@ -142,6 +140,7 @@ return [
 
 	'[[/_admin/error/themes_unknown]]'			=> 'Es gibt kein Theme "%s".',
 	'[[/_admin/error/themes_mix]]'					=> 'Die Mischung des Themes stimmt nicht. Lade die Themes neu und versuche es noch einmal.',
+	'[[/_admin/error/themes_mix_part]]'				=> 'Die Mischung des Themes stimmt beim Teil „%s“ nicht. Lade die Themes neu und versuche es noch einmal.',
 	'[[/_admin/error/themes_brand]]'				=> 'Der Wert "%s" der Marke stimmt nicht.',
 	'[[/_admin/error/themes_not_own]]'			=> 'Ein Theme aus einem Paket wird nicht verändert. Speichere es stattdessen als eigenes Theme.',
 	'[[/_admin/error/themes_name]]'					=> 'Der Name braucht mindestens einen Buchstaben oder eine Ziffer.',

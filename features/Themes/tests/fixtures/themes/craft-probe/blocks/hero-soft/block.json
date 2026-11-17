@@ -1,0 +1,13 @@
+{
+	"name": {
+		"de_DE": "Hero auf weicher Fläche",
+		"en_US": "Hero on a soft surface"
+	},
+	"description": {
+		"de_DE": "Eine große Überschrift mit Text und einem Button auf der weichen Fläche des Themes Craft.",
+		"en_US": "A large headline with text and a button on the soft surface of the theme Craft."
+	},
+	"category": "intro",
+	"rank": 40,
+	"images": {}
+}

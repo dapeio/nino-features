@@ -129,7 +129,8 @@ namespace Nino\Modules\Themes {
 				if( $page['html'] === true && $page['wildcard'] === false && $page['status'] < 400 && isset( $pages[$page['path']] ) === false )
 					$pages[$page['path']] = [ 'path' => $page['path'], 'title' => trim( \Nino\Html::renderTextfill( $appData, '/_nino/webpage'. $page['uri']. '/title' ) ) ];
 
-			self::_tidy( $appData );
+			\Nino\Preview::tidy( $appData );
+			self::_dropOld( $appData );
 
 			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => array_slice( array_values( $pages ), 0, self::PAGES ) ] + self::_state( $appData, $state ) );
 		}
@@ -163,7 +164,7 @@ namespace Nino\Modules\Themes {
 			$mix = Mix::clean( $appData, $data['mix'] ?? null, false );
 
 			if( is_string( $mix ) === true ) {
-				\Nino\Http::fail( $request, 400, 'the mix is refused: '. $mix, 'themes_mix', [ $mix ], 'mix' );
+				\Nino\Http::fail( $request, 400, 'the mix is refused: '. $mix, 'themes_mix', [ $mix, Mix::where( $mix ) ], 'mix' );
 				return;
 			}
 
@@ -175,14 +176,14 @@ namespace Nino\Modules\Themes {
 			}
 
 			$built = Compiler::compile( $appData, $mix, $brand );
-			$made = self::_draft( $appData, $built, \Nino\Admin\Admin::postString( $data, 'token' ), \Nino\Modules\Themes::SESSION, 5 );
+			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Themes::KIND, self::perm(), [ 'css' => $built['css'], 'variants' => $built['variants'] ], \Nino\Admin\Admin::postString( $data, 'token' ), \Nino\Modules\Themes::PREVIEWS_MAX );
 
-			if( $made === null ) {
+			if( $token === '' ) {
 				\Nino\Http::fail( $request, 500, 'the preview could not be written' );
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'token' => $made['token'], 'query' => \Nino\Modules\Themes::QUERY. '='. $made['token'], 'expires' => $made['expires'], 'ttl' => \Nino\Modules\Themes::TTL, 'cssFaults' => $built['faults'] ] + self::_describe( $appData, $built['plan'], $brand ) );
+			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'cssFaults' => $built['faults'] ] + self::_describe( $appData, $built['plan'], $brand ) );
 		}
 
 		public static function apiThumb( array &$appData, array &$request ): void {
@@ -203,18 +204,19 @@ namespace Nino\Modules\Themes {
 			$mix = Mix::clean( $appData, $theme['mix'], $theme['kind'] === 'own' );
 
 			if( is_string( $mix ) === true ) {
-				\Nino\Http::fail( $request, 409, 'the mix is refused: '. $mix, 'themes_mix', [ $mix ], 'mix' );
+				\Nino\Http::fail( $request, 409, 'the mix is refused: '. $mix, 'themes_mix', [ $mix, Mix::where( $mix ) ], 'mix' );
 				return;
 			}
 
-			$made = self::_draft( $appData, Compiler::compile( $appData, $mix, $state['brand'] ), \Nino\Admin\Admin::postString( $data, 'token' ), \Nino\Modules\Themes::THUMBS, \Nino\Modules\Themes::THUMBS_MAX );
+			$built = Compiler::compile( $appData, $mix, $state['brand'] );
+			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Themes::PICTURES, self::perm(), [ 'css' => $built['css'], 'variants' => $built['variants'] ], \Nino\Admin\Admin::postString( $data, 'token' ), \Nino\Modules\Themes::PICTURES_MAX );
 
-			if( $made === null ) {
+			if( $token === '' ) {
 				\Nino\Http::fail( $request, 500, 'the preview could not be written' );
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'token' => $made['token'], 'query' => \Nino\Modules\Themes::QUERY. '='. $made['token'], 'expires' => $made['expires'], 'ttl' => \Nino\Modules\Themes::TTL ] );
+			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL ] );
 		}
 
 		public static function apiSave( array &$appData, array &$request ): void {
@@ -411,7 +413,7 @@ namespace Nino\Modules\Themes {
 			if( $failure !== null )
 				self::_fail( $request, $failure );
 			else {
-				self::_tidy( $appData );
+				\Nino\Preview::tidy( $appData );
 				\Nino\Http::ok( $request, [ 'restored' => true ] + self::_state( $appData, Store::read( $appData ) ) );
 			}
 		}
@@ -449,7 +451,7 @@ namespace Nino\Modules\Themes {
 				if( $failure !== null )
 					self::_fail( $request, $failure );
 				else {
-					self::_tidy( $appData );
+					\Nino\Preview::tidy( $appData );
 					\Nino\Http::ok( $request, [ 'deleted' => true ] + self::_state( $appData, Store::read( $appData ) ) );
 				}
 			}
@@ -559,7 +561,7 @@ namespace Nino\Modules\Themes {
 			$mix = Mix::clean( $appData, $data['mix'] ?? null, true );
 
 			if( is_string( $mix ) === true )
-				return [ 'failure' => [ 400, 'the mix is refused: '. $mix, 'themes_mix', [ $mix ], in_array( strtok( $mix, ':' ), [ 'name', 'css' ], true ) === true ? (string) strtok( $mix, ':' ) : 'mix' ] ];
+				return [ 'failure' => [ 400, 'the mix is refused: '. $mix, 'themes_mix', [ $mix, Mix::where( $mix ) ], in_array( strtok( $mix, ':' ), [ 'name', 'css' ], true ) === true ? (string) strtok( $mix, ':' ) : 'mix' ] ];
 
 			if( array_key_exists( 'brand', $data ) === false )
 				return [ 'mix' => $mix ];
@@ -644,7 +646,7 @@ namespace Nino\Modules\Themes {
 			}
 
 			$state = Store::read( $appData );
-			self::_tidy( $appData );
+			\Nino\Preview::tidy( $appData );
 
 			\Nino\Http::ok( $request, [ 'saved' => true, 'theme' => $theme, 'applied' => ( $state['active']['theme'] ?? '' ) === $theme, 'stamp' => str_starts_with( $theme, 'own:' ) === true && isset( $state['own'][substr( $theme, 4 )] ) === true ? self::_stamp( $state['own'][substr( $theme, 4 )] ) : '' ] + self::_state( $appData, $state ) );
 		}
@@ -848,96 +850,25 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	Write a draft - the stylesheet and the variants of a mix as they were compiled, and whose it is - and hold its token for the session: the token
-		 *	the session had for it where it still holds, else a new one. The session keeps the newest of its tokens and the folders of the others go
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$built				As Compiler::compile() answers it
-		 *	@param		string		$asked				The token the one who asks holds, '' for none
-		 *	@param		string		$session			The key of the session that holds the tokens
-		 *	@param		int				$most					How many tokens the session keeps
-		 *
-		 *	@return 	array|null								'token', 'expires'; null where the draft could not be written
-		 */
-		private static function _draft( array &$appData, array $built, string $asked, string $session, int $most ): ?array {
-
-			$held = (array) \Nino\Runtime::getSessionValue( $appData, $session, [] );
-			$token = isset( $held[$asked] ) === true && $held[$asked] > time() && preg_match( \Nino\Modules\Themes::TOKEN, $asked ) === 1 ? $asked : bin2hex( random_bytes( 16 ) );
-			$user = \Nino\Auth::getCurrentUser( $appData );
-			$expires = time() + \Nino\Modules\Themes::TTL;
-			$dir = \Nino\Modules\Themes::DRAFTS. '/'. $token;
-
-			if( \Nino\Filesystem::putFileContent( $appData, $dir. '/theme.css', $built['css'] ) === false || \Nino\Filesystem::putFileContent( $appData, $dir. '/variants.php', $built['variants'] ) === false
-				|| \Nino\Filesystem::putFileContent( $appData, $dir. '/meta.json', [ 'user' => $user === false ? '' : $user['mail'], 'expires' => $expires ] ) === false )
-				return null;
-
-			// The tokens this session holds: those that have not run out, the newest ones
-			$held = array_filter( $held, static fn( mixed $until ): bool => is_int( $until ) === true && $until > time() );
-			unset( $held[$token] );
-			$held[$token] = $expires;
-			$kept = array_slice( $held, -$most, null, true );
-
-			// The draft that falls out is not kept for nobody to ask for
-			foreach( array_diff_key( $held, $kept ) as $dropped => $until )
-				if( preg_match( \Nino\Modules\Themes::TOKEN, (string) $dropped ) === 1 )
-					\Nino\Filesystem::removeDir( \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DRAFTS. '/'. $dropped ) );
-
-			\Nino\Runtime::setSessionValue( $appData, $session, $kept );
-			self::_tidy( $appData );
-
-			return [ 'token' => $token, 'expires' => $expires ];
-		}
-
-		/**
-		 *	The sweep of _tidy(), for the request that finds a draft out of time
+		 *	Take away the folder of the drafts this feature kept itself: the folders in the form of a token that it made, no link and nothing else; the
+		 *	folder goes with them where nothing else is in it, and the list does not look again once it is gone
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	void
 		 */
-		public static function sweep( array &$appData ): void {
-			self::_tidy( $appData );
-		}
-
-		/**
-		 *	Remove the drafts whose time is out - at every action that writes, and at the list: the drafts of this session that are in time stay
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		private static function _tidy( array &$appData ): void {
-
-			$held = \Nino\Runtime::getSessionValue( $appData, \Nino\Modules\Themes::SESSION, [] );
-			$thumbs = \Nino\Runtime::getSessionValue( $appData, \Nino\Modules\Themes::THUMBS, [] );
-
-			self::_prune( $appData, array_merge( is_array( $held ) === true ? array_keys( $held ) : [], is_array( $thumbs ) === true ? array_keys( $thumbs ) : [] ) );
-		}
-
-		/**
-		 *	Remove the drafts that no session holds or whose time is out. A folder is looked at only where its name is a token
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$keep					The tokens of the session that asked
-		 *
-		 *	@return 	void
-		 */
-		private static function _prune( array &$appData, array $keep ): void {
+		private static function _dropOld( array &$appData ): void {
 
 			$base = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DRAFTS );
 
-			foreach( (array) glob( $base. '/*', GLOB_ONLYDIR ) as $folder ) {
+			if( is_dir( $base ) === false || is_link( $base ) === true )
+				return;
 
-				$token = basename( (string) $folder );
-
-				if( preg_match( \Nino\Modules\Themes::TOKEN, $token ) !== 1 || in_array( $token, $keep, true ) === true || is_link( (string) $folder ) === true )
-					continue;
-
-				$meta = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Themes::DRAFTS. '/'. $token. '/meta.json', [] );
-
-				if( is_array( $meta ) === false || ( $meta['expires'] ?? 0 ) <= time() )
+			foreach( (array) glob( $base. '/*', GLOB_ONLYDIR ) as $folder )
+				if( preg_match( \Nino\Preview::TOKEN, basename( (string) $folder ) ) === 1 && is_link( (string) $folder ) === false )
 					\Nino\Filesystem::removeDir( (string) $folder );
-			}
+
+			@rmdir( $base );
 		}
 
 		/**

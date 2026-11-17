@@ -12,12 +12,16 @@ return [
 		'shortcodes' => [],
 		'markup' => [
 			'themes/nino/' => [
-				'en_US' => 'Nino is the theme that comes with the feature: every knob in the middle, a bar for the header, a dark surface for the footer, a band for sections and a rule below large titles.',
-				'de_DE' => 'Nino ist das Theme, das dem Feature beiliegt: jeder Regler in der Mitte, ein Balken für den Header, eine dunkle Fläche für den Footer, ein Band für Abschnitte und eine Linie unter großen Titeln.',
+				'en_US' => 'Nino is the theme that comes with the feature: every knob in the middle, a bar for the header, a dark surface for the footer, a band for sections, a rule below large titles, a hero.',
+				'de_DE' => 'Nino ist das Theme des Features: jeder Regler in der Mitte, ein Balken für den Header, eine dunkle Fläche für den Footer, ein Band für Abschnitte, eine Linie unter großen Titeln, ein Hero.',
 			],
 			'themes/<key>/theme.json' => [
-				'en_US' => 'A theme is a folder with its key, version, name, description and suggestions for the brand; nothing in it is code and no file but theme.json, part.json and part.css is read.',
-				'de_DE' => 'Ein Theme ist ein Ordner mit Schlüssel, Version, Name, Beschreibung und Vorschlägen für die Marke; nichts darin ist Code, und gelesen werden nur theme.json, part.json und part.css.',
+				'en_US' => 'A theme is a folder with its key, version, name, description and suggestions for the brand; nothing in it is code and the feature reads no file but theme.json, part.json and part.css.',
+				'de_DE' => 'Ein Theme ist ein Ordner mit Schlüssel, Version, Name, Beschreibung und Vorschlägen für die Marke; nichts darin ist Code, und das Feature liest nur theme.json, part.json und part.css.',
+			],
+			'themes/<key>/blocks/<block>/' => [
+				'en_US' => 'A theme may bring blocks, each a folder of block.json, block.tpl and text/<locale>.json; the kernel checks every block and leaves out one that fails.',
+				'de_DE' => 'Ein Theme kann Blocks mitbringen, je ein Ordner mit block.json, block.tpl und text/<locale>.json; der Kernel prüft jeden Block und lässt einen aus, der nicht besteht.',
 			],
 			'parts/<group>/part.json' => [
 				'en_US' => 'The part of a group names its contract, sets the steps of the knobs of the group, gives a component up to two knobs of its own, brings variants and chooses the standard one.',
@@ -41,9 +45,9 @@ return [
 			],
 		],
 		'routes' => [
-			'?nino-theme-preview=<token>' => [
-				'en_US' => 'Any page of the site, asked with the token of a preview by the session that holds it, shows the draft while the token lasts; the public stylesheet is not touched.',
-				'de_DE' => 'Jede Seite der Website, mit dem Token einer Vorschau von der Sitzung aufgerufen, die es hält, zeigt den Entwurf, solange das Token gilt; das öffentliche Stylesheet bleibt unberührt.',
+			'?nino-preview=<token>' => [
+				'en_US' => 'Any page of the site, asked with the token of a preview by the session and the account that hold it, shows the draft while the token lasts; the public stylesheet is not touched.',
+				'de_DE' => 'Jede Seite der Website, mit dem Token einer Vorschau von der Sitzung und dem Konto aufgerufen, die es halten, zeigt den Entwurf, solange das Token gilt; das öffentliche Stylesheet bleibt unberührt.',
 			],
 			'&mark=<component>' => [
 				'en_US' => 'A preview that names a component draws an outline round its elements; a request without a preview of its own has no outline.',
@@ -70,8 +74,12 @@ return [
 		],
 		'callbacks' => [
 			'/nino/components/variants' => [
-				'en_US' => 'Adds the variants of the parts in use to the components that have them and chooses the one that stands where a page names none.',
-				'de_DE' => 'Fügt den Komponenten die Varianten der verwendeten Teile hinzu und wählt die, die gilt, wo eine Seite keine nennt.',
+				'en_US' => 'Adds the variants of the parts in use to the components that have them, each with its label, and chooses the one that stands where a page names none.',
+				'de_DE' => 'Fügt den Komponenten die Varianten der verwendeten Teile hinzu, jede mit ihrer Beschriftung, und wählt die, die gilt, wo eine Seite keine nennt.',
+			],
+			'/nino/blocks' => [
+				'en_US' => 'Names the folder blocks/ of every installed theme, not only the one that is on, with the key of the theme as the origin of its blocks.',
+				'de_DE' => 'Nennt den Ordner blocks/ jedes installierten Themes, nicht nur des aktiven, mit dem Schlüssel des Themes als Herkunft seiner Blocks.',
 			],
 			'/nino/themes/roots' => [
 				'en_US' => 'Names more folders to read themes from, each holding <key>/theme.json, beside the one this feature brings.',
@@ -99,7 +107,7 @@ return [
 	],
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^2.0',					// the kernel with the register of components, the hook of the variants and the bundle in memory
+	'nino'				=> '^2.0',					// the kernel with the register of components, the hook of the variants and of the blocks, the drafts of \Nino\Preview and the bundle in memory
 	'php'					=> [],
 	'requires'		=> [],
 	'data'				=> [ '/data/theme' ],

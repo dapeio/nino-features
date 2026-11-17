@@ -537,7 +537,7 @@ namespace Nino\Modules\Themes {
 			$mix = Mix::clean( $appData, $mix, false );
 
 			if( is_string( $mix ) === true )
-				return [ 409, 'the mix of the active theme is refused: '. $mix, 'themes_mix', [ $mix ], '' ];
+				return [ 409, 'the mix of the active theme is refused: '. $mix, 'themes_mix', [ $mix, Mix::where( $mix ) ], '' ];
 
 			$brand = Brand::read( $appData, self::_load( $appData, $next. '/brand.json' ) );
 			$built = Compiler::compile( $appData, $mix, $brand );

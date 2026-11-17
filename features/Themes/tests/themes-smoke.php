@@ -721,12 +721,14 @@ check( 'a theme that sets the duration of a movement keeps what a visitor asked 
 check( 'a mix without a part for the page leaves the tokens of the page to the reset: no token of the page is written', str_contains( Compiler::compile( $site, Mix::clean( $site, [ 'parts' => [ 'section' => [ 'from' => 'craft-probe' ] ] ], false ), $none )['css'], '--page-' ) === false || str_contains( Compiler::compile( $site, Mix::clean( $site, [ 'parts' => [ 'section' => [ 'from' => 'craft-probe' ] ] ], false ), $none )['css'], '--page-size' ) === false );
 
 // the variants
-check( 'Nr. 1: the variants a part adds and the one that stands where a page names none: craft - the stacked header and the soft section -, band - the bar and the band, the regular one standing', $craft['variants'] === [ 'header-wrap' => [ [ 'stacked' ], 'stacked' ], 'section-wrap' => [ [ 'soft' ], 'soft' ] ]
-	&& Compiler::compile( $site, $bandMix, $none )['variants'] === [ 'header-wrap' => [ [ 'bar' ], 'regular' ], 'section-wrap' => [ [ 'band' ], 'regular' ] ] );
-check( 'a mix chooses the standard variant among those the part has, and a variant it does not have is not kept', Compiler::compile( $site, Mix::clean( $site, [ 'parts' => [ 'section' => [ 'from' => 'craft-probe', 'standard' => [ 'section-wrap' => 'regular' ] ] ] ], false ), $none )['variants'] === [ 'section-wrap' => [ [ 'soft' ], 'regular' ] ]
+// The label a fixture's part gives a variant: what the part file says, as the register is to be told it
+$partLabel = static fn( string $theme, string $group, string $component, string $variant ): mixed => json_decode( (string) file_get_contents( $fixtures. '/'. $theme. '/parts/'. $group. '/part.json' ), true )['variants'][$component][$variant];
+check( 'Nr. 1: the variants a part adds, the one that stands where a page names none and the label each has in the part - the locale => text map as the part gives it: craft - the stacked header and the soft section -, band - the bar and the band, the regular one standing', $craft['variants'] === [ 'header-wrap' => [ [ 'stacked' ], 'stacked', [ 'stacked' => $partLabel( 'craft-probe', 'header', 'header-wrap', 'stacked' ) ] ], 'section-wrap' => [ [ 'soft' ], 'soft', [ 'soft' => $partLabel( 'craft-probe', 'section', 'section-wrap', 'soft' ) ] ] ]
+	&& Compiler::compile( $site, $bandMix, $none )['variants'] === [ 'header-wrap' => [ [ 'bar' ], 'regular', [ 'bar' => $partLabel( 'band-probe', 'header', 'header-wrap', 'bar' ) ] ], 'section-wrap' => [ [ 'band' ], 'regular', [ 'band' => $partLabel( 'band-probe', 'section', 'section-wrap', 'band' ) ] ] ] );
+check( 'a mix chooses the standard variant among those the part has, and a variant it does not have is not kept', Compiler::compile( $site, Mix::clean( $site, [ 'parts' => [ 'section' => [ 'from' => 'craft-probe', 'standard' => [ 'section-wrap' => 'regular' ] ] ] ], false ), $none )['variants'] === [ 'section-wrap' => [ [ 'soft' ], 'regular', [ 'soft' => $partLabel( 'craft-probe', 'section', 'section-wrap', 'soft' ) ] ] ]
 	&& Mix::clean( $site, [ 'parts' => [ 'section' => [ 'from' => 'craft-probe', 'standard' => [ 'section-wrap' => 'band', 'section-col' => 'card' ] ] ] ], false )['parts']['section']['standard'] === [ 'section-col' => 'card' ] );
 
-check( 'a standard variant that is one the schema names - the card of a column - is told as it is, with no variant added', Compiler::compile( $site, Mix::clean( $site, [ 'parts' => [ 'section' => [ 'from' => 'band-probe', 'standard' => [ 'section-col' => 'card' ] ] ] ], false ), Brand::clean( $site, [] ) )['variants']['section-col'] === [ [], 'card' ] );
+check( 'a standard variant that is one the schema names - the card of a column - is told as it is, with no variant added', Compiler::compile( $site, Mix::clean( $site, [ 'parts' => [ 'section' => [ 'from' => 'band-probe', 'standard' => [ 'section-col' => 'card' ] ] ] ], false ), Brand::clean( $site, [] ) )['variants']['section-col'] === [ [], 'card', [] ] );
 check( 'where every group is the standard part, the stylesheet is the brand and the knobs of the groups at their middle steps, and no variant is told', Compiler::compile( $site, [ 'parts' => [] ], $none )['variants'] === [] && str_contains( Compiler::compile( $site, [ 'parts' => [] ], $none )['css'], '/* section: the part of' ) === false );
 
 // the shell of the bundle round the own css
@@ -934,7 +936,7 @@ $partOf = Mix::of( $site, 'craft-probe' );
 $partOf['parts']['section'] = [ 'from' => 'band-probe@1.0.0', 'values' => [ 'section-title.x-rule' => 2 ] ];
 [ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => $partOf, 'brand' => [ 'color-1' => [ 'own' => true, 'value' => '#00775e' ] ] ] );
 $draftSection = $body['groups']['section'];
-check( 'R2 preview: the answer holds the groups and the brand of the draft - the part of band for the section, its knob with the step of the draft and its ladder, its variants - and the palette with the contrast of the colour that was posted, from the brand', $status === 200 && preg_match( \Nino\Modules\Themes::TOKEN, $body['token'] ) === 1 && $draftSection['from'] === 'band-probe@1.0.0'
+check( 'R2 preview: the answer holds the groups and the brand of the draft - the part of band for the section, its knob with the step of the draft and its ladder, its variants - and the palette with the contrast of the colour that was posted, from the brand', $status === 200 && preg_match( \Nino\Preview::TOKEN, $body['token'] ) === 1 && $draftSection['from'] === 'band-probe@1.0.0'
 	&& array_values( array_filter( $draftSection['knobs'], static fn( array $knob ): bool => $knob['key'] === 'section-title.x-rule' ) )[0]['step'] === 2 && array_column( array_column( $draftSection['components'], null, 'name' )['section-wrap']['variants'], 'name' ) === [ 'regular', 'band' ]
 	&& $body['palette']['source'] === 'brand' && $body['palette']['colors']['light']['accent'] === '#00775e' && count( $body['palette']['contrast'] ) === 24 && $body['brand']['effective']['color-1'] === '#00775e' && in_array( 'color-1', $body['brand']['named'], true ) === true && in_array( 'tone', $body['brand']['named'], true ) === true );
 
@@ -1077,7 +1079,7 @@ check( 'Nr. 7: restore swaps the state and the last state: the state is the seco
 	&& str_contains( (string) file_get_contents( $sheet ), '--section-wrap-space: 1.75rem;' ) === true && (string) file_get_contents( $sheet ) === (string) file_get_contents( $state. '/state/theme.css' ) );
 themesCall( $site, 'themes/restore' );
 check( 'Nr. 7: twice is the state it was - the same files, byte for byte, the stylesheet of the website and the variants the register is told included', $stateOf( 'state' ) === $three && $stateOf( 'previous' ) === $two && (string) file_get_contents( $sheet ) === $sheetThree
-	&& ( include $state. '/state/variants.php' ) === [ 'header-wrap' => [ [ 'bar' ], 'regular' ], 'section-wrap' => [ [ 'soft' ], 'soft' ] ] );
+	&& ( include $state. '/state/variants.php' ) === [ 'header-wrap' => [ [ 'bar' ], 'regular', [ 'bar' => $partLabel( 'band-probe', 'header', 'header-wrap', 'bar' ) ] ], 'section-wrap' => [ [ 'soft' ], 'soft', [ 'soft' => $partLabel( 'craft-probe', 'section', 'section-wrap', 'soft' ) ] ] ] );
 
 $changed = $stateOf( 'previous' );
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
@@ -1350,7 +1352,8 @@ $modules = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modul
 $site = themesSite();
 ninoUser( $site, 'designer@example.com' );
 $state = ninoSandboxDir( $site ). '/private/data/theme';
-$cache = ninoSandboxDir( $site ). '/private/data/theme/.preview';
+$cache = ninoSandboxDir( $site ). '/private/data/.preview/'. \Nino\Modules\Themes::KIND;
+$sessionKey = '/nino/preview/'. \Nino\Modules\Themes::KIND;
 $link = \Nino\Html::renderHtml( $site, '[assets '. THEMES_BUNDLE. ']' );
 $publicFile = ninoSandboxDir( $site ). '/public/.cache/style.css';
 $publicBytes = (string) file_get_contents( $publicFile );
@@ -1372,17 +1375,18 @@ $inside = static function( string $html ): array {
 
 [ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => $draft ] );
 $token = (string) ( $body['token'] ?? '' );
-check( 'a preview is a token of 32 hexadecimal digits and the query that asks for it, for a quarter of an hour, and the session that asked holds it', $status === 200 && preg_match( \Nino\Modules\Themes::TOKEN, $token ) === 1 && $body['query'] === 'nino-theme-preview='. $token
-	&& $body['expires'] > time() + 800 && $body['expires'] <= time() + \Nino\Modules\Themes::TTL && ( $_SESSION[$site['./nino/uid']]['./themes/preview'] ?? [] ) === [ $token => $body['expires'] ] && $body['notes'] === [] );
-check( 'the draft is a stylesheet, the variants and who it is for, in a folder whose name begins with a dot - which a backup does not carry - and the state of the themes was not touched: there is none', is_file( $cache. '/'. $token. '/theme.css' ) === true && Compiler::isOwn( (string) file_get_contents( $cache. '/'. $token. '/theme.css' ) ) === true
-	&& ( include $cache. '/'. $token. '/variants.php' ) === [ 'header-wrap' => [ [ 'bar' ], 'regular' ], 'section-wrap' => [ [ 'band' ], 'regular' ] ] && json_decode( (string) file_get_contents( $cache. '/'. $token. '/meta.json' ), true )['user'] === 'designer@example.com'
-	&& is_dir( $state. '/state' ) === false && is_dir( $state. '/previous' ) === false && is_dir( $state. '/copies' ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false );
+check( 'a preview is a draft of the kernel: its token and the query that asks for it, for the time the kernel gives, held by the session that asked', $status === 200 && preg_match( \Nino\Preview::TOKEN, $token ) === 1 && $body['query'] === \Nino\Preview::QUERY. '='. $token
+	&& $body['ttl'] === \Nino\Preview::TTL && array_keys( $_SESSION[$site['./nino/uid']][$sessionKey] ?? [] ) === [ $token ] && $body['notes'] === [] && array_key_exists( 'expires', $body ) === false );
+$stored = json_decode( (string) file_get_contents( $cache. '/'. $token. '/draft.json' ), true );
+check( 'the draft is the stylesheet and the variants as the compiler made them, with the label each variant has in the part, in the folder of the kernel for its kind - the feature has no folder of drafts of its own - and the state of the themes was not touched: there is none', Compiler::isOwn( (string) $stored['css'] ) === true
+	&& $stored['variants'] === [ 'header-wrap' => [ [ 'bar' ], 'regular', [ 'bar' => $partLabel( 'band-probe', 'header', 'header-wrap', 'bar' ) ] ], 'section-wrap' => [ [ 'band' ], 'regular', [ 'band' => $partLabel( 'band-probe', 'section', 'section-wrap', 'band' ) ] ] ]
+	&& is_dir( $state. '/.preview' ) === false && is_dir( $state. '/state' ) === false && is_dir( $state. '/previous' ) === false && is_dir( $state. '/copies' ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false );
 
 // The kernel empties data/cache after every successful write of the workbench - which this very request is - and a draft must outlast it
 $workbench = [ '/nino/http/request' => [ 'method' => 'POST', 'uri' => '/_admin' ], '/nino/http/response' => [ 'statusCode' => 200, 'body' => [ 'token' => $token ], 'header' => [] ] ];
 \Nino\Filesystem::putFileContent( $site, '/data/cache/marker.php', [ 'a page' ] );
 \Nino\Modules\Cache::callbackOutput( $site, $workbench );
-check( 'a draft outlasts the emptying of data/cache that follows every successful write of the workbench, as a page that is kept does not', is_file( ninoSandboxDir( $site ). '/private/data/cache/marker.php' ) === false && is_file( $cache. '/'. $token. '/theme.css' ) === true );
+check( 'a draft outlasts the emptying of data/cache that follows every successful write of the workbench, as a page that is kept does not', is_file( ninoSandboxDir( $site ). '/private/data/cache/marker.php' ) === false && is_file( $cache. '/'. $token. '/draft.json' ) === true );
 
 $preview = $visit( $body['query'] );
 $layers = array_map( static fn( array $item ): string => $item[0], $inside( $preview ) );
@@ -1403,17 +1407,24 @@ check( 'the variants of the draft are the ones the register is told in that requ
 // the draft in the place of the real one
 themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
 $site = themesReboot( $site, $modules );
+$labelOf = static fn( string $query, string $variant ): mixed => ( static function() use ( &$site, $query ): array {
+	ninoVisit( $site, '/?'. $query );
+
+	return \Nino\Components::variants( $site, 'section-wrap' )['variants'];
+} )()[$variant] ?? null;
+check( 'the register is told the label of a variant with the variant: the part of the theme that is on gives its word for soft, the draft - which is band - its word for band and none for soft, and a request that names no draft has the active theme\'s', $labelOf( 'x=1', 'soft' ) === $partLabel( 'craft-probe', 'section', 'section-wrap', 'soft' )
+	&& $labelOf( 'nino-preview='. $token, 'band' ) === $partLabel( 'band-probe', 'section', 'section-wrap', 'band' ) && $labelOf( 'nino-preview='. $token, 'soft' ) === null && $labelOf( 'x=1', 'band' ) === null );
 $craftBundle = \Nino\Modules\Assets::stylesheet( $site, THEMES_BUNDLE );
 $visit( 'x=1' );
 $publicBytes = (string) file_get_contents( $publicFile );
-$preview = $visit( 'nino-theme-preview='. $token );
+$preview = $visit( 'nino-preview='. $token );
 $themeBlock = array_values( array_filter( $inside( $preview ), static fn( array $item ): bool => $item[0] === '@layer nino.theme' ) );
 check( 'with a theme on the website the draft stands where its stylesheet stands: the layer of the theme holds the draft and nothing of the theme that is on, and a request without the token has the theme that is on', count( $themeBlock ) === 1 && str_contains( $themeBlock[0][1], '.preview-marker' ) === true && str_contains( $themeBlock[0][1], '--section-wrap-space: 1.75rem;' ) === false
 	&& str_contains( $craftBundle, '--section-wrap-space: 1.75rem;' ) === true && str_contains( $craftBundle, 'preview-marker' ) === false && str_contains( $visit( 'x=1' ), '<link' ) === true && (string) file_get_contents( $publicFile ) === $publicBytes );
 check( 'and the draft\'s variants are the ones told: the band for a page that says band, where craft on the website says soft - and again craft\'s in the request that has no token', ( static function() use ( $visit, &$site, $token ): array {
 
 	$classes = [];
-	$visit( 'nino-theme-preview='. $token );
+	$visit( 'nino-preview='. $token );
 	$classes[] = \Nino\Html::renderHtml( $site, '[section-wrap variant="band"][/section-wrap]' );
 	$visit( 'x=1' );
 	$classes[] = \Nino\Html::renderHtml( $site, '[section-wrap variant="band"][/section-wrap]' );
@@ -1424,7 +1435,7 @@ check( 'and the draft\'s variants are the ones told: the band for a page that sa
 $hostile = Mix::of( $site, 'band-probe' );
 $hostile['css'] = ".hostile::before { content: '</style><script>alert(1)</script>'; }\n}\n.escaped { color: red; }";
 $withBrand = themesCall( $site, 'themes/preview', [ 'mix' => $hostile, 'brand' => [ 'color-1' => [ 'own' => true, 'value' => '#00aa55' ] ], 'token' => $token ] );
-$html = $visit( 'nino-theme-preview='. $withBrand[1]['token'] );
+$html = $visit( 'nino-preview='. $withBrand[1]['token'] );
 $repaired = ninoWarnings();
 check( 'a draft asks with its brand and its css: the colour is the draft\'s and not the project\'s, the project\'s brand is not changed, and a closing tag in the css does not end the style element', $withBrand[0] === 200 && str_contains( $html, '--brand-color-1: #00aa55;' ) === true && substr_count( $html, '</style>' ) === 1
 	&& str_contains( $html, "<\\/style><script>" ) === true && is_file( $state. '/state/brand.json' ) === false );
@@ -1438,68 +1449,66 @@ $shows = static function( string $query ) use ( $visit ): bool {
 };
 $token = $tokenOf();
 $other = '01234567890123456789012345678901';
-check( 'the token is the session\'s: the same request, with it, is the draft', $shows( 'nino-theme-preview='. $token ) === true );
+$request = ninoVisit( $site, '/?nino-preview='. $token );
+check( 'the token is the session\'s: the same request, with it, is the draft - and it is an answer that nobody keeps or indexes', $shows( 'nino-preview='. $token ) === true && $request['/nino/http/response']['header']['Cache-Control'] === 'no-store' && $request['/nino/http/response']['header']['X-Robots-Tag'] === 'noindex' && $request['/nino/http/response']['header']['Referrer-Policy'] === 'no-referrer' );
+check( 'a visitor without a token has the public page: no style element of a draft, and no mark of a page that is not to be indexed', $shows( 'x=1' ) === false && isset( ninoVisit( $site, '/?x=1' )['/nino/http/response']['header']['X-Robots-Tag'] ) === false );
 
-$held = $_SESSION[$site['./nino/uid']]['./themes/preview'];
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = [];
-check( 'another session - one that holds no token - gets the page as it is, though the token is a real one with its files', $shows( 'nino-theme-preview='. $token ) === false && is_dir( $cache. '/'. $token ) === true );
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() - 1 ];
-$stale = md5( 'stale' );
-$alive = md5( 'alive' );
-mkdir( $cache. '/'. $stale );
-mkdir( $cache. '/'. $alive );
-file_put_contents( $cache. '/'. $alive. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() + 500 ] ) );
-file_put_contents( $cache. '/'. $stale. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() - 5 ] ) );
-check( 'a token whose time is out is no token, and the draft it was is taken away by the request that asks for it - with the others that are out of time, and not a draft of another session that has time left', themesKept( $cache. '/'. $token, static fn(): bool => $shows( 'nino-theme-preview='. $token ) === false && is_dir( $cache. '/'. $token ) === false && is_dir( $cache. '/'. $stale ) === false && is_dir( $cache. '/'. $alive ) === true ) );
-\Nino\Filesystem::removeDir( $cache. '/'. $alive );
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = $held;
-$meta = json_decode( (string) file_get_contents( $cache. '/'. $token. '/meta.json' ), true );
-file_put_contents( $cache. '/'. $token. '/meta.json', json_encode( [ 'expires' => time() - 1 ] + $meta ) );
-touch( $cache. '/'. $token. '/meta.json', time() - 100 );
-check( 'nor is one whose draft says it is out, whatever the session says', $shows( 'nino-theme-preview='. $token ) === false );
-file_put_contents( $cache. '/'. $token. '/meta.json', json_encode( $meta ) );
-touch( $cache. '/'. $token. '/meta.json', time() - 50 );
-check( 'and it is the draft again when the files say it holds', $shows( 'nino-theme-preview='. $token ) === true );
+// Each way a request may not have the draft, with the token of a draft that is real: the page is the public one, and the draft is no matter of the request
+$held = $_SESSION[$site['./nino/uid']][$sessionKey];
+$_SESSION[$site['./nino/uid']][$sessionKey] = [];
+check( 'another session - one that holds no token - gets the page as it is, though the token is a real one with its files', $shows( 'nino-preview='. $token ) === false && is_dir( $cache. '/'. $token ) === true );
+$_SESSION[$site['./nino/uid']][$sessionKey] = [ $token => time() - 1 ];
+check( 'a token whose time is out is no token', themesKept( $cache. '/'. $token, static fn(): bool => $shows( 'nino-preview='. $token ) === false ) );
+$_SESSION[$site['./nino/uid']][$sessionKey] = $held;
 
-check( 'a token nobody gave out, in the form of one, is no token', $shows( 'nino-theme-preview='. $other ) === false );
-check( 'a query that is no token - upper case, too short, too long, a path, a list, a null byte, nothing - is a request for the page as it is, and reads no file', array_filter( [ strtoupper( $token ), substr( $token, 1 ), $token. '0', '../../x', '..%2f..%2fx', $token. '/../'. $token, "$token%00", '' ], static fn( string $value ): bool => $shows( 'nino-theme-preview='. $value ) === true ) === [] && $shows( 'nino-theme-preview[]='. $token ) === false && $shows( 'nino-theme-preview[a]=x' ) === false );
+$mismatch = [ strtoupper( $token ), substr( $token, 1 ), $token. '0', '../../x', '..%2f..%2fx', $token. '/../'. $token, "$token%00", '', $other ];
+check( 'a query that is no token of this session - upper case, too short, too long, a path, a null byte, nothing, one nobody gave out - is a request for the page as it is', array_filter( $mismatch, static fn( string $value ): bool => $shows( 'nino-preview='. $value ) === true ) === [] && $shows( 'nino-preview[]='. $token ) === false && $shows( 'nino-preview[a]=x' ) === false );
 
 ninoUser( $site, 'second@example.com' );
-check( 'the account is the one that asked: another account signed in with the right and the session of the token gets no draft', $shows( 'nino-theme-preview='. $token ) === false );
+check( 'the account is the one that asked: another account signed in with the right and the session of the token gets no draft', $shows( 'nino-preview='. $token ) === false );
 \Nino\Auth::loginUser( $site, 'designer@example.com', 'correct horse battery staple' );
-check( 'and the first one has it again', $shows( 'nino-theme-preview='. $token ) === true );
+check( 'and the first one has it again', $shows( 'nino-preview='. $token ) === true );
 
+$pictureToken = themesCall( $site, 'themes/thumb', [ 'theme' => 'band-probe' ] )[1]['token'];
 $perms = $site['./nino/auth/current']['perms'] ?? null;
 $site['./nino/auth/current']['perms'] = [ '/_admin/elements/manage' ];
-check( 'the right is asked of the request and not only of the one that made the draft: the same account, the same session and the same token, with the right taken from it, gets the page as it is', $perms !== null && $shows( 'nino-theme-preview='. $token ) === false );
+check( 'the right is asked of the request and not only of the one that made the draft: the same account, the same session and the same token, with the right taken from it, gets the page as it is', $perms !== null && $shows( 'nino-preview='. $token ) === false );
 $site['./nino/auth/current']['perms'] = $perms;
-ninoUser( $site, 'editor@example.com', [ '/_admin/elements/manage' ] );
-check( 'an account without the right has none, with the token and the session of one who had it', $shows( 'nino-theme-preview='. $token ) === false );
+check( 'the same holds for the token of a thumbnail: with the right given, it is the draft; with the right taken from the account, the page as it is', $shows( 'nino-preview='. $pictureToken ) === true && ( static function() use ( &$site, $perms, $shows, $pictureToken ): bool {
+	$site['./nino/auth/current']['perms'] = [ '/_admin/elements/manage' ];
+	$shown = $shows( 'nino-preview='. $pictureToken );
+	$site['./nino/auth/current']['perms'] = $perms;
+
+	return $shown === false;
+} )() );
 \Nino\Auth::logoutUser( $site );
-check( 'nobody signed in has none', $shows( 'nino-theme-preview='. $token ) === false );
+check( 'nobody signed in has none', $shows( 'nino-preview='. $token ) === false );
 \Nino\Auth::loginUser( $site, 'designer@example.com', 'correct horse battery staple' );
 
-// how many, and for how long
+// how many
 for( $i = 0; $i < 7; $i++ )
 	$last = themesCall( $site, 'themes/preview', [ 'mix' => $draft ] )[1]['token'];
 
-check( 'a session holds five drafts at the most, the newest of them - the one that was just made, though all seven were made in the same second - among them', count( $_SESSION[$site['./nino/uid']]['./themes/preview'] ) === 5 && array_key_last( $_SESSION[$site['./nino/uid']]['./themes/preview'] ) === $last );
-// The draft of a session that is gone: one that ran out and one that has time left
-$orphans = [ md5( 'ran out' ), md5( 'in time' ) ];
-mkdir( $cache. '/'. $orphans[0] );
-mkdir( $cache. '/'. $orphans[1] );
-file_put_contents( $cache. '/'. $orphans[0]. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() - 5 ] ) );
-file_put_contents( $cache. '/'. $orphans[1]. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() + 500 ] ) );
-mkdir( $cache. '/not-a-token' );
-mkdir( $cache. '/'. $other );
-$tokensBefore = array_keys( $_SESSION[$site['./nino/uid']]['./themes/preview'] );
+$heldTokens = array_keys( $_SESSION[$site['./nino/uid']][$sessionKey] );
+check( 'a session holds five drafts at the most, the newest of them among them, and the folders of the others are gone', count( $heldTokens ) === \Nino\Modules\Themes::PREVIEWS_MAX && $heldTokens[4] === $last && count( glob( $cache. '/*', GLOB_ONLYDIR ) ) === 5 );
+
+// the folder of the drafts the feature kept itself is taken away by the list, and nothing else of the themes
+mkdir( $state. '/.preview/'. $other, 0777, true );
+file_put_contents( $state. '/.preview/'. $other. '/theme.css', 'x' );
+mkdir( $state. '/.preview/foreign' );
+$outside = ninoSandboxDir( $site ). '/outside';
+mkdir( $outside );
+$linked = @symlink( $outside, $state. '/.preview/'. md5( 'link' ) );
+$ranOut = md5( 'ran out' );
+mkdir( $cache. '/'. $ranOut );
+file_put_contents( $cache. '/'. $ranOut. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() - 5 ] ) );
 themesCall( $site, 'themes/list' );
-check( 'a list tidies as a preview does: the draft that ran out is removed, the one of another session with time left stays, the drafts of this session stay, and the sixth draft of a session is deleted and not only forgotten', is_dir( $cache. '/'. $orphans[0] ) === false && is_dir( $cache. '/'. $orphans[1] ) === true
-	&& count( array_filter( $tokensBefore, static fn( string $kept ): bool => is_dir( $cache. '/'. $kept ) === true ) ) === 5 && count( array_filter( glob( $cache. '/*', GLOB_ONLYDIR ), static fn( string $folder ): bool => preg_match( \Nino\Modules\Themes::TOKEN, basename( $folder ) ) === 1 && in_array( basename( $folder ), array_merge( $tokensBefore, $orphans ), true ) === false ) ) === 0 );
-file_put_contents( $cache. '/'. $orphans[1]. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() - 5, 'by' => 'a change of the size' ] ) );
-mkdir( $cache. '/'. $orphans[0] );
-themesCall( $site, 'themes/preview', [ 'mix' => $draft ] );
-check( 'a draft that is out of time is removed when the next one is made, and so is a folder in the form of a token that holds no draft; and a folder that is no token\'s is left alone', is_dir( $cache. '/'. $orphans[1] ) === false && is_dir( $cache. '/'. $orphans[0] ) === false && is_dir( $cache. '/not-a-token' ) === true && is_dir( $cache. '/'. $other ) === false );
+check( 'the list takes the drafts the feature kept itself away - the folders in the form of a token, no link, nothing else that is in the folder - and a draft of the kernel that ran out is tidied as well, while the drafts of this session stay', is_dir( $state. '/.preview/'. $other ) === false && is_dir( $state. '/.preview/foreign' ) === true && is_dir( $outside ) === true && ( $linked === false || is_link( $state. '/.preview/'. md5( 'link' ) ) === true )
+	&& is_dir( $state. '/.cache' ) === true && is_dir( $cache. '/'. $ranOut ) === false && count( glob( $cache. '/*', GLOB_ONLYDIR ) ) === 5 );
+\Nino\Filesystem::removeDir( $state. '/.preview/foreign' );
+@unlink( $state. '/.preview/'. md5( 'link' ) );
+themesCall( $site, 'themes/list' );
+check( 'and the folder goes with the last of them, and the list does not look for it again', is_dir( $state. '/.preview' ) === false );
 
 [ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [ 'section' => [ 'from' => 'nowhere' ] ] ] ] );
 check( 'a draft that is not a mix is 400 and writes no draft', $status === 400 && $body['code'] === 'themes_mix' && $body['field'] === 'mix' );
@@ -1507,12 +1516,11 @@ $count = count( glob( $cache. '/*', GLOB_ONLYDIR ) );
 [ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => $draft, 'brand' => [ 'color-1' => [ 'own' => true, 'value' => 'red' ] ] ] );
 check( 'and so is a brand that is not one', $status === 400 && $body['code'] === 'themes_brand' && $body['field'] === 'brand' && count( glob( $cache. '/*', GLOB_ONLYDIR ) ) === $count );
 [ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => $draft, 'token' => '../../../../x' ] );
-check( 'a token that is posted and was never given is not used: the draft is a new one, in a folder of the cache named for it', $status === 200 && preg_match( \Nino\Modules\Themes::TOKEN, $body['token'] ) === 1 && is_dir( $cache. '/'. $body['token'] ) === true && is_dir( ninoSandboxDir( $site ). '/private/data/theme/.preview/../../../../x' ) === false );
-$visit( 'nino-theme-preview='. $body['token'] );
+check( 'a token that is posted and was never given is not used: the draft is a new one, in a folder of the kernel named for it', $status === 200 && preg_match( \Nino\Preview::TOKEN, $body['token'] ) === 1 && is_dir( $cache. '/'. $body['token'] ) === true );
 $later = themesReboot( $site, $modules );
 check( 'a request that comes after one with a preview in the same process begins with none: the page that says band is drawn as the website draws it', str_contains( \Nino\Html::renderHtml( $later, '[section-wrap variant="band"][/section-wrap]' ), 'section-wrap--variant-soft' ) === true );
 $numbers['preview request'] = themesFastest( static function() use ( $visit, $token ): void {
-	$visit( 'nino-theme-preview='. $token );
+	$visit( 'nino-preview='. $token );
 } );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -1545,7 +1553,7 @@ foreach( $every as $action => $data ) {
 
 check( 'Nr. 9: an account that has not the right - the Editor of the starter site has not - gets 403 on every one of the eleven actions, and nothing is read or written: no state, no stylesheet, no draft, no cache of the themes, nothing held by the session',
 	count( $answers ) === 11 && array_filter( $answers, static fn( array $answer ): bool => $answer[0] !== 403 ) === [] && is_dir( $state ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false
-	&& is_dir( ninoSandboxDir( $site ). '/private/data/theme/.cache' ) === false && isset( $_SESSION[$site['./nino/uid']]['./themes/preview'] ) === false && isset( $_SESSION[$site['./nino/uid']]['./themes/thumbs'] ) === false );
+	&& is_dir( ninoSandboxDir( $site ). '/private/data/theme/.cache' ) === false && isset( $_SESSION[$site['./nino/uid']]['/nino/preview/themes'] ) === false && isset( $_SESSION[$site['./nino/uid']]['/nino/preview/themes-pictures'] ) === false );
 
 \Nino\Auth::logoutUser( $site );
 $answers = [];
@@ -1649,6 +1657,10 @@ $tooMany = $rows['section'];
 $tooMany['values'] = array_fill_keys( array_map( static fn( int $i ): string => 'section-wrap.k-'. $i, range( 1, 41 ) ), 1 );
 [ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => [ 'name' => 'Too many', 'parts' => [ 'section' => $tooMany ] ] ] );
 check( 'more than forty knobs of a group is 400 with the reason', $status === 400 && $body['code'] === 'themes_mix' && str_contains( $body['params'][0], 'values' ) === true );
+[ $statusWhole, $whole ] = themesCall( $site, 'themes/preview', [ 'mix' => [ 'name' => 'x', 'parts' => 'no' ] ] );
+check( 'a refused mix names the group it is wrong at as its second param, for the panel to say in its own word - the key of the group, \'page\' for the page, and nothing where the whole mix or its css is wrong - beside the sentence for the log',
+	$body['params'][1] === 'section' && $statusWhole === 400 && $whole['params'][1] === '' && themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [ 'page' => [ 'from' => 'nowhere' ] ] ] ] )[1]['params'][1] === 'page'
+	&& themesCall( $site, 'themes/preview', [ 'mix' => [ 'css' => str_repeat( 'a', Mix::CSS_LENGTH + 1 ) ] ] )[1]['params'][1] === '' );
 [ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Big', [] ) ] );
 check( 'a save as a name that is there says so - 409 - and does not write over it', $status === 409 && $body['code'] === 'themes_name_taken' && filesize( $state. '/state/own/big.json' ) < 2048 );
 
@@ -1663,15 +1675,16 @@ sort( $own );
 check( 'a file of own/ is an own theme where its name is a key - and not a name with a capital, a blank or a dot in front - and where it is not larger than the store reads', $own === [ 'big', 'ok-key' ] );
 unlink( $state. '/state/own/huge.json' );
 
-$held = $_SESSION[$site['./nino/uid']]['./themes/preview'] ?? [];
+$held = $_SESSION[$site['./nino/uid']]['/nino/preview/themes'] ?? [];
 $gone = themesCall( $site, 'themes/preview', [ 'mix' => $draft = Mix::of( $site, 'band-probe' ) ] )[1]['token'];
-$_SESSION[$site['./nino/uid']]['./themes/preview'][$gone] = time() - 1;
+$_SESSION[$site['./nino/uid']]['/nino/preview/themes'][$gone] = time() - 1;
 $again = themesCall( $site, 'themes/preview', [ 'mix' => $draft, 'token' => $gone ] )[1]['token'];
-check( 'a token that ran out in the session is not taken again by a preview that names it: the draft is a new one', $again !== $gone && preg_match( \Nino\Modules\Themes::TOKEN, $again ) === 1 );
+check( 'a token that ran out in the session is not taken again by a preview that names it: the draft is a new one', $again !== $gone && preg_match( \Nino\Preview::TOKEN, $again ) === 1 );
 
 // the schema's variants stay where a theme tells the register its own
-\Nino\Filesystem::putFileContent( $site, '/data/theme/state/variants.php', [ 'section-col' => [ [ 'extra' ], 'card' ] ] );
-check( 'what the theme tells the register of a component is added to what the schema says and does not replace it: the card stays, the standard is the theme\'s', \Nino\Modules\Themes::variants( $site, [ 'name' => 'section-col', 'variants' => [ 'regular', 'card' ], 'standard' => 'regular' ] ) === [ 'name' => 'section-col', 'variants' => [ 'regular', 'card', 'extra' ], 'standard' => 'card' ] );
+$extra = [ 'de_DE' => 'Extra', 'en_US' => 'Extra' ];
+\Nino\Filesystem::putFileContent( $site, '/data/theme/state/variants.php', [ 'section-col' => [ [ 'extra' ], 'card', [ 'extra' => $extra ] ] ] );
+check( 'what the theme tells the register of a component is added to what the schema says and does not replace it: the card stays, the standard is the theme\'s, and the label of the variant it adds goes with it', \Nino\Modules\Themes::variants( $site, [ 'name' => 'section-col', 'variants' => [ 'regular', 'card' ], 'standard' => 'regular' ] ) === [ 'name' => 'section-col', 'variants' => [ 'regular', 'card', 'extra' ], 'standard' => 'card', 'labels' => [ 'extra' => $extra ] ] );
 
 // what a theme brings is data, and the data of this project is what it writes
 $leaf = themesSite();
@@ -1829,8 +1842,8 @@ foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $ninoDir
 	$ninoFiles[] = substr( $file->getPathname(), strlen( $ninoDir ) + 1 );
 
 sort( $ninoFiles );
-check( 'Nino is a folder of data in the form of a theme: theme.json, the part of the page with no css, and a part with css for the header, the footer and the section - none for the buttons, the image and the text, which stay the standard parts',
-	$ninoFiles === [ 'parts/footer/part.css', 'parts/footer/part.json', 'parts/header/part.css', 'parts/header/part.json', 'parts/page/part.json', 'parts/section/part.css', 'parts/section/part.json', 'theme.json' ] );
+check( 'Nino is a folder of data in the form of a theme: theme.json, the part of the page with no css, a part with css for the header, the footer and the section - none for the buttons, the image and the text, which stay the standard parts - and the block of a hero',
+	$ninoFiles === [ 'blocks/hero-band/block.json', 'blocks/hero-band/block.tpl', 'blocks/hero-band/text/de_DE.json', 'blocks/hero-band/text/en_US.json', 'parts/footer/part.css', 'parts/footer/part.json', 'parts/header/part.css', 'parts/header/part.json', 'parts/page/part.json', 'parts/section/part.css', 'parts/section/part.json', 'theme.json' ] );
 check( 'the reader takes it as it is: no folder refused, the key and the folder agree, and every part holds - none rests - for the page and the three groups it has a part for',
 	$ninoRead['rejected'] === [] && ( $nino['key'] ?? '' ) === 'nino' && array_keys( $nino['parts'] ) === [ 'footer', 'header', 'page', 'section' ]
 	&& array_filter( $nino['parts'], static fn( array $part ): bool => $part['ok'] !== true || $part['problem'] !== '' ) === [] );
@@ -1950,7 +1963,7 @@ check( 'the rule below the title is a knob of the section title of its own, with
 $mixed = Compiler::compile( $site, Mix::of( $site, 'nino' ), Brand::clean( $site, [] ) );
 $sheet = $mixed['css'];
 check( 'the variants: the bar for the header, the dark surface for the footer and the band for the section, each added to its component, regular the standard of all three - and no other component gets a variant or a standard',
-	$mixed['variants'] === [ 'footer-wrap' => [ [ 'dark' ], 'regular' ], 'header-wrap' => [ [ 'bar' ], 'regular' ], 'section-wrap' => [ [ 'band' ], 'regular' ] ] );
+	array_map( static fn( array $entry ): array => array_slice( $entry, 0, 2 ), $mixed['variants'] ) === [ 'footer-wrap' => [ [ 'dark' ], 'regular' ], 'header-wrap' => [ [ 'bar' ], 'regular' ], 'section-wrap' => [ [ 'band' ], 'regular' ] ] );
 $classes = [ 'header-wrap' => 'bar', 'footer-wrap' => 'dark', 'section-wrap' => 'band' ];
 check( 'each variant is drawn by a rule of the part of its group on the class the register gives it', array_filter( $classes, static fn( string $variant, string $component ): bool => preg_match( '/\.'. preg_quote( $component. '--variant-'. $variant, '/' ). '(?![\w-])/', $ninoParts[explode( '-', $component )[0]]['css'] ?? '' ) !== 1, ARRAY_FILTER_USE_BOTH ) === [] );
 
@@ -2097,10 +2110,10 @@ foreach( [ $open, $draftBody ] as $answer )
 		}
 
 check( 'K. every component of a group comes with its label, a text or a map of locales, as the register has it - in what open says of the saved state and in what preview says of the draft', $status === 200 && $status2 === 200 && $labelled === true && $named >= 20 );
-check( 'K. a draft says how long its token holds, in seconds, so that a screen counts the time on its own clock', $draftBody['ttl'] === \Nino\Modules\Themes::TTL && $draftBody['ttl'] === 900 );
+check( 'K. a draft says how long its token holds, in seconds, so that a screen counts the time on its own clock', $draftBody['ttl'] === \Nino\Preview::TTL && $draftBody['ttl'] === 900 );
 
 // the outline of a component in the preview
-$cache = ninoSandboxDir( $site ). '/private/data/theme/.preview';
+$cache = ninoSandboxDir( $site ). '/private/data/.preview/themes';
 $token = $draftBody['token'];
 $visit = static function( string $query ) use ( &$site ): string {
 
@@ -2110,18 +2123,18 @@ $visit = static function( string $query ) use ( &$site ): string {
 };
 $visit( 'x=1' );
 $publicBefore = (string) file_get_contents( ninoSandboxDir( $site ). '/public/.cache/style.css' );
-$plainPreview = $visit( 'nino-theme-preview='. $token );
-$marked = $visit( 'nino-theme-preview='. $token. '&mark=section-col' );
+$plainPreview = $visit( 'nino-preview='. $token );
+$marked = $visit( 'nino-preview='. $token. '&mark=section-col' );
 $outline = '.section-col { outline: 2px solid #e8590c !important; outline-offset: -2px !important; }';
 check( 'K. a preview that names a component outlines it - one rule after the whole bundle, which no layer can beat - and one that names none does not', substr_count( $marked, $outline ) === 1 && str_contains( $plainPreview, '#e8590c' ) === false && str_ends_with( substr( $marked, 0, (int) strpos( $marked, '</style>' ) ), $outline ) === true
 	&& substr_count( $marked, '</style>' ) === 1 );
 check( 'K. what stands after mark is a name and nothing else: a selector, a list, a path, a quote, an upper-case letter, an array and nothing are no mark, and no byte of them is in the page',
-	array_filter( [ 'section-col, body', 'a{}', '../x', 'a"b', 'Section-col', 'section_col', "x\0y", 'x y', str_repeat( 'a', 200 ), '' ], static fn( string $value ): bool => str_contains( $visit( 'nino-theme-preview='. $token. '&mark='. rawurlencode( $value ) ), '#e8590c' ) === true ) === []
-	&& str_contains( $visit( 'nino-theme-preview='. $token. '&mark[]=section-col' ), '#e8590c' ) === false && str_contains( $visit( 'nino-theme-preview='. $token. '&mark[a]=x' ), '#e8590c' ) === false );
-check( 'K. the outline is for a request that holds a preview: with no token, a token that is not the session\'s or a token that ran out the page is the page as it is, and carries no outline', str_contains( $visit( 'mark=section-col' ), '#e8590c' ) === false && str_contains( $visit( 'nino-theme-preview='. str_repeat( '0', 32 ). '&mark=section-col' ), '#e8590c' ) === false
-	&& str_contains( $visit( 'nino-theme-preview='. strtoupper( $token ). '&mark=section-col' ), '#e8590c' ) === false );
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() - 1 ];
-check( '...nor with a token whose time is out', themesKept( $cache. '/'. $token, static fn(): bool => str_contains( $visit( 'nino-theme-preview='. $token. '&mark=section-col' ), '#e8590c' ) === false ) );
+	array_filter( [ 'section-col, body', 'a{}', '../x', 'a"b', 'Section-col', 'section_col', "x\0y", 'x y', str_repeat( 'a', 200 ), '' ], static fn( string $value ): bool => str_contains( $visit( 'nino-preview='. $token. '&mark='. rawurlencode( $value ) ), '#e8590c' ) === true ) === []
+	&& str_contains( $visit( 'nino-preview='. $token. '&mark[]=section-col' ), '#e8590c' ) === false && str_contains( $visit( 'nino-preview='. $token. '&mark[a]=x' ), '#e8590c' ) === false );
+check( 'K. the outline is for a request that holds a preview: with no token, a token that is not the session\'s or a token that ran out the page is the page as it is, and carries no outline', str_contains( $visit( 'mark=section-col' ), '#e8590c' ) === false && str_contains( $visit( 'nino-preview='. str_repeat( '0', 32 ). '&mark=section-col' ), '#e8590c' ) === false
+	&& str_contains( $visit( 'nino-preview='. strtoupper( $token ). '&mark=section-col' ), '#e8590c' ) === false );
+$_SESSION[$site['./nino/uid']]['/nino/preview/themes'] = [ $token => time() - 1 ];
+check( '...nor with a token whose time is out', themesKept( $cache. '/'. $token, static fn(): bool => str_contains( $visit( 'nino-preview='. $token. '&mark=section-col' ), '#e8590c' ) === false ) );
 check( 'K. and the request after one that asked for an outline begins with none: the public bundle is the file it was and a page with no query has no style element of the preview', ( function() use ( &$site, $modules, $visit, $publicBefore ): bool {
 	$later = themesReboot( $site, $modules );
 	$unmarked = \Nino\Modules\Assets::stylesheet( $later, THEMES_BUNDLE );
@@ -2130,9 +2143,9 @@ check( 'K. and the request after one that asked for an outline begins with none:
 } )() );
 
 // one request after another in a process: the outline asked for in the first is not in the second, which asks for none
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() + 600 ];
-$visit( 'nino-theme-preview='. $token. '&mark=section-col' );
-check( 'K. a request that holds a preview and names no component has no outline, though the request before it in the same process named one', str_contains( $visit( 'nino-theme-preview='. $token. '&mark=section-col' ), '#e8590c' ) === true && str_contains( $visit( 'nino-theme-preview='. $token ), '#e8590c' ) === false );
+$_SESSION[$site['./nino/uid']]['/nino/preview/themes'] = [ $token => time() + 600 ];
+$visit( 'nino-preview='. $token. '&mark=section-col' );
+check( 'K. a request that holds a preview and names no component has no outline, though the request before it in the same process named one', str_contains( $visit( 'nino-preview='. $token. '&mark=section-col' ), '#e8590c' ) === true && str_contains( $visit( 'nino-preview='. $token ), '#e8590c' ) === false );
 
 // two tabs: a change of an own theme says which state it was made on
 $open = static fn( string $theme ): array => themesCall( $site, 'themes/open', [ 'theme' => $theme ] )[1];
@@ -2555,7 +2568,7 @@ $modules = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modul
 $site = themesSite();
 ninoUser( $site, 'designer@example.com' );
 $site['/nino/http/routes']['GET://'] = [ 'uri' => '/home', 'body' => '[assets '. THEMES_BUNDLE. ']<p id="the-page-of-the-route">[section-wrap][section-row][section-col][text text="<p>The page</p>"][/section-col][/section-row][/section-wrap]</p>' ];
-$cache = ninoSandboxDir( $site ). '/private/data/theme/.preview';
+$cache = ninoSandboxDir( $site ). '/private/data/.preview/themes';
 [ $status, $made ] = themesCall( $site, 'themes/preview', [ 'mix' => \Nino\Modules\Themes\Mix::of( $site, 'band-probe' ) ] );
 $token = (string) $made['token'];
 $groups = \Nino\Components::groups( $site );
@@ -2585,9 +2598,9 @@ $demo = [ 'section', 'header', 'footer', 'button' ];
 $pages = [];
 
 foreach( $demo as $name )
-	$pages[$name] = $answer( 'nino-theme-preview='. $token. '&nino-theme-demo='. $name );
+	$pages[$name] = $answer( 'nino-preview='. $token. '&nino-theme-demo='. $name );
 
-$plain = $answer( 'nino-theme-preview='. $token );
+$plain = $answer( 'nino-preview='. $token );
 $source = static fn( string $name ): string => (string) $groups[$name]['demo'];
 
 check( 'M. a preview that names a group with a demo answers a page of its own in place of the page of the route: the demo of the group is in it - drawn, with its components - and the page of the route is not', array_filter( $demo, static fn( string $name ): bool => str_contains( (string) $pages[$name]['body'], 'the-page-of-the-route' ) === true || str_contains( (string) $pages[$name]['body'], '[section-' ) === true || str_contains( (string) $pages[$name]['body'], '[[' ) === true ) === []
@@ -2612,39 +2625,39 @@ $draftCss = (string) file_get_contents( $cache. '/'. $token. '/theme.css' );
 $inStyle = static function( string $html ): string { preg_match( '#<style data-nino-theme-preview>(.*?)</style>#s', $html, $found ); return str_replace( '<\\/', '</', $found[1] ?? '' ); };
 $publicFile = ninoSandboxDir( $site ). '/public/.cache/style.css';
 $publicBefore = is_file( $publicFile ) === true ? (string) file_get_contents( $publicFile ) : null;
-$answer( 'nino-theme-preview='. $token. '&nino-theme-demo=section' );
+$answer( 'nino-preview='. $token. '&nino-theme-demo=section' );
 
 check( 'M. the stylesheet in it is the draft - what the token holds - and the public bundle is not touched by the demo', str_contains( $inStyle( (string) $pages['section']['body'] ), substr( $draftCss, 0, 200 ) ) === true && ( is_file( $publicFile ) === true ? (string) file_get_contents( $publicFile ) : null ) === $publicBefore );
-check( 'M. the mark outlines the component in the demo as in a page', str_contains( $answer( 'nino-theme-preview='. $token. '&nino-theme-demo=section&mark=section-col' )['body'], '.section-col { outline: 2px solid #e8590c' ) === true );
+check( 'M. the mark outlines the component in the demo as in a page', str_contains( $answer( 'nino-preview='. $token. '&nino-theme-demo=section&mark=section-col' )['body'], '.section-col { outline: 2px solid #e8590c' ) === true );
 
 // a group with no demo, and a name that is no group: the page is the page of the route
 $none = array_values( array_filter( array_keys( $groups ), static fn( string $name ): bool => $groups[$name]['demo'] === '' ) );
-check( 'M. a group that has no demo - a name the register has with nothing to show - leaves the page as it is: the page of the route, with the draft', $none === [] || array_filter( $none, static fn( string $name ): bool => str_contains( (string) $answer( 'nino-theme-preview='. $token. '&nino-theme-demo='. $name )['body'], 'the-page-of-the-route' ) === false ) === [] );
+check( 'M. a group that has no demo - a name the register has with nothing to show - leaves the page as it is: the page of the route, with the draft', $none === [] || array_filter( $none, static fn( string $name ): bool => str_contains( (string) $answer( 'nino-preview='. $token. '&nino-theme-demo='. $name )['body'], 'the-page-of-the-route' ) === false ) === [] );
 check( 'M. what is no name of a group is no demo and reads nothing: a name the register has not, upper case, a path, a list, a selector, a null byte, too long, spaces, nothing - the page of the route stands, with the draft',
 	array_filter( [ 'zzreflectzz', 'ZZREFLECTZZ', '../section', 'section/', 'section,header', 'a{}', "section\0", str_repeat( 'a', 200 ), '', ' section', 'section ' ], static function( string $value ) use ( $answer, $token ): bool {
 
-		$body = (string) $answer( 'nino-theme-preview='. $token. '&nino-theme-demo='. rawurlencode( $value ) )['body'];
+		$body = (string) $answer( 'nino-preview='. $token. '&nino-theme-demo='. rawurlencode( $value ) )['body'];
 
 		return str_contains( $body, 'the-page-of-the-route' ) === false || str_contains( $body, '<style data-nino-theme-preview>' ) === false || str_contains( $body, 'zzreflectzz' ) === true || str_contains( $body, 'ZZREFLECTZZ' ) === true;
-	} ) === [] && str_contains( (string) $answer( 'nino-theme-preview='. $token. '&nino-theme-demo[]=section' )['body'], 'the-page-of-the-route' ) === true && str_contains( (string) $answer( 'nino-theme-preview='. $token. '&nino-theme-demo[a]=section' )['body'], 'the-page-of-the-route' ) === true );
+	} ) === [] && str_contains( (string) $answer( 'nino-preview='. $token. '&nino-theme-demo[]=section' )['body'], 'the-page-of-the-route' ) === true && str_contains( (string) $answer( 'nino-preview='. $token. '&nino-theme-demo[a]=section' )['body'], 'the-page-of-the-route' ) === true );
 
 $register = \Nino\Components::GROUPS;
 $saved = $site[$register]['text']['demo'];
 $site[$register]['text']['demo'] = '';
-check( 'M. a group the register has no demo for - its demo is empty - is the page of the route, though the name is the name of a group', str_contains( (string) $answer( 'nino-theme-preview='. $token. '&nino-theme-demo=text' )['body'], 'the-page-of-the-route' ) === true );
+check( 'M. a group the register has no demo for - its demo is empty - is the page of the route, though the name is the name of a group', str_contains( (string) $answer( 'nino-preview='. $token. '&nino-theme-demo=text' )['body'], 'the-page-of-the-route' ) === true );
 $site[$register]['text']['demo'] = $saved;
 
 // nobody without a token, a token that is not the session's, one that ran out, an account without the right, nobody signed in
 $shows = static fn( string $query ): bool => str_contains( (string) $answer( $query )['body'], '<main id="nino-main"' ) === true && str_contains( (string) $answer( $query )['body'], 'the-page-of-the-route' ) === false;
 
-check( 'M. the demo is for a request that holds a preview: with no token, with a token nobody gave out, with one in the wrong form, the page is the page of the route - and nothing of the demo is in it', $shows( 'nino-theme-preview='. $token. '&nino-theme-demo=section' ) === true && $shows( 'nino-theme-demo=section' ) === false
-	&& $shows( 'nino-theme-preview='. str_repeat( '0', 32 ). '&nino-theme-demo=section' ) === false && $shows( 'nino-theme-preview='. strtoupper( $token ). '&nino-theme-demo=section' ) === false );
-$held = $_SESSION[$site['./nino/uid']]['./themes/preview'];
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() - 1 ];
-check( 'M. ...with a token whose time is out', themesKept( $cache. '/'. $token, static fn(): bool => $shows( 'nino-theme-preview='. $token. '&nino-theme-demo=section' ) === false ) );
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = $held;
+check( 'M. the demo is for a request that holds a preview: with no token, with a token nobody gave out, with one in the wrong form, the page is the page of the route - and nothing of the demo is in it', $shows( 'nino-preview='. $token. '&nino-theme-demo=section' ) === true && $shows( 'nino-theme-demo=section' ) === false
+	&& $shows( 'nino-preview='. str_repeat( '0', 32 ). '&nino-theme-demo=section' ) === false && $shows( 'nino-preview='. strtoupper( $token ). '&nino-theme-demo=section' ) === false );
+$held = $_SESSION[$site['./nino/uid']]['/nino/preview/themes'];
+$_SESSION[$site['./nino/uid']]['/nino/preview/themes'] = [ $token => time() - 1 ];
+check( 'M. ...with a token whose time is out', themesKept( $cache. '/'. $token, static fn(): bool => $shows( 'nino-preview='. $token. '&nino-theme-demo=section' ) === false ) );
+$_SESSION[$site['./nino/uid']]['/nino/preview/themes'] = $held;
 $thumbs = themesCall( $site, 'themes/thumb', [ 'theme' => 'band-probe' ] )[1];
-check( 'M. ...and it is as good with the token of a thumbnail, which is a token like the others', $shows( 'nino-theme-preview='. $thumbs['token']. '&nino-theme-demo=section' ) === true );
+check( 'M. ...and it is as good with the token of a thumbnail, which is a token like the others', $shows( 'nino-preview='. $thumbs['token']. '&nino-theme-demo=section' ) === true );
 $site['/nino/http/routes']['GET://contact'] = [ 'uri' => '/contact', 'body' => '[assets '. THEMES_BUNDLE. '][assets /.cache/script.js]<p id="the-contact-page">c</p>' ];
 $site['/nino/http/routes']['GET://'] = [ 'uri' => '/home', 'body' => '[assets '. THEMES_BUNDLE. '][assets /.cache/script.js]<p id="the-page-of-the-route">[section-wrap][section-row][section-col][text text="<p>The page</p>"][/section-col][/section-row][/section-wrap]</p>', 'header' => [ 'Cache-Control' => 'max-age=999' ] ];
 $at = static function( string $path, string $query, string $method = 'GET' ) use ( &$site ): array {
@@ -2657,10 +2670,10 @@ $at = static function( string $path, string $query, string $method = 'GET' ) use
 	return $request['/nino/http/response'];
 };
 check( 'M. the demo is the answer of the start address and of no other: the page of the contact route, of any other route and of a path the site has no route for is what it is, with the draft, whatever group the query names',
-	str_contains( (string) $at( '/contact', 'nino-theme-preview='. $token. '&nino-theme-demo=section' )['body'], 'the-contact-page' ) === true && str_contains( (string) $at( '/', 'nino-theme-preview='. $token. '&nino-theme-demo=section' )['body'], 'the-page-of-the-route' ) === false
-	&& str_contains( (string) $at( '/robots.txt', 'nino-theme-preview='. $token. '&nino-theme-demo=section' )['body'], 'section-wrap' ) === false && str_contains( (string) $at( '/_admin/', 'nino-theme-preview='. $token. '&nino-theme-demo=section' )['body'], 'A section' ) === false
-	&& str_contains( (string) $at( '/', 'nino-theme-preview='. $token. '&nino-theme-demo=section', 'POST' )['body'], 'A section' ) === false );
-check( 'M. the answer of the demo is never kept, whatever the route says of the cache: its own header is the one that is sent', $at( '/', 'nino-theme-preview='. $token. '&nino-theme-demo=section' )['header']['Cache-Control'] === 'no-store' && $at( '/', 'nino-theme-preview='. $token )['header']['Cache-Control'] === 'max-age=999' );
+	str_contains( (string) $at( '/contact', 'nino-preview='. $token. '&nino-theme-demo=section' )['body'], 'the-contact-page' ) === true && str_contains( (string) $at( '/', 'nino-preview='. $token. '&nino-theme-demo=section' )['body'], 'the-page-of-the-route' ) === false
+	&& str_contains( (string) $at( '/robots.txt', 'nino-preview='. $token. '&nino-theme-demo=section' )['body'], 'section-wrap' ) === false && str_contains( (string) $at( '/_admin/', 'nino-preview='. $token. '&nino-theme-demo=section' )['body'], 'A section' ) === false
+	&& str_contains( (string) $at( '/', 'nino-preview='. $token. '&nino-theme-demo=section', 'POST' )['body'], 'A section' ) === false );
+check( 'M. the answer of the demo is never kept, whatever the route says of the cache: its own header is the one that is sent', $at( '/', 'nino-preview='. $token. '&nino-theme-demo=section' )['header']['Cache-Control'] === 'no-store' && $at( '/', 'nino-preview='. $token )['header']['Cache-Control'] === 'max-age=999' );
 [ , $picture ] = themesCall( $site, 'themes/thumb', [ 'theme' => 'band-probe' ] );
 $linked = static function( string $query ) use ( $at, &$site ): string {
 
@@ -2672,19 +2685,19 @@ $linked = static function( string $query ) use ( $at, &$site ): string {
 };
 $link = '<script src="/public/.cache/script.js"></script>';
 $asPicture = $linked( $picture['query'] );
-$asPreview = $linked( 'nino-theme-preview='. $token );
+$asPreview = $linked( 'nino-preview='. $token );
 $again = $linked( $picture['query'] );
 $plainPage = $linked( '' );
 check( 'M. the link to the script bundle of a page that is asked for with the token of a thumbnail is none - the scripts of the site do not run in a picture - and it is what it was for a request with the token of a preview, for none, and for the request after a picture in the same process', $asPicture === '' && $again === '' && $asPreview === $link && $plainPage === $link );
-unset( $_SESSION[$site['./nino/uid']]['./themes/preview'], $_SESSION[$site['./nino/uid']]['./themes/thumbs'] );
-check( 'M. ...with a token the session does not hold', $shows( 'nino-theme-preview='. $token. '&nino-theme-demo=section' ) === false );
-$_SESSION[$site['./nino/uid']]['./themes/preview'] = $held;
+unset( $_SESSION[$site['./nino/uid']]['/nino/preview/themes'], $_SESSION[$site['./nino/uid']]['/nino/preview/themes-pictures'] );
+check( 'M. ...with a token the session does not hold', $shows( 'nino-preview='. $token. '&nino-theme-demo=section' ) === false );
+$_SESSION[$site['./nino/uid']]['/nino/preview/themes'] = $held;
 $perms = $site['./nino/auth/current']['perms'] ?? null;
 $site['./nino/auth/current']['perms'] = [ '/_admin/elements/manage' ];
-check( 'M. ...with the right taken from the account that holds it', $perms !== null && $shows( 'nino-theme-preview='. $token. '&nino-theme-demo=section' ) === false );
+check( 'M. ...with the right taken from the account that holds it', $perms !== null && $shows( 'nino-preview='. $token. '&nino-theme-demo=section' ) === false );
 $site['./nino/auth/current']['perms'] = $perms;
 \Nino\Auth::logoutUser( $site );
-check( 'M. ...and for nobody who is signed in: a visitor gets the page of the route, whatever the query says', $shows( 'nino-theme-preview='. $token. '&nino-theme-demo=section' ) === false && str_contains( (string) $answer( 'nino-theme-preview='. $token. '&nino-theme-demo=section' )['body'], 'the-page-of-the-route' ) === true );
+check( 'M. ...and for nobody who is signed in: a visitor gets the page of the route, whatever the query says', $shows( 'nino-preview='. $token. '&nino-theme-demo=section' ) === false && str_contains( (string) $answer( 'nino-preview='. $token. '&nino-theme-demo=section' )['body'], 'the-page-of-the-route' ) === true );
 
 
 // -- a theme is copied: the mix and the own css of what is saved, under a new name; the brand is the project's
@@ -2765,7 +2778,8 @@ check( 'M. a key that is taken by a theme of another name is not the copy\'s: th
 // -- the thumbnail of a theme: a draft of its own, saved, in a set of its own
 $thumb = themesSite();
 ninoUser( $thumb, 'designer@example.com' );
-$thumbCache = ninoSandboxDir( $thumb ). '/private/data/theme/.preview';
+$thumbCache = ninoSandboxDir( $thumb ). '/private/data/.preview/themes-pictures';
+$previewCache = ninoSandboxDir( $thumb ). '/private/data/.preview/themes';
 themesCall( $thumb, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'section' => [ 'from' => 'craft-probe' ] ], '.thumb-marker { color: red; }' ) ] );
 themesCall( $thumb, 'themes/brand', [ 'brand' => [ 'color-1' => [ 'own' => true, 'value' => '#9a4b1d' ], 'color-2' => [ 'own' => false ], 'tone' => [ 'own' => false ], 'mode' => [ 'own' => false ], 'font-title' => [ 'own' => false ], 'font-text' => [ 'own' => false ], 'font-button' => [ 'own' => false ] ] ] );
 $previews = [];
@@ -2773,47 +2787,48 @@ $previews = [];
 for( $i = 0; $i < 6; $i++ )
 	$previews[] = themesCall( $thumb, 'themes/preview', [ 'mix' => \Nino\Modules\Themes\Mix::of( $thumb, 'band-probe' ) ] )[1]['token'];
 
-$heldPreviews = $_SESSION[$thumb['./nino/uid']]['./themes/preview'];
+$heldPreviews = $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes'];
 [ $status, $body ] = themesCall( $thumb, 'themes/thumb', [ 'theme' => 'craft-probe' ] );
 $token = (string) ( $body['token'] ?? '' );
-$css = is_file( $thumbCache. '/'. $token. '/theme.css' ) === true ? (string) file_get_contents( $thumbCache. '/'. $token. '/theme.css' ) : '';
+$drawn = static fn( string $given ): array => is_file( $thumbCache. '/'. $given. '/draft.json' ) === true ? (array) json_decode( (string) file_get_contents( $thumbCache. '/'. $given. '/draft.json' ), true ) : [];
+$css = (string) ( $drawn( $token )['css'] ?? '' );
 $brand = \Nino\Modules\Themes\Store::read( $thumb )['brand'];
 
 check( 'M. a thumbnail is asked of a theme by its key and answered as a draft is - a token of 32 hexadecimal digits, the query that asks for it, when it runs out and for how long - and with nothing else: the groups, the brand and the palette are the screen\'s of a draft',
-	$status === 200 && preg_match( \Nino\Modules\Themes::TOKEN, $token ) === 1 && $body['query'] === 'nino-theme-preview='. $token && array_keys( $body ) === [ 'token', 'query', 'expires', 'ttl' ] && $body['ttl'] === \Nino\Modules\Themes::TTL && $body['expires'] > time() + 800 );
+	$status === 200 && preg_match( \Nino\Preview::TOKEN, $token ) === 1 && $body['query'] === 'nino-preview='. $token && array_keys( $body ) === [ 'token', 'query', 'ttl' ] && $body['ttl'] === \Nino\Preview::TTL );
 check( 'M. what it draws is the theme as it is saved with the brand of the project: the stylesheet the compiler makes of the mix of the theme and the stored brand - no draft of the screen is in it - for the user who asked, in the folder of the drafts',
 	$css === \Nino\Modules\Themes\Compiler::compile( $thumb, \Nino\Modules\Themes\Mix::of( $thumb, 'craft-probe' ), $brand )['css'] && str_contains( $css, '#9a4b1d' ) === true && json_decode( (string) file_get_contents( $thumbCache. '/'. $token. '/meta.json' ), true )['user'] === 'designer@example.com'
-	&& is_file( $thumbCache. '/'. $token. '/variants.php' ) === true );
+	&& is_array( $drawn( $token )['variants'] ?? null ) === true );
 [ , $own ] = themesCall( $thumb, 'themes/thumb', [ 'theme' => 'own:lindner' ] );
-check( 'M. an own theme is drawn with its own css, a theme that is none is none, and nothing is kept for either of the refusals', str_contains( (string) file_get_contents( $thumbCache. '/'. $own['token']. '/theme.css' ), '.thumb-marker { color: red; }' ) === true
+check( 'M. an own theme is drawn with its own css, a theme that is none is none, and nothing is kept for either of the refusals', str_contains( (string) ( $drawn( $own['token'] )['css'] ?? '' ), '.thumb-marker { color: red; }' ) === true
 	&& themesCall( $thumb, 'themes/thumb', [ 'theme' => 'nope' ] )[0] === 404 && themesCall( $thumb, 'themes/thumb', [ 'theme' => 'own:nope' ] )[0] === 404 && themesCall( $thumb, 'themes/thumb', [ 'theme' => '' ] )[0] === 404 );
 
 check( 'M. a thumbnail does not count among the five drafts a person works with: the session holds the five previews it held and the tokens of the thumbnails in a set of its own, and every preview is a folder still',
-	$_SESSION[$thumb['./nino/uid']]['./themes/preview'] === $heldPreviews && count( $heldPreviews ) === 5 && array_keys( $_SESSION[$thumb['./nino/uid']]['./themes/thumbs'] ) === [ $token, $own['token'] ] && array_filter( array_keys( $heldPreviews ), static fn( string $held ): bool => is_dir( $thumbCache. '/'. $held ) === false ) === [] );
+	$_SESSION[$thumb['./nino/uid']]['/nino/preview/themes'] === $heldPreviews && count( $heldPreviews ) === 5 && array_keys( $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'] ) === [ $token, $own['token'] ] && array_filter( array_keys( $heldPreviews ), static fn( string $held ): bool => is_dir( $previewCache. '/'. $held ) === false ) === [] );
 
 $more = [];
 
 for( $i = 0; $i < 12; $i++ )
 	$more[] = themesCall( $thumb, 'themes/thumb', [ 'theme' => $i % 2 === 0 ? 'nino' : 'band-probe' ] )[1]['token'];
 
-check( 'M. twelve more thumbnails leave the previews as they were: the five tokens, the five folders - a list of themes is as many pictures as there are themes', $_SESSION[$thumb['./nino/uid']]['./themes/preview'] === $heldPreviews && count( array_filter( array_keys( $heldPreviews ), static fn( string $held ): bool => is_dir( $thumbCache. '/'. $held ) === true ) ) === 5 && count( $_SESSION[$thumb['./nino/uid']]['./themes/thumbs'] ) === 14 );
+check( 'M. twelve more thumbnails leave the previews as they were: the five tokens, the five folders - a list of themes is as many pictures as there are themes', $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes'] === $heldPreviews && count( array_filter( array_keys( $heldPreviews ), static fn( string $held ): bool => is_dir( $previewCache. '/'. $held ) === true ) ) === 5 && count( $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'] ) === 14 );
 
 [ , $again ] = themesCall( $thumb, 'themes/thumb', [ 'theme' => 'craft-probe', 'token' => $token ] );
-check( 'M. a thumbnail asked again with the token it has is the same draft, written again - no new folder, no new token in the set', $again['token'] === $token && count( $_SESSION[$thumb['./nino/uid']]['./themes/thumbs'] ) === 14 );
+check( 'M. a thumbnail asked again with the token it has is the same draft, written again - no new folder, no new token in the set', $again['token'] === $token && count( $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'] ) === 14 );
 [ , $other ] = themesCall( $thumb, 'themes/thumb', [ 'theme' => 'craft-probe', 'token' => $heldPreviews ? (string) array_key_first( $heldPreviews ) : '' ] );
 check( 'M. ...and a token of a preview is no token of a thumbnail: it is not taken over, and the preview is not written over', $other['token'] !== (string) array_key_first( $heldPreviews ) && is_dir( $thumbCache. '/'. $other['token'] ) === true );
 
-$cap = ( new \ReflectionClassConstant( \Nino\Modules\Themes::class, 'THUMBS_MAX' ) )->getValue();
+$cap = ( new \ReflectionClassConstant( \Nino\Modules\Themes::class, 'PICTURES_MAX' ) )->getValue();
 $first = $token;
 
 for( $i = 0; $i < $cap; $i++ )
 	themesCall( $thumb, 'themes/thumb', [ 'theme' => 'nino' ] );
 
-check( 'M. a session holds at most 120 thumbnails - the oldest go, and their folders with them - so that a person who opens the list ten times a day does not fill the disk', $cap === 120 && count( $_SESSION[$thumb['./nino/uid']]['./themes/thumbs'] ) === 120 && isset( $_SESSION[$thumb['./nino/uid']]['./themes/thumbs'][$first] ) === false && is_dir( $thumbCache. '/'. $first ) === false
-	&& $_SESSION[$thumb['./nino/uid']]['./themes/preview'] === $heldPreviews );
+check( 'M. a session holds at most 120 thumbnails - the oldest go, and their folders with them - so that a person who opens the list ten times a day does not fill the disk', $cap === 120 && count( $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'] ) === 120 && isset( $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'][$first] ) === false && is_dir( $thumbCache. '/'. $first ) === false
+	&& $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes'] === $heldPreviews );
 
 // the token of a thumbnail is a token for the page as the others are, for the session and the account that made it - the demo section above shows it for the page of the preview
-$_SESSION[$thumb['./nino/uid']]['./themes/thumbs'] = [];
+$_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'] = [];
 $view = static function( string $query ) use ( &$thumb ): string {
 
 	ninoVisit( $thumb, '/?'. $query );
@@ -2822,7 +2837,7 @@ $view = static function( string $query ) use ( &$thumb ): string {
 };
 [ , $fresh ] = themesCall( $thumb, 'themes/thumb', [ 'theme' => 'own:lindner' ] );
 check( 'M. a page asked with the token of a thumbnail is drawn with the stylesheet of that theme - and with a token that the session no longer holds, it is drawn as the website has it', str_contains( $view( $fresh['query'] ), '.thumb-marker' ) === true && str_contains( $view( $fresh['query'] ), 'data-nino-theme-preview' ) === true
-	&& ( $_SESSION[$thumb['./nino/uid']]['./themes/thumbs'] = [] ) === [] && str_contains( $view( $fresh['query'] ), 'data-nino-theme-preview' ) === false );
+	&& ( $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'] = [] ) === [] && str_contains( $view( $fresh['query'] ), 'data-nino-theme-preview' ) === false );
 
 // -- a theme may be called fonts or settings: the tabs of the pane have addresses of their own, #themes-fonts and #themes-settings
 $sandbox = ninoSandboxDir( $thumb ). '/themes';
@@ -3059,10 +3074,11 @@ check( 'M. of every state that is passed through while a css is typed - '. $chec
 
 [ $status, $body ] = themesCall( $css, 'themes/preview', [ 'mix' => [ 'parts' => [], 'css' => '.a { color: red' ] ] );
 [ , $closed ] = themesCall( $css, 'themes/preview', [ 'mix' => [ 'parts' => [], 'css' => '.a { color: red }' ] ] );
-check( 'M. a preview of unfinished css says what is open, in codes, and is a draft as any other - the token, the query - and closed css says none', $status === 200 && $body['cssFaults'] === [ 'open-block' ] && preg_match( \Nino\Modules\Themes::TOKEN, $body['token'] ) === 1 && $closed['cssFaults'] === [] );
+check( 'M. a preview of unfinished css says what is open, in codes, and is a draft as any other - the token, the query - and closed css says none', $status === 200 && $body['cssFaults'] === [ 'open-block' ] && preg_match( \Nino\Preview::TOKEN, $body['token'] ) === 1 && $closed['cssFaults'] === [] );
 $site = [ 'css' => $css ];
-$cacheDir = ninoSandboxDir( $css ). '/private/data/theme/.preview/'. $body['token'];
-check( 'M. ...and the draft is closed, so the page of the preview draws and logs nothing', str_ends_with( rtrim( (string) file_get_contents( $cacheDir. '/theme.css' ) ), "}\n}" ) === true || str_contains( (string) file_get_contents( $cacheDir. '/theme.css' ), ".a { color: red\n}" ) );
+$cacheDir = ninoSandboxDir( $css ). '/private/data/.preview/themes/'. $body['token'];
+$draftCss = (string) json_decode( (string) file_get_contents( $cacheDir. '/draft.json' ), true )['css'];
+check( 'M. ...and the draft is closed, so the page of the preview draws and logs nothing', str_ends_with( rtrim( $draftCss ), "}\n}" ) === true || str_contains( $draftCss, ".a { color: red\n}" ) );
 ninoWarnings();
 ninoVisit( $css, '/?'. $body['query'] );
 $page = \Nino\Html::renderHtml( $css, '[assets '. THEMES_BUNDLE. ']' );
@@ -3078,6 +3094,30 @@ check( 'M. a saved own css that does not close is applied, and the bundle of the
 check( 'M. ...and what was saved is what was written: the own theme keeps the text as it was typed', json_decode( (string) file_get_contents( ninoSandboxDir( $css ). '/private/data/theme/state/own/open.json' ), true )['css'] === '.saved { color: red' );
 
 })();
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nN. Blocks of the themes\n";
+
+$blocked = themesSite();
+$list = \Nino\Blocks::all( $blocked );
+check( 'N. the blocks of the themes that are installed are listed by the kernel, each with the key of its theme as its origin - none of the themes is on the website, and the one of the feature and the one of a fixture are there alike', ( $list['hero-band']['origin'] ?? '' ) === 'nino' && ( $list['hero-soft']['origin'] ?? '' ) === 'craft-probe'
+	&& ( $list['hero-band']['category'] ?? '' ) === 'intro' && \Nino\Blocks::rejected( $blocked ) === [] );
+check( 'N. each is a block of the kernel as any other: it has its texts in both languages and names the variant of its theme, which the mix that is on may not have - the root of the template carries the variant', array_keys( (array) ( \Nino\Blocks::get( $blocked, 'hero-band' )['texts'] ?? [] ) ) === [ 'de_DE', 'en_US' ] && ( \Nino\Blocks::get( $blocked, 'hero-soft' )['variants'] ?? null ) === [ 'section-wrap' => [ 'soft' ] ]
+	&& ( \Nino\Blocks::get( $blocked, 'hero-band' )['variants'] ?? null ) === [ 'section-wrap' => [ 'band' ] ] );
+
+// A block of a theme that is not a block - a folder that holds code - is left out with its reason, and the others are not touched
+$folder = ninoSandboxDir( $blocked ). '/themes/band-probe/blocks/broken';
+mkdir( $folder. '/text', 0777, true );
+file_put_contents( $folder. '/block.json', '{ "name": ' );
+file_put_contents( $folder. '/block.tpl', '[section-wrap id="broken"][/section-wrap]' );
+file_put_contents( $folder. '/text/en_US.json', '{}' );
+file_put_contents( $folder. '/text/evil.php', '<?php' );
+$again = themesReboot( $blocked, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] );
+ninoWarnings();
+check( 'N. a block of a theme that fails the check of the kernel is not listed and is named with the theme it came from, and the blocks of the other themes are listed as they were', isset( \Nino\Blocks::all( $again )['broken'] ) === false && isset( \Nino\Blocks::rejected( $again )['band-probe/broken'] ) === true
+	&& isset( \Nino\Blocks::all( $again )['hero-band'], \Nino\Blocks::all( $again )['hero-soft'] ) === true );
+$off = themesSite( false );
+check( 'N. with the feature off there is no root of a theme: the blocks of the themes are not listed', isset( \Nino\Blocks::all( $off )['hero-band'] ) === false && isset( \Nino\Blocks::all( $off )['hero-soft'] ) === false );
 
 // the script, run over the stand-in of a page, where node is on the path
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';

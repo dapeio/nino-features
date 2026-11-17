@@ -89,7 +89,7 @@ namespace Nino\Modules\Themes {
 		 *	@param		array			$mix					As Mix::clean() answers it
 		 *	@param		array			$brand				As Brand::clean() answers it
 		 *
-		 *	@return 	array											'css' => the stylesheet, 'variants' => component => [ the variants a part adds, the standard ], 'plan' => see plan(), 'gone' => the fonts the brand names that have no
+		 *	@return 	array											'css' => the stylesheet, 'variants' => component => [ the variants a part adds, the standard, the label of each variant it adds: variant => text or locale => text ], 'plan' => see plan(), 'gone' => the fonts the brand names that have no
 		 *																folder, by the key of the brand - the stylesheet has the stack of the system for them, 'faults' => what the own css leaves open, as
 		 *																balance() names it
 		 */
@@ -182,9 +182,9 @@ namespace Nino\Modules\Themes {
 				if( $entry['part'] !== null && trim( $entry['part']['css'] ) !== '' )
 					$css[] = '/* '. $group. ': the part of '. $entry['theme']. ' '. $entry['version']. ' */'. "\n". trim( $entry['part']['css'] );
 
-				foreach( $entry['variants'] as $component => [ $added, $standard ] )
+				foreach( $entry['variants'] as $component => [ $added, $standard, $labels ] )
 					if( $added !== [] || $standard !== 'regular' )
-						$variants[$component] = [ $added, $standard ];
+						$variants[$component] = [ $added, $standard, $labels ];
 			}
 
 			if( $knobs !== [] )
@@ -403,7 +403,7 @@ namespace Nino\Modules\Themes {
 				if( in_array( $standard, array_merge( $schema, $added ), true ) === false )
 					$standard = 'regular';
 
-				$variants[$component] = [ $added, $standard ];
+				$variants[$component] = [ $added, $standard, array_intersect_key( (array) ( $part['variants'][$component] ?? [] ), array_flip( $added ) ) ];
 			}
 
 			return array_diff_key( $resolved, [ 'values' => 1, 'brand' => 1, 'step' => 1 ] ) + [ 'label' => $declared['label'], 'knobs' => $knobs, 'variants' => $variants ];

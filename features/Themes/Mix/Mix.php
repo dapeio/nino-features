@@ -203,6 +203,22 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	The group a refusal of clean() is about: the first word of 'group.field: reason' and of 'group: a part is ...', where that word names a part
+		 *	of the mix and not the mix, its name, its css or its list of parts
+		 *
+		 *	@param		string		$reason				What clean() answered
+		 *
+		 *	@return 	string										The key of the group, 'page' for the page; '' where the refusal is about no part
+		 */
+		public static function where( string $reason ): string {
+
+			if( preg_match( '/^([a-z][a-z0-9-]*)(\.[a-z0-9.\-]+)?: (.*)$/Ds', $reason, $found ) !== 1 )
+				return '';
+
+			return $found[2] !== '' || str_starts_with( $found[3], 'a part is from' ) === true ? $found[1] : '';
+		}
+
+		/**
 		 *	The css of the developer as it is stored: text, one line ending, a null byte is none, a length is the limit
 		 *
 		 *	@param		mixed			$css

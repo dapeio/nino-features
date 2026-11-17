@@ -356,37 +356,14 @@
 	margin: 0;
 }
 
-/* The bar: the state first, then what was said, then the things to do */
-#themes-app .themes-state {
-	order: -3;
+/* The bar is the kernel's (Nino.adminUi.saveBar()): its rows and its status line are the kernel's too. The state is pushed to the left, and the
+   screen has room under it for the bar on a phone */
+#themes-app .nino-admin-savebar > .nino-admin-savebar-state {
 	margin-right: auto;
 	white-space: nowrap;
 }
 
-#themes-app .themes-bar > .nino-admin-status {
-	text-align: left;
-}
-
-/* On a phone the bar takes two rows and keeps its line: the workbench hides the status line of a bar there, and this one carries the
-   reason a draft could not be made or a theme not saved */
 @media (max-width: 38rem) {
-
-	#themes-app .themes-bar {
-		flex-wrap: wrap;
-		justify-content: flex-end;
-	}
-
-	#themes-app .themes-bar > .nino-admin-status:not(:empty) {
-		display: block;
-		flex: 1 0 100%;
-		order: -4;
-	}
-
-	#themes-app .themes-bar button {
-		min-height: 30px;
-		padding: .25rem .55rem;
-		font-size: max(.75rem, 12px);
-	}
 
 	#themes-app #themes-theme {
 		padding-bottom: 6rem;
