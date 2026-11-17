@@ -66,8 +66,83 @@ namespace Nino\Modules\Themes {
 		private const int MAX_VARIANTS = 8;
 		private const int MAX_EXTRA = 2;
 
+		// Why a theme or a part is not used, one sentence each, %s where a name or a number goes. The sentence is English, for the log and for the one who
+		// writes a theme; the panel says it in its own words, by the code (why() makes the sentence, explain() takes it apart)
+		public const array WHY = [
+			'folder'						=> 'the folder is no folder of its own',
+			'unreadable'				=> '%s is not a file of the theme, is longer than %s bytes or is no text',
+			'no-map'						=> '%s is no JSON map',
+			'theme-key'					=> '"%s" is no key of a theme - there are %s',
+			'key-slug'					=> '"key" is a slug of at most %s characters, and the name of the folder',
+			'version'						=> '"version" is major.minor.patch',
+			'words'							=> '"%s" is a string or a locale => string map, with no empty text',
+			'brand'							=> 'the brand of a theme may suggest %s and nothing else - "%s" is none of them or has no value that fits',
+			'parts-many'				=> 'there are more than %s parts',
+			'themes-many'				=> 'there are more than %s themes',
+			'key-taken'					=> 'the key "%s" is the theme %s\'s',
+			'part-key'					=> '"%s" is no key of a part - there are %s',
+			'part-contract'			=> '"contract" names the feature and the versions of it the part is for, as basis@^1.0',
+			'page-contract'			=> 'the contract of the page is kernel@<constraint> that the kernel %s satisfies',
+			'page-css'					=> 'the page has no stylesheet: its part is part.json alone',
+			'page-keys'					=> 'the part of the page has a contract and knobs',
+			'page-knobs'				=> '"knobs" is a map of at most %s knobs',
+			'knob-name'					=> 'knob "%s": the name is a slug',
+			'knob-shape'				=> 'knob "%s": a knob is a label, a ladder and, where it is for small screens, small',
+			'knob-small'				=> 'knob "%s": "small" is true or false',
+			'knob-ladder'				=> 'knob "%s": "ladder" is a list of %s sets of tokens',
+			'knob-step'					=> 'knob "%s": a step of the ladder is a map of tokens to values',
+			'knob-token'				=> 'knob "%s": "%s" is no token of the page, or its value is no step of a ladder (at most 120 characters, no quote, semicolon, brace, comment or url())',
+			'group-unknown'			=> 'the group "%s" is brought by no feature that is on',
+			'group-feature'			=> 'the contract names "%s", the group is the feature "%s"\'s',
+			'group-version'			=> 'the part is for %s %s, which this project does not have',
+			'map'								=> '"%s" is a map',
+			'ladder-unknown'		=> 'ladder "%s" is no knob of the group',
+			'extra-name'				=> 'knob "%s": an additional knob is <component>.x-<name>',
+			'extra-shape'				=> 'knob "%s": a knob is a label and a ladder',
+			'extra-many'				=> 'knob "%s": a component has %s additional knobs at most',
+			'group-knobs'				=> 'the knobs of the group are refused: %s',
+			'variants-component'	=> 'variants of "%s": it is no component of the group',
+			'variants-many'			=> 'variants of "%s": a map of at most %s variants to their labels',
+			'variants-shape'		=> 'variants of "%s": a variant is a slug with a label, a string or a locale => string map',
+			'standard'					=> 'standard of "%s": the component of the group and one of its variants',
+			'css'								=> 'the css of the part breaks the rules of a part: %s',
+			'copy-refused'			=> 'the copy of %s is refused: %s',
+			'not-installed'			=> 'the theme %s is not installed and the project holds no copy of it',
+		];
+
 		private const string VERSION = '/^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[A-Za-z0-9.]{1,20})?$/D';
 		private const string CONTRACT = '/^([a-z][a-z0-9-]{0,39})@([0-9A-Za-z.^~<>=!*| ,-]{1,40})$/D';
+
+		/**
+		 *	The sentence of a reason, from its code
+		 *
+		 *	@param		string		$code					A key of WHY
+		 *	@param		string|int	...$params	What goes into the sentence, in the order of its %s
+		 *
+		 *	@return 	string
+		 */
+		public static function why( string $code, string|int ...$params ): string {
+			return vsprintf( self::WHY[$code], $params );
+		}
+
+		/**
+		 *	The code and the params of a sentence why() made - what the panel says in its own words
+		 *
+		 *	@param		string		$reason				A reason of a rejected theme or a part that rests
+		 *
+		 *	@return 	array|null								[ 'code' => ..., 'params' => [ ... ] ]; null for no reason
+		 */
+		public static function explain( string $reason ): ?array {
+
+			if( $reason === '' )
+				return null;
+
+			foreach( self::WHY as $code => $sentence )
+				if( preg_match( '/^'. str_replace( '%s', '(.*?)', preg_quote( $sentence, '/' ) ). '$/Ds', $reason, $found ) === 1 )
+					return [ 'code' => $code, 'params' => array_slice( $found, 1 ) ];
+
+			throw new \LogicException( 'a reason that no sentence of WHY makes: '. $reason );
+		}
 
 		/**
 		 *	The folders themes are read from: the one of this feature, and what the callbacks of ROOTS add
@@ -123,7 +198,7 @@ namespace Nino\Modules\Themes {
 				foreach( $folders === false ? [] : $folders as $folder ) {
 
 					if( ++$count > self::MAX_THEMES ) {
-						$read['rejected'][$folder] = 'there are more than '. self::MAX_THEMES. ' themes';
+						$read['rejected'][$folder] = self::why( 'themes-many', self::MAX_THEMES );
 						continue;
 					}
 
@@ -132,7 +207,7 @@ namespace Nino\Modules\Themes {
 					if( is_string( $theme ) === true )
 						$read['rejected'][$folder] = $theme;
 					else if( isset( $read['themes'][$theme['key']] ) === true )
-						$read['rejected'][$folder] = 'the key "'. $theme['key']. '" is the theme '. basename( $read['themes'][$theme['key']]['dir'] ). '\'s';
+						$read['rejected'][$folder] = self::why( 'key-taken', $theme['key'], basename( $read['themes'][$theme['key']]['dir'] ) );
 					else
 						$read['themes'][$theme['key']] = $theme;
 				}
@@ -168,33 +243,33 @@ namespace Nino\Modules\Themes {
 			$real = realpath( $folder );
 
 			if( $real === false || is_dir( $real ) === false || is_link( $folder ) === true )
-				return 'the folder is no folder of its own';
+				return self::why( 'folder' );
 
-			$json = self::_json( $real, $real. '/theme.json', self::MAX_JSON );
+			$json = self::_json( $real, $real. '/theme.json', 'theme.json', self::MAX_JSON );
 
 			if( is_string( $json ) === true )
-				return 'theme.json '. $json;
+				return $json;
 
 			foreach( array_keys( $json ) as $key )
 				if( in_array( $key, self::THEME_KEYS, true ) === false )
-					return '"'. self::_shown( (string) $key ). '" is no key of a theme - there are '. implode( ', ', self::THEME_KEYS );
+					return self::why( 'theme-key', self::_shown( (string) $key ), implode( ', ', self::THEME_KEYS ) );
 
 			$key = $json['key'] ?? null;
 
 			if( is_string( $key ) === false || preg_match( \Nino\Components::NAME, $key ) !== 1 || strlen( $key ) > \Nino\Components::NAME_LENGTH || ( $name !== '' && $key !== $name ) )
-				return '"key" is a slug of at most '. \Nino\Components::NAME_LENGTH. ' characters, and the name of the folder';
+				return self::why( 'key-slug', \Nino\Components::NAME_LENGTH );
 
 			if( is_string( $json['version'] ?? null ) === false || preg_match( self::VERSION, $json['version'] ) !== 1 )
-				return '"version" is major.minor.patch';
+				return self::why( 'version' );
 
 			foreach( [ 'name', 'description' ] as $words )
 				if( \Nino\Features::localizedValid( $json[$words] ?? null ) === false )
-					return '"'. $words. '" is a string or a locale => string map, with no empty text';
+					return self::why( 'words', $words );
 
 			$brand = Brand::suggestion( $json['brand'] ?? [] );
 
 			if( is_string( $brand ) === true )
-				return 'the brand of a theme may suggest '. implode( ', ', Brand::KEYS ). ' and nothing else - "'. self::_shown( $brand ). '" is none of them or has no value that fits';
+				return self::why( 'brand', implode( ', ', Brand::KEYS ), self::_shown( $brand ) );
 
 			$raw = [];
 			$parts = $real. '/parts';
@@ -211,7 +286,7 @@ namespace Nino\Modules\Themes {
 						continue;
 
 					if( count( $raw ) >= self::MAX_PARTS )
-						return 'there are more than '. self::MAX_PARTS. ' parts';
+						return self::why( 'parts-many', self::MAX_PARTS );
 
 					$raw[$group] = self::part( $real, $dir );
 				}
@@ -230,10 +305,10 @@ namespace Nino\Modules\Themes {
 		 */
 		public static function part( string $base, string $dir ): array {
 
-			$json = self::_json( $base, $dir. '/part.json', self::MAX_JSON );
+			$json = self::_json( $base, $dir. '/part.json', 'part.json', self::MAX_JSON );
 
 			if( is_string( $json ) === true )
-				return [ 'json' => null, 'css' => '', 'problem' => 'part.json '. $json ];
+				return [ 'json' => null, 'css' => '', 'problem' => $json ];
 
 			$css = '';
 
@@ -242,7 +317,7 @@ namespace Nino\Modules\Themes {
 				$css = self::_file( $base, $dir. '/part.css', self::MAX_CSS );
 
 				if( $css === null )
-					return [ 'json' => null, 'css' => '', 'problem' => 'part.css is no file of the theme, is longer than '. self::MAX_CSS. ' bytes or is no text' ];
+					return [ 'json' => null, 'css' => '', 'problem' => self::why( 'unreadable', 'part.css', self::MAX_CSS ) ];
 			}
 
 			return [ 'json' => $json, 'css' => $css, 'problem' => '' ];
@@ -295,7 +370,7 @@ namespace Nino\Modules\Themes {
 					$copied = self::theme( $copy, '' );
 
 					if( is_string( $copied ) === true )
-						return [ 'problem' => 'the copy of '. $from. ' is refused: '. $copied ] + $none;
+						return [ 'problem' => self::why( 'copy-refused', $from, $copied ) ] + $none;
 
 					$found = [ 'version' => $copied['version'], 'origin' => 'copy', 'dir' => $copied['dir'], 'brand' => $copied['brand'] ] + $none;
 
@@ -308,7 +383,7 @@ namespace Nino\Modules\Themes {
 			$theme = self::read( $appData )['themes'][$key] ?? null;
 
 			if( $theme === null || ( $version !== '' && $theme['version'] !== $version ) )
-				return $copied !== null ? $found : [ 'problem' => 'the theme '. $from. ' is not installed and the project holds no copy of it' ] + $none;
+				return $copied !== null ? $found : [ 'problem' => self::why( 'not-installed', $from ) ] + $none;
 
 			$found = [ 'version' => $theme['version'], 'origin' => 'installed', 'dir' => $theme['dir'], 'brand' => $theme['brand'] ] + $none;
 
@@ -333,12 +408,12 @@ namespace Nino\Modules\Themes {
 
 			foreach( array_keys( $json ) as $key )
 				if( in_array( $key, self::PART_KEYS, true ) === false )
-					return '"'. self::_shown( (string) $key ). '" is no key of a part - there are '. implode( ', ', self::PART_KEYS );
+					return self::why( 'part-key', self::_shown( (string) $key ), implode( ', ', self::PART_KEYS ) );
 
 			$contract = is_string( $json['contract'] ?? null ) === true && preg_match( self::CONTRACT, $json['contract'], $found ) === 1 ? $found : null;
 
 			if( $contract === null )
-				return '"contract" names the feature and the versions of it the part is for, as basis@^1.0';
+				return self::why( 'part-contract' );
 
 			return $group === 'page' ? self::_page( $json, $contract, $raw['css'] ) : self::_group( $appData, $group, $json, $contract, $raw['css'] );
 		}
@@ -351,47 +426,47 @@ namespace Nino\Modules\Themes {
 		private static function _page( array $json, array $contract, string $css ): array|string {
 
 			if( $contract[1] !== 'kernel' || \Nino\Features::satisfies( $contract[2] ) === false )
-				return 'the contract of the page is kernel@<constraint> that the kernel '. \Nino\VERSION. ' satisfies';
+				return self::why( 'page-contract', \Nino\VERSION );
 
 			if( trim( $css ) !== '' )
-				return 'the page has no stylesheet: its part is part.json alone';
+				return self::why( 'page-css' );
 
 			if( array_diff( array_keys( $json ), [ 'contract', 'knobs' ] ) !== [] )
-				return 'the part of the page has a contract and knobs';
+				return self::why( 'page-keys' );
 
 			$knobs = $json['knobs'] ?? [];
 
 			if( is_array( $knobs ) === false || count( $knobs ) > self::MAX_PAGE_KNOBS )
-				return '"knobs" is a map of at most '. self::MAX_PAGE_KNOBS. ' knobs';
+				return self::why( 'page-knobs', self::MAX_PAGE_KNOBS );
 
 			$clean = [];
 
 			foreach( $knobs as $name => $knob ) {
 
-				$where = 'knob "'. self::_shown( (string) $name ). '": ';
+				$where = self::_shown( (string) $name );
 
 				if( is_string( $name ) === false || preg_match( \Nino\Components::NAME, $name ) !== 1 || strlen( $name ) > \Nino\Components::NAME_LENGTH )
-					return $where. 'the name is a slug';
+					return self::why( 'knob-name', $where );
 
 				if( is_array( $knob ) === false || array_diff( array_keys( $knob ), [ 'label', 'small', 'ladder' ] ) !== [] || \Nino\Features::localizedValid( $knob['label'] ?? null ) === false )
-					return $where. 'a knob is a label, a ladder and, where it is for small screens, small';
+					return self::why( 'knob-shape', $where );
 
 				if( isset( $knob['small'] ) === true && is_bool( $knob['small'] ) === false )
-					return $where. '"small" is true or false';
+					return self::why( 'knob-small', $where );
 
 				$ladder = $knob['ladder'] ?? null;
 
 				if( is_array( $ladder ) === false || array_is_list( $ladder ) === false || count( $ladder ) !== \Nino\Components::STEPS )
-					return $where. '"ladder" is a list of '. \Nino\Components::STEPS. ' sets of tokens';
+					return self::why( 'knob-ladder', $where, \Nino\Components::STEPS );
 
 				foreach( $ladder as $set ) {
 
 					if( is_array( $set ) === false || ( $set !== [] && array_is_list( $set ) === true ) )
-						return $where. 'a step of the ladder is a map of tokens to values';
+						return self::why( 'knob-step', $where );
 
 					foreach( $set as $token => $value )
 						if( in_array( $token, self::PAGE_TOKENS, true ) === false || \Nino\Components::validStep( $value ) === false )
-							return $where. '"'. self::_shown( (string) $token ). '" is no token of the page, or its value is no step of a ladder (at most 120 characters, no quote, semicolon, brace, comment or url())';
+							return self::why( 'knob-token', $where, self::_shown( (string) $token ) );
 				}
 
 				$clean[$name] = [ 'label' => $knob['label'], 'small' => ( $knob['small'] ?? false ) === true, 'ladder' => $ladder ];
@@ -410,27 +485,27 @@ namespace Nino\Modules\Themes {
 			$declared = \Nino\Components::groups( $appData )[$group] ?? null;
 
 			if( $declared === null )
-				return 'the group "'. $group. '" is brought by no feature that is on';
+				return self::why( 'group-unknown', $group );
 
 			$feature = \Nino\Features::get( $appData, $declared['feature'] );
 
 			if( $contract[1] !== $declared['feature'] )
-				return 'the contract names "'. $contract[1]. '", the group is the feature "'. $declared['feature']. '"\'s';
+				return self::why( 'group-feature', $contract[1], $declared['feature'] );
 
 			if( $feature === null || \Nino\Features::satisfies( $contract[2], (string) $feature['version'] ) === false )
-				return 'the part is for '. $contract[1]. ' '. $contract[2]. ', which this project does not have';
+				return self::why( 'group-version', $contract[1], $contract[2] );
 
 			$components = $declared['components'];
 			$all = $declared['knobs'];
 
 			foreach( [ 'ladders', 'knobs', 'variants', 'standard' ] as $key )
 				if( is_array( $json[$key] ?? [] ) === false )
-					return '"'. $key. '" is a map';
+					return self::why( 'map', $key );
 
 			foreach( (array) ( $json['ladders'] ?? [] ) as $key => $ladder ) {
 
 				if( isset( $declared['knobs'][$key] ) === false )
-					return 'ladder "'. self::_shown( (string) $key ). '" is no knob of the group';
+					return self::why( 'ladder-unknown', self::_shown( (string) $key ) );
 
 				$all[$key]['ladder'] = $ladder;
 			}
@@ -440,15 +515,15 @@ namespace Nino\Modules\Themes {
 			foreach( (array) ( $json['knobs'] ?? [] ) as $key => $knob ) {
 
 				if( is_string( $key ) === false || preg_match( '/^([a-z][a-z0-9-]*)\.x-([a-z0-9]+(?:-[a-z0-9]+)*)$/D', $key, $found ) !== 1 )
-					return 'knob "'. self::_shown( (string) $key ). '": an additional knob is <component>.x-<name>';
+					return self::why( 'extra-name', self::_shown( (string) $key ) );
 
 				if( is_array( $knob ) === false || array_diff( array_keys( $knob ), [ 'label', 'ladder' ] ) !== [] )
-					return 'knob "'. $key. '": a knob is a label and a ladder';
+					return self::why( 'extra-shape', $key );
 
 				$extra[$found[1]] = ( $extra[$found[1]] ?? 0 ) + 1;
 
 				if( $extra[$found[1]] > self::MAX_EXTRA )
-					return 'knob "'. $key. '": a component has '. self::MAX_EXTRA. ' additional knobs at most';
+					return self::why( 'extra-many', $key, self::MAX_EXTRA );
 
 				$all[$key] = [ 'token' => '--'. $found[1]. '-x-'. $found[2], 'label' => $knob['label'] ?? '', 'ladder' => $knob['ladder'] ?? null ];
 			}
@@ -456,7 +531,7 @@ namespace Nino\Modules\Themes {
 			$checked = \Nino\Components::validateGroup( $group, [ 'label' => $declared['label'], 'knobs' => $all ], $components );
 
 			if( is_string( $checked ) === true )
-				return $checked;
+				return self::why( 'group-knobs', $checked );
 
 			$schemas = \Nino\Components::components( $appData );
 			$variants = [];
@@ -464,14 +539,14 @@ namespace Nino\Modules\Themes {
 			foreach( (array) ( $json['variants'] ?? [] ) as $component => $words ) {
 
 				if( is_string( $component ) === false || in_array( $component, $components, true ) === false )
-					return 'variants of "'. self::_shown( (string) $component ). '": it is no component of the group';
+					return self::why( 'variants-component', self::_shown( (string) $component ) );
 
 				if( is_array( $words ) === false || count( $words ) > self::MAX_VARIANTS )
-					return 'variants of "'. $component. '": a map of at most '. self::MAX_VARIANTS. ' variants to their labels';
+					return self::why( 'variants-many', $component, self::MAX_VARIANTS );
 
 				foreach( $words as $name => $label )
 					if( is_string( $name ) === false || preg_match( \Nino\Components::NAME, $name ) !== 1 || strlen( $name ) > \Nino\Components::NAME_LENGTH || \Nino\Features::localizedValid( $label ) === false )
-						return 'variants of "'. $component. '": a variant is a slug with a label, a string or a locale => string map';
+						return self::why( 'variants-shape', $component );
 
 				$variants[$component] = $words;
 			}
@@ -483,7 +558,7 @@ namespace Nino\Modules\Themes {
 				$known = array_merge( (array) ( $schemas[$component]['variants'] ?? [] ), array_keys( $variants[$component] ?? [] ) );
 
 				if( is_string( $component ) === false || is_string( $name ) === false || in_array( $name, $known, true ) === false )
-					return 'standard of "'. self::_shown( (string) $component ). '": the component of the group and one of its variants';
+					return self::why( 'standard', self::_shown( (string) $component ) );
 
 				$standard[$component] = $name;
 			}
@@ -491,7 +566,7 @@ namespace Nino\Modules\Themes {
 			$problems = \Nino\Components::partProblems( $css, $components );
 
 			if( $problems !== [] )
-				return implode( '; ', $problems );
+				return self::why( 'css', implode( '; ', $problems ) );
 
 			$knobs = [];
 
@@ -557,20 +632,21 @@ namespace Nino\Modules\Themes {
 		 *
 		 *	@param		string		$base					The real path of the theme
 		 *	@param		string		$file
+		 *	@param		string		$name					How the file is called in a reason
 		 *	@param		int				$limit				The most bytes
 		 *
 		 *	@return 	array|string							The map, or what is wrong with the file
 		 */
-		private static function _json( string $base, string $file, int $limit ): array|string {
+		private static function _json( string $base, string $file, string $name, int $limit ): array|string {
 
 			$text = self::_file( $base, $file, $limit );
 
 			if( $text === null )
-				return 'is not a file of the theme, is longer than '. $limit. ' bytes or is no text';
+				return self::why( 'unreadable', $name, $limit );
 
 			$json = json_decode( $text, true, 16 );
 
-			return is_array( $json ) === true && ( $json === [] || array_is_list( $json ) === false ) ? $json : 'is no JSON map';
+			return is_array( $json ) === true && ( $json === [] || array_is_list( $json ) === false ) ? $json : self::why( 'no-map', $name );
 		}
 
 		/**

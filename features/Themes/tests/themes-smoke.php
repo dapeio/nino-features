@@ -111,6 +111,25 @@ function themesSite( bool $themes = true ): array {
 }
 
 /**
+ *	Run something that may take a draft away, and put the draft back: a request that asks for a token whose time is out removes its draft
+ *
+ *	@param		string		$folder				The folder of the draft
+ *	@param		callable	$run					What is done; its answer is the answer
+ *
+ *	@return 	bool
+ */
+function themesKept( string $folder, callable $run ): bool {
+
+	$copy = $folder. '.kept';
+	\Nino\Filesystem::copyDir( $folder, $copy );
+	$answer = $run();
+	\Nino\Filesystem::removeDir( $folder );
+	rename( $copy, $folder );
+
+	return $answer;
+}
+
+/**
  *	The same project as another request: the files stay, everything a request builds is built again
  *
  *	@param		array			$old					The app data of the project
@@ -496,6 +515,27 @@ check( 'the reasons are the kernel\'s for the css - !important, a class of anoth
 	str_contains( $rests['breaks button']['problem'], '!important' ) === true && str_contains( $rests['breaks footer']['problem'], '.header-wrap' ) === true && str_contains( $rests['breaks header']['problem'], '@import' ) === true && str_contains( $rests['breaks image']['problem'], 'url()' ) === true
 	&& str_contains( $rests['breaks section']['problem'], 'basis' ) === true && str_contains( $rests['breaks-more button']['problem'], 'collections' ) === true && array_filter( $rests, static fn( array $part ): bool => str_contains( $part['problem'], 'evil.example' ) === true || str_contains( $part['problem'], $appData['./nino/test/sandbox'] ) === true ) === [] );
 
+// Every reason is a code and its params, which the panel says in its own words: the sentence is English, for the log
+$reasons = array_merge( array_values( $read['rejected'] ), array_column( $rests, 'problem' ) );
+$explained = array_map( static fn( string $reason ): ?array => \Nino\Modules\Themes\Reader::explain( $reason ), $reasons );
+$samples = [];
+
+foreach( \Nino\Modules\Themes\Reader::WHY as $code => $sentence )
+	$samples[$code] = \Nino\Modules\Themes\Reader::explain( \Nino\Modules\Themes\Reader::why( $code, ...array_slice( [ 'p1', 'p2', 'p3' ], 0, substr_count( $sentence, '%s' ) ) ) );
+
+$words = [ 'de_DE' => require $featureDir. '/text/de_DE.php', 'en_US' => require $featureDir. '/text/en_US.php' ];
+$wordsOf = static fn( array $texts, string $code ): ?string => $texts['[[/_admin/themes/why/'. $code. ']]'] ?? null;
+
+check( 'every reason of the themes that are read - the rejected ones and the parts that rest - is a code with its params, and the sentence is made of them anew',
+	count( $reasons ) >= 20 && array_filter( $explained, static fn( ?array $why ): bool => $why === null ) === []
+	&& array_filter( array_keys( $explained ), static fn( int $at ): bool => \Nino\Modules\Themes\Reader::why( $explained[$at]['code'], ...$explained[$at]['params'] ) !== $reasons[$at] ) === [] );
+check( 'each sentence of the reader is told apart from every other one: it explains as its own code, with its params in order',
+	array_keys( array_filter( $samples, static fn( array $why, string $code ): bool => $why['code'] === $code, ARRAY_FILTER_USE_BOTH ) ) === array_keys( \Nino\Modules\Themes\Reader::WHY ) );
+check( 'each reason has words in both interface languages, with as many places for what goes in as the sentence has',
+	array_filter( array_keys( \Nino\Modules\Themes\Reader::WHY ), static function( string $code ) use ( $words, $wordsOf ): bool {
+		return $wordsOf( $words['de_DE'], $code ) === null || $wordsOf( $words['en_US'], $code ) === null || substr_count( (string) $wordsOf( $words['de_DE'], $code ), '%s' ) !== substr_count( (string) $wordsOf( $words['en_US'], $code ), '%s' );
+	} ) === [] && count( array_filter( array_keys( $words['en_US'] ), static fn( string $key ): bool => str_starts_with( $key, '[[/_admin/themes/why/' ) ) ) === count( \Nino\Modules\Themes\Reader::WHY ) );
+
 $mix = \Nino\Modules\Themes\Mix::clean( $appData, [ 'parts' => array_fill_keys( [ 'button', 'footer', 'header', 'image', 'section', 'text', 'page' ], [ 'from' => 'breaks@1.0.0' ] ) ], false );
 $standard = \Nino\Modules\Themes\Compiler::compile( $appData, [ 'parts' => [] ], \Nino\Modules\Themes\Brand::clean( $appData, [] ) );
 $built = is_array( $mix ) === true ? \Nino\Modules\Themes\Compiler::compile( $appData, $mix, \Nino\Modules\Themes\Brand::clean( $appData, [] ) ) : [ 'css' => '', 'plan' => [ 'groups' => [], 'page' => [ 'problem' => '' ] ] ];
@@ -873,7 +913,7 @@ mkdir( ninoSandboxDir( $site ). '/themes/broken-one' );
 file_put_contents( ninoSandboxDir( $site ). '/themes/broken-one/theme.json', '{ nope' );
 unset( $site['./nino/themes/read'] );
 [ $status, $body ] = themesCall( $site, 'themes/list' );
-check( 'a theme that is refused is in the list with the name of its folder and the reason, and no path of this machine', $status === 200 && count( $body['rejected'] ) === 1 && $body['rejected'][0]['folder'] === 'broken-one' && trim( $body['rejected'][0]['reason'] ) !== '' && str_contains( json_encode( $body ), ninoSandboxDir( $site ) ) === false );
+check( 'a theme that is refused is in the list with the name of its folder and the reason, and no path of this machine', $status === 200 && count( $body['rejected'] ) === 1 && $body['rejected'][0]['folder'] === 'broken-one' && trim( $body['rejected'][0]['reason'] ) !== '' && $body['rejected'][0]['why'] === \Nino\Modules\Themes\Reader::explain( $body['rejected'][0]['reason'] ) && $body['rejected'][0]['why']['code'] !== '' && array_filter( array_merge( ...array_map( static fn( array $theme ): array => array_values( $theme['parts'] ), array_filter( $body['themes'], static fn( array $theme ): bool => $theme['kind'] === 'theme' ) ) ), static fn( array $part ): bool => $part['why'] !== null ) === [] && str_contains( json_encode( $body ), ninoSandboxDir( $site ) ) === false );
 \Nino\Filesystem::removeDir( ninoSandboxDir( $site ). '/themes/broken-one' );
 unset( $site['./nino/themes/read'] );
 
@@ -1404,7 +1444,14 @@ $held = $_SESSION[$site['./nino/uid']]['./themes/preview'];
 $_SESSION[$site['./nino/uid']]['./themes/preview'] = [];
 check( 'another session - one that holds no token - gets the page as it is, though the token is a real one with its files', $shows( 'nino-theme-preview='. $token ) === false && is_dir( $cache. '/'. $token ) === true );
 $_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() - 1 ];
-check( 'a token whose time is out is no token', $shows( 'nino-theme-preview='. $token ) === false );
+$stale = md5( 'stale' );
+$alive = md5( 'alive' );
+mkdir( $cache. '/'. $stale );
+mkdir( $cache. '/'. $alive );
+file_put_contents( $cache. '/'. $alive. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() + 500 ] ) );
+file_put_contents( $cache. '/'. $stale. '/meta.json', json_encode( [ 'user' => 'x', 'expires' => time() - 5 ] ) );
+check( 'a token whose time is out is no token, and the draft it was is taken away by the request that asks for it - with the others that are out of time, and not a draft of another session that has time left', themesKept( $cache. '/'. $token, static fn(): bool => $shows( 'nino-theme-preview='. $token ) === false && is_dir( $cache. '/'. $token ) === false && is_dir( $cache. '/'. $stale ) === false && is_dir( $cache. '/'. $alive ) === true ) );
+\Nino\Filesystem::removeDir( $cache. '/'. $alive );
 $_SESSION[$site['./nino/uid']]['./themes/preview'] = $held;
 $meta = json_decode( (string) file_get_contents( $cache. '/'. $token. '/meta.json' ), true );
 file_put_contents( $cache. '/'. $token. '/meta.json', json_encode( [ 'expires' => time() - 1 ] + $meta ) );
@@ -2074,7 +2121,7 @@ check( 'K. what stands after mark is a name and nothing else: a selector, a list
 check( 'K. the outline is for a request that holds a preview: with no token, a token that is not the session\'s or a token that ran out the page is the page as it is, and carries no outline', str_contains( $visit( 'mark=section-col' ), '#e8590c' ) === false && str_contains( $visit( 'nino-theme-preview='. str_repeat( '0', 32 ). '&mark=section-col' ), '#e8590c' ) === false
 	&& str_contains( $visit( 'nino-theme-preview='. strtoupper( $token ). '&mark=section-col' ), '#e8590c' ) === false );
 $_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() - 1 ];
-check( '...nor with a token whose time is out', str_contains( $visit( 'nino-theme-preview='. $token. '&mark=section-col' ), '#e8590c' ) === false );
+check( '...nor with a token whose time is out', themesKept( $cache. '/'. $token, static fn(): bool => str_contains( $visit( 'nino-theme-preview='. $token. '&mark=section-col' ), '#e8590c' ) === false ) );
 check( 'K. and the request after one that asked for an outline begins with none: the public bundle is the file it was and a page with no query has no style element of the preview', ( function() use ( &$site, $modules, $visit, $publicBefore ): bool {
 	$later = themesReboot( $site, $modules );
 	$unmarked = \Nino\Modules\Assets::stylesheet( $later, THEMES_BUNDLE );
@@ -2083,8 +2130,8 @@ check( 'K. and the request after one that asked for an outline begins with none:
 } )() );
 
 // one request after another in a process: the outline asked for in the first is not in the second, which asks for none
-$visit( 'nino-theme-preview='. $token. '&mark=section-col' );
 $_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() + 600 ];
+$visit( 'nino-theme-preview='. $token. '&mark=section-col' );
 check( 'K. a request that holds a preview and names no component has no outline, though the request before it in the same process named one', str_contains( $visit( 'nino-theme-preview='. $token. '&mark=section-col' ), '#e8590c' ) === true && str_contains( $visit( 'nino-theme-preview='. $token ), '#e8590c' ) === false );
 
 // two tabs: a change of an own theme says which state it was made on
@@ -2594,7 +2641,7 @@ check( 'M. the demo is for a request that holds a preview: with no token, with a
 	&& $shows( 'nino-theme-preview='. str_repeat( '0', 32 ). '&nino-theme-demo=section' ) === false && $shows( 'nino-theme-preview='. strtoupper( $token ). '&nino-theme-demo=section' ) === false );
 $held = $_SESSION[$site['./nino/uid']]['./themes/preview'];
 $_SESSION[$site['./nino/uid']]['./themes/preview'] = [ $token => time() - 1 ];
-check( 'M. ...with a token whose time is out', $shows( 'nino-theme-preview='. $token. '&nino-theme-demo=section' ) === false );
+check( 'M. ...with a token whose time is out', themesKept( $cache. '/'. $token, static fn(): bool => $shows( 'nino-theme-preview='. $token. '&nino-theme-demo=section' ) === false ) );
 $_SESSION[$site['./nino/uid']]['./themes/preview'] = $held;
 $thumbs = themesCall( $site, 'themes/thumb', [ 'theme' => 'band-probe' ] )[1];
 check( 'M. ...and it is as good with the token of a thumbnail, which is a token like the others', $shows( 'nino-theme-preview='. $thumbs['token']. '&nino-theme-demo=section' ) === true );
@@ -2651,6 +2698,12 @@ $source = (string) file_get_contents( $dupState. '/state/own/lindner.json' );
 $brandBytes = (string) file_get_contents( $dupState. '/state/brand.json' );
 $activeBytes = (string) file_get_contents( $dupState. '/state/active.json' );
 $before = themesCall( $dup, 'themes/list' )[1];
+// The stylesheet is dated into the past, so that a write of it shows in its time whatever the clock says
+$dupSheet = ninoSandboxDir( $dup ). '/private/assets/theme.css';
+touch( $dupSheet, 1000000000 );
+clearstatcache();
+$sheetBytes = (string) file_get_contents( $dupSheet );
+$bundleLink = \Nino\Html::renderHtml( themesReboot( $dup, $modules ), '[assets '. THEMES_BUNDLE. ']' );
 [ $status, $body ] = themesCall( $dup, 'themes/duplicate', [ 'theme' => 'own:lindner', 'name' => 'Lindner (copy)' ] );
 $copy = is_file( $dupState. '/state/own/lindner-copy.json' ) === true ? json_decode( (string) file_get_contents( $dupState. '/state/own/lindner-copy.json' ), true ) : [];
 $orig = json_decode( $source, true );
@@ -2663,6 +2716,9 @@ check( 'M. ...and nothing else is touched: the original is the bytes it was, the
 	&& str_contains( (string) file_get_contents( $dupState. '/state/own/lindner-copy.json' ), 'color-1' ) === false && is_file( $dupState. '/previous/own/lindner.json' ) === true && is_file( $dupState. '/previous/own/lindner-copy.json' ) === false );
 $after = themesCall( $dup, 'themes/list' )[1];
 check( 'M. the list shows the copy as an own theme, once, with the stamp of its mix, and what the website shows is the theme it showed', count( $after['themes'] ) === count( $before['themes'] ) + 1 && count( array_filter( $after['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:lindner-copy' && $theme['kind'] === 'own' && $theme['stamp'] === $body['stamp'] ) ) === 1 && $after['active']['theme'] === 'nino' );
+
+clearstatcache();
+check( 'M. a change of a theme the website does not show leaves its stylesheet the file it was - the bytes and the time - and the address of the bundle, so that no visitor fetches the css anew', $sheetBytes !== '' && (string) file_get_contents( $dupSheet ) === $sheetBytes && filemtime( $dupSheet ) === 1000000000 && \Nino\Html::renderHtml( themesReboot( $dup, $modules ), '[assets '. THEMES_BUNDLE. ']' ) === $bundleLink );
 
 [ $status, $body ] = themesCall( $dup, 'themes/duplicate', [ 'theme' => 'craft-probe', 'name' => 'Craft (copy)' ] );
 $copy = json_decode( (string) file_get_contents( $dupState. '/state/own/craft-copy.json' ), true );
@@ -3037,8 +3093,17 @@ else {
 	check( 'K. themes-panel-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
 }
 
-foreach( $sandboxes as $sandbox )
-	if( is_dir( $sandbox ) === true )
-		\Nino\Filesystem::removeDir( $sandbox );
+// The links a probe leaves in a sandbox are taken away first: removeDir() does not follow a link, and a folder with a link in it stays
+foreach( $sandboxes as $sandbox ) {
+
+	if( is_dir( $sandbox ) === false )
+		continue;
+
+	foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $sandbox, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::CHILD_FIRST ) as $entry )
+		if( $entry->isLink() === true )
+			unlink( $entry->getPathname() );
+
+	\Nino\Filesystem::removeDir( $sandbox );
+}
 
 ninoDone( $appData );

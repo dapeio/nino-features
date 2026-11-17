@@ -649,6 +649,11 @@ namespace Nino\Modules\Themes {
 
 				$text = (string) file_get_contents( $state. '/theme.css' );
 
+				// A file that already holds the text is left as it is: its time is the stamp of the bundle, and the browsers of all visitors fetch
+				// the stylesheet anew when the stamp moves
+				if( self::sheet( $file ) === $text )
+					return null;
+
 				// A file that is put in place keeps the rights of the one it replaces - a file that could not be read stays one - so it is opened for reading, and
 				// one that is not the text, or still cannot be read, is not what the website is to have: said, and not taken for done
 				if( \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Themes::SHEET, $text ) === false )

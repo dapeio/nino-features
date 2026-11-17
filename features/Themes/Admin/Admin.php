@@ -98,7 +98,7 @@ namespace Nino\Modules\Themes {
 				$parts = [];
 
 				foreach( $theme['parts'] as $group => $part )
-					$parts[$group] = [ 'ok' => $part['ok'], 'problem' => $part['problem'] ];
+					$parts[$group] = [ 'ok' => $part['ok'], 'problem' => $part['problem'], 'why' => Reader::explain( $part['problem'] ) ];
 
 				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
 			}
@@ -115,7 +115,7 @@ namespace Nino\Modules\Themes {
 			$rejected = [];
 
 			foreach( $read['rejected'] as $folder => $reason )
-				$rejected[] = [ 'folder' => basename( (string) $folder ), 'reason' => $reason ];
+				$rejected[] = [ 'folder' => basename( (string) $folder ), 'reason' => $reason, 'why' => Reader::explain( $reason ) ];
 
 			$fonts = [];
 
@@ -494,6 +494,7 @@ namespace Nino\Modules\Themes {
 					'origin'		=> $entry['origin'],
 					'package'		=> $entry['theme'] === '' ? '' : ( $installed === true ? 'installed' : 'missing' ),
 					'problem'		=> $entry['problem'],
+					'why'				=> Reader::explain( $entry['problem'] ),
 					'missing'		=> $entry['missing'],
 					'knobs'			=> [],
 					'components'	=> [],
@@ -518,7 +519,7 @@ namespace Nino\Modules\Themes {
 
 				foreach( $read['themes'] as $key => $offered )
 					if( isset( $offered['parts'][$group] ) === true )
-						$groups[$group]['offers'][] = [ 'theme' => $key, 'version' => $offered['version'], 'ok' => $offered['parts'][$group]['ok'], 'problem' => $offered['parts'][$group]['problem'] ];
+						$groups[$group]['offers'][] = [ 'theme' => $key, 'version' => $offered['version'], 'ok' => $offered['parts'][$group]['ok'], 'problem' => $offered['parts'][$group]['problem'], 'why' => Reader::explain( $offered['parts'][$group]['problem'] ) ];
 			}
 
 			$values = $plan['brand'];
@@ -885,6 +886,17 @@ namespace Nino\Modules\Themes {
 			self::_tidy( $appData );
 
 			return [ 'token' => $token, 'expires' => $expires ];
+		}
+
+		/**
+		 *	The sweep of _tidy(), for the request that finds a draft out of time
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	void
+		 */
+		public static function sweep( array &$appData ): void {
+			self::_tidy( $appData );
 		}
 
 		/**

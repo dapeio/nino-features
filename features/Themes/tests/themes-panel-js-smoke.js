@@ -64,6 +64,9 @@ const kernelSlug = ( function() {
 const W = function( key ) { return words.en['/_admin/themes/'+ key] };
 const E = function( code ) { return words.en['/_admin/error/'+ code] };
 const Wp = function( key, ...params ) { return String( key.indexOf('api/') === 0 ? E( key.slice( 4 ) ) : W( key ) ).replace( /%[sdn]/g, function() { return String( params.shift() ) } ) };
+// What the API says of a reason: the code and what goes into its sentence, beside the English sentence that is for the log
+const CSS_WHY = { code : 'css', params : [ 'English detail of the css' ] };
+const VERSION_WHY = { code : 'group-version', params : [ 'basis', '^9.0' ] };
 const CANCEL = workbench['/_admin/common/label/cancel'];
 const SAVED = '\u2713 '+ W('state/saved');
 const APPLIED = '\u2713 '+ W('state/applied');
@@ -87,6 +90,10 @@ const CHANGED = '\u25CF '+ W('state/changed');
 	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button' ]
 		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary' ].map( function( role ) { return 'role/'+ role } ) )
 		.forEach( function( key ) { asked.add( key ) } );
+
+	// The reasons the API gives by code: each code of the reader has its words
+	( /public const array WHY = \[([\s\S]*?)\n\t\t\];/.exec( fs.readFileSync( path.join( featureDir, 'Reader/Reader.php' ), 'utf8' ) )[1].match( /^\t\t\t'([a-z-]+)'/gm ) ?? [] )
+		.forEach( function( line ) { asked.add( 'why/'+ line.trim().slice( 1, -1 ) ) } );
 
 	// A key that ends in a hyphen is the beginning of one the script puts together: those are named below
 	Array.from( asked ).filter( function( key ) { return key.slice( -1 ) === '-' } ).forEach( function( key ) { asked.delete( key ) } );
@@ -191,21 +198,21 @@ function describe( mix, rest, brand ) {
 	const theme = from === 'standard' ? '' : from.split('@')[0];
 	const standard = ( section.standard ?? {} )['section-wrap'] ?? ( theme === 'craft' ? 'soft' : 'regular' );
 	const variants = [ { name : 'regular', label : null, source : 'schema' }, { name : theme === 'craft' ? 'soft' : 'band', label : { de_DE : theme === 'craft' ? 'Weiche Fläche' : 'Band', en_US : theme === 'craft' ? 'Soft surface' : 'Band' }, source : 'part' } ];
-	const offers = [ { theme : 'nino', version : '1.0.0', ok : true, problem : '' }, { theme : 'craft', version : '1.0.0', ok : true, problem : '' }, { theme : 'rest', version : '1.0.0', ok : false, problem : 'uses !important' } ];
+	const offers = [ { theme : 'nino', version : '1.0.0', ok : true, problem : '', why : null }, { theme : 'craft', version : '1.0.0', ok : true, problem : '', why : null }, { theme : 'rest', version : '1.0.0', ok : false, problem : 'English detail of the css', why : CSS_WHY } ];
 
 	return {
 		groups : {
-			page : { label : '', from : ( part.page ?? {} ).from ?? 'standard', theme : 'nino', version : '1.0.0', origin : 'installed', package : 'installed', problem : '', missing : false, components : [], offers : offers,
+			page : { label : '', from : ( part.page ?? {} ).from ?? 'standard', theme : 'nino', version : '1.0.0', origin : 'installed', package : 'installed', problem : '', why : null, missing : false, components : [], offers : offers,
 				knobs : [ { key : 'size', label : { de_DE : 'Grundgröße', en_US : 'Base size' }, extra : false, small : false, step : ( ( part.page ?? {} ).values ?? {} ).size ?? 0, default : { '--page-size' : '100%' }, ladder : [ { '--page-size' : '90%' }, { '--page-size' : '95%' }, { '--page-size' : '100%' }, { '--page-size' : '105%' }, { '--page-size' : '110%' } ] },
 					{ key : 'motion', label : { de_DE : 'Bewegung', en_US : 'Motion' }, extra : false, small : false, step : 0, default : { '--page-motion' : '.15s' }, ladder : [ { '--page-motion' : '0s' }, { '--page-motion' : '.1s' }, { '--page-motion' : '.15s' }, { '--page-motion' : '.25s' }, { '--page-motion' : '.4s' } ] } ] },
-			section : { label : GROUP_LABEL.section, from : from, theme : theme, version : theme === '' ? '' : '1.0.0', origin : theme === '' ? 'standard' : 'installed', package : theme === '' ? '' : 'installed', problem : rest === true ? 'the part is for basis ^9.0' : '', missing : false, offers : offers,
+			section : { label : GROUP_LABEL.section, from : from, theme : theme, version : theme === '' ? '' : '1.0.0', origin : theme === '' ? 'standard' : 'installed', package : theme === '' ? '' : 'installed', problem : rest === true ? 'English detail of the version' : '', why : rest === true ? VERSION_WHY : null, missing : false, offers : offers,
 				knobs : knobs( from, section.values ?? {} ),
 				components : [
 					{ name : 'section-title', label : COMPONENT_LABEL['section-title'], variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' },
 					{ name : 'section-wrap', label : COMPONENT_LABEL['section-wrap'], variants : variants, standard : standard },
 					{ name : 'section-col', label : COMPONENT_LABEL['section-col'], variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' },
 				] },
-			header : { label : GROUP_LABEL.header, from : header.from ?? 'standard', theme : '', version : '', origin : 'standard', package : '', problem : '', missing : false, offers : [ offers[0] ], knobs : [], components : [ { name : 'header-wrap', label : COMPONENT_LABEL['header-wrap'], variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' } ] },
+			header : { label : GROUP_LABEL.header, from : header.from ?? 'standard', theme : '', version : '', origin : 'standard', package : '', problem : '', why : null, missing : false, offers : [ offers[0] ], knobs : [], components : [ { name : 'header-wrap', label : COMPONENT_LABEL['header-wrap'], variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' } ] },
 			footer : plain( 'footer', 'footer-wrap', [ offers[0] ] ),
 			brand : plain( 'brand', 'brand-wrap', [] ),
 			settings : plain( 'settings', 'settings-wrap', [] ),
@@ -229,16 +236,16 @@ function describe( mix, rest, brand ) {
 
 /** A group that has the standard part and one component, as a register has it: the footer, and two groups that are called as sections of the panel are */
 function plain( name, component, offers ) {
-	return { label : GROUP_LABEL[name], from : 'standard', theme : '', version : '', origin : 'standard', package : '', problem : '', missing : false, offers : offers, knobs : [], components : [ { name : component, label : COMPONENT_LABEL[component] ?? { de_DE : component, en_US : component }, variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' } ] };
+	return { label : GROUP_LABEL[name], from : 'standard', theme : '', version : '', origin : 'standard', package : '', problem : '', why : null, missing : false, offers : offers, knobs : [], components : [ { name : component, label : COMPONENT_LABEL[component] ?? { de_DE : component, en_US : component }, variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' } ] };
 }
 
 function listAnswer( active, extra, pages, demos, copies ) {
 
 	return Object.assign( {
 		themes : [
-			{ key : 'nino', kind : 'theme', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '' } }, active : active === 'nino' },
-			{ key : 'craft', kind : 'theme', version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '' } }, active : active === 'craft' },
-			{ key : 'rest', kind : 'theme', version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'uses !important' }, section : { ok : true, problem : '' } }, active : false },
+			{ key : 'nino', kind : 'theme', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'nino' },
+			{ key : 'craft', kind : 'theme', version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
+			{ key : 'rest', kind : 'theme', version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
 			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : 'craft@1.0.0', header : 'standard' }, active : active === 'own:lindner' },
 		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
@@ -590,7 +597,7 @@ function world( options ) {
 
 	check( 'B. the active theme says so, and has no button to apply it', w.text( card('nino') ).indexOf( words.en['/_admin/themes/chip/active'] ) !== -1 && w.byClass( card('nino'), 'nino-admin-btn--small' ).filter( function( b ) { return b.dataset.apply !== undefined } ).length === 0 );
 	check( 'B. the others have a button to apply them and one to edit', [ 'craft', 'rest', 'own:lindner' ].every( function( key ) { return findAll( card( key ), function( b ) { return b.dataset.apply === key } ).length === 1 && findAll( card( key ), function( b ) { return b.dataset.edit === key } ).length === 1 } ) );
-	check( 'B. a theme with a part that rests says how many, and why', w.text( card('rest') ).indexOf( 'uses !important' ) !== -1 && w.text( card('rest') ).indexOf( 'Resting parts: 1' ) !== -1 && w.text( card('craft') ).indexOf('Resting') === -1 );
+	check( 'B. a theme with a part that rests says how many, and why', w.text( card('rest') ).indexOf( Wp( 'why/css' ) ) !== -1 && w.text( card('rest') ).indexOf( 'English detail' ) === -1 && w.text( card('rest') ).indexOf( 'Resting parts: 1' ) !== -1 && w.text( card('craft') ).indexOf('Resting') === -1 );
 	check( 'B. an own theme says what it is made of, by the theme each group comes from', w.text( card('own:lindner') ).indexOf( 'Section from Craft' ) !== -1 && w.text( card('own:lindner') ).indexOf( 'Header from Standard' ) !== -1, w.text( card('own:lindner') ) );
 
 	w.dirtyAnswers.length = 0;
@@ -677,7 +684,7 @@ function world( options ) {
 	const space = w.byClass( w.theme, 'nino-admin-steps' ).filter( function( strip ) { return strip.attributes['aria-labelledby'] === 'themes-section-section-wrap-space' } )[0];
 
 	check( 'D. a knob is a row of five steps from -2 to +2, the middle one marked as the default and chosen', space.children.length === 5 && space.children.map( function( button ) { return w.text( button ).replace( /\s*\(.*\)/, '' ) } ).join() === '−2,−1,0,+1,+2' && space.children[2].attributes['aria-checked'] === 'true' && space.children[2].dataset.standard === 'true' );
-	check( 'D. the label of a knob says what the ladder gives at the step when that is a plain length', w.hint( 'themes-section-section-wrap-space' ) === '1rem', w.hint( 'themes-section-section-wrap-space' ) );
+	check( 'D. the label of a knob says what the ladder gives at the step when that is a plain length - in pixels, as it is measured, so that a length in rem reads the same whether the preview is there or not', w.hint( 'themes-section-section-wrap-space' ) === '16px', w.hint( 'themes-section-section-wrap-space' ) );
 
 	fire( space.children[0], 'click' );
 	check( 'D. ...and nothing where the step is a calculation', w.hint( 'themes-section-section-wrap-space' ) === '', w.hint( 'themes-section-section-wrap-space' ) );
@@ -806,7 +813,7 @@ function world( options ) {
 
 	const pages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
 
-	check( 'E. the pages of the site the preview may show are a choice - "Automatic" first, and chosen - and the pages the list names', pages !== undefined && pages.children.map( function( option ) { return option.value } ).join() === ',/,/contact' && pages.value === '' && w.text( pages.children[0] ) === W('label/page-auto-home') );
+	check( 'E. the pages of the site the preview may show are a choice - "Automatic" first, and chosen - and the pages the list names', pages !== undefined && pages.children.map( function( option ) { return option.value } ).join() === ',/,/contact' && pages.value === '' && w.text( pages.children[0] ) === W('label/page-auto') );
 
 	pages.value = '/contact';
 	fire( pages, 'change' );
@@ -900,7 +907,7 @@ function world( options ) {
 
 	const labels = w.byClass( w.theme, 'nino-admin-field-label' ).map( function( label ) { return w.text( label ) } );
 
-	check( 'F. the screen of the group is drawn from the answer: +2 is still on, and is 3.5rem in this part', w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] === 'true' && w.hint( 'themes-section-section-wrap-space' ) === '3.5rem', labels.join() );
+	check( 'F. the screen of the group is drawn from the answer: +2 is still on, and is 3.5rem in this part', w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] === 'true' && w.hint( 'themes-section-section-wrap-space' ) === '56px', labels.join() );
 	check( 'F. the part brings its own variant and the standard variant of the part stands', w.step( 'themes-section-section-wrap-variant', 1 ) !== undefined && w.text( w.step( 'themes-section-section-wrap-variant', 1 ) ) === 'Soft surface' && w.step( 'themes-section-section-wrap-variant', 1 ).attributes['aria-checked'] === 'true' );
 
 	const heads = w.byClass( w.theme, 'nino-admin-accordion-button' ).map( function( head ) { return w.text( w.byClass( head, 'nino-admin-accordion-label' )[0] ) } );
@@ -965,7 +972,7 @@ function world( options ) {
 	w.rest = true;
 	w.at( '#themes/nino/section/section-wrap' );
 
-	check( 'F. a group whose part rests says why, in the words of the rule, and that the standard part stands', w.byClass( w.theme, 'nino-admin-notice' ).length === 1 && w.text( w.byClass( w.theme, 'nino-admin-notice' )[0] ).indexOf( 'the part is for basis ^9.0' ) !== -1 );
+	check( 'F. a group whose part rests says why, in the words of the rule, and that the standard part stands', w.byClass( w.theme, 'nino-admin-notice' ).length === 1 && w.text( w.byClass( w.theme, 'nino-admin-notice' )[0] ).indexOf( Wp( 'why/group-version', 'basis', '^9.0' ) ) !== -1 && w.text( w.byClass( w.theme, 'nino-admin-notice' )[0] ).indexOf( 'English detail' ) === -1 );
 
 	w.state.hash = '#themes/nino/groups';
 	w.panel.showCurrent();
@@ -1153,6 +1160,9 @@ function world( options ) {
 	w.panel.showCurrent();
 
 	check( 'H. an address that names another panel leaves the screen of this one as it is', w.requests.length === 0 && w.theme.className.indexOf('admin-hidden') === -1 );
+
+	// the tab is chosen once more: the shell shows the panel before it has written the address of it, and what is shown is what the address says
+	check( 'H. ...and the address is the level that is shown, so that a reload comes back to it', w.state.hash === '#themes/craft' );
 
 	// a theme that cannot be opened
 	const x = world();
@@ -1342,7 +1352,7 @@ function world( options ) {
 	const pages = w.byTag( w.theme, 'select' ).filter( function( one ) { return one.className.indexOf('themes-page') !== -1 } )[0];
 
 	check( 'K. a link that is followed in the preview does not drop the draft: the page it came to is the page that is chosen, where the list has it, and the frame is loaded with the token again', replaced.length === 1 && replaced[0] === 'http://workbench.test/site/contact?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap' && pages.value === '/contact', replaced.join() );
-	check( 'K. the pages the list has are named by their title with the path behind it, and by the path where they have no title', pages.children.map( function( option ) { return option.textContent } ).join('|') === W('label/page-auto-home')+ '|Start (/)|/contact' );
+	check( 'K. the pages the list has are named by their title with the path behind it, and by the path where they have no title', pages.children.map( function( option ) { return option.textContent } ).join('|') === W('label/page-auto')+ '|Start (/)|/contact' );
 
 	// the page loaded was the draft's: nothing is done
 	location.search = '?nino-theme-preview='+ 'a'.repeat( 32 )+ '&mark=section-wrap';
@@ -1408,7 +1418,7 @@ function world( options ) {
 
 	w.frame().contentDocument = document;
 
-	check( 'K. a value that is a calculation is measured only where the frame has loaded: while it is busy nothing is read from it', w.hint( 'themes-section-section-wrap-space' ) === '1rem' && probes.length === 0 );
+	check( 'K. a value that is a calculation is measured only where the frame has loaded: while it is busy nothing is read from it', w.hint( 'themes-section-section-wrap-space' ) === '16px' && probes.length === 0 );
 
 	fire( w.frame(), 'load' );
 	fire( w.step( 'themes-section-section-wrap-space', 0 ), 'click' );
@@ -1586,7 +1596,7 @@ function world( options ) {
 
 	w.at( '#themes/nino/section/section-title' );
 
-	check( 'K. while the frame has not loaded the value stands as it is written', w.hint( 'themes-section-section-title-size' ) === '1.2rem' );
+	check( 'K. while the frame has not loaded a length in rem is the pixels of the root of the panel, and a share stays as it is written', w.hint( 'themes-section-section-title-size' ) === '19.2px' );
 
 	w.frame().contentDocument = { body : element('body'), createElement : function( tag ) { const probe = element( tag ); probe.getBoundingClientRect = function() { return { width : 19.2, height : 1 } }; probe.remove = function() {}; return probe } };
 	fire( w.frame(), 'load' );
@@ -3520,7 +3530,7 @@ function nameField( w ) {
 	w.at( '#themes' );
 	w.panel.reload();
 	w.serve( { listExtra : { themes : [
-		{ key : 'long', kind : 'theme', version : '1.0.0', name : { de_DE : long, en_US : long }, description : { de_DE : long+ ' '+ long, en_US : long+ ' '+ long }, brand : {}, parts : { a : { ok : false, problem : 'one' }, b : { ok : false, problem : 'two' } }, active : false },
+		{ key : 'long', kind : 'theme', version : '1.0.0', name : { de_DE : long, en_US : long }, description : { de_DE : long+ ' '+ long, en_US : long+ ' '+ long }, brand : {}, parts : { a : { ok : false, problem : 'one', why : CSS_WHY }, b : { ok : false, problem : 'two', why : VERSION_WHY } }, active : false },
 		{ key : 'own:short', kind : 'own', name : 'S', from : {}, stamp : 'x', active : false },
 	] } } );
 
@@ -3531,6 +3541,17 @@ function nameField( w ) {
 	check( 'Z. the name of a card is a heading whose title is the whole name, and the text of it is whole too - the cut is the stylesheet\'s, so that a screen reader has all of it', title.title === long && title.textContent === long );
 	check( 'Z. the description and what rests are laid on lines of a fixed number - a class of the stylesheet - with the whole text in the title; a theme with two parts that rest says the first and puts both in the title, and the chip counts them', clamped.length === 2 && clamped.every( function( node ) { return node.title !== '' && node.title.indexOf( node.textContent ) !== -1 } ) && w.byClass( card, 'themes-rests' ).length === 1 && w.byClass( card, 'themes-rests' )[0].title.split('\n').length === 2 );
 	check( 'Z. the buttons are the last thing in a card, in a block of their own, whatever the card says', card.children[card.children.length - 1].className.indexOf('nino-admin-actions') !== -1 );
+}
+
+{
+	// a folder that is not read says why in the words of the panel: the sentence of the API is English, for the log
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	w.panel.reload();
+	w.serve( { listExtra : { rejected : [ { folder : 'broken', reason : 'English sentence of the log', why : { code : 'version', params : [] } } ] } } );
+
+	check( 'B. a theme folder that is not read is said with the words of the panel for its reason, and the English sentence is not shown', w.text( w.list ).indexOf( Wp( 'msg/rejected', 'broken', Wp( 'why/version' ) ) ) !== -1 && w.text( w.list ).indexOf( 'English sentence' ) === -1 );
 }
 
 {
@@ -3601,7 +3622,7 @@ function nameField( w ) {
 	w.state.hash = '#themes/nino/footer';
 	w.panel.showCurrent();
 
-	check( 'V. where it shows the start page because the group has no demo it says that: "Automatic - start page", and no component is outlined on a page that does not show it', w.text( pages.children[0] ) === W('label/page-auto-home') && w.text( marked ) === '' && w.frame().attributes.src.indexOf('mark=') === -1 );
+	check( 'V. where it shows the start page because the group has no demo the choice is still the short one and the line beside it says what is shown, and no component is outlined on a page that does not show it', w.text( pages.children[0] ) === W('label/page-auto') && w.text( marked ) === W('msg/auto-home') && w.frame().attributes.src.indexOf('mark=') === -1 );
 
 	w.state.hash = '#themes/nino/section/section-wrap';
 	w.panel.showCurrent();

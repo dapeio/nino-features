@@ -155,7 +155,21 @@ namespace Nino\Modules {
 			$thumbs = \Nino\Runtime::getSessionValue( $appData, self::THUMBS, [] );
 			$user = \Nino\Auth::getCurrentUser( $appData );
 
-			if( is_array( $held ) === false || is_array( $thumbs ) === false || max( (int) ( $held[$token] ?? 0 ), (int) ( $thumbs[$token] ?? 0 ) ) <= time() || $user === false || \Nino\Auth::checkPermission( $appData, self::PERM ) === false )
+			if( is_array( $held ) === false || is_array( $thumbs ) === false || $user === false || \Nino\Auth::checkPermission( $appData, self::PERM ) === false )
+				return;
+
+			$until = max( (int) ( $held[$token] ?? 0 ), (int) ( $thumbs[$token] ?? 0 ) );
+
+			// A draft this session was given and whose time is out is not kept for nobody to ask for: the one that is asked for is taken away, and with it
+			// the others that are out - only here, where a draft has been found stale, and not at each request of a preview: the sweep reads a folder
+			// after folder (0.8 ms for the 125 there can be, on a warm disk, where a request of a preview takes 5 ms)
+			if( $until > 0 && $until <= time() ) {
+				\Nino\Filesystem::removeDir( \Nino\Filesystem::path( $appData, self::DRAFTS. '/'. $token ) );
+				\Nino\Modules\Themes\Admin::sweep( $appData );
+				return;
+			}
+
+			if( $until === 0 )
 				return;
 
 			$meta = \Nino\Filesystem::getFileContent( $appData, self::DRAFTS. '/'. $token. '/meta.json', [] );

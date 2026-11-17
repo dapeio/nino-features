@@ -74,6 +74,7 @@
 	const PLAIN_VALUE		= /^-?\d*\.?\d+[a-z%]{0,3}$/;
 	const CALCULATED		= /calc\(|var\(|min\(|max\(|clamp\(/;
 	const LENGTH				= /^-?\d*\.?\d+(?:px|rem|em|ch|vw|vh|pt)$/;
+	const REM						= /^(-?\d*\.?\d+)rem$/;
 
 	/**
 	 *	What the panel holds: the list, the theme that is open with its saved description and its working mix, the
@@ -133,6 +134,17 @@
 	 */
 	const word = function( key, ...params ) {
 		return Nino.adminUi.format( Nino.content.getText( '/_admin/themes/'+ key ), ...params );
+	};
+
+	/**
+	 *	Why a theme or a part is not used, in the words of the panel: the API sends the code of the reason and what goes into its sentence
+	 *
+	 *	@param		{Object}		why					{ code, params }
+	 *
+	 *	@return		{string}
+	 */
+	const reasonText = function( why ) {
+		return word( 'why/'+ why.code, ...why.params );
 	};
 
 	/**
@@ -541,6 +553,22 @@
 		}
 	};
 
+	/**
+	 *	The size of a rem in the panel, in pixels: 16 where the browser says none
+	 *
+	 *	@return		{number}
+	 */
+	const rootSize = function() {
+
+		try {
+			const size = parseFloat( wn.getComputedStyle( dc.documentElement ).fontSize );
+
+			return isFinite( size ) === true && size > 0 ? size : 16;
+		} catch( e ) {
+			return 16;
+		}
+	};
+
 	// What stands beside the name of a knob at a step: the value that is measured, in pixels, where it is a length or a calculation and the frame
 	// has loaded the draft; else the value as it is written, where that is plain
 	const hintOf = function( knob, step ) {
@@ -556,6 +584,12 @@
 
 			if( measured !== '' )
 				return measured;
+
+			// Where nothing can be measured - the preview is hidden or has not loaded - a length in rem comes to the pixels of the root of the panel
+			const rem = REM.exec( raw );
+
+			if( rem !== null )
+				return ( Math.round( parseFloat( rem[1] ) * rootSize() * 10 ) / 10 )+ 'px';
 		}
 
 		return valueOf( knob, step );
@@ -1061,7 +1095,7 @@
 		if( entry.problem === '' )
 			return null;
 
-		return Nino.adminUi.notice( word( 'msg/rests', sourceOf( group ), entry.problem ) );
+		return Nino.adminUi.notice( word( 'msg/rests', sourceOf( group ), reasonText( entry.why ) ) );
 	};
 
 	const lead = function( group ) {
@@ -1146,8 +1180,8 @@
 
 		const chosen = pageOf() !== '';
 
-		S.view.marked.textContent = chosen === false ? '' : ( S.mark === '' ? word('msg/whole-page') : word( 'msg/marked', S.markedLabel ) );
-		S.view.tools.auto.textContent = S.demo !== '' ? word('label/page-auto') : word('label/page-auto-home');
+		// "Automatically" says what it shows beside the choice, in the quiet line, so that the choice itself is short enough for its field
+		S.view.marked.textContent = chosen === false ? ( S.demo !== '' ? '' : word('msg/auto-home') ) : ( S.mark === '' ? word('msg/whole-page') : word( 'msg/marked', S.markedLabel ) );
 	};
 
 	/**
@@ -1183,7 +1217,7 @@
 			copy.appendChild( el( 'strong', '', groupLabel( group ) ) );
 
 			if( entry.problem !== '' )
-				copy.appendChild( el( 'small', '', word( 'msg/rests-short', entry.problem ) ) );
+				copy.appendChild( el( 'small', '', word( 'msg/rests-short', reasonText( entry.why ) ) ) );
 
 			link.appendChild( copy );
 
@@ -3150,7 +3184,7 @@
 
 		tools.appendChild( box );
 
-		return { el : tools, marked : marked, auto : auto, pages : pages, widths : widths, paint : widths.set };
+		return { el : tools, marked : marked, pages : pages, widths : widths, paint : widths.set };
 	};
 
 	// --- one theme: opened, drawn, shown --------------------------------------------------------------------
@@ -3602,9 +3636,9 @@
 		// A part that rests is told once, the first, and the chip counts the others: all of them are in the title
 		if( resting.length > 0 ) {
 
-			const note = el( 'p', 'nino-admin-hint themes-rests themes-clamp', word( 'msg/card-rests', groupLabelOf( resting[0] ), theme.parts[resting[0]].problem ) );
+			const note = el( 'p', 'nino-admin-hint themes-rests themes-clamp', word( 'msg/card-rests', groupLabelOf( resting[0] ), reasonText( theme.parts[resting[0]].why ) ) );
 
-			note.title = resting.map( function( group ) { return word( 'msg/card-rests', groupLabelOf( group ), theme.parts[group].problem ) } ).join('\n');
+			note.title = resting.map( function( group ) { return word( 'msg/card-rests', groupLabelOf( group ), reasonText( theme.parts[group].why ) ) } ).join('\n');
 			card.appendChild( note );
 		}
 
@@ -3702,7 +3736,7 @@
 		mount.appendChild( wrap );
 
 		data.rejected.forEach( function( rejected ) {
-			mount.appendChild( Nino.adminUi.hint( word( 'msg/rejected', rejected.folder, rejected.reason ), 'error' ) );
+			mount.appendChild( Nino.adminUi.hint( word( 'msg/rejected', rejected.folder, reasonText( rejected.why ) ), 'error' ) );
 		} );
 
 		mount.appendChild( Nino.adminUi.hint( ( data.active === null ? word('hint/list-none') : word('hint/list') ) ) );
@@ -3805,9 +3839,12 @@
 
 			const at = here();
 
-			// The address names another panel: what is on screen stays
-			if( Nino.admin.themes.ready === true && at.panel !== 'themes' )
+			// The address names another panel - a tab of the pane was chosen, and the shell has not written its own yet: what is on screen stays, and
+			// the address says it, so that a reload shows the same level
+			if( Nino.admin.themes.ready === true && at.panel !== 'themes' ) {
+				Nino.admin.router.set( 'themes', S.ready === true ? addressOf( S.at ) : [] );
 				return;
+			}
 
 			// The first address of a page is no step of the history: nothing is given the focus when a page is loaded
 			const first = Nino.admin.themes.ready === false;
