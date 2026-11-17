@@ -145,7 +145,10 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	The folders themes are read from: the one of this feature, and what the callbacks of ROOTS add
+		 *	The folders themes are read from, in the order the first theme of a key wins: the one of this feature, the folder of the
+		 *	installed packages of themes (\Nino\Packages::dir()), and what the callbacks of ROOTS add. A theme whose key is the one of an
+		 *	earlier folder is not read and is said once, in 'rejected', as read() answers it: a package never puts out the theme that
+		 *	comes with the feature, nor does a folder of the hook put out a package
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -153,7 +156,7 @@ namespace Nino\Modules\Themes {
 		 */
 		public static function roots( array &$appData ): array {
 
-			$asked = [ \Nino\Features::dir(). '/Themes/themes' ];
+			$asked = [ \Nino\Features::dir(). '/Themes/themes', \Nino\Packages::dir( $appData, \Nino\Packages::THEME, '' ) ];
 			$listed = \Nino\Callbacks::doCallbacks( $appData, self::ROOTS, $asked );
 			$roots = [];
 

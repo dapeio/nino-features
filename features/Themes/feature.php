@@ -19,6 +19,18 @@ return [
 				'en_US' => 'A theme is a folder with its key, version, name, description and suggestions for the brand; nothing in it is code and the feature reads no file but theme.json, part.json and part.css.',
 				'de_DE' => 'Ein Theme ist ein Ordner mit Schlüssel, Version, Name, Beschreibung und Vorschlägen für die Marke; nichts darin ist Code, und das Feature liest nur theme.json, part.json und part.css.',
 			],
+			'private/packages/themes/<key>/' => [
+				'en_US' => 'A theme installed from the catalogue is a folder like the one of a theme that comes with the feature, and the kernel puts it here; themes come with the feature, from a package or from the hook.',
+				'de_DE' => 'Ein aus dem Katalog installiertes Theme ist ein Ordner wie der eines mitgelieferten Themes, und der Kernel legt ihn hier ab; Themes kommen mit dem Feature, aus einem Paket oder vom Hook.',
+			],
+			'a theme with the key of an earlier folder' => [
+				'en_US' => 'Themes are read from the feature, then from the packages, then from the folders of the hook, and a key that an earlier folder has is not read and is named in the list of what was refused.',
+				'de_DE' => 'Themes werden aus dem Feature gelesen, dann aus den Paketen, dann aus den Ordnern des Hooks, und ein Schlüssel, den ein früherer Ordner hat, wird nicht gelesen und im Abgelehnten genannt.',
+			],
+			'a package that is installed, updated or removed' => [
+				'en_US' => 'The website never changes by it: it draws from the copy of the parts it uses, the panel says where a package is missing, and a theme is applied only by hand.',
+				'de_DE' => 'Die Website ändert sich dadurch nie: sie zeichnet aus der Kopie der Teile, die sie nutzt, das Panel sagt, wo ein Paket fehlt, und ein Theme gilt erst, wenn es von Hand angewendet wird.',
+			],
 			'themes/<key>/blocks/<block>/' => [
 				'en_US' => 'A theme may bring blocks, each a folder of block.json, block.tpl and text/<locale>.json; the kernel checks every block and leaves out one that fails.',
 				'de_DE' => 'Ein Theme kann Blocks mitbringen, je ein Ordner mit block.json, block.tpl und text/<locale>.json; der Kernel prüft jeden Block und lässt einen aus, der nicht besteht.',
@@ -82,8 +94,8 @@ return [
 				'de_DE' => 'Nennt den Ordner blocks/ jedes installierten Themes, nicht nur des aktiven, mit dem Schlüssel des Themes als Herkunft seiner Blocks.',
 			],
 			'/nino/themes/roots' => [
-				'en_US' => 'Names more folders to read themes from, each holding <key>/theme.json, beside the one this feature brings.',
-				'de_DE' => 'Nennt weitere Ordner, aus denen Themes gelesen werden, je mit <key>/theme.json, neben dem, den dieses Feature mitbringt.',
+				'en_US' => 'Names more folders to read themes from, each holding <key>/theme.json, after the one this feature brings and the one of the installed packages.',
+				'de_DE' => 'Nennt weitere Ordner, aus denen Themes gelesen werden, je mit <key>/theme.json, nach dem, den dieses Feature mitbringt, und dem der installierten Pakete.',
 			],
 		],
 		'install' => [

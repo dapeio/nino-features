@@ -142,6 +142,10 @@ namespace Nino\Modules {
 		 */
 		public static function blocks( array &$appData, array $roots ): array {
 
+			// The kernel asks this hook where it reads the blocks anew, which it does after Blocks::forget() - what \Nino\Packages::place() and remove() call - or at
+			// the first need of a request: what this request read of the themes is then dropped too, so that a theme put in place or taken away in it is seen
+			unset( $appData['./nino/themes/read'] );
+
 			foreach( \Nino\Modules\Themes\Reader::read( $appData )['themes'] as $key => $theme )
 				if( is_dir( $theme['dir']. '/blocks' ) === true )
 					$roots[] = [ 'dir' => $theme['dir']. '/blocks', 'origin' => (string) $key, 'label' => $theme['name'] ];

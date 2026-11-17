@@ -3120,6 +3120,87 @@ check( 'N. a block of a theme that fails the check of the kernel is not listed a
 $off = themesSite( false );
 check( 'N. with the feature off there is no root of a theme: the blocks of the themes are not listed', isset( \Nino\Blocks::all( $off )['hero-band'] ) === false && isset( \Nino\Blocks::all( $off )['hero-soft'] ) === false );
 
+// O. a theme of a package of the catalogue: the folder of \Nino\Packages is a root of the themes, and the website never follows a change of it
+$packages = themesSite();
+ninoUser( $packages, 'designer@example.com' );
+$modules = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ];
+
+// What the next request sees: the files stay, the website is drawn from its bundle, the panel lists the themes
+$bundle = static fn( array $project ): string => \Nino\Modules\Assets::stylesheet( themesReboot( $project, $modules ), THEMES_BUNDLE );
+$listed = static function( array $project ) use ( $modules ): array {
+
+	$next = themesReboot( $project, $modules );
+
+	return array_column( themesCall( $next, 'themes/list' )[1]['themes'], null, 'key' );
+};
+
+// craft-probe comes as a package and not through the hook: the folder of the sandbox keeps band-probe alone
+\Nino\Filesystem::removeDir( ninoSandboxDir( $packages ). '/themes/craft-probe' );
+$craftFiles = [];
+
+foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $fixtures. '/craft-probe', FilesystemIterator::SKIP_DOTS ) ) as $file )
+	$craftFiles[str_replace( '\\', '/', substr( $file->getPathname(), strlen( $fixtures. '/craft-probe/' ) ) )] = (string) file_get_contents( $file->getPathname() );
+
+ksort( $craftFiles );
+check( 'O. before the package is placed no theme has the key craft-probe, in the list and in the register of the blocks', isset( $listed( $packages )['craft-probe'] ) === false && isset( \Nino\Blocks::all( $packages )['hero-soft'] ) === false );
+
+// this request has read the themes already: what it read is what the hook of the blocks must not trust after the kernel changed the folder
+\Nino\Modules\Themes\Reader::read( $packages );
+check( 'O. the kernel places the theme package under private/packages/themes/', \Nino\Packages::place( $packages, \Nino\Packages::THEME, 'craft-probe', $craftFiles ) === true && is_file( ninoSandboxDir( $packages ). '/private/packages/themes/craft-probe/theme.json' ) === true );
+$list = $listed( $packages );
+check( 'O. the next request lists the package as it lists a theme that comes with the feature: key, version, name and a part for the page and each group', $list['craft-probe']['version'] === '1.0.0' && $list['craft-probe']['kind'] === 'theme' && $list['craft-probe']['name']['en_US'] === 'Craft (probe)'
+	&& array_keys( $list['craft-probe']['parts'] ) === [ 'button', 'footer', 'header', 'image', 'page', 'section', 'text' ] );
+check( 'O. the blocks of the package are in the register of the blocks the request that placed it reads, by the name of the theme, and the blocks of the other themes are as they were', ( \Nino\Blocks::all( $packages )['hero-soft']['origin'] ?? '' ) === 'craft-probe'
+	&& ( \Nino\Blocks::all( $packages )['hero-soft']['label']['en_US'] ?? '' ) === 'Craft (probe)' && isset( \Nino\Blocks::all( $packages )['hero-band'] ) === true );
+
+[ $status, $body ] = themesCall( $packages, 'themes/apply', [ 'theme' => 'craft-probe' ] );
+$drawn = $bundle( $packages );
+check( 'O. a theme of a package is applied and the website draws it: its part of the section is in the stylesheet', $status === 200 && $body['active']['theme'] === 'craft-probe' && str_contains( $drawn, '/* section: the part of craft-probe 1.0.0 */' ) === true );
+
+// version 1.1.0 at the place of the package: another ladder for the section
+$newer = $craftFiles;
+$newer['theme.json'] = str_replace( '"version": "1.0.0"', '"version": "1.1.0"', $newer['theme.json'] );
+$newer['parts/section/part.json'] = str_replace( '"0.6rem"', '"0.75rem"', $newer['parts/section/part.json'] );
+check( 'O. the kernel replaces the package by a version 1.1.0 with another ladder', $newer['theme.json'] !== $craftFiles['theme.json'] && $newer['parts/section/part.json'] !== $craftFiles['parts/section/part.json']
+	&& \Nino\Packages::place( $packages, \Nino\Packages::THEME, 'craft-probe', $newer ) === true );
+check( 'O. the panel says the version that is installed', $listed( $packages )['craft-probe']['version'] === '1.1.0' );
+check( 'O. after a new version of the package the website draws byte for byte what it drew, from the copy of the version it was applied at', $bundle( $packages ) === $drawn && is_dir( ninoSandboxDir( $packages ). '/private/data/theme/copies/craft-probe@1.0.0' ) === true );
+
+// an own theme with the part of the section of the package, to see where the part comes from when the package is gone
+[ $status, $body ] = themesCall( $packages, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'section' => [ 'from' => 'craft-probe@1.0.0' ] ] ) ] );
+check( 'O. an own theme takes the part of the section of the package', $status === 200 && $body['theme'] === 'own:lindner' );
+
+// the package is taken away
+\Nino\Modules\Themes\Reader::read( $packages );
+check( 'O. the kernel takes the package away: the register of the blocks of the request that did it has no block of it, and the next request lists no theme of its key', \Nino\Packages::remove( $packages, \Nino\Packages::THEME, 'craft-probe' ) === true
+	&& isset( \Nino\Blocks::all( $packages )['hero-soft'] ) === false && isset( $listed( $packages )['craft-probe'] ) === false );
+check( 'O. with the package gone the website draws byte for byte what it drew', $bundle( $packages ) === $drawn );
+$next = themesReboot( $packages, $modules );
+[ $status, $body ] = themesCall( $next, 'themes/open', [ 'theme' => 'own:lindner' ] );
+check( 'O. and the panel says "package missing" at the parts that come from it, which are the copies of the project', $status === 200 && $body['groups']['section']['package'] === 'missing' && $body['groups']['section']['origin'] === 'copy' );
+
+// a package that is put in the folder by hand and that the kernel would have refused: a part that loads another file, a block with a file of code
+$hand = ninoSandboxDir( $packages ). '/private/packages/themes/handmade';
+\Nino\Filesystem::copyDir( $fixtures. '/craft-probe', $hand );
+file_put_contents( $hand. '/theme.json', str_replace( '"key": "craft-probe"', '"key": "handmade"', $craftFiles['theme.json'] ) );
+file_put_contents( $hand. '/parts/section/part.css', "@import url( 'other.css' );\n". $craftFiles['parts/section/part.css'] );
+file_put_contents( $hand. '/blocks/hero-soft/text/evil.php', '<?php' );
+$next = themesReboot( $packages, $modules );
+$read = \Nino\Modules\Themes\Reader::read( $next );
+check( 'O. a package by hand that the kernel would have refused disables nothing: its part rests with the reason, its other parts and the other themes are read as they were, and its block is left out while the blocks of the other themes are listed', isset( $read['themes']['handmade'] ) === true
+	&& $read['themes']['handmade']['parts']['section']['ok'] === false && $read['themes']['handmade']['parts']['section']['problem'] !== '' && $read['themes']['handmade']['parts']['button']['ok'] === true && isset( $read['themes']['band-probe'], $read['themes']['nino'] ) === true
+	&& isset( \Nino\Blocks::all( $next )['hero-soft'] ) === false && isset( \Nino\Blocks::rejected( $next )['handmade/hero-soft'] ) === true && isset( \Nino\Blocks::all( $next )['hero-band'] ) === true );
+\Nino\Filesystem::removeDir( $hand );
+
+// a package with the key of the theme that comes with the feature
+$shipped = \Nino\Modules\Themes\Reader::read( $packages )['themes']['nino'];
+\Nino\Filesystem::copyDir( $fixtures. '/craft-probe', ninoSandboxDir( $packages ). '/private/packages/themes/nino' );
+file_put_contents( ninoSandboxDir( $packages ). '/private/packages/themes/nino/theme.json', str_replace( '"key": "craft-probe"', '"key": "nino"', $craftFiles['theme.json'] ) );
+$next = themesReboot( $packages, $modules );
+$read = \Nino\Modules\Themes\Reader::read( $next );
+check( 'O. a package with the key of the theme that comes with the feature is not read - the one that comes with it stays - and is said once, in what was refused', $read['themes']['nino']['dir'] === $shipped['dir'] && $read['themes']['nino']['version'] === $shipped['version']
+	&& count( array_filter( array_keys( $read['rejected'] ), static fn( string $folder ): bool => basename( $folder ) === 'nino' ) ) === 1 );
+
 // the script, run over the stand-in of a page, where node is on the path
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 
