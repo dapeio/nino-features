@@ -1,0 +1,13 @@
+/*	mode-switch - the standard part: three buttons in one outline, the one that is on filled; hidden until the script has seen that the brand leaves the mode to the visitor	*/
+:root {
+	--mode-switch-radius: var(--page-radius);
+}
+.mode-switch { display: inline-flex; align-items: stretch; padding: 2px; border: var(--page-line) solid var(--brand-line); border-radius: var(--mode-switch-radius); background: var(--brand-ground); color: var(--brand-ink); line-height: 1; }
+.mode-switch[hidden] { display: none; }
+.mode-switch-button { display: inline-flex; align-items: center; gap: .4em; min-height: 24px; margin: 0; padding: .45em .7em; border: 0; border-radius: calc( var(--mode-switch-radius) - 2px ); background: none; color: inherit; font: inherit; font-size: var(--page-text-1); line-height: 1; cursor: pointer; transition: background-color var(--page-motion) ease, color var(--page-motion) ease; }
+.mode-switch-button:hover { background: var(--brand-ground-alt); }
+.mode-switch-button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 1px; }
+.mode-switch-button[aria-pressed="true"] { background: var(--brand-accent); color: var(--brand-on-accent); }
+.mode-switch-icon { flex: 0 0 auto; width: 1.15em; height: 1.15em; }
+.mode-switch--icons .mode-switch-button { padding: .45em .55em; }
+.mode-switch--icons .mode-switch-name { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

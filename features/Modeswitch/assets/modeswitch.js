@@ -1,17 +1,17 @@
 /**
  *	Nino - Modeswitch
  *	modeswitch.js	Three states, one control: read the site light, read it dark,
- *							or read it the way the system asks. The first two write
- *							data-nino-mode on the root element, which is what every Nino
- *							project's assets/theme.css already answers to; the third
- *							removes the attribute, because the stylesheet's rule for a
- *							reader who chose nothing is a prefers-color-scheme query that
- *							only applies while nothing is written.
+ *							or read it the way the system asks. The first two set the token
+ *							--brand-scheme on the root element, which is what the whole
+ *							palette turns on (every colour of the page is a light-dark()
+ *							pair, and color-scheme is set from the token); the third
+ *							removes what was set, so that the brand's own value stands again.
  *
- *							That is also why "system" keeps working when the reader
- *							changes their system setting with the page open: there is no
- *							stored state to go stale, only an absence the browser
- *							re-answers on its own.
+ *							The control is there only where the brand leaves the mode to
+ *							the visitor, that is where the token, as the style sheets give
+ *							it, is "light dark". A brand that says light or dark has
+ *							decided, and the switch stays hidden - the component is drawn
+ *							hidden and this script is what shows it.
  *
  *							The choice lives in localStorage and nowhere else - no
  *							cookie, nothing sent to the server, nothing to declare. A
@@ -20,12 +20,12 @@
  *							and the switch then works for the length of the visit rather
  *							than not at all.
  *
- *							It needs Nino.js, which every site loads, for one thing: the
- *							first painting of the buttons waits for Nino.events to say
- *							the page is ready. The choice itself is put on the page the
- *							moment the script runs (see below), and the manifest's
- *							assets bundle it into the project's own /.cache/script.js
- *							behind the kernel's scripts.
+ *							The choice is put on the page the moment this script runs and,
+ *							before the page is painted, by assets/mode-early.js, which the
+ *							output phase puts into the head (Modeswitch::callbackOutput())
+ *							- the same decision, made earlier. It needs Nino.js, which every
+ *							site loads, for one thing: the first painting of the buttons
+ *							waits for Nino.events to say the page is ready.
  *
  *	@package		Dape/Nino
  *	@author			David Perchermeier <mail@dape.io>
@@ -36,13 +36,13 @@
 
 	'use strict';
 
-	// What the reader's choice is kept under, and the three it can be. A
+	// What the reader's choice is kept under, the three it can be and the token it sets. A
 	// value that is none of them is treated as no choice at all - a stored
 	// string is something another script, another version or a person with a
 	// console can have put there
 	const KEY 	= 'nino-mode';
 	const MODES = [ 'light', 'system', 'dark' ];
-	const ATTR 	= 'data-nino-mode';
+	const TOKEN = '--brand-scheme';
 
 	/**
 	 *	The stored choice, or 'system' where there is none
@@ -62,8 +62,28 @@
 	};
 
 	/**
-	 *	Put a choice on the page. 'system' removes the attribute rather than
-	 *	writing a third value - see this file's docblock
+	 *	Whether the brand leaves the mode to the visitor: the token as the style sheets give it,
+	 *	without what this script set on the root element
+	 *
+	 *	@return		{boolean}
+	 */
+	const open = function() {
+
+		const style = dc.documentElement.style;
+		const set = style.getPropertyValue( TOKEN );
+
+		style.removeProperty( TOKEN );
+		const brand = wn.getComputedStyle( dc.documentElement ).getPropertyValue( TOKEN ).replace( /\s+/g, ' ' ).trim();
+
+		if( set !== '' )
+			style.setProperty( TOKEN, set );
+
+		return brand === 'light dark' || brand === 'dark light';
+	};
+
+	/**
+	 *	Put a choice on the page. 'system' removes what was set rather than
+	 *	writing a third value
 	 *
 	 *	@param		{string}	mode
 	 *
@@ -71,15 +91,16 @@
 	 */
 	const apply = function( mode ) {
 		if( mode === 'system' )
-			dc.documentElement.removeAttribute( ATTR );
-		else
-			dc.documentElement.setAttribute( ATTR, mode );
+			dc.documentElement.style.removeProperty( TOKEN );
+		else if( open() === true )
+			dc.documentElement.style.setProperty( TOKEN, mode );
 	};
 
 	/**
 	 *	Mark the button that is on, on every switch the page carries - a site
 	 *	with one in the header and one in the footer has two, and they are the
-	 *	same switch
+	 *	same switch. A switch is shown here and nowhere else, and only where
+	 *	the brand leaves the mode open
 	 *
 	 *	@param		{string}	mode
 	 *
@@ -87,20 +108,14 @@
 	 */
 	const paint = function( mode ) {
 
-		// ...and unhidden here rather than in a step of its own: the switch is
-		// rendered hidden so a reader without JavaScript is not left with three
-		// buttons that do nothing, and the moment it can be painted is the
-		// moment it is worth showing
-		const switches = dc.querySelectorAll( '.nino-modeswitch' );
+		const show = open();
+		const switches = dc.querySelectorAll( '.mode-switch' );
 		for( let i = 0; i < switches.length; i++ )
-			switches[i].hidden = false;
+			switches[i].hidden = show === false;
 
-		const buttons = dc.querySelectorAll( '.nino-modeswitch-btn' );
-		for( let i = 0; i < buttons.length; i++ ) {
-			const on = buttons[i].getAttribute('data-mode') === mode;
-			buttons[i].classList.toggle( 'nino-is-active', on );
-			buttons[i].setAttribute( 'aria-pressed', on === true ? 'true' : 'false' );
-		}
+		const buttons = dc.querySelectorAll( '.mode-switch-button' );
+		for( let i = 0; i < buttons.length; i++ )
+			buttons[i].setAttribute( 'aria-pressed', buttons[i].getAttribute( 'data-mode' ) === mode ? 'true' : 'false' );
 	};
 
 	/**
@@ -121,18 +136,16 @@
 		try { wn.localStorage.setItem( KEY, mode ); } catch( e ) { /* see stored() */ }
 	};
 
-	/*	Applied here, at parse time, rather than on ready: the bundle this
-		sits in is the last thing in <body>, and every statement earlier than
-		DOMContentLoaded is one repaint less for a reader whose choice differs
-		from their system setting. A project that wants none at all moves
-		[assets /.cache/script.js] into its html-header.tpl	*/
+	/*	Applied here, at parse time, as well as by the early script of the head: the bundle
+		this sits in is the last thing in <body>, and a page whose head the output phase
+		could not reach still gets the choice	*/
 	apply( stored() );
 
 	/*	One listener on the document rather than one per button, so a switch
 		that arrives later - a lightbox, a fragment swapped in - needs nothing
 		to wire it up. closest() so a click on the icon inside a button is a
 		click on the button	*/
-	const onClick = function( event ) {
+	dc.addEventListener( 'click', function( event ) {
 
 		const target = event.target;
 
@@ -141,24 +154,18 @@
 		if( target === null || typeof target === 'undefined' || typeof target.closest !== 'function' )
 			return;
 
-		const button = target.closest('.nino-modeswitch-btn');
+		const button = target.closest( '.mode-switch-button' );
 
 		if( button === null )
 			return;
 
-		choose( button.getAttribute('data-mode') );
-	};
+		choose( button.getAttribute( 'data-mode' ) );
+	} );
 
-	dc.addEventListener( 'click', onClick );
-
-	/*	The other half of "needs nothing to wire it up": a switch is rendered
-		hidden and pressed on nothing, and paint() - the only thing that ever
-		unhides one - has already run by the time a later one arrives. A
-		switch nobody unhid is one nobody can click, however well the listener
-		above would have caught the click. So the document is watched for one
-		being added, and painting is what answers it. A browser without
-		MutationObserver keeps the switches the page loaded with, which is
-		what every browser did before	*/
+	/*	A switch is rendered hidden and pressed on nothing, and paint() - the only thing that
+		ever shows one - has already run by the time a later one arrives, so the document is
+		watched for one being added. A browser without MutationObserver keeps the switches the
+		page loaded with	*/
 	if( typeof wn.MutationObserver === 'function' )
 		new wn.MutationObserver( function( records ) {
 
@@ -173,7 +180,7 @@
 					if( added[i].nodeType !== 1 )
 						continue;
 
-					if( added[i].matches( '.nino-modeswitch' ) === false && added[i].querySelector( '.nino-modeswitch' ) === null )
+					if( added[i].matches( '.mode-switch' ) === false && added[i].querySelector( '.mode-switch' ) === null )
 						continue;
 
 					// Every switch on the page is the same switch, so one pass
@@ -184,8 +191,7 @@
 			}
 		} ).observe( dc.documentElement, { childList : true, subtree : true } );
 
-	// ...and the buttons that are on the page now. They are rendered pressed
-	// on nothing, because only the browser knows which one is
+	// ...and the buttons that are on the page now
 	Nino.events.bindCallback( 'ready', function() { paint( stored() ) } );
 
 } )( window, document );

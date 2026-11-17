@@ -1,0 +1,18 @@
+<?php
+declare(strict_types=1);
+
+// The switch's four words - merged into the project's text/de_DE.php on every
+// activation (add-only: a key the project already has stays, one it lacks is
+// added); editors keep them current in the Text panel from then on.
+return [
+
+	// What the switch is as a whole, for a screen reader - the three buttons
+	// inside it do not say on their own what they belong to
+	'[[/feature/modeswitch/switch/label]]'	=> 'Darstellung',
+
+	'[[/feature/modeswitch/mode/light]]'	=> 'Hell',
+	// Not "Automatic": what happens here is not the site deciding something, it
+	// is the site leaving it to the device
+	'[[/feature/modeswitch/mode/system]]'	=> 'System',
+	'[[/feature/modeswitch/mode/dark]]'		=> 'Dunkel',
+];
