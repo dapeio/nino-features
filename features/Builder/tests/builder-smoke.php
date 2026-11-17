@@ -45,6 +45,9 @@ $numbers	= [];
  */
 function builderCall( array &$appData, string $action, array $data = [] ): array {
 
+	// A page is asked for in a language: the native one unless the call names another - or null, which names none
+	$data += [ 'locale' => \Nino\Locales::getNativeLocale( $appData ) ];
+
 	[ $status, $body ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], $data, $action );
 
 	return [ $status, $body ];
@@ -838,6 +841,26 @@ $words = \Nino\Text::values( $site, '/template/page-home' )['/template/page-home
 $shown = $draw( $site, $emptied['query'] );
 
 check( 'a text that is emptied in the draft is drawn as the next language has it - and is not drawn as nothing', str_contains( $shown, 'Fallback text' ) === true && str_contains( $shown, '<!--nino:s ~title-->Fallback text' ) === true && $words !== [] );
+
+// the language of a request is the one it names: the session may hold another, set in a tab beside this one since the page was drawn
+\Nino\Runtime::setSessionValue( $site, './admin/content-locale', 'en_US' );
+[ , $inGerman ] = builderCall( $site, 'builder/preview', [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [ '/template/page-home/hero/title' => [ 'de_DE' => 'Fassung-de', 'en_US' => 'Fassung-en' ] ], 'locale' => 'de_DE' ] );
+$shown = $draw( $site, $inGerman['query'] );
+[ , $listed ] = builderCall( $site, 'builder/list', [ 'locale' => 'de_DE' ] );
+[ , $opened ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home', 'locale' => 'de_DE' ] );
+
+check( 'a draft is drawn in the language of the request and not in the one of the session, and the list and the page are opened in it', str_contains( $shown, 'Fassung-de' ) === true && str_contains( $shown, 'Fassung-en' ) === false && $listed['contentLocale'] === 'de_DE' && $opened['contentLocale'] === 'de_DE' );
+
+$before = builderSnapshot( $site );
+$asked = [];
+
+foreach( [ 'list' => [], 'open' => [ 'template' => 'page-home' ], 'preview' => [ 'template' => 'page-home', 'tree' => $tree ], 'save' => [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [ '/template/page-home/hero/title' => [ 'de_DE' => 'Ohne Sprache' ] ], 'base' => $opened['stamp'], 'force' => true ], 'tile' => [ 'template' => 'page-home', 'key' => 'hero-full' ] ] as $action => $data )
+	foreach( [ null, 'xx_XX', 'de_DE/../x' ] as $locale )
+		if( builderCall( $site, 'builder/'. $action, $data + [ 'locale' => $locale ] )[0] !== 400 )
+			$asked[] = $action. ' '. var_export( $locale, true );
+
+check( 'a request that names no language of the website - none, one the site does not have, one that is no code - is refused by every action that draws or writes, and nothing is written', $asked === [] && builderSnapshot( $site ) === $before );
+\Nino\Runtime::setSessionValue( $site, './admin/content-locale', '' );
 
 // another account - with the right, and without - and nobody: the page as it is
 ninoUser( $site, 'second@example.com' );

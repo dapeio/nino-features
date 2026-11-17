@@ -147,21 +147,30 @@ const words = {
 
 // --- B. the model ---------------------------------------------------------------------------------------------
 
+const ownSelect = { value : 'en_US' };
 const context = {
 	window : null,
-	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' }, getElementById : function() { return { innerHTML : '', appendChild : function() {} } } },
+	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' }, getElementById : function( id ) { return id === 'builder-language' ? ownSelect : { innerHTML : '', appendChild : function() {} } } },
 };
 
 // What the stand-in keeps of the list and of the way between the views: the elements made, where the router went and the calls to the server
 const made = [];
 const went = { parts : [], calls : [] };
 
-context.window = { Nino : { admin : { router : { href : function( panel, parts ) { return '#'+ panel+ '/'+ parts.join('/') }, go : function( panel, parts ) { went.parts = parts }, set : function() {}, current : function() { return { panel : 'builder', parts : went.parts } } }, dirty : { guard : function( keys, run ) { run() } } }, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, hint : function() { return {} }, emptyState : function() { return {} }, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className, text ) { const attributes = {}; const listeners = {}; const element = { tag : tag, className : className, text : text, attributes : attributes, listeners : listeners, dataset : {}, addEventListener : function( type, run ) { listeners[type] = run }, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} }; made.push( element ); return element } }, content : { getText : function() { return '' } } }, document : context.document };
+// What the stand-in of the workbench was asked by the language: the views that follow it, the questions of the unsaved input and the answer to give, the languages that were set
+const followers = [];
+const questions = [];
+const chosen = [];
+const written = [];
+let answer = 'save';
+
+context.window = { setTimeout : function() {}, Nino : { admin : { router : { href : function( panel, parts ) { return '#'+ panel+ '/'+ parts.join('/') }, go : function( panel, parts ) { went.parts = parts }, set : function() {}, current : function() { return { panel : 'builder', parts : went.parts } } }, dirty : { guard : function( keys, run, cancel ) { questions.push( keys.join() ); answer === 'cancel' ? cancel() : run() } }, workLocale : { current : 'de_DE', follow : function( name, handler ) { followers.push( { name : name, handler : handler } ) }, set : function( locale ) { chosen.push( locale ) } }, sessionLocale : { set current( locale ) { written.push( locale ) } } }, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, hint : function() { return {} }, emptyState : function() { return {} }, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className, text ) { const attributes = {}; const listeners = {}; const element = { tag : tag, className : className, text : text, attributes : attributes, listeners : listeners, dataset : {}, addEventListener : function( type, run ) { listeners[type] = run }, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} }; made.push( element ); return element } }, content : { getText : function() { return '' } } }, document : context.document };
 context.Nino = context.window.Nino;
 vm.createContext( context );
 vm.runInContext( script, context );
 
 const builder = context.window.Nino.admin.builder.model;
+const panel = context.window.Nino.admin.builder;
 const S = builder.state;
 
 const section = function( id, title ) {
@@ -719,6 +728,104 @@ check( 'D. the pictures the server is told of are the slots with their size and 
 	const told = builder.picturesNow();
 
 	return told['/template/page-home/hero/photo'].url === undefined && told['/template/page-home/hero/photo'].file.indexOf('.s0123456789ab.') !== -1 && Object.keys( told['/template/page-home/hero/other'] ).join() === 'label,width,height';
+} )() );
+
+// --- E. the language of the workbench ----------------------------------------------------------------------------
+
+const calls = [];
+const language = function() { return followers.find( function( follower ) { return follower.name === 'builder' } ) };
+
+panel.call = function( action, payload, done ) { calls.push( { action : action, payload : payload, done : done } ) };
+panel.reload = function( then ) { if( typeof then === 'function' ) then() };
+panel.ready = true;
+
+check( 'E. the panel follows the language of the workbench under the name of its entry of unsaved input - the one the question before a change asks about', language() !== undefined && panel.uri === 'builder' );
+
+check( 'E. a call about a page names the language the page is shown in', ( function() {
+	fresh();
+	S.locale = 'en_US';
+	builder.api( 'preview', {}, function() {} );
+	return calls[0].payload.locale === 'en_US' && calls[0].payload.template === 'page-home';
+} )() );
+
+check( 'E. a change of the language from outside, with input that is not saved, asks first - in the entry of the panel - and the page is opened again in the new language', ( function() {
+	fresh();
+	S.target = { mode : 'basic', template : 'page-home', page : '', slug : 'home' };
+	S.origin = null;
+	S.texts['/template/page-home/hero/title'].de_DE = 'Geändert';
+	questions.length = 0;
+	calls.length = 0;
+	answer = 'save';
+	context.window.Nino.admin.workLocale.current = 'en_US';
+	language().handler( 'en_US' );
+
+	return questions.join() === 'builder' && calls.length === 1 && calls[0].action === 'open' && calls[0].payload.locale === 'en_US';
+} )() );
+
+check( 'E. Cancel keeps the language of the page and the draft, asks the workbench to take its language back, and opens nothing', ( function() {
+	fresh();
+	S.texts['/template/page-home/hero/title'].de_DE = 'Geändert';
+	const draft = JSON.stringify( S.texts );
+	calls.length = 0;
+	chosen.length = 0;
+	answer = 'cancel';
+	language().handler( 'en_US' );
+	answer = 'save';
+
+	return S.locale === 'de_DE' && JSON.stringify( S.texts ) === draft && calls.length === 0 && chosen.join() === 'de_DE';
+} )() );
+
+check( 'E. the language of the page is written to the session by nobody: the workbench has one, and a change is made with workLocale', ( function() {
+	fresh();
+	S.target = { mode : 'basic', template : 'page-home', page : '', slug : 'home' };
+	language().handler( 'en_US' );
+	language().handler( 'de_DE' );
+
+	return written.length === 0;
+} )() );
+
+check( 'E. a choice that was turned down puts the own select of the page back to the language the page is in', ( function() {
+	fresh();
+	ownSelect.value = 'en_US';
+	language().handler( 'de_DE' );
+
+	return ownSelect.value === 'de_DE';
+} )() );
+
+check( 'E. a page that was on its way when the language moved is asked for again in the language of the workbench, and not kept in the other', ( function() {
+	fresh();
+	S.target = { mode : 'basic', template : 'page-home', page : '', slug : 'home' };
+	calls.length = 0;
+	context.window.Nino.admin.workLocale.current = 'en_US';
+	language().handler( 'en_US' );
+	calls[0].done( 200, { contentLocale : 'de_DE' } );
+
+	return calls.length === 2 && calls[1].action === 'open' && calls[1].payload.locale === 'en_US';
+} )() );
+
+check( 'E. the entry of unsaved input says it is saving from the request to the answer, which is what the workbench waits for before it changes the language', ( function() {
+	fresh();
+	S.view = { bar : { line : { error : function() {} } } };
+	calls.length = 0;
+	const before = panel.dirty.saving();
+	builder.save( function() {} );
+	const during = panel.dirty.saving();
+	calls[0].done( 500, {} );
+	S.view = null;
+
+	return before === false && during === true && panel.dirty.saving() === false;
+} )() );
+
+check( 'E. Discard of the choice of a language, which the shell answers by closing the page, opens the page again in the new language', ( function() {
+	fresh();
+	S.at = [ 'home' ];
+	const went = [];
+	panel.go = function( parts ) { went.push( parts ) };
+	panel.dirty.discard();
+	S.ready = false;
+	language().handler( 'en_US' );
+
+	return went.length === 1 && went[0].join() === 'home';
 } )() );
 
 done();

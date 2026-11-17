@@ -30,6 +30,9 @@ $numbers = [];
 /** One action of the API, as the workbench posts it: [ status, body ] */
 function sourceCall( array &$appData, string $action, array $data = [] ): array {
 
+	// A call is made in a language: the native one unless it names another - or null, which names none
+	$data += [ 'locale' => \Nino\Locales::getNativeLocale( $appData ) ];
+
 	[ $status, $body ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], $data, $action );
 
 	return [ $status, $body ];
@@ -230,6 +233,7 @@ check( 'the start of a fill is no value of a picture and no text of a call: a te
 \Nino\Elements::insertElementType( $site, '/services', [ 'title' => [ 'type' => 'string' ] ] );
 $collection = sourceAt( $loop['tree'], 'collection', '/_placeholder' );
 $shows = static fn( string $type ): int => sourceCall( $site, 'builder/preview', [ 'template' => 'page-loop', 'tree' => sourceEdit( $loop['tree'], $collection, static fn( array $node ): array => sourceWith( $node, $type ) ), 'texts' => [], 'base' => $loop['stamp'] ] )[0];
+check( 'the search of a source in a language the request does not name, or the site does not have, is refused', sourceCall( $site, 'builder/keys', [ 'template' => 'page-home', 'kind' => 'text', 'locale' => null ] )[0] === 400 && sourceCall( $site, 'builder/keys', [ 'template' => 'page-home', 'kind' => 'text', 'locale' => 'xx_XX' ] )[0] === 400 );
 [ , $types ] = sourceCall( $site, 'builder/keys', [ 'kind' => 'types' ] );
 
 check( 'a loop shows a type of elements the project has: its types are listed with their titles - the example type of the kernel is none of them - a type it has is taken and a type it has not is refused', $shows( '/services' ) === 200 && $shows( '/nope' ) === 403 && $shows( '/../x' ) === 403 && array_column( $types['types'], 'type' ) === [ '/services' ] );

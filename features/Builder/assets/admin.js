@@ -68,6 +68,8 @@
 	const S = {
 		list			: null,
 		ready			: false,
+		saving		: false,
+		dropped		: null,
 		template	: '',
 		frame			: false,
 		top				: [],
@@ -2088,7 +2090,7 @@
 	};
 
 	const api = function( action, payload, done, extra ) {
-		Nino.admin.builder.call( action, Object.assign( { template : S.template }, payload ), done, extra );
+		Nino.admin.builder.call( action, Object.assign( { template : S.template, locale : S.locale }, payload ), done, extra );
 	};
 
 	// The pictures a person chose, as the server takes them: the slot a source reads and the file that was made for it
@@ -2191,9 +2193,12 @@
 		const pressed = S.view !== null && dc.activeElement === S.view.bar.save;
 
 		S.force = false;
+		S.saving = true;
 		endEdit( true );
 
 		api( 'save', { tree : S.top, texts : changedTexts(), slots : S.copies, pictures : picturesNow(), inserted : insertedNow(), base : S.stamp, force : forced }, function( status, response ) {
+
+			S.saving = false;
 
 			if( status === 200 ) {
 
@@ -2289,40 +2294,43 @@
 		} );
 	};
 
-	// The name of a language in that language - Deutsch, English - with its code behind it, or alone where plain
-	const languageName = function( locale, plain ) {
+	// The working language moved, whoever moved it: unsaved input is asked about first (Save writes it in the language it was typed in), then the page is opened again
+	// in the new one at the place it was left. A page that Discard closed on the way is opened again
+	const followLanguage = function( locale ) {
 
-		const code = locale.split('_')[0];
-		let name = '';
+		if( S.ready === false ) {
 
-		try {
-			name = new Intl.DisplayNames( [ code ], { type : 'language' } ).of( code ) ?? '';
-		} catch( error ) {
-			name = '';
+			const left = S.dropped;
+
+			S.dropped = null;
+
+			if( Nino.admin.builder.ready === true )
+				Nino.admin.builder.reload( left === null ? undefined : function() { Nino.admin.builder.go( left ) } );
+
+			return;
 		}
 
-		return name === '' || name === code ? locale : name.charAt( 0 ).toUpperCase()+ name.slice( 1 )+ ( plain === true ? '' : ' ('+ locale+ ')' );
+		if( locale === S.locale ) {
+
+			const select = dc.getElementById('builder-language');
+
+			if( select !== null )
+				select.value = S.locale;
+
+			return;
+		}
+
+		Nino.admin.dirty.guard( [ 'builder' ], function() {
+			Nino.admin.builder.reload( function() { openPage( targetOf( here().parts ) ?? S.target, S.origin, function() {} ) } );
+		}, function() { Nino.admin.workLocale.set( S.locale ) } );
 	};
 
-	// The language the page is written in: the working language of the workbench, which is changed there and is the one the other panels write in
-	const switchLanguage = function( locale, select ) {
+	// Discard of the choice of a language: the shell closes the page, its address is kept for the moment it does
+	const dropDraft = function() {
 
-		endEdit( true );
-
-		Nino.adminUi.api.call( 'admin/locale', { locale : locale }, function( status, response ) {
-
-			if( status !== 200 ) {
-				select.value = S.locale;
-				S.view.bar.line.error( status, response );
-				return;
-			}
-
-			S.locale = locale;
-			Nino.admin.sessionLocale.current = locale;
-			S.stale = true;
-			paint();
-			S.view.preview.flush();
-		} );
+		S.dropped = S.at;
+		wn.setTimeout( function() { S.dropped = null }, 0 );
+		discard();
 	};
 
 	// The widths of the preview, the language of the page and the outline, over the frame
@@ -2369,17 +2377,17 @@
 			select.setAttribute( 'aria-label', word('label/language') );
 			choices.forEach( function( entry ) {
 
-				const option = el( 'option', '', languageName( entry.locale ) );
+				const option = el( 'option', '', Nino.adminUi.localeName( entry.locale, choices.map( function( other ) { return other.locale } ) ) );
 
 				option.value = entry.locale;
 				select.appendChild( option );
 			} );
 			select.value = S.locale;
-			select.addEventListener( 'change', function() { switchLanguage( select.value, select ) } );
+			select.addEventListener( 'change', function() { endEdit( true ); Nino.admin.workLocale.set( select.value ) } );
 			box.appendChild( select );
 		}
 		else
-			box.appendChild( el( 'span', 'nino-admin-badge builder-language', languageName( S.locale ) ) );
+			box.appendChild( el( 'span', 'nino-admin-badge builder-language', Nino.adminUi.localeName( S.locale ) ) );
 
 		const sized = el( 'div', 'builder-widthbox' );
 
@@ -2448,6 +2456,7 @@
 		const back = context.querySelector('.nino-admin-back-link');
 
 		back.id = 'builder-back-list';
+		Nino.adminUi.localeBadge( S.locale, context );
 
 		if( way.keep === true )
 			back.setAttribute( 'data-keep-draft', '' );
@@ -2545,7 +2554,7 @@
 
 		level.appendChild( bar.el );
 
-		Nino.admin.dirty.register( 'builder', bar.entry( { discard : function() { discard() } } ) );
+		Nino.admin.dirty.register( 'builder', bar.entry( { discard : dropDraft, saving : function() { return S.saving === true } } ) );
 
 		if( advanced === true )
 			drawLeft();
@@ -2632,7 +2641,7 @@
 		S.origin = origin;
 		S.named = {};
 
-		Nino.admin.builder.call( 'open', { template : template, page : target.page }, function( status, response ) {
+		Nino.admin.builder.call( 'open', { template : template, page : target.page, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 			const level = dc.getElementById('builder-page');
 
@@ -2640,6 +2649,12 @@
 				Nino.admin.builder.fail( level, status, response );
 				Nino.adminUi.showLevel( 'builder-page', { focus : false } );
 				done( false );
+				return;
+			}
+
+			// The language moved while the page was on its way: it is asked for again in the language of the workbench
+			if( response.contentLocale !== Nino.admin.workLocale.current ) {
+				openPage( target, origin, done );
 				return;
 			}
 
@@ -3750,7 +3765,7 @@
 				const field = el( 'label', 'nino-admin-field' );
 
 				text = el( rich === true ? 'textarea' : 'input', 'nino-admin-input' );
-				field.appendChild( el( 'span', '', word( spec.kind === 'link' ? 'source/address-text' : 'source/text-in', languageName( S.locale ) ) ) );
+				field.appendChild( el( 'span', '', word( spec.kind === 'link' ? 'source/address-text' : 'source/text-in', Nino.adminUi.localeName( S.locale ) ) ) );
 
 				if( rich === true )
 					text.rows = 4;
@@ -4144,8 +4159,8 @@
 			let touched = false;
 
 			group.setAttribute( 'role', 'group' );
-			group.setAttribute( 'aria-label', languageName( locale ) );
-			group.appendChild( el( 'h4', 'builder-offer-group', languageName( locale ) ) );
+			group.setAttribute( 'aria-label', Nino.adminUi.localeName( locale ) );
+			group.appendChild( el( 'h4', 'builder-offer-group', Nino.adminUi.localeName( locale ) ) );
 			group.appendChild( name );
 			group.appendChild( address );
 			fields['name-'+ locale] = name.querySelector('input');
@@ -4552,7 +4567,7 @@
 			const control = el( rich === true ? 'textarea' : 'input', 'nino-admin-input' );
 
 			field.appendChild( el( 'span', 'builder-field-label', word('field/content') ) );
-			field.appendChild( el( 'span', 'nino-admin-badge builder-field-chip', source.kind === 'fixed' ? word('field/all-languages') : languageName( S.locale ) ) );
+			field.appendChild( el( 'span', 'nino-admin-badge builder-field-chip', source.kind === 'fixed' ? word('field/all-languages') : Nino.adminUi.localeName( S.locale ) ) );
 			control.value = value;
 			control.dataset.key = rel+ ':content';
 
@@ -4560,7 +4575,7 @@
 			if( source.kind === 'text' && source.key !== '' && value.trim() === '' && fallbackText( source.key ) !== '' ) {
 
 				control.placeholder = fallbackText( source.key );
-				field.appendChild( el( 'span', 'nino-admin-hint builder-field-hint', word( 'hint/missing', languageName( S.locale ) ) ) );
+				field.appendChild( el( 'span', 'nino-admin-hint builder-field-hint', word( 'hint/missing', Nino.adminUi.localeName( S.locale ) ) ) );
 			}
 
 			if( rich === true )
@@ -5085,7 +5100,7 @@
 
 		mount.innerHTML = '';
 
-		data.pages.forEach( function( page ) { pages.appendChild( rowOf( page.template, page.name, page.path, page.locales.map( function( locale ) { return languageName( locale, true ) } ) ) ) } );
+		data.pages.forEach( function( page ) { pages.appendChild( rowOf( page.template, page.name, page.path, page.locales.map( function( locale ) { return Nino.adminUi.localeName( locale ) } ) ) ) } );
 		data.frames.forEach( function( frame ) { frames.appendChild( rowOf( frame.template, word( 'word/frame-'+ frame.key ), word('hint/frame-short'), [], data.pages.length > 0 ? [ addressOf( data.pages[0].template ), addressOf( frame.template ) ] : undefined ) ) } );
 
 		mount.appendChild( el( 'h3', 'builder-heading', word('label/pages') ) );
@@ -5117,13 +5132,15 @@
 		uri		: 'builder',
 		mount	: 'builder-list',
 		render	: render,
+		payload	: function() { return { locale : Nino.admin.workLocale.current } },
 		show	: 'always',
 		onError	: function() { Nino.adminUi.showLevel( 'builder-list', { focus : false } ) },
 		dirty	: {
 			isDirty	: isDirty,
 			save		: function( done ) { S.view.bar.press( done ) },
 			bar			: function() { return S.view === null ? null : S.view.bar.el },
-			discard	: function() { discard() },
+			discard	: dropDraft,
+			saving	: function() { return S.saving === true },
 		},
 	} );
 
@@ -5136,7 +5153,7 @@
 			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
-			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord,
+			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 		},
 
 		go : function( parts, options ) {
@@ -5211,6 +5228,8 @@
 			} );
 		},
 	} );
+
+	Nino.admin.workLocale.follow( 'builder', followLanguage );
 
 	// The keys of the workbench over a page that is open: the undo and the redo, where no field takes the keys for itself
 	if( S.keys === false ) {

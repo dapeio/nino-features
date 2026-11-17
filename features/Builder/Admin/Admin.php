@@ -133,7 +133,11 @@ namespace Nino\Modules\Builder {
 			if( $level === null )
 				return;
 
-			$locale = \Nino\Admin\Admin::contentLocale( $appData );
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
 			$frames = [];
 
 			// The frames are written for every page: from the design on
@@ -163,8 +167,7 @@ namespace Nino\Modules\Builder {
 			if( $opened === null )
 				return;
 
-			[ $template, $state, $nodes ] = $opened;
-			$locale = \Nino\Admin\Admin::contentLocale( $appData );
+			[ $template, $state, $nodes, $locale ] = $opened;
 			$registry = \Nino\Components::components( $appData );
 			$page = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'page' );
 
@@ -201,7 +204,7 @@ namespace Nino\Modules\Builder {
 			if( $opened === null )
 				return;
 
-			[ $template, $state ] = $opened;
+			[ $template, $state, , $locale ] = $opened;
 			$prepared = Store::prepare( $appData, $template, $state, $data['tree'] ?? null, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [], $level, $data['pictures'] ?? [] );
 
 			if( isset( $prepared['failure'] ) === true ) {
@@ -209,7 +212,6 @@ namespace Nino\Modules\Builder {
 				return;
 			}
 
-			$locale = \Nino\Admin\Admin::contentLocale( $appData );
 			$fills = [];
 
 			// A text that is empty draws what the website would draw for it: the text of the next language that has one - the chain the fills of the kernel follow, the
@@ -470,8 +472,7 @@ namespace Nino\Modules\Builder {
 			if( $opened === null )
 				return;
 
-			[ $template ] = $opened;
-			$locale = \Nino\Admin\Admin::contentLocale( $appData );
+			[ $template, , , $locale ] = $opened;
 			$tile = Store::named( $template )['frame'] === true ? null : Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale );
 
 			if( $tile === null ) {
@@ -577,7 +578,11 @@ namespace Nino\Modules\Builder {
 
 			$data = \Nino\Admin\Admin::postData();
 			$query = mb_strtolower( trim( mb_substr( \Nino\Admin\Admin::postString( $data, 'query' ), 0, 80 ) ) );
-			$locale = \Nino\Admin\Admin::contentLocale( $appData );
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
 			$template = \Nino\Admin\Admin::postString( $data, 'template' );
 			$prefix = Store::named( $template ) === null ? '/' : '/template/'. $template. '/';
 			$found = [];
@@ -823,9 +828,14 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			&$request			(reference) The request
 		 *	@param		int				$level				The step the account holds: a frame is for the design and up
 		 *
-		 *	@return 	array|null								[ template, state, nodes ]; null after the answer that says why not
+		 *	@return 	array|null								[ template, state, nodes, locale ]; null after the answer that says why not
 		 */
 		private static function _open( array &$appData, array &$request, int $level ): ?array {
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return null;
 
 			$data = \Nino\Admin\Admin::postData();
 			$template = \Nino\Admin\Admin::postString( $data, 'template' );
@@ -858,11 +868,11 @@ namespace Nino\Modules\Builder {
 
 				$offset = $notes !== [] ? (int) ( $notes[0]['offset'] ?? 0 ) : strspn( $state['source'] ^ $written, "\0" );
 
-				self::_fail( $request, [ 409, 'the template cannot be read as it stands', 'builder_unreadable', [ Store::shown( Store::named( $template )['frame'] === true ? self::_word( $appData, 'word/'. $template ) : Pages::label( $appData, $template, \Nino\Admin\Admin::contentLocale( $appData ) ) ), Store::line( $state['source'], $offset ) ], 'template' ] );
+				self::_fail( $request, [ 409, 'the template cannot be read as it stands', 'builder_unreadable', [ Store::shown( Store::named( $template )['frame'] === true ? self::_word( $appData, 'word/'. $template ) : Pages::label( $appData, $template, $locale ) ), Store::line( $state['source'], $offset ) ], 'template' ] );
 				return null;
 			}
 
-			return [ $template, $state, $nodes ];
+			return [ $template, $state, $nodes, $locale ];
 		}
 
 		/**
@@ -1011,6 +1021,27 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $level;
+		}
+
+		/**
+		 *	The language a request is about: the one it names, one of the languages the project has texts in. The session's working language is never read - the one
+		 *	who asks may have changed it in another tab since the page was drawn, and what is drawn or written follows what the page shows
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *
+		 *	@return 	string|null								null after the answer that says the request names none or a language the project does not have
+		 */
+		private static function _locale( array &$appData, array &$request ): ?string {
+
+			$locale = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'locale' );
+
+			if( $locale === '' || in_array( $locale, \Nino\Locales::getTextLocales( $appData ), true ) === false ) {
+				self::_fail( $request, [ 400, 'the request names no language of the website', 'builder_language', [], 'locale' ] );
+				return null;
+			}
+
+			return $locale;
 		}
 
 		private static function _level(): array {
