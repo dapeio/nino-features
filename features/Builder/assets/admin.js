@@ -5,7 +5,7 @@
  *										it shows is the answer of the API (see Modules\Builder\Admin): the page as it is saved from open, the draft from preview. A change
  *										is a change of the working state - the tree of the template and the words of its namespace - and nothing is written before Save.
  *
- *										The address is #builder (the list), #builder/<page> (a page: its template without page-) and #builder/@header or #builder/@footer
+ *										The address is #builder (the list), #builder/<page> (a page: its template without page-), #builder/@new (the view that makes one) and #builder/@header or #builder/@footer
  *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components, and
  *										#builder/<page>/<block>/@block its settings - and of one component #builder/<page>/<block>/<path>/<section>, the path being the
  *										position of the component in the block; the frames are the same views at #builder/<page>/@header and #builder/<page>/@footer. They
@@ -46,6 +46,10 @@
 
 	// The words after an id that is a copy of another: hero-2, and the longest id there is
 	const MAX_ID		= 64;
+
+	// The longest word an address is made a name of a template of - what the server takes - and the address of the view that makes a page: no word of a page can start with @, as the frames' neither
+	const MAX_SLUG	= 60;
+	const NEW				= '@new';
 
 	// How long a text typed in the page may be, in characters: the server keeps 20000 bytes of what a format makes of it
 	const MAX_TEXT	= 5000;
@@ -135,6 +139,17 @@
 		staged			: [],
 		types				: [],
 		typesAsked	: false,
+	};
+
+	/**
+	 *	What the view that makes a page holds: whether it is the one on the screen, the bar of its form and the button of the list that opened it
+	 */
+	const N = {
+		open		: false,
+		bar			: null,
+		button	: null,
+		taken		: '',
+		choosing	: false,
 	};
 
 	const word = function( key, ...params ) {
@@ -4177,81 +4192,168 @@
 		} );
 	};
 
+	// --- the view "New page" ----------------------------------------------------------------------------------------
+
 	/**
-	 *	The dialog that makes a page: a name and an address for each language of the site - the address is proposed from the name until it is written by hand -, the menus
-	 *	the page is in and the block it starts with. What the kernel refuses is said at the field it is about; the page is opened as it stands when it is made
+	 *	A field of a short value that every language of the site has - the name of the page, its address -: the name of the field with its (?), and a row for each language,
+	 *	the language as a quiet badge in front of its input. The rows are a group, named by the name of the field
 	 *
+	 *	@param		{Object}		options				{ key, label, help, example, maxLength, locales }
+	 *
+	 *	@return		{Object}									{ el, inputs, rows } - the inputs and the rows (the labels) by language
 	 */
-	const openNewPage = function( opener ) {
+	const perLanguage = function( options ) {
 
-		const data = S.list;
-		const locales = data.locales.filter( function( entry ) { return entry.active === true } ).map( function( entry ) { return entry.locale } );
-		const body = el( 'div', 'builder-new-body' );
-		const fields = {};
-		const wrappers = {};
-		const navs = {};
-		let made = null;
+		const field = el( 'div', 'nino-admin-field' );
+		const name = el( 'span', 'nino-admin-field-name', options.label );
+		const group = el( 'div', 'builder-new-rows' );
+		const inputs = {};
+		const rows = {};
 
-		locales.forEach( function( locale ) {
+		options.locales.forEach( function( locale ) {
 
-			const group = el( 'div', 'builder-new-group' );
-			const address = Nino.adminUi.textField( { key : 'page-address-'+ locale, label : word('page/address'), required : true, value : '', hint : word('page/address-hint') } );
-			const name = Nino.adminUi.textField( { key : 'page-name-'+ locale, label : word('page/name'), required : true, value : '', maxLength : 120 } );
-			let touched = false;
+			const row = el( 'label', 'builder-new-row' );
+			const input = el( 'input', 'nino-admin-input' );
 
-			group.setAttribute( 'role', 'group' );
-			group.setAttribute( 'aria-label', Nino.adminUi.localeName( locale ) );
-			group.appendChild( el( 'h4', 'builder-offer-group', Nino.adminUi.localeName( locale ) ) );
-			group.appendChild( name );
-			group.appendChild( address );
-			fields['name-'+ locale] = name.querySelector('input');
-			fields['httpUri-'+ locale] = address.querySelector('input');
-			wrappers['name-'+ locale] = name;
-			wrappers['httpUri-'+ locale] = address;
+			input.type = 'text';
+			input.dataset.key = options.key+ '-'+ locale;
+			input.setAttribute( 'aria-required', 'true' );
 
-			address.querySelector('input').addEventListener( 'input', function() { touched = true } );
-			name.querySelector('input').addEventListener( 'input', function() {
+			if( options.maxLength !== undefined )
+				input.maxLength = options.maxLength;
 
-				if( touched === false ) {
+			if( options.example !== undefined )
+				input.placeholder = options.example;
 
-					const slug = slugOf( name.querySelector('input').value, 60 );
-
-					address.querySelector('input').value = slug === '' ? '' : '/'+ slug;
-				}
-			} );
-			body.appendChild( group );
+			row.appendChild( el( 'span', 'builder-new-language', Nino.adminUi.localeName( locale, options.locales ) ) );
+			row.appendChild( input );
+			group.appendChild( row );
+			inputs[locale] = input;
+			rows[locale] = row;
 		} );
 
-		if( data.navs.length > 0 ) {
+		field.appendChild( name );
+		field.appendChild( group );
+		Nino.adminUi.sectionHelp( name, group, options.help );
 
-			const menus = el( 'div', 'builder-new-group' );
+		// The star follows the words once the (?) has taken the name: the help is "Help for Name", not "Help for Name*"
+		const star = el( 'span', 'nino-admin-required', '*' );
 
-			menus.setAttribute( 'role', 'group' );
-			menus.setAttribute( 'aria-label', word('page/menus') );
-			menus.appendChild( el( 'h4', 'builder-offer-group', word('page/menus') ) );
-			data.navs.forEach( function( nav ) {
+		star.setAttribute( 'aria-hidden', 'true' );
+		name.querySelector('.nino-admin-field-text').appendChild( star );
 
-				const label = el( 'label', 'builder-new-check' );
-				const box = el( 'input', '' );
+		return { el : field, inputs : inputs, rows : rows };
+	};
 
-				box.type = 'checkbox';
-				box.value = nav;
-				navs[nav] = box;
-				label.appendChild( box );
-				label.appendChild( dc.createTextNode( ' '+ ( Nino.content.getText( '/_admin/builder/page/menu-'+ nav ) !== '' ? word( 'page/menu-'+ nav ) : nav ) ) );
-				menus.appendChild( label );
+	// What a menu is called: the name it has in the words of the panel, else its identifier
+	const menuName = function( nav ) {
+		return Nino.content.getText( '/_admin/builder/page/menu-'+ nav ) !== '' ? word( 'page/menu-'+ nav ) : nav;
+	};
+
+	/**
+	 *	The menus a page can be in: the name of the field with its (?) and a checkbox for each menu, a checklist of the workbench
+	 *
+	 *	@param		{Array}			navs					The keys of the menus
+	 *
+	 *	@return		{Object}									{ el, boxes } - the boxes by menu
+	 */
+	const menusField = function( navs ) {
+
+		const field = el( 'div', 'nino-admin-field' );
+		const name = el( 'span', 'nino-admin-field-name', word('page/menus') );
+		const list = el( 'div', 'nino-admin-checklist' );
+		const boxes = {};
+
+		navs.forEach( function( nav ) {
+
+			const label = el( 'label', '' );
+			const box = el( 'input', '' );
+
+			box.type = 'checkbox';
+			box.value = nav;
+			box.dataset.key = 'menu-'+ nav;
+			boxes[nav] = box;
+			label.appendChild( box );
+			label.appendChild( el( 'span', '', menuName( nav ) ) );
+
+			// The identifier stands quietly behind a name that the menu has
+			if( menuName( nav ) !== nav )
+				label.appendChild( el( 'small', 'nino-admin-checklist-state', nav ) );
+
+			list.appendChild( label );
+		} );
+
+		field.appendChild( name );
+		field.appendChild( list );
+		Nino.adminUi.sectionHelp( name, list, word('page/menus-help') );
+
+		return { el : field, boxes : boxes };
+	};
+
+	/**
+	 *	Draw the view that makes a page, at #builder/@new: the way back to the list, a name and an address for each language of the site - the address is proposed from the
+	 *	name until it is written by hand -, the menus the page is in and the block it starts with, and the bar with the one button that makes it. What the server refuses
+	 *	is said at the field it is about; the page that is made is opened as it stands
+	 *
+	 *	@param		{Element}		level					The element the view is drawn in
+	 *	@param		{Object}		data					The answer of the list: the languages and the menus
+	 *
+	 *	@return		{Element|boolean}					Where the focus goes when the person opened the view: the name of the panel, the heading of the view
+	 */
+	const drawNew = function( level, data ) {
+
+		const locales = data.locales.filter( function( entry ) { return entry.active === true } ).map( function( entry ) { return entry.locale } );
+		const native = locales.indexOf( data.native ) !== -1 ? data.native : locales[0];
+		const form = el( 'form', 'builder-new-form' );
+		const group = el( 'fieldset', '' );
+		const names = perLanguage( { key : 'name', label : word('page/name'), help : word('page/name-help'), maxLength : 120, locales : locales } );
+		const addresses = perLanguage( { key : 'address', label : word('page/address'), help : word('page/address-hint'), example : word('page/address-example'), locales : locales } );
+		const menus = menusField( data.navs );
+		const start = Nino.adminUi.selectField( { key : 'block', label : word('page/start'), help : word('page/start-help'), options : [ { value : '', label : word('page/start-none') } ], value : '' } );
+		const chosen = start.querySelector('select');
+		const message = el( 'p', '' );
+		const primary = Nino.adminUi.button( word('page/title'), null, { type : 'submit' } );
+		const bar = Nino.adminUi.actionBar( { status : { line : message, fresh : true }, primary : primary } );
+		const touched = {};
+		let sending = false;
+
+		level.innerHTML = '';
+		form.id = 'builder-new-form';
+		form.noValidate = true;
+		const legend = el( 'legend', '', word('page/open') );
+
+		group.appendChild( legend );
+		group.appendChild( names.el );
+		group.appendChild( addresses.el );
+
+		if( data.navs.length > 0 )
+			group.appendChild( menus.el );
+
+		group.appendChild( start );
+		Nino.adminUi.sectionHelp( legend, group, word('page/note') );
+		form.appendChild( group );
+		form.appendChild( bar.el );
+		bar.line.bind( form );
+
+		level.appendChild( Nino.adminUi.contextBar( {
+			back : { to : word('label/pages'), href : Nino.admin.router.href( 'builder', [] ), onClick : function() { Nino.admin.builder.go( [] ) } },
+		} ) );
+		level.appendChild( form );
+
+		// The address of a language is proposed from its name until a hand has written it
+		locales.forEach( function( locale ) {
+
+			addresses.inputs[locale].addEventListener( 'input', function() { touched[locale] = addresses.inputs[locale].value !== '' } );
+			names.inputs[locale].addEventListener( 'input', function() {
+
+				if( touched[locale] === true )
+					return;
+
+				const slug = slugOf( names.inputs[locale].value, MAX_SLUG );
+
+				addresses.inputs[locale].value = slug === '' ? '' : '/'+ slug;
 			} );
-			body.appendChild( menus );
-		}
-
-		const chosen = el( 'select', 'nino-admin-input' );
-		const startField = el( 'label', 'nino-admin-field' );
-
-		chosen.id = 'builder-page-block';
-		startField.appendChild( el( 'span', '', word('page/start') ) );
-		startField.appendChild( chosen );
-		chosen.appendChild( Object.assign( el( 'option', '', word('page/start-none') ), { value : '' } ) );
-		body.appendChild( startField );
+		} );
 
 		Nino.admin.builder.call( 'blocks', {}, function( status, response ) {
 
@@ -4263,50 +4365,145 @@
 			} );
 		} );
 
-		Nino.adminUi.formDialog( {
-			title			: word('page/title'),
-			message		: word('page/note'),
-			body			: body,
-			submit		: word('page/title'),
-			cancel		: Nino.adminUi.text('/_admin/common/label/cancel'),
-			opener		: opener,
-			onSubmit	: function( values, ctl ) {
+		// What is wrong is said at the field it is about, in the line of the bar and in the field, which has the focus
+		const refuse = function( wrapper, input, key, text ) {
 
-				const names = {};
-				const addresses = {};
+			Nino.adminUi.fieldError( wrapper, input, 'builder-new-error-'+ key, text );
+			bar.line.fail( word('error/create') );
+			input.focus();
+		};
 
-				locales.forEach( function( locale ) {
-					names[locale] = fields['name-'+ locale].value;
-					addresses[locale] = fields['httpUri-'+ locale].value;
-				} );
+		const check = function() {
 
-				Nino.admin.builder.call( 'create', { names : names, addresses : addresses, navs : Object.keys( navs ).filter( function( nav ) { return navs[nav].checked } ), block : chosen.value }, function( status, response ) {
+			const missing = Nino.content.getText('/_admin/common/error/missing');
 
-					if( status !== 200 ) {
-
-						const field = ( response ?? {} ).field === 'uri' || ( response ?? {} ).field === 'template' ? 'httpUri-'+ locales[0] : ( response ?? {} ).field;
-						const text = Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/create' );
-
-						// What is wrong is said at the field it is about, or at the foot of the form where it is about none
-						if( wrappers[field] === undefined )
-							ctl.fail( null, text );
-						else {
-							Nino.adminUi.fieldError( wrappers[field], fields[field], 'builder-page-problem', text );
-							fields[field].focus();
-							ctl.idle();
-						}
-
-						return;
+			for( const kind of [ [ names, 'name', 'page/name' ], [ addresses, 'address', 'page/address' ] ] )
+				for( const locale of locales )
+					if( kind[0].inputs[locale].value.trim() === '' ) {
+						refuse( kind[0].rows[locale], kind[0].inputs[locale], kind[1]+ '-'+ locale, Nino.adminUi.format( missing, word( kind[2] )+ ' ('+ Nino.adminUi.localeName( locale, locales )+ ')' ) );
+						return false;
 					}
 
-					made = response;
-					body.closest('dialog').addEventListener( 'close', function() {
-						Nino.admin.builder.init( function() { Nino.admin.builder.go( [ made.slug ], { focus : 'page' } ) } );
-					} );
-					ctl.close();
+			return true;
+		};
+
+		const submit = function( done ) {
+
+			Nino.adminUi.clearFieldErrors( form );
+
+			if( sending === true || check() === false ) {
+				done( false );
+				return;
+			}
+
+			const sent = { names : {}, addresses : {}, navs : Object.keys( menus.boxes ).filter( function( nav ) { return menus.boxes[nav].checked } ), block : chosen.value };
+
+			locales.forEach( function( locale ) {
+				sent.names[locale] = names.inputs[locale].value;
+				sent.addresses[locale] = addresses.inputs[locale].value;
+			} );
+
+			sending = true;
+			primary.disabled = true;
+			bar.line.saving();
+
+			Nino.admin.builder.call( 'create', sent, function( status, response ) {
+
+				if( status !== 200 ) {
+
+					sending = false;
+					primary.disabled = false;
+
+					const named = ( response ?? {} ).field;
+					const target = named === 'uri' || named === 'template' ? 'address-'+ native : ( typeof named === 'string' ? named.replace( /^httpUri-/, 'address-' ) : '' );
+					const where = target.indexOf('name-') === 0 ? [ names, target.slice( 5 ) ] : ( target.indexOf('address-') === 0 ? [ addresses, target.slice( 8 ) ] : null );
+					const text = Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/create' );
+
+					if( where !== null && where[0].inputs[where[1]] !== undefined ) {
+						Nino.adminUi.fieldError( where[0].rows[where[1]], where[0].inputs[where[1]], 'builder-new-error-'+ target, text );
+						where[0].inputs[where[1]].focus();
+						bar.line.fail( word('error/create') );
+					}
+					else if( target === 'block' ) {
+						Nino.adminUi.fieldError( start, chosen, 'builder-new-error-block', text );
+						chosen.focus();
+						bar.line.fail( word('error/create') );
+					}
+					else
+						bar.line.fail( text );
+
+					done( false );
+					return;
+				}
+
+				// The form holds what is made: nothing is lost by leaving it, and the page that was made is opened - unless the answer of a question has taken the person elsewhere
+				N.taken = valuesOf();
+				Nino.adminUi.say( word( 'page/made', names.inputs[ locales.indexOf( Nino.admin.workLocale.current ) !== -1 ? Nino.admin.workLocale.current : native ].value.trim() ) );
+				Nino.admin.builder.init( function() {
+
+					if( N.open === true )
+						Nino.admin.builder.go( [ response.slug ], { focus : 'page' } );
 				} );
-			},
+				done( true );
+			} );
+		};
+
+		form.addEventListener( 'submit', function( event ) {
+			event.preventDefault();
+			submit( function() {} );
 		} );
+
+		// What the form holds, to know whether it holds more than was taken for saved
+		const valuesOf = function() {
+			return JSON.stringify( [ locales.map( function( locale ) { return [ names.inputs[locale].value, addresses.inputs[locale].value ] } ), Object.keys( menus.boxes ).map( function( nav ) { return menus.boxes[nav].checked } ), chosen.value ] );
+		};
+
+		N.bar = bar;
+		N.taken = valuesOf();
+
+		// The form is no view of the language of the workbench - it shows them all - so the choice of another asks nothing of it and loses nothing (see choosing())
+		Nino.admin.dirty.register( 'builder', {
+			bar			: function() { return bar.el },
+			save		: submit,
+			saving	: function() { return sending === true },
+			discard	: function() { N.taken = valuesOf() },
+			isDirty	: function() { return N.choosing === false && N.open === true && valuesOf() !== N.taken },
+		} );
+
+		return nameOfPanel();
+	};
+
+	// The heading of the list is the name of the panel: the first heading in it is the title of the group of the frames, which is no place for the focus
+	const nameOfPanel = function() {
+
+		const pane = dc.getElementById('builder-list').closest('[data-panel]');
+		const title = pane === null ? null : pane.querySelector('.admin-panel-title');
+
+		return title === null ? true : title;
+	};
+
+	// Whether an address is the one of the view that makes a page
+	const isNew = function( parts ) {
+		return parts.length === 1 && parts[0] === NEW;
+	};
+
+	// The view is shown for the account that may make a page, by the address #builder/@new: any other is taken to the list
+	const showNew = function() {
+
+		if( S.view !== null )
+			S.view.preview.stop();
+
+		S.ready = false;
+
+		if( S.list === null || S.list.create !== true ) {
+			N.open = false;
+			Nino.admin.builder.go( [] );
+			return;
+		}
+
+		N.open = true;
+		Nino.admin.router.set( 'builder', [ NEW ] );
+		Nino.adminUi.showLevel( 'builder-new', { focus : drawNew( dc.getElementById('builder-new'), S.list ) } );
 	};
 
 
@@ -5126,23 +5323,52 @@
 
 	// --- the list ---------------------------------------------------------------------------------------------------
 
-	const rowOf = function( template, name, hint, chips, parts ) {
+	// When a page was written, as the workbench writes a date: day and minute, the German way round in German and the year first in any other language
+	const dateOf = function( seconds ) {
 
-		const row = el( 'li', 'builder-page-row' );
-		const link = el( 'a', 'builder-page-link' );
-		const at = parts ?? [ addressOf( template ) ];
+		const at = new Date( seconds * 1000 );
+		const two = function( number ) { return String( number ).padStart( 2, '0' ) };
+		const german = String( dc.documentElement.lang ).slice( 0, 2 ) === 'de';
+		const day = german === true ? two( at.getDate() )+ '.'+ two( at.getMonth() + 1 )+ '.'+ at.getFullYear() : at.getFullYear()+ '-'+ two( at.getMonth() + 1 )+ '-'+ two( at.getDate() );
 
-		link.href = Nino.admin.router.href( 'builder', at );
-		link.addEventListener( 'click', function( event ) {
-			event.preventDefault();
-			Nino.admin.builder.go( at, { origin : [] } );
-		} );
-		link.appendChild( el( 'strong', 'builder-page-name', name ) );
-		link.appendChild( el( 'span', 'nino-admin-hint', hint ) );
-		chips.forEach( function( chip ) { link.appendChild( el( 'span', 'nino-admin-badge', chip ) ) } );
-		row.appendChild( link );
+		return day+ ', '+ two( at.getHours() )+ ':'+ two( at.getMinutes() );
+	};
 
-		return row;
+	// The sort key of a date: the year first, whatever the language writes
+	const isoOf = function( seconds ) {
+
+		const at = new Date( seconds * 1000 );
+		const two = function( number ) { return String( number ).padStart( 2, '0' ) };
+
+		return at.getFullYear()+ '-'+ two( at.getMonth() + 1 )+ '-'+ two( at.getDate() )+ 'T'+ two( at.getHours() )+ ':'+ two( at.getMinutes() );
+	};
+
+	// The button that makes a page: the one main button of the bar of the list
+	const makeButton = function( id ) {
+		return Nino.adminUi.button( word('page/open'), function() { Nino.admin.builder.go( [ NEW ] ) }, { kind : 'primary', id : id } );
+	};
+
+	// What a row of the table says of a page: the name with its template quietly under it, and a sign where a language lacks its name or its address
+	const nameCell = function( value, row ) {
+
+		const cell = el( 'span', 'builder-cell-name' );
+		const first = el( 'span', 'builder-cell-first' );
+
+		first.appendChild( el( 'strong', '', value ) );
+
+		if( row.complete === false ) {
+
+			const sign = el( 'span', 'builder-cell-warn' );
+
+			sign.title = word('list/incomplete');
+			sign.appendChild( Nino.adminUi.icon( 'triangle-alert', { label : word('list/incomplete') } ) );
+			first.appendChild( sign );
+		}
+
+		cell.appendChild( first );
+		cell.appendChild( el( 'small', 'builder-cell-file', row.template+ '.tpl' ) );
+
+		return cell;
 	};
 
 	const render = function( data ) {
@@ -5151,35 +5377,64 @@
 		S.level = data.level ?? S.level;
 
 		const mount = dc.getElementById('builder-list');
-		const pages = el( 'ul', 'builder-pages' );
-		const frames = el( 'ul', 'builder-pages' );
+		const holder = el( 'div', '' );
+		const menus = data.navs.length > 0;
+		const dated = data.pages.some( function( page ) { return page.saved > 0 } );
 
 		mount.innerHTML = '';
-
-		data.pages.forEach( function( page ) { pages.appendChild( rowOf( page.template, page.name, page.path, page.locales.map( function( locale ) { return Nino.adminUi.localeName( locale ) } ) ) ) } );
-		data.frames.forEach( function( frame ) { frames.appendChild( rowOf( frame.template, word( 'word/frame-'+ frame.key ), word('hint/frame-short'), [], data.pages.length > 0 ? [ addressOf( data.pages[0].template ), addressOf( frame.template ) ] : undefined ) ) } );
-
-		mount.appendChild( el( 'h3', 'builder-heading', word('label/pages') ) );
+		mount.appendChild( holder );
 
 		// A page is made by the one who may design and may write routes: the list says so, and the action asks again
+		if( data.pages.length === 0 )
+			holder.appendChild( Nino.adminUi.emptyState( word('msg/none') ) );
+		else {
+
+			const columns = [
+				{ key : 'name', label : word('page/name'), type : 'string', render : nameCell },
+				{ key : 'path', label : word('page/address'), type : 'string' },
+				{ key : 'blocks', label : word('list/blocks'), type : 'integer' },
+			];
+
+			if( menus === true )
+				columns.push( { key : 'menus', label : word('list/menus'), type : 'string' } );
+
+			if( dated === true )
+				columns.push( { key : 'saved', label : word('list/saved'), type : 'date', render : function( value, row ) { return row.saved === '' ? '' : dateOf( row.stamp ) } } );
+
+			Nino.adminUi.table( {
+				mount			: holder,
+				rowKey		: 'template',
+				columns		: columns,
+				rows			: data.pages.map( function( page ) {
+					return { template : page.template, name : page.name, path : page.path, blocks : page.blocks, menus : page.navs.map( menuName ).join(', '), saved : page.saved > 0 ? isoOf( page.saved ) : '', stamp : page.saved, complete : page.complete };
+				} ),
+				labels		: { search : word('list/search'), empty : word('msg/none'), noMatch : word('list/no-match') },
+				search		: true,
+				// The file of the template is a name of the page as well - it is what a person who has seen the files looks for -, and the date is the one the row shows
+				searchText	: function( row ) { return row.template+ '.tpl '+ ( row.stamp > 0 ? dateOf( row.stamp ) : '' ) },
+				onRowClick	: function( row ) { Nino.admin.builder.go( [ addressOf( row.template ) ], { origin : [] } ) },
+			} );
+		}
+
+		if( data.frames.length > 0 )
+			mount.appendChild( Nino.adminUi.list( data.frames.map( function( frame ) {
+
+				const parts = data.pages.length > 0 ? [ addressOf( data.pages[0].template ), addressOf( frame.template ) ] : [ addressOf( frame.template ) ];
+
+				return {
+					key		: frame.key,
+					title	: word( 'word/frame-'+ frame.key ),
+					detail	: word('hint/frame-short'),
+					href	: Nino.admin.router.href( 'builder', parts ),
+					onOpen	: function() { Nino.admin.builder.go( parts, { origin : [] } ) },
+				};
+			} ), { title : word('label/frames'), level : 2 } ) );
+
 		if( data.create === true ) {
 
-			const make = Nino.adminUi.button( word('page/open'), function() { openNewPage( make ) }, { className : 'nino-admin-btn--small', id : 'builder-new-page' } );
-
-			mount.appendChild( make );
+			N.button = makeButton('builder-new-page');
+			mount.appendChild( Nino.adminUi.actionBar( { list : true, primary : N.button } ).el );
 		}
-
-		if( data.pages.length === 0 )
-			mount.appendChild( Nino.adminUi.emptyState( word('msg/none') ) );
-		else
-			mount.appendChild( pages );
-
-		if( data.frames.length > 0 ) {
-			mount.appendChild( el( 'h3', 'builder-heading', word('label/frames') ) );
-			mount.appendChild( frames );
-		}
-
-		mount.appendChild( Nino.adminUi.hint( word('hint/list') ) );
 	};
 
 	// --- the panel --------------------------------------------------------------------------------------------------
@@ -5215,7 +5470,7 @@
 		go : function( parts, options ) {
 
 			const target = targetOf( parts );
-			const leaves = S.ready === true && ( parts.length === 0 || target === null || target.template !== S.template || target.page !== S.page );
+			const leaves = ( N.open === true && isNew( parts ) === false ) || ( S.ready === true && ( parts.length === 0 || target === null || target.template !== S.template || target.page !== S.page ) );
 
 			S.focusNext = ( options ?? {} ).focus ?? '';
 			S.focusFrom = ( options ?? {} ).from ?? '';
@@ -5232,6 +5487,16 @@
 			const at = here();
 			const parts = at.panel === 'builder' ? at.parts : [];
 
+			if( isNew( parts ) === true ) {
+				showNew();
+				return;
+			}
+
+			// The view that makes a page is left for the list with the focus on the button that opened it
+			const from = N.open;
+
+			N.open = false;
+
 			if( parts.length === 0 ) {
 
 				if( S.view !== null )
@@ -5239,7 +5504,9 @@
 
 				S.ready = false;
 				Nino.admin.router.set( 'builder', [] );
-				Nino.adminUi.showLevel( 'builder-list', { focus : true } );
+
+				Nino.adminUi.showLevel( 'builder-list', { focus : from === true && N.button !== null && N.button.isConnected === true ? N.button : nameOfPanel() } );
+
 				return;
 			}
 
@@ -5277,15 +5544,25 @@
 			}
 
 			const there = targetOf( at.parts );
-			const leaving = S.ready === true && ( at.parts.length === 0 || there === null || there.template !== S.template || there.page !== S.page );
+			const leaving = ( N.open === true && isNew( at.parts ) === false ) || ( S.ready === true && ( at.parts.length === 0 || there === null || there.template !== S.template || there.page !== S.page ) );
 
 			Nino.admin.router.leave( [ 'builder' ], leaving, proceed, function() {
-				Nino.admin.router.set( 'builder', S.ready === true ? S.at : [] );
+				Nino.admin.router.set( 'builder', N.open === true ? [ NEW ] : ( S.ready === true ? S.at : [] ) );
 			} );
 		},
 	} );
 
 	Nino.admin.workLocale.follow( 'builder', followLanguage );
+
+	// The choice of a language in the workbench asks every view that follows it about its unsaved input, by the name of the panel: the form that makes a page does not
+	// follow it, and is let out of that question for as long as the choice is made - the handler of the shell runs inside this event
+	dc.addEventListener( 'change', function( event ) {
+
+		if( event.target !== null && typeof event.target === 'object' && event.target.dataset !== undefined && event.target.dataset.worklocale !== undefined ) {
+			N.choosing = true;
+			wn.setTimeout( function() { N.choosing = false }, 0 );
+		}
+	}, true );
 
 	// The keys of the workbench over a page that is open: the undo and the redo, where no field takes the keys for itself
 	if( S.keys === false ) {

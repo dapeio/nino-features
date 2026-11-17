@@ -341,6 +341,29 @@ $site['/nino/http/routes'] = [ 'GET://' => [ 'uri' => '/home', 'body' => '[templ
 
 check( 'a route that answers with the template of a page is a page, once, with its path and the languages it is for', array_column( $list['pages'], 'template' ) === [ 'page-home', 'page-contact' ] && $list['pages'][0]['path'] === '/' && $list['pages'][1]['locales'] === [ 'de_DE', 'en_US' ] );
 
+check( 'a page of the list says how many blocks its template has - the calls of the frame are none -, when its template was written, and the menus it is in', ( static function() use ( $list, &$site ): bool {
+
+	$blocks = array_column( $list['pages'], 'blocks', 'template' );
+	$saved = array_column( $list['pages'], 'saved', 'template' );
+
+	return $blocks === [ 'page-home' => 2, 'page-contact' => 2 ] && $saved['page-home'] === (int) filemtime( builderFile( $site, 'page-home' ) ) && $saved['page-home'] > 0 && $list['pages'][0]['navs'] === [];
+} )() );
+check( 'a page is complete where every language of the website has its name and its address, and the list says so for each page', ( static function() use ( &$site ): bool {
+
+	$before = array_column( builderCall( $site, 'builder/list' )[1]['pages'], 'complete', 'template' );
+
+	foreach( [ 'de_DE' => 'Start', 'en_US' => 'Home' ] as $locale => $name ) {
+
+		$texts = \Nino\Filesystem::getFileContent( $site, '/text/'. $locale. '.php', [] );
+		$texts['[[/_nino/webpage/home/name]]'] = $name;
+		\Nino\Filesystem::putFileContent( $site, '/text/'. $locale. '.php', $texts );
+	}
+
+	$after = array_column( builderCall( $site, 'builder/list' )[1]['pages'], 'complete', 'template' );
+
+	return $before === [ 'page-home' => false, 'page-contact' => false ] && $after === [ 'page-home' => true, 'page-contact' => false ];
+} )() );
+
 [ $status, $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
 $tree = (array) ( $open['tree'] ?? [] );
 $registry = \Nino\Components::components( $site );
@@ -1963,19 +1986,22 @@ foreach( $numbers as $name => $ms )
 
 check( 'the times are told, none is held to a limit: the machines the suite runs on differ', count( $numbers ) === 4 );
 
-// The script of the panel has a suite of its own, which runs where node is
+// The script of the panel has two suites of its own - the model, and the list and the view that makes a page - which run where node is
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 
-if( $node === '' )
-	echo "  --  - node is not available here: builder-js-smoke.js was NOT run\n";
-else {
+foreach( [ 'builder-js-smoke.js', 'builder-pages-js-smoke.js' ] as $suite ) {
+
+	if( $node === '' ) {
+		echo "  --  - node is not available here: ". $suite. " was NOT run\n";
+		continue;
+	}
 
 	$output = [];
-	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/builder-js-smoke.js' ). ' 2>&1', $output, $exit );
+	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/'. $suite ). ' 2>&1', $output, $exit );
 	if( $exit !== 0 )
 		echo implode( "\n", array_slice( $output, 0, 12 ) ), "\n";
 
-	check( 'builder-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
+	check( $suite. ' passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
 }
 
 ninoDone( $site );

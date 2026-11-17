@@ -146,13 +146,15 @@ namespace Nino\Modules\Builder {
 					$frames[] = [ 'key' => $key, 'template' => $template ];
 
 			// What was uploaded for a draft of a page that nobody opens any more is taken away with the next look at the list
-			foreach( Pages::all( $appData, $locale ) as $page )
+			$pages = Pages::listed( $appData, $locale );
+
+			foreach( $pages as $page )
 				Pictures::sweep( $appData, $page['template'] );
 
 			// A page is made by the one who may design and may write routes: the list says so, and the action asks again
 			$create = $level >= \Nino\Modules\Builder::LEVEL_DESIGN && \Nino\Auth::checkPermission( $appData, \Nino\Modules\Builder::ROUTES ) === true;
 
-			\Nino\Http::ok( $request, [ 'pages' => Pages::all( $appData, $locale ), 'frames' => $frames, 'create' => $create, 'navs' => $create === true ? \Nino\Pages::navKeys( $appData ) : [] ] + self::_view( $appData, $locale, $level ) );
+			\Nino\Http::ok( $request, [ 'pages' => $pages, 'frames' => $frames, 'create' => $create, 'navs' => \Nino\Pages::navKeys( $appData ) ] + self::_view( $appData, $locale, $level ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {

@@ -431,9 +431,8 @@ check( 'B. back from the extended view of a page keeps the draft and goes to the
 } )() );
 check( 'B. a frame opened from the list goes back to the list - not to the first page it is shown on - and says so by the name of the list', ( function() {
 	fresh();
-	context.window.Nino.admin.builder.render( listed );
-	const link = made.filter( function( element ) { return element.className === 'builder-page-link' } )[2];
-	link.listeners.click( { preventDefault : function() {} } );
+	S.list = listed;
+	opened( [ 'home', '@header' ], { origin : [] } );
 	S.frame = true;
 	const way = builder.backOf( true );
 	return S.page === 'home' && way.parts.length === 0 && way.block === false;

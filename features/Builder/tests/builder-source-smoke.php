@@ -540,6 +540,22 @@ check( 'the template, the route of each language with its menu entry, the name i
 	&& ( $words['/template/page-ueber-uns/hero/title']['de_DE'] ?? '' ) !== '' && ( $words['/template/page-ueber-uns/hero/title']['en_US'] ?? '' ) !== '' && is_file( $sandbox. '/public/images/template/page-ueber-uns/hero/background.svg' ) && ( $config['/nino/html/images']['/template/page-ueber-uns/hero/background']['filename'] ?? '' ) !== ''
 	&& $opened === 200 && array_column( $pages['pages'], 'name', 'template' )['page-ueber-uns'] === 'Über uns' && sourceFind( $open['tree'], static fn( array $node ): bool => ( $node['a']['id'] ?? '' ) === 'hero' ) !== null );
 
+check( 'the list says of the page that was made which menus it is in, how many blocks it has, that it has its name and address in every language and when it was written - and offers the menus to an account that may not make a page', ( static function() use ( $pages, &$site ): bool {
+
+	$row = array_column( $pages['pages'], null, 'template' )['page-ueber-uns'] ?? [];
+	ninoUser( $site, 'reader@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+	$reader = sourceCall( $site, 'builder/list' )[1];
+	ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+
+	// A page that a module puts in a menu at run time - no route of its own names the menu - is in it as well
+	$was = $site['/nino/html/navroutes'] ?? null;
+	$site['/nino/html/navroutes'] = [ '/home' => [ 'main' => 1 ] ];
+	$home = array_column( sourceCall( $site, 'builder/list' )[1]['pages'], null, 'template' )['page-home'] ?? [];
+	$site['/nino/html/navroutes'] = $was ?? [];
+
+	return ( $home['navs'] ?? null ) === [ 'main' ] && ( $row['navs'] ?? null ) === [ 'main' ] && ( $row['blocks'] ?? null ) === 1 && ( $row['complete'] ?? null ) === true && ( $row['saved'] ?? 0 ) > 0 && $reader['create'] === false && $reader['navs'] === [ 'main' ];
+} )() );
+
 // what the request cannot say: the source of the template, a name of a template, a block that is not offered
 $before = sourceSnapshot( $site );
 $second = [ 'names' => [ 'de_DE' => 'Kontakt', 'en_US' => 'Contact' ], 'addresses' => [ 'de_DE' => '/kontakt-neu', 'en_US' => '/contact-new' ], 'navs' => [], 'block' => '' ];

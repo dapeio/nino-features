@@ -13,42 +13,59 @@
 
 @layer nino.tool {
 
-#builder-app .builder-heading {
-	margin: 1rem 0 .5rem;
-}
-
-#builder-app .builder-pages,
 #builder-app .builder-outline {
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
 
-#builder-app .builder-page-row + .builder-page-row {
-	margin-top: .35rem;
+/* The name in the table of the pages: the name, the sign that a language lacks something, and the file of the template quietly under them */
+#builder-app .builder-cell-name {
+	display: grid;
+	min-width: 0;
 }
 
-#builder-app .builder-page-link {
+#builder-app .builder-cell-first {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: .25rem .75rem;
-	min-height: 2.5rem;
-	padding: .5rem .75rem;
-	border: 1px solid var(--editor-border);
-	border-radius: var(--editor-radius-sm);
-	background: var(--editor-surface, var(--editor-bg));
-	color: var(--editor-ink);
-	text-decoration: none;
+	gap: var(--nino-admin-space-2);
+	min-width: 0;
 }
 
-#builder-app .builder-page-link:hover {
-	background: var(--editor-bg);
+#builder-app .builder-cell-warn {
+	display: inline-flex;
+	color: var(--editor-orange-ink);
 }
 
-#builder-app .builder-page-name {
-	flex: 1 1 8rem;
+#builder-app .builder-cell-file {
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-xs);
 	overflow-wrap: anywhere;
+}
+
+/* The languages of the form that makes a page, one row for each: the name of the language quietly in front of its input, as wide as its words and at the right edge,
+   so that the inputs stand in one column */
+#builder-app .builder-new-rows {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
+	align-items: center;
+	gap: var(--nino-admin-space-2) var(--nino-admin-space-4);
+	min-width: 0;
+}
+
+#builder-app .builder-new-row {
+	display: contents;
+}
+
+#builder-app .builder-new-language {
+	justify-self: end;
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-xs);
+	white-space: nowrap;
+}
+
+#builder-app .builder-new-rows > .nino-admin-field-error {
+	grid-column: 1 / -1;
 }
 
 #builder-app .builder-head {
@@ -447,8 +464,7 @@
 }
 
 .builder-source-body,
-.builder-own-body,
-.builder-new-body {
+.builder-own-body {
 	display: grid;
 	gap: .75rem;
 	min-width: 0;
@@ -539,31 +555,8 @@
 	border-radius: var(--editor-radius-sm);
 }
 
-.builder-new-group {
-	margin: 0;
-	padding: .25rem .75rem .5rem;
-	border: 1px solid var(--editor-border);
-	border-radius: var(--editor-radius-sm);
-}
-
-.builder-new-group .builder-offer-group {
-	margin-top: .35rem;
-}
-
-.builder-new-check {
-	display: inline-flex;
-	align-items: center;
-	gap: .4rem;
-	min-height: 1.75rem;
-	margin-right: 1rem;
-}
-
 .builder-tile-drop {
 	margin: 0 .5rem .5rem;
-}
-
-#builder-app #builder-new-page {
-	margin-bottom: .5rem;
 }
 
 }

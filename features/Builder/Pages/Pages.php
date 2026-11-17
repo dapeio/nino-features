@@ -15,15 +15,18 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$locale				The language of the view: what a page is called, and the address it is shown at
+		 *	@param		array			$navKeys			The menus the site has, for the menus a page is in
 		 *
-		 *	@return 	array											[ [ template, name, path, locales ], ... ]
+		 *	@return 	array											[ [ template, name, path, locales, navs, complete ], ... ] - navs the menus the page is in, complete whether every
+		 *																		language of the site has a name and an address for it
 		 */
-		public static function all( array &$appData, string $locale ): array {
+		public static function all( array &$appData, string $locale, array $navKeys = [] ): array {
 
 			$texts = \Nino\Locales::getTextLocales( $appData );
+			$available = \Nino\Locales::getAvailableLocales( $appData );
 			$pages = [];
 
-			foreach( \Nino\Modules\Routes\Admin::pages( $appData, (array) ( $appData['/nino/http/routes'] ?? [] ), $texts, [] ) as $page ) {
+			foreach( \Nino\Modules\Routes\Admin::pages( $appData, (array) ( $appData['/nino/http/routes'] ?? [] ), $texts, $navKeys ) as $page ) {
 
 				$template = (string) $page['template'];
 
@@ -33,15 +36,70 @@ namespace Nino\Modules\Builder {
 				$words = (array) ( $page['text'][$locale] ?? [] );
 				$name = trim( (string) ( $words['name'] ?? '' ) ) !== '' ? (string) $words['name'] : ( trim( (string) ( $words['title'] ?? '' ) ) !== '' ? (string) $words['title'] : $template );
 				$has = array_keys( (array) $page['httpUris'] );
+				$complete = true;
+
+				foreach( $available as $each )
+					if( trim( (string) ( $page['text'][$each]['name'] ?? '' ) ) === '' || trim( (string) ( $page['httpUris'][$each] ?? $page['httpUris'][''] ?? '' ) ) === '' )
+						$complete = false;
+
 				$pages[$template] = [
 					'template'	=> $template,
 					'name'			=> $name,
 					'path'			=> (string) ( $page['httpUris'][$locale] ?? $page['httpUris'][''] ?? $page['httpUri'] ),
-					'locales'		=> in_array( '', $has, true ) === true ? \Nino\Locales::getAvailableLocales( $appData ) : array_values( array_filter( $has ) ),
+					'locales'		=> in_array( '', $has, true ) === true ? $available : array_values( array_filter( $has ) ),
+					'navs'			=> self::_menus( $appData, $page, $navKeys ),
+					'complete'	=> $complete,
 				];
 			}
 
 			return array_values( $pages );
+		}
+
+		/**
+		 *	The menus a page is in: the ones its routes name and, for a page a module routes at run time, the ones '/nino/html/navroutes' puts it in by its Element-URI -
+		 *	in the order of the menus of the site
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$page					An entry of \Nino\Modules\Routes\Admin::pages()
+		 *	@param		array			$navKeys			The menus the site has
+		 *
+		 *	@return 	array											The keys of the menus
+		 */
+		private static function _menus( array &$appData, array $page, array $navKeys ): array {
+
+			$in = (array) $page['navs'];
+			$runtime = $appData['/nino/html/navroutes'][(string) $page['uri']] ?? [];
+
+			return array_values( array_filter( $navKeys, static fn( string $nav ): bool => in_array( $nav, $in, true ) === true || ( is_array( $runtime ) === true && is_int( $runtime[$nav] ?? null ) === true ) ) );
+		}
+
+		/**
+		 *	The pages as the list of the panel shows them: what all() says and, for each, how many blocks its template has - the calls on its top level that the register
+		 *	has, the calls of the frame and free markup are none - and when it was written last, the later of the file of the template and the state the Builder kept
+		 *	with its last save
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$locale				The language of the view
+		 *
+		 *	@return 	array											[ [ template, name, path, locales, navs, complete, blocks, saved ], ... ]; saved is a time, 0 where none is known
+		 */
+		public static function listed( array &$appData, string $locale ): array {
+
+			$registry = \Nino\Components::components( $appData );
+			$rows = [];
+
+			foreach( self::all( $appData, $locale, \Nino\Pages::navKeys( $appData ) ) as $page ) {
+
+				$template = (string) $page['template'];
+				$nodes = Tree::read( $appData, (string) \Nino\Filesystem::getFileContent( $appData, '/templates/'. $template. '.tpl', '' ) );
+				$time = @filemtime( \Nino\Filesystem::path( $appData, '/templates/'. $template. '.tpl' ) );
+
+				$page['blocks'] = count( array_filter( $nodes, static fn( array $node ): bool => isset( $node['n'] ) === true && isset( $registry[(string) $node['n']] ) === true ) );
+				$page['saved'] = max( $time === false ? 0 : $time, (int) ( Store::previous( $appData, $template )['saved'] ?? 0 ) );
+				$rows[] = $page;
+			}
+
+			return $rows;
 		}
 
 		/**

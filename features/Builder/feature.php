@@ -32,8 +32,8 @@ return [
 		],
 		'panel' => [
 			'Builder' => [
-				'en_US' => 'The screen of the workbench for the pages: the list, and for a page the page itself with a bar on each block; the right is /_admin/builder/manage.',
-				'de_DE' => 'Der Bildschirm der Werkbank für die Seiten: die Liste, und je Seite die Seite selbst mit einer Leiste an jedem Block; das Recht: /_admin/builder/manage.',
+				'en_US' => 'The screen of the workbench for the pages: the table of them with its search, and for a page the page itself with a bar on each block; the right is /_admin/builder/manage.',
+				'de_DE' => 'Der Bildschirm der Werkbank für die Seiten: die Tabelle mit Suche, und je Seite die Seite selbst mit einer Leiste an jedem Block; das Recht: /_admin/builder/manage.',
 			],
 			'Advanced' => [
 				'en_US' => 'On a block of the page: the tree of its components, which are put in, moved and taken out where the register allows, and the settings of each by its schema.',
@@ -52,8 +52,8 @@ return [
 				'de_DE' => 'In den Einstellungen eines Blocks, für alle, die gestalten: der Block der Seite wird als Block des Projekts abgelegt, steht danach im Dialog Block einfügen und lässt sich dort wieder löschen.',
 			],
 			'New page …' => [
-				'en_US' => 'In the list of the pages, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',
-				'de_DE' => 'In der Seitenliste, für alle, die gestalten und Routen schreiben dürfen: Namen, Adressen, Menüs und ein erster Block machen Vorlage, Routen, Menüeintrag und Texte in einem Schritt.',
+				'en_US' => 'In the view #builder/new, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',
+				'de_DE' => 'In der Ansicht #builder/new, für alle, die gestalten und Routen schreiben dürfen: Namen, Adressen, Menüs und ein erster Block machen Vorlage, Routen, Menüeintrag und Texte in einem Schritt.',
 			],
 			'+ Insert block' => [
 				'en_US' => 'Between the blocks, at the end of the page and in the outline: a dialog of the available blocks by category, each drawn in the active theme, put in as a draft until Save.',
