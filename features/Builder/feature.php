@@ -32,8 +32,8 @@ return [
 		],
 		'panel' => [
 			'Builder' => [
-				'en_US' => 'The screen of the workbench for the pages: the table of them with its search, and for a page the page itself with a bar on each block; the right is /_admin/builder/manage.',
-				'de_DE' => 'Der Bildschirm der Werkbank für die Seiten: die Tabelle mit Suche, und je Seite die Seite selbst mit einer Leiste an jedem Block; das Recht: /_admin/builder/manage.',
+				'en_US' => 'The screen for the pages: the table with its search, and for a page the page with its outline and a bar on the block under the pointer; the right is /_admin/builder/manage.',
+				'de_DE' => 'Der Bildschirm für die Seiten: die Tabelle mit Suche, und je Seite die Seite mit ihrer Gliederung und einer Leiste am Block unter dem Zeiger; das Recht: /_admin/builder/manage.',
 			],
 			'Advanced' => [
 				'en_US' => 'On a block of the page: the tree of its components, which are put in, moved and taken out where the register allows, and the settings of each by its schema.',
@@ -78,6 +78,22 @@ return [
 	'php'					=> [],
 	'requires'		=> [],
 	'data'				=> [ '/data/builder' ],
-	'settings'		=> [],
+	// How the block under the pointer shows in the page: "frame" draws a frame of the accent colour round it and leaves the others as they are, "fade" leaves it as it is and
+	// draws the others at four fifths of their strength
+	'settings'		=> [
+		'dim' => [
+			'type'		=> 'select',
+			'label'		=> [ 'en_US' => 'Show the block under the pointer', 'de_DE' => 'Block unter dem Zeiger zeigen' ],
+			'hint'		=> [
+				'en_US' => 'How the page of the Builder tells which block the pointer or the keyboard is on.',
+				'de_DE' => 'Wie die Seite im Builder zeigt, auf welchem Block der Zeiger oder die Tastatur steht.',
+			],
+			'options'	=> [
+				'frame'	=> [ 'en_US' => 'Frame round the block', 'de_DE' => 'Rahmen um den Block' ],
+				'fade'	=> [ 'en_US' => 'Fade the other blocks', 'de_DE' => 'Andere Blocks abdunkeln' ],
+			],
+			'default'	=> 'frame',
+		],
+	],
 	'assets'			=> [],
 ];

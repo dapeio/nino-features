@@ -34,7 +34,6 @@
 	// How many steps the undo goes back, the widths of the preview and the width the page is laid out at for each: in the page the desktop is as wide as the pane,
 	// beside the tree of the extended view the pane is narrow and the desktop is laid out at DESKTOP and scaled into it, as the preview of the themes does
 	const MAX_STEPS	= 200;
-	const WIDTHS		= [ 'mobile', 'tablet', 'desktop' ];
 	const LAYOUT		= { mobile : 390, tablet : 768, desktop : null };
 	const DESKTOP		= 1280;
 
@@ -56,6 +55,9 @@
 
 	// How long the words in the name of a block are, in characters
 	const NAMED			= 24;
+
+	// How strong the other blocks are drawn where the setting fades them
+	const FADE			= .8;
 
 	// The blanks the server calls a gap
 	const BLANKS		= /^[ \t\r\n]*$/;
@@ -139,6 +141,17 @@
 		staged			: [],
 		types				: [],
 		typesAsked	: false,
+		dim					: 'frame',
+		gl					: null,
+		found				: null,
+		host				: null,
+		hot					: '',
+		focus				: '',
+		overBar			: '',
+		selected		: '',
+		paintBars		: null,
+		scroll			: null,
+		autoSource	: false,
 	};
 
 	/**
@@ -528,6 +541,9 @@
 				return false;
 		}
 
+		// The focus is put on the copy before the page is drawn: the page is drawn by the change, and the button that had the focus is gone with it
+		S.refocus = { at : at + 2, action : 'copy', from : from ?? 'frame' };
+
 		change( function() {
 
 			S.top.splice( at + 1, 0, { t : '\n' }, copy );
@@ -556,8 +572,6 @@
 					S.copies[ '/template/'+ S.template+ '/'+ map[parts[3]]+ '/'+ parts[4] ] = uri;
 			} );
 		} );
-
-		S.refocus = { at : at + 2, action : 'copy', from : from ?? 'frame' };
 
 		return true;
 	};
@@ -888,8 +902,8 @@
 			askRemove( at, opener, from );
 	};
 
-	// The four things done to a block: the key, the glyph that stands for it and whether its word is written out where there is room for it
-	const ACTIONS = [ [ 'up', '↑', false ], [ 'down', '↓', false ], [ 'copy', '⧉', true ], [ 'remove', '✕', true ] ];
+	// The four things done to a block: the key and whether its word is written out beside its icon where there is room for it
+	const ACTIONS = [ [ 'up', false ], [ 'down', false ], [ 'copy', false ], [ 'remove', true ] ];
 
 	// Whether an action can be done to the block at an index now
 	const possible = function( at, action ) {
@@ -917,111 +931,428 @@
 		return idOf( node ) === '' ? null : [ addressOf( S.template ), idOf( node ) ];
 	};
 
-	// The place to put a block in as a row of the outline: one button, named for the block it stands by
-	const insertRow = function( place ) {
+	// --- the outline: the blocks of the page as the tree of the workbench, and as the strip it folds to ------------
 
-		const row = el( 'li', 'builder-insert-row' );
-		const button = Nino.adminUi.button( word('label/insert-short'), function() { openInsert( place, button, 'outline' ) }, { className : 'nino-admin-btn--small builder-insert', name : word( place.after === null && place.before !== null ? 'label/insert-before' : 'label/insert-after', place.name ) } );
+	// The key a block has in every view that shows it - the outline, its strip, the page in the frame -: its id, and where it has none the place it stands at. The
+	// calls of the two frames have a key of their own
+	const keyAt = function( at ) {
 
-		button.dataset.insert = String( place.b );
-		row.appendChild( button );
+		const node = S.top[at];
 
-		return row;
-	};
+		if( node === undefined )
+			return '';
 
-	// The outline in the column of the split view: every block with its bar, the frame and the free markup as the lines they are, and between the blocks the places
-	// where a block is put in
-	const outline = function() {
+		if( kindOf( node ) === 'block' )
+			return idOf( node ) !== '' ? idOf( node ) : '@'+ at;
 
-		const list = el( 'ol', 'builder-outline' );
-		const spots = points();
-		const rows = items();
-		const spotAt = function( b ) { return spots.find( function( spot ) { return spot.b === b } ) };
+		if( node.n !== 'template' )
+			return '@'+ at;
 
-		rows.forEach( function( item, b ) {
+		// The first call of a frame on the top level is the head, the last the foot, and what stands between is a template of its own: no second head
+		const calls = [];
 
-			const before = spotAt( b );
-
-			if( before !== undefined )
-				list.appendChild( insertRow( before ) );
-
-			const row = el( 'li', 'builder-row builder-row--'+ item.kind );
-			const label = el( 'span', 'builder-row-name', titleOf( item.node ) );
-
-			label.title = titleOf( item.node, true );
-
-			row.dataset.at = String( item.at );
-			row.appendChild( label );
-
-			if( item.kind === 'free' || ( item.kind === 'block' && lockedInside( item.node ) === true ) )
-				row.appendChild( el( 'span', 'nino-admin-badge builder-lock', word('word/locked') ) );
-
-			if( item.kind === 'block' && S.frame === false && free( item.node ) === true ) {
-
-				const bar = el( 'span', 'builder-row-actions' );
-
-				bar.setAttribute( 'role', 'group' );
-				bar.setAttribute( 'aria-label', word( 'label/block-bar', titleOf( item.node ) ) );
-
-				ACTIONS.forEach( function( action ) {
-
-					const name = word( 'label/'+ action[0] )+ ': '+ titleOf( item.node );
-					const button = Nino.adminUi.button( action[2] === true ? action[1]+ ' '+ word( 'label/'+ action[0]+ '-short' ) : action[1], function() { act( item.at, action[0], button, 'outline' ) }, { className : 'nino-admin-btn--small builder-act', name : name } );
-
-					button.dataset.action = action[0];
-					button.disabled = possible( item.at, action[0] ) === false;
-					bar.appendChild( button );
-				} );
-
-				bar.addEventListener( 'keydown', function( event ) {
-
-					if( event.altKey === true && ( event.key === 'ArrowUp' || event.key === 'ArrowDown' ) ) {
-						event.preventDefault();
-						move( item.at, event.key === 'ArrowUp' ? -1 : 1, 'outline' );
-					}
-				} );
-
-				row.appendChild( bar );
-			}
-
-			if( item.kind === 'block' && advancedParts( item.node ) !== null ) {
-
-				const parts = advancedParts( item.node );
-				const open = Nino.adminUi.button( word('label/advanced'), function() { Nino.admin.builder.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } ) }, { className : 'nino-admin-btn--small builder-act', name : word('label/advanced')+ ': '+ titleOf( item.node ) } );
-
-				open.dataset.action = 'advanced';
-				row.appendChild( open );
-			}
-
-			list.appendChild( row );
+		S.top.forEach( function( other, index ) {
+			if( other.n === 'template' )
+				calls.push( index );
 		} );
 
-		const end = spotAt( rows.length );
+		if( calls.length === 1 )
+			return /footer/i.test( String( node.s ?? '' ) ) === true ? '@footer' : '@header';
 
-		if( end !== undefined )
-			list.appendChild( insertRow( end ) );
+		return at === calls[0] ? '@header' : ( at === calls[calls.length - 1] ? '@footer' : '@'+ at );
+	};
 
-		return list;
+	// The index in the top level that a key names, -1 for none
+	const atOf = function( key ) {
+
+		for( let at = 0; at < S.top.length; at++ )
+			if( keyAt( at ) === key )
+				return at;
+
+		return -1;
+	};
+
+	// The calls inside a call, at any depth
+	const innerCalls = function( node, into ) {
+
+		( node.c ?? [] ).forEach( function( inner ) {
+
+			if( inner.n !== undefined )
+				into.push( inner );
+
+			if( Array.isArray( inner.c ) === true )
+				innerCalls( inner, into );
+		} );
+
+		return into;
+	};
+
+	// Whether a call is a loop: a collection or any component the register says repeats its content
+	const isLoopCall = function( call ) {
+		return call.n.indexOf('collection') === 0 || ( S.schemas[call.n] !== undefined && S.schemas[call.n].loop === true );
+	};
+
+	/**
+	 *	The icon of a block, from what makes it what it is - the first of these that the block has:
+	 *
+	 *		a loop or a collection in it			repeat
+	 *		a picture (the call or the attribute)	image
+	 *		a row of two columns or more			columns-3
+	 *		a table									table
+	 *		a form									rows-2
+	 *		a button									mouse-pointer-click
+	 *		free html								code
+	 *		a text									text
+	 *		a title and nothing else				heading
+	 *		nothing of these						square (the icon its component names is the one of the head of the page: no block has it)
+	 *
+	 *	The call of a frame - the head and the foot - has the icon of the component. Free markup has the one of code
+	 */
+	const iconOf = function( node ) {
+
+		if( node.n === undefined )
+			return 'code';
+
+		if( node.n === 'header-wrap' || node.n === 'footer-wrap' )
+			return node.n === 'header-wrap' ? 'panel-top' : 'panel-bottom';
+
+		const inner = innerCalls( node, [] );
+		const has = function( test ) { return inner.some( test ) };
+		const columns = [ node ].concat( inner ).some( function( call ) {
+			return call.n === 'section-row' && ( call.c ?? [] ).filter( function( child ) { return child.n === 'section-col' } ).length >= 2;
+		} );
+
+		if( has( isLoopCall ) === true )
+			return 'repeat';
+
+		if( has( function( call ) { return call.n === 'image' } ) === true || [ node ].concat( inner ).some( function( call ) { return typeof ( call.a ?? {} ).image === 'string' } ) === true )
+			return 'image';
+
+		if( columns === true )
+			return 'columns-3';
+
+		if( has( function( call ) { return call.n.indexOf('table') !== -1 } ) === true )
+			return 'table';
+
+		if( has( function( call ) { return call.n.indexOf('form') === 0 } ) === true )
+			return 'rows-2';
+
+		if( has( function( call ) { return call.n.indexOf('button') === 0 } ) === true )
+			return 'mouse-pointer-click';
+
+		if( has( function( call ) { return call.n === 'html' } ) === true )
+			return 'code';
+
+		if( has( function( call ) { return call.n === 'text' } ) === true )
+			return 'text';
+
+		if( has( function( call ) { return call.n === 'section-title' || call.n === 'section-subtitle' } ) === true )
+			return 'heading';
+
+		return 'square';
+	};
+
+	// The icons of the four things done to a block, and of the place to put one in and of the extended view
+	const ACTION_ICONS = { insert : 'plus', up : 'arrow-up', down : 'arrow-down', copy : 'copy', remove : 'trash-2', advanced : 'sliders-horizontal' };
+
+	// What a row of the outline is: its key, the word it shows - the id of a block, the name of a frame -, the full name for a hint, the icon and its type
+	const rowOf = function( item ) {
+
+		const node = item.node;
+		const key = keyAt( item.at );
+
+		if( item.kind === 'frame' && ( key === '@header' || key === '@footer' ) )
+			return { key : key, label : word( key === '@footer' ? 'word/frame-footer' : 'word/frame-header' ), detail : word('hint/frame-short'), name : '', icon : key === '@footer' ? 'panel-bottom' : 'panel-top', locked : false };
+
+		// A template that is put in the middle of the page has its name and an id of its own
+		if( item.kind === 'frame' )
+			return { key : key, label : String( node.s ?? '' ).split('/').pop(), detail : '', name : String( node.s ?? '' ), icon : 'file-text', locked : false };
+
+		if( item.kind === 'free' )
+			return { key : key, label : word('word/free'), detail : '', name : '', icon : 'code', locked : true };
+
+		return { key : key, label : idOf( node ) !== '' ? idOf( node ) : kindName( node ), detail : '', name : titleOf( node, true ), icon : iconOf( node ), locked : lockedInside( node ) === true };
+	};
+
+	// The entries of the outline tree: a row for each block, the calls of the frames as quiet rows over and under them, the locked pieces as one row. What can be done
+	// to a row stands at its end - put a block in behind it, up, down, duplicate, delete, the extended view - and is drawn by the tree under the pointer, with the
+	// focus in the row and on the row that is chosen
+	const outlineItems = function() {
+
+		const rows = items();
+		const spots = points();
+
+		return rows.map( function( item, index ) {
+
+			const row = rowOf( item );
+			const actions = [];
+			const spot = spots.find( function( candidate ) { return candidate.b === index + 1 } );
+			const title = item.kind === 'block' ? titleOf( item.node ) : row.label;
+
+			if( spot !== undefined )
+				actions.push( { key : 'insert', icon : ACTION_ICONS.insert, name : word( 'label/insert-after', spot.name ) } );
+
+			if( item.kind === 'block' && S.frame === false && free( item.node ) === true )
+				[ 'up', 'down', 'copy', 'remove' ].forEach( function( action ) {
+					actions.push( { key : action, icon : ACTION_ICONS[action], name : word( 'label/'+ action )+ ': '+ title, disabled : possible( item.at, action ) === false, danger : action === 'remove' } );
+				} );
+
+			if( item.kind === 'block' && advancedParts( item.node ) !== null )
+				actions.push( { key : 'advanced', icon : ACTION_ICONS.advanced, name : word('label/advanced')+ ': '+ title } );
+
+			return { id : row.key, label : row.label, detail : row.detail, icon : row.icon, locked : row.locked, actions : actions };
+		} );
+	};
+
+	// The full name of a block is the hint of its row: the tree has the id in it, and a long id its own
+	const titled = function() {
+
+		items().forEach( function( item ) {
+
+			const row = rowOf( item );
+			const entry = S.gl.tree.el.querySelector( 'li[data-id="'+ row.key.replace( /["\\]/g, '\\$&' )+ '"]' );
+
+			if( entry === null || row.name === '' )
+				return;
+
+			entry.querySelector('.nino-admin-tree-row').title = row.name;
+			entry.querySelector('.nino-admin-tree-label').title = row.name;
+		} );
+	};
+
+	// The place that is above the first row, where a page has no call of a head: the only place the rows have no button for
+	const firstSpot = function() {
+		return points().find( function( spot ) { return spot.b === 0 } );
+	};
+
+	// A press on a button of a row: the block it is on is chosen, and what the button says is done to it
+	const rowAction = function( key, id, opener ) {
+
+		const at = atOf( id );
+
+		if( at === -1 )
+			return;
+
+		if( key === 'insert' ) {
+			const index = items().findIndex( function( item ) { return keyAt( item.at ) === id } );
+			const spot = points().find( function( candidate ) { return candidate.b === index + 1 } );
+
+			if( spot !== undefined )
+				openInsert( spot, opener, 'outline' );
+
+			return;
+		}
+
+		if( key === 'advanced' ) {
+			openExtended( at );
+			return;
+		}
+
+		selectBlock( id, false );
+		act( at, key, opener, 'outline' );
+	};
+
+	// Where the page in the frame is rolled to, for the way back from the extended view
+	const rememberScroll = function() {
+
+		try {
+			S.scroll = S.view.split.frame.contentWindow.scrollY;
+		} catch( error ) {
+			S.scroll = null;
+		}
+	};
+
+	// The extended view of a block: the block is the chosen one where the way back leads
+	const openExtended = function( at ) {
+
+		const parts = advancedParts( S.top[at] );
+
+		if( parts === null )
+			return;
+
+		S.selected = keyAt( at );
+		rememberScroll();
+		Nino.admin.builder.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } );
+	};
+
+	// Roll the page in the frame to what a key names: the block, the head or the foot of the page
+	const rollTo = function( key ) {
+
+		if( S.view === null || S.view.split.frame === null )
+			return;
+
+		let win = null;
+		let doc = null;
+
+		try {
+			win = S.view.split.frame.contentWindow;
+			doc = S.view.split.frame.contentDocument;
+		} catch( error ) {
+			return;
+		}
+
+		if( win === null || win === undefined || doc === null || doc === undefined || doc.body === null )
+			return;
+
+		if( key === '@header' )
+			win.scrollTo( { top : 0 } );
+		else if( key === '@footer' )
+			win.scrollTo( { top : doc.documentElement.scrollHeight } );
+		else {
+
+			const block = S.found === null ? undefined : S.found.blocks.find( function( candidate ) { return candidate.key === key } );
+			const box = block === undefined ? null : boxOf( block.elements, win );
+
+			if( box !== null )
+				win.scrollTo( { top : Math.max( 0, box.top - 24 ) } );
+		}
+	};
+
+	// Choose a block: its row is the chosen one, its bar stays on the page and, where asked, the page rolls to it
+	const selectBlock = function( key, roll ) {
+
+		S.selected = key;
+
+		if( S.gl !== null ) {
+			S.gl.tree.select( key === '' ? null : key );
+			paintRail();
+		}
+
+		if( S.paintBars !== null )
+			S.paintBars();
+
+		if( roll === true )
+			rollTo( key );
+	};
+
+	// What the other views are pointing at, as the outline shows it: the rows of the keys and their icons in the strip are marked, nothing is moved
+	const lightOutline = function( keys ) {
+
+		const list = keys === null ? [] : ( Array.isArray( keys ) === true ? keys : [ keys ] );
+
+		if( S.gl === null )
+			return;
+
+		S.gl.tree.highlight( list.length > 0 ? list : null );
+		S.gl.lit = list;
+		paintRail();
+	};
+
+	// The strip the outline folds to: one button for each row, with the icon of its type; a press chooses the block and rolls the page to it
+	const paintRail = function() {
+
+		const gl = S.gl;
+
+		if( gl === null )
+			return;
+
+		gl.rail.innerHTML = '';
+
+		items().forEach( function( item ) {
+
+			const row = rowOf( item );
+			const name = item.kind === 'block' ? titleOf( item.node ) : row.label;
+			const button = Nino.adminUi.iconButton( row.icon, name, function() { selectBlock( row.key, true ) }, { className : 'builder-rail-button' } );
+
+			button.dataset.key = row.key;
+			button.setAttribute( 'aria-pressed', String( row.key === S.selected ) );
+			button.classList.toggle( 'is-lit', gl.lit.indexOf( row.key ) !== -1 );
+			button.classList.toggle( 'is-quiet', item.kind === 'frame' );
+
+			// What the strip is over is told to the other views, as the rows of the tree are: the pointer and the focus both
+			button.addEventListener( 'pointerenter', function() { S.view.board.outline.set( row.key ) } );
+			button.addEventListener( 'pointerleave', function() { S.view.board.outline.set( null ) } );
+			button.addEventListener( 'focus', function() { S.view.board.outline.set( row.key ) } );
+			button.addEventListener( 'blur', function() { S.view.board.outline.set( null ) } );
+			gl.rail.appendChild( button );
+		} );
+	};
+
+	// The outline is drawn again after every change: the tree keeps what is chosen and the focus where the ids stay, and puts the focus on the row that is new
+	const paintOutline = function() {
+
+		const gl = S.gl;
+
+		if( gl === null )
+			return;
+
+		if( S.selected !== '' && atOf( S.selected ) === -1 )
+			S.selected = '';
+
+		gl.tree.update( outlineItems() );
+		gl.tree.select( S.selected === '' ? null : S.selected );
+		titled();
+		paintRail();
+		gl.first.hidden = firstSpot() === undefined;
+
+		const wanted = S.refocus !== null && S.refocus.from === 'outline' ? S.refocus : null;
+
+		if( wanted === null )
+			return;
+
+		S.refocus = null;
+
+		// A move or a removal leaves the focus where the tree keeps it; a copy and the way back from the extended view name the row and the button
+		if( wanted.action === 'copy' || wanted.action === 'advanced' )
+			gl.tree.focus( keyAt( wanted.at ), wanted.action === 'copy' ? 'copy' : 'advanced' );
+
+		// The strip stands in the place of a column that is folded: its button takes the focus the row cannot have
+		if( gl.tree.el.contains( dc.activeElement ) === false && wanted.action === 'advanced' ) {
+
+			const button = gl.rail.querySelector( 'button[data-key="'+ keyAt( wanted.at ).replace( /["\\]/g, '\\$&' )+ '"]' );
+
+			if( button !== null )
+				button.focus();
+		}
 	};
 
 	// --- the frame: bars over the blocks, the texts that are written where they stand ------------------------------
 
-	const FRAME_CSS = '[data-nino-text],[data-nino-image]{cursor:text;outline:2px dashed transparent;outline-offset:2px}'
-		+ '[data-nino-image]{cursor:pointer}'
-		+ '[data-nino-text]:hover,[data-nino-text]:focus,[data-nino-image]:hover,[data-nino-image]:focus{outline-color:#2f6fed}'
-		+ '[data-nino-text][contenteditable]{outline:2px solid #2f6fed;background:rgba(47,111,237,.08)}'
-		+ '[data-nino-placeholder]:not([contenteditable]){opacity:.6;font-style:italic}'
-		+ '[data-nino-locked]{cursor:not-allowed}';
+	// The colours and measures of the workbench the page in the frame is drawn with: read from its tokens where the page is marked, so that the bars are the ones of the
+	// workbench in the scheme it is in
+	const toneOf = function() {
 
-	// The bars stand in the shadow of one element at the end of the page: nothing of the website's style reaches them and they reach nothing of its
+		const style = wn.getComputedStyle( dc.documentElement );
+		const read = function( name ) { return style.getPropertyValue( name ).trim() };
+
+		return {
+			blue : read('--editor-blue'), soft : read('--editor-blue-soft'), ground : read('--editor-bg-elevated'), ink : read('--editor-text'), line : read('--editor-border'),
+			red : read('--editor-red-ink'), redsoft : read('--editor-red-soft'), shadow : read('--editor-shadow-sm'), radius : read('--editor-radius-sm'),
+		};
+	};
+
+	// What the page in the frame is given: the texts that are written where they stand have a frame of the accent colour, and where the setting fades the other blocks
+	// they are drawn at four fifths of their strength - without a transition for a person who has asked for none
+	const frameCss = function( tone ) {
+
+		return '[data-nino-text],[data-nino-image]{cursor:text;outline:2px dashed transparent;outline-offset:2px}'
+			+ '[data-nino-image]{cursor:pointer}'
+			+ '[data-nino-text]:hover,[data-nino-text]:focus,[data-nino-image]:hover,[data-nino-image]:focus{outline-color:'+ tone.blue+ '}'
+			+ '[data-nino-text][contenteditable]{outline:2px solid '+ tone.blue+ ';background:'+ tone.soft+ '}'
+			+ '[data-nino-placeholder]:not([contenteditable]){opacity:.6;font-style:italic}'
+			+ '[data-nino-locked]{cursor:not-allowed}'
+			+ '[data-nino-block]{transition:opacity .12s}'
+			+ '[data-nino-dim]{opacity:'+ FADE+ '}'
+			+ '@media (prefers-reduced-motion:reduce){[data-nino-block]{transition:none}}';
+	};
+
+	// The bars stand in the shadow of one element at the end of the page: nothing of the website's style reaches them and they reach nothing of its. A bar, the frame
+	// of its block and the places to put a block in are shown only for the block that is on - the pointer or the focus is in it, or it is the chosen one
 	const BAR_CSS = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}'
-		+ '.bar{position:absolute;width:max-content;display:flex;flex-wrap:wrap;gap:4px;align-items:center;box-sizing:border-box;max-width:calc(100vw - 16px);padding:4px 6px;border-radius:6px;background:#1b2330;color:#fff;font:600 13px/1.2 system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.4)}'
-		+ '.name{flex:1 1 auto;min-width:0;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-		+ 'button{box-sizing:border-box;min-width:28px;min-height:28px;margin:0;padding:0 6px;border:1px solid #6b7d99;border-radius:4px;background:#2c3a4f;color:#fff;font:600 14px/1 system-ui,sans-serif;cursor:pointer}'
-		+ 'button:hover{background:#3d4f6b}button:focus-visible{outline:3px solid #ffd54a;outline-offset:1px}button:disabled{opacity:.55;cursor:default}'
-		+ '.frame{position:absolute;pointer-events:none;border:1px dashed rgba(47,111,237,.7);box-sizing:border-box}'
-		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);padding:0 12px;border:1px dashed #b7c4da;border-radius:14px;background:#1b2330;box-shadow:0 1px 4px rgba(0,0,0,.4);white-space:nowrap}'
-		+ 'button.insert:hover{background:#3d4f6b}';
+		+ '.bar{position:absolute;width:max-content;display:flex;flex-wrap:wrap;gap:2px;align-items:center;box-sizing:border-box;max-width:calc(100vw - 16px);padding:2px;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-ink);font:600 12px/1.2 system-ui,sans-serif;box-shadow:var(--b-shadow);opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
+		+ '.bar[data-on],.bar:focus-within,button.insert[data-on],button.insert:focus-visible,button.pen[data-on],button.pen:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
+		+ '.name{flex:1 1 auto;min-width:0;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+		+ 'button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:24px;min-height:24px;margin:0;padding:0 4px;border:1px solid transparent;border-radius:var(--b-radius);background:transparent;color:inherit;font:600 12px/1 system-ui,sans-serif;cursor:pointer}'
+		+ 'button:hover{background:var(--b-soft)}button:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}button:disabled{opacity:.5;cursor:default}'
+		+ 'button.danger{color:var(--b-red)}button.danger:hover{background:var(--b-redsoft)}'
+		+ 'svg{flex:none;width:14px;height:14px}'
+		+ '.frame{position:absolute;display:none;pointer-events:none;box-sizing:border-box;border:2px solid var(--b-blue);border-radius:3px}'
+		+ '.frame[data-on]{display:block}'
+		+ 'button.insert,button.pen{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-shadow);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
+		+ 'button.insert{padding:0 10px;border-style:dashed;border-color:var(--b-blue);border-radius:14px}'
+		+ 'button.pen{padding:0;color:var(--b-blue)}'
+		+ 'button.insert:hover,button.pen:hover{background:var(--b-soft)}'
+		+ '@media (prefers-reduced-motion:reduce){.bar,button.insert,button.pen{transition:none}}';
 
 	/**
 	 *	The blocks and the texts of the page in the frame, from the comments the trace of the drawing writes: a block is the elements between the comment
@@ -1285,8 +1616,74 @@
 		return top === Infinity ? null : { top : top + win.scrollY, left : left + win.scrollX, width : right - left, height : bottom - top };
 	};
 
+	// Which block is on: the one the pointer is in, else the one the focus is in - a text, a picture, a bar -, and where neither is in a block the chosen one stays on.
+	// `current` is what the pointer or the focus is in: the block the other blocks are measured against
+	const activeOf = function() {
+
+		const current = S.hot !== '' ? S.hot : S.focus;
+
+		return { current : current, active : current !== '' ? current : S.selected };
+	};
+
 	/**
-	 *	Hang a bar on each block of the frame: its name and the four things that can be done to it, in an element that has a shadow of its own
+	 *	What a block shows, by the setting "dim": its bar and the places for a block beside it are drawn for the block that is on; the setting "frame" (the default) draws a
+	 *	frame of the accent colour round that block and leaves the others as they are; the setting "fade" leaves it without a frame and draws the other blocks at four fifths
+	 *	of their strength while the pointer or the focus is in one
+	 *
+	 *	@param		{string}		mode					'frame' or 'fade'
+	 *	@param		{string}		key
+	 *	@param		{Object}		now						activeOf()
+	 *
+	 *	@return		{Object}									{ bar, frame, dim }
+	 */
+	const lookOf = function( mode, key, now ) {
+		return { bar : key === now.active, frame : key === now.active && mode !== 'fade', dim : mode === 'fade' && now.current !== '' && key !== now.current };
+	};
+
+	/**
+	 *	What the account may open at a component of the page, and how it is named: the settings of the component in the extended view, which is for whoever may design -
+	 *	an account that may write the content only has nothing to open here, it writes the texts where they stand. The pencil on a component is drawn from this and
+	 *	opens what open() does; what it opens is the only thing the pencil has of the view it opens
+	 *
+	 *	@param		{string}		path					The position of the component in the tree of the page, 'a.b.c'
+	 *	@param		{Object}		node					The call
+	 *
+	 *	@return		{Object|null}							{ name, open } or null where there is nothing to open
+	 */
+	const penOf = function( path, node ) {
+
+		if( S.level < 2 || node.n === undefined || S.schemas[node.n] === undefined || /^\d+\.\d+/.test( path ) === false )
+			return null;
+
+		const parts = path.split('.');
+		const block = S.top[ Number( parts[0] ) ];
+		const base = block === undefined ? null : advancedParts( block );
+
+		if( base === null )
+			return null;
+
+		const schema = S.schemas[node.n];
+		const own = Nino.content.getText( '/_admin/builder/kind/'+ node.n );
+		const section = schema.source !== 'none' || schema.loop === true || ( node.n === 'html' && S.level >= DEVELOP ) ? 'content' : 'look';
+
+		// A component that reads a source, and a loop, is opened at the dialog that changes the source
+		const source = schema.source !== 'none' || schema.loop === true;
+
+		return {
+			name	: word( 'label/edit-component', own !== '' ? own : localized( schema.label ) ),
+			source	: source,
+			open	: function() {
+				S.selected = keyAt( Number( parts[0] ) );
+				S.autoSource = source;
+				rememberScroll();
+				Nino.admin.builder.go( base.concat( [ parts.slice( 1 ).join('.'), section ] ), { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } );
+			},
+		};
+	};
+
+	/**
+	 *	Hang a bar on each block of the frame: its name and the things that can be done to it, in an element that has a shadow of its own. The bar, the frame of the block
+	 *	and the places to put a block in next to it are drawn for the block that is on, and the pencil for the component under the pointer
 	 *
 	 */
 	const bars = function( frame, blocks, behind ) {
@@ -1294,30 +1691,50 @@
 		const doc = frame.contentDocument;
 		const win = frame.contentWindow;
 		const spots = points();
+		const tone = toneOf();
 		const host = doc.createElement('nino-builder-bars');
 		const shadow = host.attachShadow( { mode : 'open' } );
 		const style = doc.createElement('style');
 		const placed = [];
 		const pics = [];
+		const fade = S.dim === 'fade';
 
-		// On a page that is laid out as wide as a tablet the words of the bar are written out, on a phone they are the glyphs, with their names
+		// On a page that is laid out as wide as a tablet the words of the bar are written out, on a phone they are the icons, with their names
 		const wide = win.innerWidth >= 768;
 
 		style.textContent = BAR_CSS;
 		shadow.appendChild( style );
+		Object.keys( tone ).forEach( function( name ) { host.style.setProperty( '--b-'+ name, tone[name] ) } );
 		host.setAttribute( 'role', 'region' );
 		host.setAttribute( 'aria-label', word('label/bars') );
+		S.host = host;
 
-		// The button that puts a block in at a place: the words are written out where there is room for them and where a phone has to have them
-		const pill = function( text, name, press ) {
+		const glyph = function( name ) {
+			return Nino.adminUi.icon( name, { size : 14 } );
+		};
+
+		// A button of the bar: an icon, and where there is room the word of the thing it does
+		const tool = function( icon, text, name, className ) {
 
 			const button = doc.createElement('button');
 
 			button.type = 'button';
-			button.className = 'insert';
-			button.textContent = text;
+			button.className = className ?? '';
 			button.title = name;
 			button.setAttribute( 'aria-label', name );
+			button.appendChild( glyph( icon ) );
+
+			if( text !== '' )
+				button.appendChild( doc.createTextNode( text ) );
+
+			return button;
+		};
+
+		// The button that puts a block in at a place: the words are written out where there is room for them and where a phone has to have them
+		const pill = function( text, name, press, icon ) {
+
+			const button = tool( icon ?? ACTION_ICONS.insert, text, name, 'insert' );
+
 			button.addEventListener( 'click', function() { press( button ) } );
 
 			return button;
@@ -1344,6 +1761,7 @@
 			const frameBox = doc.createElement('div');
 
 			bar.className = 'bar';
+			bar.dataset.key = block.key;
 			bar.setAttribute( 'role', 'group' );
 			bar.setAttribute( 'aria-label', word( 'label/block-bar', title ) );
 			label.className = 'name';
@@ -1357,19 +1775,15 @@
 			if( S.frame === false && free( node ) === true )
 				ACTIONS.forEach( function( action ) {
 
-					const button = doc.createElement('button');
 					const name = word( 'label/'+ action[0] )+ ': '+ title;
+					const button = tool( ACTION_ICONS[action[0]], wide === true && action[1] === true ? word( 'label/'+ action[0]+ '-short' ) : '', name, action[0] === 'remove' ? 'danger' : '' );
 
-					button.type = 'button';
-					button.textContent = wide === true && action[2] === true ? action[1]+ ' '+ word( 'label/'+ action[0]+ '-short' ) : action[1];
-					button.title = name;
-					button.setAttribute( 'aria-label', name );
 					button.dataset.action = action[0];
 					button.dataset.at = String( block.at );
 					button.disabled = possible( block.at, action[0] ) === false;
 
 					// A click and a key press both end here; the dialog of a removal is the panel's, so it is asked from outside the frame
-					button.addEventListener( 'click', function() { act( block.at, action[0], S.view.split.frame, 'frame' ) } );
+					button.addEventListener( 'click', function() { selectBlock( block.key, false ); act( block.at, action[0], S.view.split.frame, 'frame' ) } );
 					bar.appendChild( button );
 				} );
 			else if( S.frame === false ) {
@@ -1385,16 +1799,12 @@
 
 			if( parts !== null ) {
 
-				const more = doc.createElement('button');
 				const name = word('label/advanced')+ ': '+ title;
+				const more = tool( ACTION_ICONS.advanced, wide === true ? word('label/advanced') : '', name, '' );
 
-				more.type = 'button';
-				more.textContent = word('label/advanced');
-				more.title = name;
-				more.setAttribute( 'aria-label', name );
 				more.dataset.action = 'advanced';
 				more.dataset.at = String( block.at );
-				more.addEventListener( 'click', function() { Nino.admin.builder.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } ) } );
+				more.addEventListener( 'click', function() { openExtended( block.at ) } );
 				bar.appendChild( more );
 			}
 
@@ -1402,24 +1812,29 @@
 			const last = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'after' } );
 			const pills = { before : first === undefined ? null : pillOf( first ), after : last === undefined ? null : pillOf( last ) };
 
-			shadow.appendChild( frameBox );
+			[ frameBox, pills.before, bar, pills.after ].forEach( function( piece ) {
 
-			if( pills.before !== null )
-				shadow.appendChild( pills.before );
+				if( piece === null )
+					return;
 
-			shadow.appendChild( bar );
+				piece.dataset.key = block.key;
+				shadow.appendChild( piece );
+			} );
 
-			if( pills.after !== null )
-				shadow.appendChild( pills.after );
+			// Where the setting fades the other blocks they change their strength with a transition
+			if( fade === true )
+				block.elements.forEach( function( element ) { element.setAttribute( 'data-nino-block', '' ) } );
 
 			placed.push( { block : block, bar : bar, box : frameBox, pills : pills } );
 		} );
 
-		// A page of free markup only has its places in the frame too: the first under the header of the site, the others above its footer
+		// A page of free markup only has its places in the frame too: the first under the header of the site, the others above its footer. They are always there, as no
+		// block is on
 		const loose = spots.filter( function( spot ) { return spot.block === null } ).map( function( spot ) {
 
 			const button = pillOf( spot );
 
+			button.setAttribute( 'data-on', '' );
 			shadow.appendChild( button );
 
 			return button;
@@ -1432,20 +1847,144 @@
 
 				if( S.stale === false && S.editing === null )
 					openImage( item.target, opener );
-			} );
+			}, 'image' );
 
 			button.dataset.image = item.target.key;
+			button.setAttribute( 'data-on', '' );
 			shadow.appendChild( button );
 			pics.push( { button : button, element : item.element } );
 		} );
+
+		// The pencil: one button, put at the corner of the component the pointer or the focus is on
+		const pen = tool( 'pencil', '', word('hint/write'), 'pen' );
+		let aimed = null;
+
+		pen.addEventListener( 'click', function() {
+
+			if( aimed !== null )
+				aimed.pen.open();
+		} );
+		shadow.appendChild( pen );
+
+		// The page is laid out at a width and scaled into the pane where the person chose a width the pane has not: a bar is scaled back, so that it is as large
+		// as the workbench's own controls
+		const scaleBack = function() {
+
+			const scale = win.innerWidth > 0 ? frame.getBoundingClientRect().width / win.innerWidth : 1;
+
+			return scale > 0 && scale < 1 ? 1 / scale : 1;
+		};
+
+		// What each block shows: its bar, its frame and its strength, by what is on and the setting
+		const paintBars = function() {
+
+			const now = activeOf();
+
+			placed.forEach( function( item ) {
+
+				const look = lookOf( S.dim, item.block.key, now );
+
+				item.bar.toggleAttribute( 'data-on', look.bar );
+				item.box.toggleAttribute( 'data-on', look.frame );
+
+				[ item.pills.before, item.pills.after ].forEach( function( pill ) {
+					if( pill !== null )
+						pill.toggleAttribute( 'data-on', look.bar );
+				} );
+
+				item.block.elements.forEach( function( element ) {
+					element.toggleAttribute( 'data-nino-dim', look.dim );
+				} );
+			} );
+		};
+
+		const placePen = function() {
+
+			const box = aimed === null || S.editing !== null ? null : boxOf( aimed.entry.elements, win );
+
+			if( box === null ) {
+				pen.removeAttribute('data-on');
+				return;
+			}
+
+			const back = scaleBack();
+			const size = 26 * back;
+			const right = Math.min( box.left + box.width, win.scrollX + win.innerWidth );
+
+			pen.title = aimed.pen.name;
+			pen.setAttribute( 'aria-label', aimed.pen.name );
+			pen.dataset.key = aimed.key;
+			pen.style.transformOrigin = '0 0';
+			pen.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
+
+			// At the corner, outside of the component, where it covers no text of it; at the edge of the page - nothing above the component to stand in - inside
+			pen.style.top = ( box.top - size >= win.scrollY ? box.top - size : box.top + 2 * back )+ 'px';
+			pen.style.left = Math.max( box.left, right - size )+ 'px';
+			pen.setAttribute( 'data-on', '' );
+		};
+
+		// What the focus is on, told to the other views - where the view is still the one the page was drawn for
+		const tell = function( key ) {
+
+			if( S.view !== null && S.view.board !== null )
+				S.view.board.page.set( key );
+		};
+
+		// What the pencil can be at: every call of the page that has elements, and for each loop - which has none of its own - the elements of its repetitions
+		const aims = function() {
+
+			const list = S.found.all.filter( function( entry ) { return entry.elements.length > 0 } );
+			const loops = {};
+
+			list.forEach( function( entry ) {
+
+				const parts = entry.path.split('.');
+
+				for( let depth = 2; depth < parts.length; depth++ ) {
+
+					const path = parts.slice( 0, depth ).join('.');
+					const call = nodeAt( path );
+
+					if( call !== null && call.n !== undefined && isLoopCall( call ) === true )
+						loops[path] = ( loops[path] ?? [] ).concat( entry.elements );
+				}
+			} );
+
+			return list.map( function( entry ) { return { path : entry.path, elements : entry.elements, inLoop : Object.keys( loops ).some( function( path ) { return entry.path.indexOf( path+ '.' ) === 0 } ) } } )
+				.concat( Object.keys( loops ).map( function( path ) { return { path : path, elements : loops[path], inLoop : false } } ) );
+		};
+
+		// The component the pencil is for: the innermost one that holds the element and has something to open - in a loop a component that reads a source, else the loop
+		const aim = function( target ) {
+
+			aimed = null;
+
+			if( S.stale === false && S.editing === null && target !== null )
+				aims().filter( function( entry ) {
+					return entry.elements.some( function( element ) { return element.contains( target ) } ) === true;
+				} ).sort( function( one, other ) { return other.path.length - one.path.length } ).some( function( entry ) {
+
+					const node = nodeAt( entry.path );
+					const open = node === null ? null : penOf( entry.path, node );
+
+					// A column or a row inside a loop is no place for the pencil: the loop is
+					if( open === null || ( entry.inLoop === true && open.source === false ) )
+						return false;
+
+					aimed = { entry : entry, pen : open, key : keyAt( Number( entry.path.split('.')[0] ) ) };
+
+					return true;
+				} );
+
+			placePen();
+		};
 
 		// The page is laid out at a width and scaled into the pane where the person chose a width the pane has not: a bar is scaled back, so that it is as large
 		// as the workbench's own controls. It stands in the top corner on the right, inside the block, where a block has the room; one that is low - a header - has it
 		// below its edge, where it covers the top of the next, and never the logo or the menu
 		const place = function() {
 
-			const scale = win.innerWidth > 0 ? frame.getBoundingClientRect().width / win.innerWidth : 1;
-			const back = scale > 0 && scale < 1 ? 1 / scale : 1;
+			const back = scaleBack();
 
 			pics.forEach( function( pic ) {
 
@@ -1508,7 +2047,10 @@
 				const height = item.bar.offsetHeight * back;
 				const low = box.height < 120 * back;
 
-				item.bar.style.top = ( low === true ? box.top + box.height + 2 * back : box.top + 8 * back )+ 'px';
+				// A block that is higher than the screen keeps its bar at the top of what is in sight, and never below its own foot
+				const seen = Math.min( Math.max( box.top + 8 * back, win.scrollY + 8 * back ), box.top + box.height - height - 2 * back );
+
+				item.bar.style.top = ( low === true ? box.top + box.height + 2 * back : seen )+ 'px';
 				item.bar.style.left = Math.max( box.left, box.left + box.width - width - 8 * back )+ 'px';
 				item.height = height;
 
@@ -1522,13 +2064,92 @@
 					pill.style.transformOrigin = '0 0';
 					pill.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
 					pill.style.left = ( box.left + 8 * back )+ 'px';
-					pill.style.top = ( which === 0 ? box.top + 4 * back : ( low === true ? box.top + box.height + 2 * back : box.top + box.height - pill.offsetHeight * back - 4 * back ) )+ 'px';
+					const high = pill.offsetHeight * back;
+					const upper = Math.min( Math.max( box.top + 4 * back, win.scrollY + 4 * back ), box.top + box.height - high - 4 * back );
+					const lower = Math.max( box.top + 4 * back, Math.min( box.top + box.height - high - 4 * back, win.scrollY + win.innerHeight - high - 4 * back ) );
+
+					pill.style.top = ( which === 0 ? upper : ( low === true ? box.top + box.height + 2 * back : lower ) )+ 'px';
 				} );
 			} );
+
+			placePen();
 		};
 
+		// What stands over the page is told which block the pointer is on while it is on a bar, a place or the pencil - they stand in the shadow, where the page
+		// takes the pointer for the element that holds it
+		S.overBar = '';
+		shadow.addEventListener( 'pointerover', function( event ) {
+
+			const target = event.target;
+			const own = target.closest === undefined ? null : target.closest('[data-key]');
+
+			S.overBar = own === null ? '' : own.dataset.key;
+		} );
+
+		doc.addEventListener( 'pointerover', function( event ) {
+
+			const origin = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
+
+			if( shadow.contains( origin ) === false ) {
+				S.overBar = '';
+				aim( event.target );
+			}
+		} );
+		doc.documentElement.addEventListener( 'pointerleave', function( event ) {
+
+			// A finger that is lifted leaves the page too: the pencil it has tapped stays until another place is tapped
+			if( event.pointerType !== undefined && event.pointerType !== 'mouse' )
+				return;
+
+			S.overBar = '';
+
+			if( aimed !== null && shadow.activeElement !== pen ) {
+				aimed = null;
+				placePen();
+			}
+		} );
+
+		// The keyboard is on the block the focus is in - a text, a picture, or a bar - and the pencil is at the component of the text
+		doc.addEventListener( 'focusin', function( event ) {
+
+			const origin = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
+			const inside = shadow.contains( origin ) === true;
+			const own = inside === true && origin.closest !== undefined ? origin.closest('[data-key]') : null;
+
+			S.focus = own !== null ? own.dataset.key : ( keyInPage( event.target ) ?? '' );
+
+			// What moved last counts: the focus holds until the pointer moves again
+			S.hot = '';
+			paintBars();
+			tell( S.focus === '' ? null : S.focus );
+
+			if( inside === false )
+				aim( event.target );
+		} );
+		doc.addEventListener( 'pointermove', function( event ) {
+
+			const origin = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
+			const key = shadow.contains( origin ) === true ? S.overBar : ( keyInPage( event.target ) ?? '' );
+
+			if( key !== S.hot ) {
+				S.hot = key;
+				paintBars();
+			}
+		} );
+		doc.addEventListener( 'focusout', function( event ) {
+
+			S.focus = '';
+			paintBars();
+			tell( null );
+
+			if( event.relatedTarget === null || ( event.relatedTarget !== host && shadow.contains( event.relatedTarget ) === false ) )
+				aim( null );
+		} );
+
 		doc.body.appendChild( host );
+		S.paintBars = paintBars;
 		place();
+		paintBars();
 		S.place = place;
 
 		if( typeof win.ResizeObserver === 'function' )
@@ -1536,6 +2157,21 @@
 
 		win.addEventListener( 'resize', place );
 		win.addEventListener( 'load', place );
+
+		// The bars keep to what is in sight: they follow the scrolling, once for the frames between
+		let waiting = false;
+
+		win.addEventListener( 'scroll', function() {
+
+			if( waiting === true )
+				return;
+
+			waiting = true;
+			win.requestAnimationFrame( function() {
+				waiting = false;
+				place();
+			} );
+		} );
 
 		if( S.refocus !== null && S.refocus.from === 'frame' ) {
 
@@ -1546,8 +2182,10 @@
 			// The way back from the extended view waits for the drawing that has the block: the page that is loaded first need not be that one
 			S.refocus = target === null && wanted.action === 'advanced' ? wanted : null;
 
-			if( target !== null )
+			if( target !== null ) {
+				selectBlock( keyAt( wanted.at ), false );
 				target.focus();
+			}
 		}
 
 		imageFocus( doc );
@@ -1596,7 +2234,13 @@
 		const found = traced( doc );
 		const style = doc.createElement('style');
 
-		style.textContent = FRAME_CSS;
+		// What the page shows is the one it is drawn for: the blocks have the keys of the views that show them, and nothing is on until the pointer or the focus comes
+		found.blocks.forEach( function( block ) { block.key = keyAt( block.at ) } );
+		S.found = found;
+		S.hot = '';
+		S.focus = '';
+		S.overBar = '';
+		style.textContent = frameCss( toneOf() );
 		doc.head.appendChild( style );
 
 		found.texts.forEach( function( text ) {
@@ -1678,10 +2322,25 @@
 			if( event.target.closest && event.target.closest('a') !== null )
 				event.preventDefault();
 		}, true );
+
+		// A block that is clicked or tapped is the chosen one: where no pointer rests over a block - a touch screen - its bar is the one that stays
+		doc.addEventListener( 'click', function( event ) {
+
+			const key = keyInPage( event.target );
+
+			if( key !== null && key !== S.selected )
+				selectBlock( key, false );
+		} );
 		doc.addEventListener( 'submit', function( event ) { event.preventDefault() }, true );
 		doc.addEventListener( 'keydown', function( event ) { keys( event, found.blocks, doc ) } );
 
 		bars( frame, found.blocks, behind );
+
+		// The way back from the extended view shows the page where it was left
+		if( S.scroll !== null ) {
+			frame.contentWindow.scrollTo( { top : S.scroll } );
+			S.scroll = null;
+		}
 	};
 
 	// The keys of the page in the frame: the undo and the save as in the workbench, and Alt and an arrow moves the block the focus is in
@@ -1743,39 +2402,7 @@
 		paintBar( view );
 		view.buttons.undo.disabled = S.undo.length === 0;
 		view.buttons.redo.disabled = S.redo.length === 0;
-		fill( view.split.settings, outline() );
-	};
-
-	// The outline is drawn again after every change; the focus stays where the action was done - on the button of the row that is the block now, or on the
-	// row that took its place where it was taken out - and a focus that is elsewhere in it is put back where it was
-	const fill = function( parent, piece ) {
-
-		const held = dc.activeElement;
-		const inside = parent.contains( held ) === true ? ( held.dataset.action ?? '' ) : '';
-		const row = inside !== '' ? held.closest('li') : null;
-		const at = row !== null ? row.dataset.at : '';
-		const wanted = S.refocus !== null && S.refocus.from === 'outline' ? S.refocus : null;
-
-		parent.innerHTML = '';
-		parent.appendChild( piece );
-
-		if( wanted !== null ) {
-
-			S.refocus = null;
-
-			const rows = Array.from( parent.querySelectorAll('li[data-at]') ).filter( function( candidate ) { return candidate.querySelector('button:not(:disabled)') !== null } );
-			const target = rows.find( function( candidate ) { return Number( candidate.dataset.at ) === wanted.at } ) ?? rows.find( function( candidate ) { return Number( candidate.dataset.at ) >= wanted.at } ) ?? rows[rows.length - 1];
-
-			if( target !== undefined )
-				( target.querySelector( 'button[data-action="'+ wanted.action+ '"]:not(:disabled)' ) ?? target.querySelector('button:not(:disabled)') ).focus();
-		}
-		else if( inside !== '' ) {
-
-			const again = parent.querySelector( 'li[data-at="'+ at+ '"] button[data-action="'+ inside+ '"]:not(:disabled)' );
-
-			if( again !== null )
-				again.focus();
-		}
+		paintOutline();
 	};
 
 	// --- the dialog "Insert block" ----------------------------------------------------------------------------------
@@ -2325,15 +2952,8 @@
 			return;
 		}
 
-		if( locale === S.locale ) {
-
-			const select = dc.getElementById('builder-language');
-
-			if( select !== null )
-				select.value = S.locale;
-
+		if( locale === S.locale )
 			return;
-		}
 
 		Nino.admin.dirty.guard( [ 'builder' ], function() {
 			Nino.admin.builder.reload( function() { openPage( targetOf( here().parts ) ?? S.target, S.origin, function() {} ) } );
@@ -2346,71 +2966,6 @@
 		S.dropped = S.at;
 		wn.setTimeout( function() { S.dropped = null }, 0 );
 		discard();
-	};
-
-	// The widths of the preview, the language of the page and the outline, over the frame
-	const tools = function( basic ) {
-
-		const box = el( 'div', 'builder-tools' );
-		const caption = el( 'span', 'nino-admin-hint builder-caption', word('word/width') );
-		const widths = Nino.adminUi.steps( {
-			labelledby	: 'builder-width-label',
-			steps				: WIDTHS.map( function( name ) { return { value : name, label : word( 'word/'+ name ) } } ),
-			value				: S.width,
-			onChange		: function( name ) {
-				S.width = name;
-				S.chosen = true;
-				S.view.preview.width( name );
-			},
-		} );
-
-		caption.id = 'builder-width-label';
-		widths.el.classList.add('builder-widths');
-
-		if( basic === true ) {
-
-			const outlineToggle = Nino.adminUi.button( word('label/outline'), function() {
-
-				const root = S.view.split.el;
-				const open = root.dataset.outline !== 'open';
-
-				root.dataset.outline = open === true ? 'open' : 'closed';
-				outlineToggle.setAttribute( 'aria-expanded', String( open ) );
-			}, { className : 'nino-admin-btn--small builder-outline-toggle', id : 'builder-outline-toggle' } );
-
-			outlineToggle.setAttribute( 'aria-expanded', 'false' );
-			box.appendChild( outlineToggle );
-		}
-
-		const choices = S.locales.filter( function( entry ) { return entry.active === true || entry.locale === S.locale } );
-
-		if( choices.length > 1 ) {
-
-			const select = el( 'select', 'nino-admin-input builder-language' );
-
-			select.id = 'builder-language';
-			select.setAttribute( 'aria-label', word('label/language') );
-			choices.forEach( function( entry ) {
-
-				const option = el( 'option', '', Nino.adminUi.localeName( entry.locale, choices.map( function( other ) { return other.locale } ) ) );
-
-				option.value = entry.locale;
-				select.appendChild( option );
-			} );
-			select.value = S.locale;
-			select.addEventListener( 'change', function() { endEdit( true ); Nino.admin.workLocale.set( select.value ) } );
-			box.appendChild( select );
-		}
-		else
-			box.appendChild( el( 'span', 'nino-admin-badge builder-language', Nino.adminUi.localeName( S.locale ) ) );
-
-		const sized = el( 'div', 'builder-widthbox' );
-
-		sized.appendChild( caption );
-		sized.appendChild( widths.el );
-		box.appendChild( sized );
-
-		return { el : box, widths : widths };
 	};
 
 	// A button of the bar that has done its work and has nothing left to do is no place for the focus: it goes to the one that undoes it, or to Save
@@ -2443,6 +2998,67 @@
 		return { parts : parts, name : parts.length === 0 ? word('label/pages') : nameOfPage( templateOf( parts[0] ) ), keep : false, block : parts[0] === addressOf( S.template ) };
 	};
 
+	// What the page in the frame stands for, for the switchboard between the views: the elements of a block by its key, and the key of the block an element is part of
+	const elementsOfKey = function( key ) {
+
+		const block = S.found === null ? undefined : S.found.blocks.find( function( candidate ) { return candidate.key === key } );
+
+		return block === undefined ? [] : block.elements;
+	};
+
+	const keyInPage = function( element ) {
+
+		// A bar, a place or the pencil stands in the shadow of one element, which the page takes for the element that holds the pointer: it is the block of that bar
+		if( S.host !== null && element === S.host )
+			return S.overBar === '' ? null : S.overBar;
+
+		const block = S.found === null ? undefined : S.found.blocks.find( function( candidate ) {
+			return candidate.elements.some( function( inside ) { return inside.contains( element ) } );
+		} );
+
+		return block === undefined ? null : block.key;
+	};
+
+	// The way back from a view: the focus goes to where the person came from - the block that was opened, whose row in the outline is the chosen one and has the focus on its
+	// button of the extended view, in an outline that is as open as it was -, or the title of the page a frame was opened from
+	const leaveExtended = function( advanced, way ) {
+
+		if( advanced === true && way.block === true ) {
+			S.selected = keyAt( rootAt() );
+			S.refocus = { at : rootAt(), action : 'advanced', from : 'outline' };
+		}
+
+		Nino.admin.builder.go( way.parts, advanced === true && way.block === false ? { focus : S.frame === true ? 'frames' : 'page' } : undefined );
+	};
+
+	// The frames of the site are two pages of their own, which a page does not hold: one icon beside its name asks which of them
+	const openFrames = function( opener ) {
+
+		Nino.adminUi.pickDialog( {
+			title		: word('label/frames-edit'),
+			items		: [
+				{ value : '@header', label : word('word/frame-header'), description : word('hint/frame-short') },
+				{ value : '@footer', label : word('word/frame-footer'), description : word('hint/frame-short') },
+			],
+			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
+			size		: 'narrow',
+			opener	: opener,
+			onChoose	: function( part ) { Nino.admin.builder.go( [ addressOf( S.template ), part ], { focus : 'back' } ) },
+		} );
+	};
+
+	// The view that is on the screen is left: what it asked of the page in the frame and of the other views stops
+	const leaveView = function() {
+
+		if( S.view === null )
+			return;
+
+		S.view.preview.stop();
+
+		if( S.view.board !== null )
+			S.view.board.leave();
+	};
+
 	const build = function( level ) {
 
 		level.innerHTML = '';
@@ -2452,20 +3068,40 @@
 		const layouts = layoutsOf( advanced );
 		const way = backOf( advanced );
 		const home = way.parts;
+		const settings = el( 'div', 'builder-column' );
+		const buttons = {};
+		const gl = { tree : null, rail : el( 'div', 'builder-rail' ), lit : [], first : null };
+
+		const tools = Nino.adminUi.previewTools( {
+			width		: S.width,
+			onWidth	: function( name ) {
+				S.width = name;
+				S.chosen = true;
+				S.view.preview.width( name );
+			},
+			// The draft is drawn again, and not the last one that was sent: what was typed in a text is no change that sends a draft, and the page that is loaded again
+			// would not show it
+			onReload	: function() {
+				S.stale = true;
+				S.view.preview.flush();
+			},
+		} );
+
+		// The frames of the site are written for every page: from the design on, and not in the view of a frame
+		const icons = advanced === false && S.frame === false && S.level >= 2 ? [ { icon : 'panels-top-left', name : word('label/frames-edit'), onClick : function( event ) { openFrames( event.currentTarget ) }, id : 'builder-frames' } ] : [];
 
 		const context = Nino.adminUi.contextBar( {
-			back : {
+			panel	: Nino.adminUi.panelName( level ),
+			title	: advanced === true ? blockTitle() : S.name,
+			code	: advanced === true ? '' : S.template+ '.tpl',
+			back	: {
 				to			: way.name,
 				href		: Nino.admin.router.href( 'builder', home ),
-				onClick	: function() {
-
-					// The focus goes back to where the person came from: the block that was opened, or the title of the page a frame was opened from
-					if( advanced === true && way.block === true )
-						S.refocus = { at : rootAt(), action : 'advanced', from : 'frame' };
-
-					Nino.admin.builder.go( home, advanced === true && way.block === false ? { focus : 'page' } : undefined );
-				},
+				onClick	: function() { leaveExtended( advanced, way ) },
 			},
+			icons	: icons,
+			tools	: tools.el,
+			within	: level,
 		} );
 
 		const back = context.querySelector('.nino-admin-back-link');
@@ -2476,36 +3112,70 @@
 		if( way.keep === true )
 			back.setAttribute( 'data-keep-draft', '' );
 
-		const head = el( 'div', 'builder-head' );
-		const title = el( 'h3', 'builder-name', advanced === true ? blockTitle() : S.name );
-		const toolbox = tools( advanced === false );
-		const settings = el( 'div', 'builder-column' );
-		const buttons = {};
-
 		const bar = Nino.adminUi.saveBar( {
 			id			: 'builder-bar',
 			buttons	: [
-				{ key : 'undo', label : '\u21B6 '+ word('label/undo'), name : word('label/undo'), onPress : function() { undo(); settle2( 'undo', 'redo' ) } },
-				{ key : 'redo', label : '\u21B7 '+ word('label/redo'), name : word('label/redo'), onPress : function() { redo(); settle2( 'redo', 'undo' ) } },
+				{ key : 'undo', label : word('label/undo'), name : word('label/undo'), onPress : function() { undo(); settle2( 'undo', 'redo' ) } },
+				{ key : 'redo', label : word('label/redo'), name : word('label/redo'), onPress : function() { redo(); settle2( 'redo', 'undo' ) } },
 			],
 			onSave		: save,
 			onRestore	: askRestore,
 		} );
 
+		bar.buttons.undo.insertBefore( Nino.adminUi.icon('undo-2'), bar.buttons.undo.firstChild );
+		bar.buttons.redo.insertBefore( Nino.adminUi.icon('redo-2'), bar.buttons.redo.firstChild );
 		buttons.undo = bar.buttons.undo;
 		buttons.redo = bar.buttons.redo;
 
+		// The outline: the blocks of the page as a tree - the place above the first one where the page has no head, and below it the rows -, in the column at the left of the surface
+		if( advanced === false ) {
+
+			const body = el( 'div', 'builder-outline' );
+
+			gl.first = Nino.adminUi.button( word('label/insert-short'), function() {
+
+				const spot = firstSpot();
+
+				if( spot !== undefined )
+					openInsert( spot, gl.first, 'outline' );
+			}, { className : 'nino-admin-btn--small builder-insert', name : word('label/insert-short') } );
+			gl.first.hidden = true;
+			gl.tree = Nino.adminUi.tree( {
+				id			: 'builder-outline',
+				label		: word('label/outline'),
+				items		: [],
+				onSelect	: function( id ) { selectBlock( id, true ) },
+				onAction	: function( key, id ) { rowAction( key, id, dc.activeElement !== null && gl.tree.el.contains( dc.activeElement ) === true ? dc.activeElement : gl.tree.el ) },
+				onHover		: function( id ) { S.view.board.outline.set( id ) },
+			} );
+
+			// Alt and an arrow moves the block of the row the focus is in, as in the page
+			gl.tree.el.addEventListener( 'keydown', function( event ) {
+
+				const row = event.target.closest === undefined ? null : event.target.closest('li[data-id]');
+
+				if( event.altKey === true && ( event.key === 'ArrowUp' || event.key === 'ArrowDown' ) && row !== null && atOf( row.dataset.id ) !== -1 ) {
+					event.preventDefault();
+					move( atOf( row.dataset.id ), event.key === 'ArrowUp' ? -1 : 1, 'outline' );
+				}
+			} );
+			body.appendChild( gl.first );
+			body.appendChild( gl.tree.el );
+			gl.body = body;
+		}
+
 		const split = Nino.adminUi.split( {
-			id			: 'builder-split',
-			settings	: settings,
-			tools		: toolbox.el,
+			id			: advanced === true ? 'builder-split-extended' : 'builder-split',
+			fill		: true,
+			settings	: advanced === true ? settings : undefined,
+			aside		: advanced === true ? undefined : { content : gl.body, label : word('label/outline'), rail : gl.rail },
 			preview		: { src : 'about:blank', title : word('label/preview-title'), width : layouts[S.width] ?? undefined },
 			onLoad		: instrument,
 			onView		: function( view ) {
 
 				if( view === 'preview' && S.chosen === false && split.frame.parentNode.getBoundingClientRect().width < NARROW ) {
 					S.width = 'mobile';
-					toolbox.widths.set( 'mobile' );
+					tools.setWidth( 'mobile' );
 					S.view.preview.width( 'mobile' );
 				}
 			},
@@ -2515,6 +3185,7 @@
 			split		: split,
 			send		: send,
 			widths	: layouts,
+			mark		: 'loose',
 			address	: function( query ) { return S.dir+ S.address+ ( S.address.indexOf('?') === -1 ? '?' : '&' )+ query },
 			onError	: function( status, response ) { bar.line.error( status, response ) },
 		} );
@@ -2522,51 +3193,51 @@
 		if( typeof wn.ResizeObserver === 'function' )
 			new wn.ResizeObserver( function() { if( S.place !== null ) S.place() } ).observe( split.frame.parentNode );
 
-		// The outline of the page stands beside it only where the person opens it; the tree of a block is the column of the extended view
-		split.el.dataset.outline = advanced === true ? 'open' : 'closed';
-		S.view = { level : level, split : split, preview : preview, bar : bar, buttons : buttons, title : title, kind : S.mode };
+		// What the pointer or the focus is on, in every view that shows the blocks: the outline, its strip and the frame of the page are joined by one switchboard
+		let board = null;
 
-		split.words( { settings : word('label/blocks'), preview : word('label/preview') } );
-		head.appendChild( title );
+		if( advanced === false ) {
 
-		// The frames of the site stand as a slim line over and under the page, as they do in the page: they hold for every page and are written in a page of their own
-		const frameRow = function( part, label ) {
+			const sync = Nino.adminUi.hoverSync();
+			const inOutline = sync.join( function( key ) { lightOutline( key ) } );
+			const marks = preview.marks( {
+				elements	: elementsOfKey,
+				keyAt			: keyInPage,
+				onHover		: function( key ) {
+					S.hot = key === null ? '' : key;
 
-			const row = el( 'div', 'builder-frame-row' );
-			const link = el( 'a', 'builder-frame-link', word('label/edit') );
+					if( S.paintBars !== null )
+						S.paintBars();
 
-			// The frame opens in the extended view, on this page: its blocks are not what is written on the page
-			const parts = [ addressOf( S.template ), part ];
-
-			link.href = Nino.admin.router.href( 'builder', parts );
-			link.setAttribute( 'aria-label', word('label/edit')+ ': '+ label );
-			link.addEventListener( 'click', function( event ) {
-				event.preventDefault();
-				Nino.admin.builder.go( parts, { focus : 'back' } );
+					inPage.set( key );
+				},
 			} );
-			row.appendChild( el( 'span', 'builder-frame-name', label ) );
-			row.appendChild( link );
+			const inPage = sync.join( function( key ) { marks.highlight( key ) } );
 
-			return row;
-		};
+			board = {
+				outline	: inOutline,
+				page		: inPage,
+				leave		: function() {
+					marks.stop();
+					inOutline.leave();
+					inPage.leave();
+				},
+			};
+		}
 
-		if( S.frame === true && advanced === false )
-			head.appendChild( el( 'p', 'nino-admin-hint', word('hint/frame') ) );
+		S.found = null;
+		S.paintBars = null;
+		S.host = null;
+		S.hot = '';
+		S.focus = '';
+		S.gl = advanced === true ? null : gl;
+		S.view = { level : level, split : split, preview : preview, bar : bar, buttons : buttons, title : context.querySelector('.nino-admin-contextbar-title'), kind : S.mode, board : board, tools : tools };
 
-		// The frames are written for every page: from the design on
-		const rows = S.frame === false && advanced === false && S.level >= 2;
+		if( advanced === true )
+			split.words( { settings : word('adv/tree'), preview : word('label/preview') } );
 
 		level.appendChild( context );
-		level.appendChild( head );
-
-		if( rows === true )
-			level.appendChild( frameRow( '@header', word('word/frame-row-header') ) );
-
 		level.appendChild( split.el );
-
-		if( rows === true )
-			level.appendChild( frameRow( '@footer', word('word/frame-row-footer') ) );
-
 		level.appendChild( bar.el );
 
 		Nino.admin.dirty.register( 'builder', bar.entry( { discard : dropDraft, saving : function() { return S.saving === true } } ) );
@@ -2646,8 +3317,11 @@
 
 		const template = target.template;
 
-		if( S.view !== null )
-			S.view.preview.stop();
+		// The block that is chosen is a block of the page that is open
+		if( template !== S.template )
+			S.selected = '';
+
+		leaveView();
 
 		S.ready = false;
 		S.built = false;
@@ -2676,6 +3350,7 @@
 			S.frame = response.frame === true;
 			S.staged = [];
 			S.dir = response.dir;
+			S.dim = response.dim;
 			S.address = response.address;
 			S.locale = response.contentLocale;
 			S.fresh = response.fresh ?? {};
@@ -2774,8 +3449,7 @@
 
 		if( S.built === false || S.view === null || S.view.kind !== mode ) {
 
-			if( S.view !== null )
-				S.view.preview.stop();
+			leaveView();
 
 			build( level );
 			S.built = true;
@@ -2810,6 +3484,8 @@
 		}
 		else if( wanted === 'tree' && S.tree !== null )
 			S.tree.focus( S.focusFrom );
+		else if( wanted === 'frames' && mode === 'basic' && dc.getElementById('builder-frames') !== null )
+			dc.getElementById('builder-frames').focus();
 		else if( wanted === 'page' && mode === 'basic' ) {
 
 			S.view.title.setAttribute( 'tabindex', '-1' );
@@ -2817,6 +3493,17 @@
 		}
 
 		S.focusFrom = '';
+
+		// The pencil of a component that has a source leads to the dialog of that source
+		if( S.autoSource === true && mode === 'advanced' ) {
+
+			const change = S.view.split.settings.querySelector('[data-key*=":source:"]');
+
+			S.autoSource = false;
+
+			if( change !== null )
+				change.click();
+		}
 	};
 
 	const nameOfPage = function( template ) {
@@ -4490,8 +5177,7 @@
 	// The view is shown for the account that may make a page, by the address #builder/@new: any other is taken to the list
 	const showNew = function() {
 
-		if( S.view !== null )
-			S.view.preview.stop();
+		leaveView();
 
 		S.ready = false;
 
@@ -5103,7 +5789,7 @@
 			Nino.admin.builder.go( partsOf( '', 'tree' ), { focus : 'tree', from : rel } );
 		} );
 		holder.appendChild( back );
-		holder.appendChild( el( 'h3', 'builder-name builder-adv-title', titleOfRel( rel ) ) );
+		holder.appendChild( el( 'h3', 'builder-adv-title', titleOfRel( rel ) ) );
 
 		const finding = hintOf( absOf( rel ) );
 
@@ -5258,7 +5944,9 @@
 
 		style.textContent = '[data-nino-pick]{cursor:pointer}';
 		doc.head.appendChild( style );
-		css.textContent = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}.mark{position:absolute;pointer-events:none;box-sizing:border-box;border:2px solid #2f6fed;background:rgba(47,111,237,.1);border-radius:3px}';
+		const tone = toneOf();
+
+		css.textContent = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}.mark{position:absolute;pointer-events:none;box-sizing:border-box;border:2px solid '+ tone.blue+ ';background:'+ tone.soft+ ';border-radius:3px}';
 		shadow.appendChild( css );
 		box.className = 'mark';
 		shadow.appendChild( box );
@@ -5465,6 +6153,8 @@
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
+			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, openExtended : openExtended, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
+			selectBlock : selectBlock, rowAction : rowAction, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		go : function( parts, options ) {
@@ -5499,8 +6189,7 @@
 
 			if( parts.length === 0 ) {
 
-				if( S.view !== null )
-					S.view.preview.stop();
+				leaveView();
 
 				S.ready = false;
 				Nino.admin.router.set( 'builder', [] );

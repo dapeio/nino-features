@@ -2,9 +2,9 @@
 
 /**
  *	Nino features
- *	Builder						What the panel of the Builder needs beyond the design system in _admin/assets/style.css: the list of the pages, the head of a page,
- *										the outline of its blocks and the tools over the preview. The split view, the steps, the buttons and the bar are the design system's.
- *										Scoped to the ids of the panel.
+ *	Builder						What the panel of the Builder needs beyond the design system in _admin/assets/style.css: the list of the pages, the strip the outline of a page
+ *										folds to, and the pick of a block. The context bar, the surface with its outline, the tools of the preview, the tree, the
+ *										buttons and the bar are the design system's. Scoped to the ids of the panel.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -12,12 +12,6 @@
  */
 
 @layer nino.tool {
-
-#builder-app .builder-outline {
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
 
 /* The name in the table of the pages: the name, the sign that a language lacks something, and the file of the template quietly under them */
 #builder-app .builder-cell-name {
@@ -68,168 +62,51 @@
 	grid-column: 1 / -1;
 }
 
-#builder-app .builder-head {
-	margin: 0 0 .75rem;
-}
-
-#builder-app .builder-name {
-	margin: 0;
-	overflow-wrap: anywhere;
-}
-
-#builder-app .builder-head .nino-admin-hint {
-	margin: .25rem 0 0;
-}
-
-#builder-app .builder-frame-row {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: .25rem .75rem;
-	margin: .5rem 0;
-	padding: .15rem .75rem;
-	border: 1px dashed var(--editor-border);
-	border-radius: var(--editor-radius-sm);
-	color: var(--editor-text-secondary);
-}
-
-#builder-app .builder-frame-link {
-	display: inline-flex;
-	align-items: center;
-	min-height: 1.75rem;
-	margin-right: .5rem;
-}
-
 #builder-app .builder-column {
 	min-width: 0;
 }
 
-/* The outline: every block of the page in its order, with the four things that can be done to it; a locked piece has none */
-#builder-app .builder-row {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: .35rem .5rem;
-	min-height: 2.5rem;
-	padding: .35rem .5rem;
-	border: 1px solid var(--editor-border);
-	border-radius: var(--editor-radius-sm);
+/* The outline column is as wide as a row needs for the id of a block and the six buttons the chosen row shows (put in, up, down, duplicate, delete, extended view): at the
+   workbench's 16 rem the id was cut to its first letter on the chosen row; 18 rem leaves room for ten letters */
+#builder-app .nino-admin-split {
+	--nino-admin-aside-width: 18rem;
 }
 
-#builder-app .builder-row + .builder-row {
-	margin-top: .35rem;
-}
-
-#builder-app .builder-row--free,
-#builder-app .builder-row--call {
-	border-style: dashed;
-	color: var(--editor-muted, var(--editor-ink));
-}
-
-#builder-app .builder-row-name {
-	flex: 1 1 8rem;
+/* The column of the outline: the tree of the blocks, and over it the place to put the first block in where the page has none above it */
+#builder-app .builder-outline {
+	display: grid;
+	gap: var(--nino-admin-space-2);
 	min-width: 0;
-	overflow-wrap: anywhere;
-}
-
-#builder-app .builder-row-actions {
-	display: flex;
-	gap: .25rem;
-}
-
-#builder-app .builder-act {
-	min-width: 1.75rem;
-	min-height: 1.75rem;
-}
-
-#builder-app .builder-tools {
-	display: flex;
-	flex: 1 1 auto;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: .35rem .75rem;
-	min-width: 0;
-}
-
-#builder-app select.builder-language {
-	width: auto;
-	min-width: 10rem;
-	max-width: 100%;
-	min-height: 1.75rem;
-}
-
-#builder-app .builder-widthbox {
-	display: flex;
-	flex-wrap: nowrap;
-	align-items: center;
-	gap: .4rem;
-	margin-left: auto;
-}
-
-/* The title of the preview is the switch's word where the view is narrow; where it is wide the tools say all there is to say */
-@container nino-split (min-width: 44.0625rem) {
-
-	#builder-app .nino-admin-split-title {
-		display: none;
-	}
-}
-
-#builder-app .builder-caption {
-	margin: 0 .4rem 0 0;
-}
-
-/* The page is the screen: the outline stands beside it only where the person opens it, and there is room for it. Where the view is narrow - a phone - the
-   split view has its own switch between the blocks and the page, and the outline is the first of the two */
-#builder-app .builder-outline-toggle {
-	display: none;
-}
-
-@container nino-split (min-width: 44.0625rem) {
-
-	#builder-app .builder-outline-toggle {
-		display: inline-flex;
-	}
-
-	#builder-app .nino-admin-split[data-outline="closed"] > .nino-admin-split-grid {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	#builder-app .nino-admin-split[data-outline="closed"] > .nino-admin-split-grid > .nino-admin-split-settings {
-		display: none;
-	}
-}
-
-#builder-app .nino-admin-split-frame,
-#builder-app .nino-admin-split-port--scaled {
-	height: clamp(28rem, 80vh, 70rem);
-}
-
-/* On a phone the bar's line is a row of its own; the split view has its switch between the blocks and the page */
-@media (max-width: 40rem) {
-
-	#builder-app .builder-tools {
-		justify-content: flex-start;
-	}
-}
-
-
-/* A place in the outline where a block is put in: a thin dashed button between the rows */
-#builder-app .builder-insert-row {
-	display: flex;
-	margin: .2rem 0 0;
-}
-
-#builder-app .builder-row + .builder-insert-row,
-#builder-app .builder-insert-row + .builder-row {
-	margin-top: .2rem;
 }
 
 #builder-app .builder-insert {
+	justify-self: start;
 	border-style: dashed;
-	min-height: 1.75rem;
+}
+
+/* The strip the outline folds to: the icon of the type of each row, a quiet line over the head and under the foot */
+#builder-app .builder-rail {
+	display: contents;
+}
+
+#builder-app .builder-rail-button {
+	color: var(--editor-text-secondary);
+}
+
+#builder-app .builder-rail-button[aria-pressed="true"] {
+	border-color: var(--editor-blue);
+	background: var(--editor-blue-soft);
+	color: var(--editor-text);
+}
+
+#builder-app .builder-rail-button.is-lit {
+	background: var(--editor-blue-soft);
+	color: var(--editor-text);
+}
+
+#builder-app .builder-rail-button.is-quiet + .builder-rail-button:not(.is-quiet),
+#builder-app .builder-rail-button:not(.is-quiet) + .builder-rail-button.is-quiet {
+	margin-top: var(--nino-admin-space-2);
 }
 
 /* The dialog "Insert block" stands in the root of the workbench and not in the panel: its class is its own, and keeps its height while the tabs change */

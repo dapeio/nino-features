@@ -342,12 +342,12 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	What the screen knows of the calls of a tree: for each name the register has, its label and the attribute that is its id
+		 *	What the screen knows of the calls of a tree: for each name the register has, its label, the icon of its type and the attribute that is its id
 		 *
 		 *	@param		array			$nodes
 		 *	@param		array			$registry
 		 *
-		 *	@return 	array											name => [ 'label' => ..., 'id' => attribute or '', 'source' => text, image, link or none ]
+		 *	@return 	array											name => [ 'label' => ..., 'icon' => name of an icon or '', 'id' => attribute or '', 'source' => text, image, link or none ]
 		 */
 		public static function known( array $nodes, array $registry ): array {
 
@@ -357,7 +357,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( array_keys( $names ) as $name )
 				if( isset( $registry[$name] ) === true )
-					$known[$name] = [ 'label' => $registry[$name]['label'], 'id' => self::idAttribute( $registry[$name] ), 'source' => (string) ( $registry[$name]['source'] ?? 'none' ) ];
+					$known[$name] = [ 'label' => $registry[$name]['label'], 'icon' => (string) ( $registry[$name]['icon'] ?? '' ), 'id' => self::idAttribute( $registry[$name] ), 'source' => (string) ( $registry[$name]['source'] ?? 'none' ) ];
 
 			return $known;
 		}

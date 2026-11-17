@@ -878,7 +878,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	What the screen needs of the language: the one of the view, and the languages that have words
+		 *	What the screen needs of the language: the one of the view, and the languages that have words, and how the page shows the block under the pointer (the setting "dim")
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		string		$locale
@@ -886,7 +886,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		private static function _view( array &$appData, string $locale, int $level ): array {
-			return [ 'contentLocale' => $locale, 'native' => \Nino\Locales::getNativeLocale( $appData ), 'locales' => \Nino\Admin\Admin::textLocales( $appData ), 'dir' => (string) ( $appData['/nino/dir'] ?? '' ), 'level' => $level ];
+			return [ 'contentLocale' => $locale, 'native' => \Nino\Locales::getNativeLocale( $appData ), 'locales' => \Nino\Admin\Admin::textLocales( $appData ), 'dir' => (string) ( $appData['/nino/dir'] ?? '' ), 'level' => $level, 'dim' => (string) \Nino\Features::setting( $appData, 'builder', 'dim', 'frame' ) ];
 		}
 
 		/**

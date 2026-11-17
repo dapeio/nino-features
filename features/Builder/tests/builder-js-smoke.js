@@ -109,7 +109,7 @@ const words = {
 
 	// The keys the script puts together: the four things done to a block, the three widths, the two frames
 	[ 'up', 'down', 'copy', 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key ) } );
-	[ 'copy' ].forEach( function( key ) { asked.add( 'label/'+ key+ '-short' ) } );
+	[ 'remove' ].forEach( function( key ) { asked.add( 'label/'+ key+ '-short' ) } );
 	[ 'section-wrap', 'header-wrap', 'footer-wrap' ].forEach( function( key ) { asked.add( 'kind/'+ key ) } );
 	[ 'mobile', 'tablet', 'desktop', 'frame-header', 'frame-footer' ].forEach( function( key ) { asked.add( 'word/'+ key ) } );
 	// The places of the dialog: the categories and the two ways a place is named
@@ -147,10 +147,9 @@ const words = {
 
 // --- B. the model ---------------------------------------------------------------------------------------------
 
-const ownSelect = { value : 'en_US' };
 const context = {
 	window : null,
-	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' }, getElementById : function( id ) { return id === 'builder-language' ? ownSelect : { innerHTML : '', appendChild : function() {} } } },
+	document : { addEventListener : function() {}, documentElement : { lang : 'en-US' }, getElementById : function() { return { innerHTML : '', appendChild : function() {} } } },
 };
 
 // What the stand-in keeps of the list and of the way between the views: the elements made, where the router went and the calls to the server
@@ -164,7 +163,7 @@ const chosen = [];
 const written = [];
 let answer = 'save';
 
-context.window = { setTimeout : function() {}, Nino : { admin : { router : { href : function( panel, parts ) { return '#'+ panel+ '/'+ parts.join('/') }, go : function( panel, parts ) { went.parts = parts }, set : function() {}, current : function() { return { panel : 'builder', parts : went.parts } } }, dirty : { guard : function( keys, run, cancel ) { questions.push( keys.join() ); answer === 'cancel' ? cancel() : run() } }, workLocale : { current : 'de_DE', follow : function( name, handler ) { followers.push( { name : name, handler : handler } ) }, set : function( locale ) { chosen.push( locale ) } }, sessionLocale : { set current( locale ) { written.push( locale ) } } }, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, hint : function() { return {} }, emptyState : function() { return {} }, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className, text ) { const attributes = {}; const listeners = {}; const element = { tag : tag, className : className, text : text, attributes : attributes, listeners : listeners, dataset : {}, addEventListener : function( type, run ) { listeners[type] = run }, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} }; made.push( element ); return element } }, content : { getText : function() { return '' } } }, document : context.document };
+context.window = { setTimeout : function() {}, Nino : { admin : { router : { href : function( panel, parts ) { return '#'+ panel+ '/'+ parts.join('/') }, go : function( panel, parts ) { went.parts = parts }, set : function() {}, current : function() { return { panel : 'builder', parts : went.parts } } }, dirty : { guard : function( keys, run, cancel ) { questions.push( keys.join() ); answer === 'cancel' ? cancel() : run() } }, workLocale : { current : 'de_DE', follow : function( name, handler ) { followers.push( { name : name, handler : handler } ) }, set : function( locale ) { chosen.push( locale ) } }, sessionLocale : { set current( locale ) { written.push( locale ) } } }, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, iconButton : function() { return { dataset : {}, setAttribute : function() {}, classList : { toggle : function() {} }, addEventListener : function() {} } }, hint : function() { return {} }, emptyState : function() { return {} }, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className, text ) { const attributes = {}; const listeners = {}; const element = { tag : tag, className : className, text : text, attributes : attributes, listeners : listeners, dataset : {}, addEventListener : function( type, run ) { listeners[type] = run }, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} }; made.push( element ); return element } }, content : { getText : function() { return '' } } }, document : context.document };
 context.Nino = context.window.Nino;
 vm.createContext( context );
 vm.runInContext( script, context );
@@ -358,9 +357,11 @@ check( 'B. the focus is set where the new block will be before the page is drawn
 	S.locales = [ { locale : 'de_DE', active : true } ];
 	S.native = 'de_DE';
 	let seen = null;
-	S.view = { bar : { set : function() {} }, buttons : { undo : {}, redo : {} }, split : { settings : { contains : function() { return false }, appendChild : function() {}, querySelectorAll : function() { return [] }, set innerHTML( value ) { seen = JSON.stringify( S.refocus ) } } }, preview : { schedule : function() {} } };
+	S.gl = { tree : { update : function() { seen = JSON.stringify( S.refocus ) }, select : function() {}, focus : function() {}, highlight : function() {}, el : { contains : function() { return false }, querySelector : function() { return null } } }, rail : { set innerHTML( value ) {}, appendChild : function() {} }, first : {}, lit : [] };
+	S.view = { bar : { set : function() {} }, buttons : { undo : {}, redo : {} }, preview : { schedule : function() {} } };
 	builder.insert( builder.points()[1], heroBlock(), 'outline' );
 	S.view = null;
+	S.gl = null;
 	return seen !== null && JSON.parse( seen ).from === 'outline' && S.top[JSON.parse( seen ).at].a.id === 'hero-2';
 } )() );
 check( 'B. the picture of a block that is put in is known to the panel with its label and size before the page is saved - the server is told it, so that another file can be chosen for it - and the undo takes it back', ( function() {
@@ -818,13 +819,7 @@ check( 'E. the language of the page is written to the session by nobody: the wor
 	return written.length === 0;
 } )() );
 
-check( 'E. a choice that was turned down puts the own select of the page back to the language the page is in', ( function() {
-	fresh();
-	ownSelect.value = 'en_US';
-	language().handler( 'de_DE' );
-
-	return ownSelect.value === 'de_DE';
-} )() );
+check( 'E. the language is the workbench\'s alone: the view has no select of its own for it, and the context bar says it by the badge of the workbench', /Nino\.adminUi\.localeBadge\(\s*S\.locale,\s*context\s*\)/.test( script ) === true );
 
 check( 'E. a page that was on its way when the language moved is asked for again in the language of the workbench, and not kept in the other', ( function() {
 	fresh();

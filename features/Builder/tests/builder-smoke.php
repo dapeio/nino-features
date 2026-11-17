@@ -384,6 +384,19 @@ check( 'it says where each call reads its text: the key of a ~name is the id of 
 	count( array_filter( $open['sources'], static fn( array $entry ): bool => $entry['key'] === '/template/page-home/start-1/title' && $entry['editable'] === true ) ) === 1 && count( array_filter( $open['sources'], static fn( array $entry ): bool => $entry['kind'] === 'image' && $entry['editable'] === false ) ) === 1 );
 check( 'and the words of the namespace in every language, the stamp, the register\'s label and id attribute of each block, and the slots of the page', $open['texts']['/template/page-home/hero/title'] === [ 'de_DE' => 'Willkommen', 'en_US' => 'Willkommen (en)' ] && strlen( $open['stamp'] ) === 64 && $open['known']['section-wrap']['id'] === 'id' && $open['slots'] === [ '/template/page-home/hero/background' ] );
 
+check( 'the page tells how the block under the pointer is shown - the setting of the feature, "frame" until it is changed - and the icon of the type of each block',
+	$open['dim'] === 'frame' && is_string( $open['known']['section-wrap']['icon'] ) === true && $open['known']['section-wrap']['icon'] !== '' );
+
+$dimmed = \Nino\Features::saveSettings( $site, 'builder', [ 'dim' => 'fade' ] );
+[ $dimStatus, $dimOpen ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$refused = \Nino\Features::saveSettings( $site, 'builder', [ 'dim' => 'blink' ] );
+[ , $stillOpen ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+
+check( 'the setting offers "frame" and "fade" and nothing else: "fade" is what the page then tells, a word that is neither is refused and changes nothing', $dimmed === [] && $dimStatus === 200 && $dimOpen['dim'] === 'fade'
+	&& array_keys( \Nino\Features::get( $site, 'builder' )['settings']['dim']['options'] ) === [ 'frame', 'fade' ] && isset( $refused['dim'] ) === true && $stillOpen['dim'] === 'fade' );
+
+\Nino\Features::saveSettings( $site, 'builder', [ 'dim' => 'frame' ] );
+
 // B6 and the roundtrip: open and save without a change write nothing at all
 $before = builderSnapshot( $site );
 [ $status, $same ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $tree, 'texts' => $open['texts'], 'base' => $open['stamp'] ] );
@@ -1986,10 +1999,10 @@ foreach( $numbers as $name => $ms )
 
 check( 'the times are told, none is held to a limit: the machines the suite runs on differ', count( $numbers ) === 4 );
 
-// The script of the panel has two suites of its own - the model, and the list and the view that makes a page - which run where node is
+// The script of the panel has three suites of its own - the model, the list and the view that makes a page, and the surface of a page that is worked on - which run where node is
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 
-foreach( [ 'builder-js-smoke.js', 'builder-pages-js-smoke.js' ] as $suite ) {
+foreach( [ 'builder-js-smoke.js', 'builder-pages-js-smoke.js', 'builder-surface-js-smoke.js' ] as $suite ) {
 
 	if( $node === '' ) {
 		echo "  --  - node is not available here: ". $suite. " was NOT run\n";
