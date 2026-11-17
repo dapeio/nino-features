@@ -1,0 +1,8 @@
+[section-wrap ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[consent inline]
+			[consent-settings]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

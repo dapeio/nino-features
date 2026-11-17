@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Einwilligung ändern", "en_US": "Change consent" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und der Knopf, der die Wahl der Cookie-Einwilligung wieder öffnet - für die Datenschutzseite.", "en_US": "A headline, a sentence and the button that opens the cookie choice again - for the privacy page." },
+	"category": "content",
+	"rank": 70,
+	"images": {}
+}

@@ -1,0 +1,1 @@
+<button type="button" class="[[class]]">[[/feature/consent/action/open]]</button>

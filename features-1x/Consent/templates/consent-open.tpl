@@ -1,1 +1,0 @@
-<button type="button" class="nino-consent-open[[classes]]">[[/feature/consent/action/open]]</button>

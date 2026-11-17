@@ -1,24 +1,22 @@
 /**
  *	Nino - Consent
- *	consent.js		The [consent] banner's behaviour and the consent gate every
- *								page gets, banner or not: read the stored choice, show
- *								the banner when there is none, activate every
+ *	consent.js		The banner's behaviour and the consent gate every page
+ *								gets, banner or not: read the stored choice, show the
+ *								banner when there is none, activate every
  *								<script type="text/plain" data-consent="category"> the
  *								choice allows, toggle [data-consent-show]/[data-consent-
  *								hide], and tell the rest of the page through the
- *								"nino:consent" event. It needs Nino.js and Nino.ui.js,
- *								which every site loads (Nino.events.bindCallback() starts
- *								it, Nino.ui.options() reads the banner), and no build
+ *								"nino:consent" event. It needs Nino.js, which every site
+ *								loads (Nino.events.bindCallback() starts it), and no build
  *								step: the manifest's assets bundle it into the project's
  *								own /.cache/script.js, behind the kernel's scripts, so
- *								this runs on every page the site's own frame already
- *								loads that bundle on, whether or not that page renders
- *								[consent] itself.
+ *								this runs on every page that bundle is loaded on, whether
+ *								or not the page has the banner.
  *
  *								The cookie name/lifetime a project chose under the
  *								feature's settings reach this file through the banner's
  *								own data-consent-cookie/data-consent-days attributes
- *								(see Consent::doConsentShortcode()) - this file is a
+ *								(see Consent::componentConsent()) - this file is a
  *								static asset, never rendered through the fill engine
  *								(docs/development.md, "Assets Are Not Templates"), so it
  *								cannot read config.php directly. A page with no banner
@@ -36,7 +34,7 @@
 	var DEFAULT_DAYS = 180;
 	var CATEGORIES = [ 'necessary', 'statistics', 'marketing', 'external' ];
 
-	// The [consent-settings] button that last reopened the banner, so the
+	// The consent-settings button that last reopened the banner, so the
 	// focus goes back to it once a choice is made
 	var opener = null;
 
@@ -46,19 +44,20 @@
 	var held = null;
 
 	/**
-	 *	The banner, or null on a page that does not render [consent]
+	 *	The banner, or null on a page that has none. The banner a preview shows in the flow of the page
+	 *	(consent--inline) is a picture of one and no banner
 	 *
 	 *	@return		{?Element}
 	 */
 	function banner() {
-		return document.querySelector( '.nino-consent' );
+		return document.querySelector( '.consent:not(.consent--inline)' );
 	}
 
 	/**
 	 *	Whether the look in use is a modal one: a look says so with the custom
-	 *	property --consent-modal set to 1 (design/dialog.css), which consent.css
-	 *	declares as 0. The script reads it where the banner stands, so the choice
-	 *	of a look in the Design feature is all it takes
+	 *	property --consent-modal set to 1 (the variant dialog of the standard part),
+	 *	which the part declares as 0. The script reads it where the banner stands,
+	 *	so the variant a theme chose is all it takes
 	 *
 	 *	@param		{Element}		el
 	 *
@@ -228,10 +227,9 @@
 	}
 
 	/**
-	 *	The banner's own data-consent-cookie and data-consent-days, read as
-	 *	Nino.ui.options() reads a setting: the name as it is, an empty one being
-	 *	none, and the lifetime as a whole number of days, whatever else being
-	 *	none. The defaults where the page has no banner
+	 *	The banner's own data-consent-cookie and data-consent-days: the name as it is, an empty one
+	 *	being none, and the lifetime as a whole number of days, whatever else being none. The
+	 *	defaults where the page has no banner
 	 *
 	 *	@return		{{cookie: string, days: number}}
 	 */
@@ -242,10 +240,13 @@
 		if( el === null )
 			return { cookie : DEFAULT_COOKIE_NAME, days : DEFAULT_DAYS };
 
-		return Nino.ui.options( el, 'consent', {
-			cookie : { type : 'text', fallback : DEFAULT_COOKIE_NAME },
-			days : { type : 'int', fallback : DEFAULT_DAYS },
-		} );
+		var cookie = el.getAttribute( 'data-consent-cookie' );
+		var days = el.getAttribute( 'data-consent-days' );
+
+		return {
+			cookie : cookie === null || cookie === '' ? DEFAULT_COOKIE_NAME : cookie,
+			days : /^[0-9]{1,9}$/.test( days || '' ) === true ? parseInt( days, 10 ) : DEFAULT_DAYS,
+		};
 	}
 
 	/**
@@ -261,8 +262,7 @@
 	/**
 	 *	How many days a choice this page writes is kept - the banner's own
 	 *	data-consent-days when it is on the page, else the setting's default.
-	 *	A whole number is what options() takes, and a lifetime of no days is
-	 *	none: a cookie that is over when it is written
+	 *	A lifetime of no days is none: a cookie that is over when it is written
 	 *
 	 *	@return		{number}
 	 */
@@ -279,7 +279,14 @@
 	function readCookie( name ) {
 		var escaped = name.replace( /([.$?*|{}()[\]\\/+^])/g, '\\$1' );
 		var match = document.cookie.match( new RegExp( '(?:^|; )' + escaped + '=([^;]*)' ) );
-		return match === null ? null : decodeURIComponent( match[1] );
+
+		// A value that cannot be decoded is no choice: the banner asks
+		try {
+			return match === null ? null : decodeURIComponent( match[1] );
+		}
+		catch( e ) {
+			return null;
+		}
 	}
 
 	/**
@@ -299,21 +306,16 @@
 	}
 
 	/**
-	 *	A category list cut to what this site offers - what the banner has a
-	 *	checkbox for. A category the settings switched off is never allowed
-	 *	(\Nino\Modules\Consent::allowed() refuses it whatever the cookie says),
-	 *	and the browser must not release its placeholders either. On a page with
-	 *	no banner there is nothing to read the offer from, and the list is kept
-	 *	as it is
+	 *	A category list cut to what this site offers: the categories the page names on its root element
+	 *	(data-consent-offered, written by the server for every page), and "necessary" where it names none. A category
+	 *	the settings switched off is never allowed (\Nino\Modules\Consent::allowed() refuses it whatever the cookie
+	 *	says), and the browser must not release its placeholders either - on a page with no banner as on one with
 	 *
 	 *	@param		{Array}			list
 	 *
 	 *	@return		{Array}
 	 */
 	function onlyOffered( list ) {
-
-		if( banner() === null )
-			return list;
 
 		var offered = offeredCategories();
 
@@ -335,15 +337,6 @@
 
 		if( raw === null || raw === '' )
 			return null;
-
-		// The banner Nino's base install shipped up to 1.3.x wrote 'accepted'
-		// or 'declined' into a cookie of the same name (for 365 days): a choice
-		// already made, kept - every category the site offers, or the necessary
-		// one alone
-		if( raw === 'accepted' )
-			return onlyOffered( CATEGORIES.slice() );
-		if( raw === 'declined' )
-			return [ 'necessary' ];
 
 		var list = raw.split( ',' ).map( function( entry ) {
 			return entry.trim();
@@ -451,24 +444,20 @@
 	}
 
 	/**
-	 *	Every category currently offered by the banner's own checkboxes -
-	 *	what "accept all" means on this page, since a category the settings
-	 *	did not switch on has no checkbox to begin with
+	 *	Every category the site offers, as the page says it: what "accept all" means. A page that says nothing
+	 *	offers the necessary one alone. Only a name of CATEGORIES counts, whatever the attribute holds
 	 *
 	 *	@return		{Array}
 	 */
 	function offeredCategories() {
 
-		var el = banner();
-		if( el === null )
-			return CATEGORIES.slice();
+		var named = ( document.documentElement.getAttribute( 'data-consent-offered' ) || '' ).split( ',' ).map( function( entry ) {
+			return entry.trim();
+		} );
 
-		var boxes = el.querySelectorAll( '[data-consent-category]' );
-		var list = [];
-		for( var i = 0; i < boxes.length; i++ )
-			list.push( boxes[i].getAttribute( 'data-consent-category' ) );
-
-		return list;
+		return CATEGORIES.filter( function( category ) {
+			return category === 'necessary' || named.indexOf( category ) !== -1;
+		} );
 	}
 
 	/**
@@ -543,7 +532,7 @@
 	}
 
 	/**
-	 *	Wire the banner's own buttons and every [consent-settings] button on
+	 *	Wire the banner's own buttons and every consent-settings button on
 	 *	the page - a no-op where the banner is absent
 	 *
 	 *	@return		void
@@ -584,16 +573,14 @@
 				} );
 		}
 
-		// A reopen button on a page with no banner has nothing to open: it is
-		// hidden rather than left to do nothing
-		var openButtons = document.querySelectorAll( '.nino-consent-open' );
-		for( var b = 0; b < openButtons.length; b++ ) {
+		// A page with no banner has nothing for the button to open, and the button stays as it is: the pages of the site all have
+		// the banner (the output phase draws it), so the one that has none is the draft of the Builder, which shows the button
+		// where it will stand
+		if( el === null )
+			return;
 
-			if( el === null ) {
-				openButtons[b].hidden = true;
-				continue;
-			}
-
+		var openButtons = document.querySelectorAll( '.consent-settings' );
+		for( var b = 0; b < openButtons.length; b++ )
 			openButtons[b].addEventListener( 'click', function() {
 				var current = banner();
 				if( current === null )
@@ -602,21 +589,9 @@
 				opener = this;
 				show( current, true );
 			} );
-		}
 	}
 
 	function init() {
-
-		// This feature supersedes the plain accept/decline banner Nino's base
-		// install shipped up to 1.3.x (.nino-cookie-banner in the project's
-		// html-footer.tpl). A project set up then keeps the block - a unit is
-		// add-only and never rewrites a template of the project's - so where one
-		// is still in the page, it goes: a visitor never sees two, nor an
-		// unstyled leftover
-		Array.prototype.forEach.call( document.querySelectorAll( '.nino-cookie-banner' ), function( el ) {
-			if( el.parentNode !== null )
-				el.parentNode.removeChild( el );
-		} );
 
 		bind();
 
