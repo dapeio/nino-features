@@ -446,33 +446,6 @@
 	min-height: 2rem;
 }
 
-/* The sentence of a hint under an entry of the tree is read whole: it breaks where the row is narrow */
-#builder-app .nino-admin-tree-hint-text {
-	overflow: visible;
-	text-overflow: clip;
-	white-space: normal;
-}
-
-#builder-app .builder-source-name {
-	color: var(--editor-text-secondary);
-	overflow-wrap: anywhere;
-}
-
-/* A row with a hint: the label stands on the first line with the arrow and the buttons, the sentence under it has the width of the row */
-#builder-app .nino-admin-tree-row {
-	flex-wrap: wrap;
-}
-
-#builder-app .nino-admin-tree-text {
-	display: contents;
-}
-
-#builder-app .nino-admin-tree-hint {
-	flex: 0 0 100%;
-	order: 10;
-	padding-inline-start: 1.9rem;
-}
-
 .builder-source-body,
 .builder-own-body,
 .builder-new-body {

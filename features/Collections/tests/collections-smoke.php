@@ -306,6 +306,13 @@ $schemas = \Nino\Components::components( $appData );
 check( 'switched on, the register holds the five - and the twenty of Basis beside them -, and the group', count( $schemas ) === 25 && array_diff( COLLECTIONS_COMPONENTS, array_keys( $schemas ) ) === []
 	&& array_diff( array_keys( \Nino\Components::groups( $appData ) ), [ 'button', 'footer', 'header', 'image', 'section', 'text', 'collection' ] ) === [] && count( \Nino\Components::groups( $appData ) ) === 7 );
 
+check( 'each of the five names an icon of the workbench for the tree of a tool, and they are told apart', ( static function() use ( $schemas ): bool {
+
+	$icons = array_map( static fn( string $name ): string => (string) ( $schemas[$name]['icon'] ?? '' ), COLLECTIONS_COMPONENTS );
+
+	return count( array_unique( $icons ) ) === count( COLLECTIONS_COMPONENTS ) && array_diff( $icons, \Nino\Components::ICONS ) === [];
+} )() );
+
 $allowed = static function( string $parent ) use ( &$appData ): array {
 
 	$list = \Nino\Components::allowed( $appData, $parent );

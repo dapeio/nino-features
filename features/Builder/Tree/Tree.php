@@ -370,7 +370,7 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$registry
 		 *	@param		string		$name
 		 *
-		 *	@return 	array											'label', 'group', 'container', 'loop', 'source', 'format', 'id', 'attributes', 'variants', 'standard'
+		 *	@return 	array											'label', 'group', 'icon', 'container', 'loop', 'source', 'format', 'id', 'attributes', 'variants', 'standard'
 		 */
 		public static function schema( array &$appData, array $registry, string $name ): array {
 
@@ -395,6 +395,7 @@ namespace Nino\Modules\Builder {
 			return [
 				'label'				=> $schema['label'],
 				'group'				=> (string) ( $schema['group'] ?? '' ),
+				'icon'				=> (string) ( $schema['icon'] ?? '' ),
 				'container'		=> isset( $schema['offers'] ) === true && $name !== 'html',
 				'loop'				=> ( $schema['children'] ?? '' ) === 'nodes',
 				'source'			=> (string) ( $schema['source'] ?? 'none' ),

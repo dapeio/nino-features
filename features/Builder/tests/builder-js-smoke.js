@@ -519,11 +519,11 @@ check( 'B. the dialog asks for as many pictures as the server keeps, and the scr
 // --- C. the extended view ---------------------------------------------------------------------------------------
 
 const schemas = {
-	'section-wrap' : { label : 'Section', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'alt' ], optionLabels : null, responsive : false } } },
-	'section-col' : { label : 'Column', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [ 'card' ], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '33', '50', '100' ], optionLabels : null, responsive : true }, link : { type : 'bool', label : 'Link', hint : '', default : false } } },
-	'section-title' : { label : 'Title', group : 'section', container : false, source : 'text', format : 'inline', id : '', variants : [], standard : 'regular', attributes : {} },
-	'text' : { label : 'Text', group : 'text', container : false, source : 'text', format : 'blocks', id : '', variants : [], standard : 'regular', attributes : {} },
-	'spacer' : { label : 'Spacer', group : 'text', container : false, source : 'none', format : '', id : '', variants : [], standard : 'regular', attributes : {} },
+	'section-wrap' : { icon : 'panel-top', label : 'Section', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'alt' ], optionLabels : null, responsive : false } } },
+	'section-col' : { icon : 'columns-3', label : 'Column', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [ 'card' ], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '33', '50', '100' ], optionLabels : null, responsive : true }, link : { type : 'bool', label : 'Link', hint : '', default : false } } },
+	'section-title' : { icon : 'heading', label : 'Title', group : 'section', container : false, source : 'text', format : 'inline', id : '', variants : [], standard : 'regular', attributes : {} },
+	'text' : { icon : 'text', label : 'Text', group : 'text', container : false, source : 'text', format : 'blocks', id : '', variants : [], standard : 'regular', attributes : {} },
+	'spacer' : { icon : 'ellipsis', label : 'Spacer', group : 'text', container : false, source : 'none', format : '', id : '', variants : [], standard : 'regular', attributes : {} },
 };
 
 const extended = function() {
@@ -561,11 +561,46 @@ check( 'C. the tree of a block is its components with their kind and first words
 	const root = builder.itemsNow()[0];
 	const column = root.children[0];
 
-	return root.id === 'root' && root.label === 'Section' && column.id === '1' && column.children.map( function( item ) { return item.id } ).join() === '1.1,1.3,1.4'
-		&& column.children[0].detail === 'Hallo Welt' && column.children[2].locked === true && column.children[0].locked === false
+	return root.id === 'root' && root.kind === 'Section' && column.id === '1' && column.children.map( function( item ) { return item.id } ).join() === '1.1,1.3,1.4'
+		&& column.children[0].name === 'Hallo Welt' && column.children[2].locked === true && column.children[0].locked === false
 		&& root.actions.map( function( action ) { return action.key } ).join() === 'add' && column.actions.map( function( action ) { return action.key } ).join() === 'add,up,down,remove'
 		&& column.children[2].actions.map( function( action ) { return action.key } ).join() === 'up,down,remove';
 } )() );
+
+check( 'C. an entry of the tree carries the icon of its component, the kind and the content apart, the width and the variant as its note, a lock for what is locked and the finding as its hint', ( function() {
+	extended();
+	S.texts['/template/page-home/hero-1/title'] = { de_DE : 'Hallo Welt' };
+	S.top[3].c[1].a.variant = 'card';
+	S.top[3].c[1].a.size = '50 m:100';
+	S.findings = { '3.1.1': [ [ 'outside', 'size' ] ] };
+
+	const root = builder.itemsNow()[0];
+	const column = root.children[0];
+	const title = column.children[0];
+	const free = column.children[2];
+
+	return root.icon === 'panel-top' && title.icon === 'heading' && title.kind === 'Title' && title.name === 'Hallo Welt' && title.label === undefined && title.detail === undefined
+		&& column.meta === '50 % · card' && root.meta === '' && free.locked === true && free.icon === 'code' && free.name === undefined
+		&& title.finding !== undefined && title.finding.state === 'warn' && column.finding === undefined && root.children[0].actions.every( function( action ) { return typeof action.icon === 'string' && action.label === undefined } );
+} )() );
+
+check( 'C. a component that repeats its children for each element is a loop with its type and sort, and a value that comes from a field of the element is the field as its source', ( function() {
+	extended();
+	S.schemas = Object.assign( {}, schemas, { 'collection-list' : { icon : 'list', label : 'List', group : 'collection', container : true, loop : true, source : 'none', format : '', id : '', variants : [], standard : 'regular', attributes : { sort : { type : 'string', label : 'Sort', hint : '', default : '', options : null, optionLabels : null, responsive : false } } } } );
+	S.known['collection-list'] = { label : 'List', id : '', source : 'none' };
+	S.types = [ { type : '/services', title : 'Services' } ];
+	S.top[3].c[1].c = [ { t : '\n\t\t' }, { n : 'collection-list', s : '/services', a : { sort : '-date' }, c : [ { t : '\n' }, { n : 'section-title', s : '.title', a : {}, c : null }, { t : '\n' } ] }, { t : '\n' } ];
+
+	const loop = builder.itemsNow()[0].children[0].children[0];
+	const inner = loop.children[0];
+
+	return typeof loop.loop === 'object' && loop.loop.type === 'Services' && loop.loop.detail === 'Services · -date' && loop.icon === 'list'
+		&& inner.loop === undefined && inner.source === '.title' && inner.name === '' && builder.itemsNow()[0].loop === undefined && builder.itemsNow()[0].source === undefined;
+} )() );
+
+check( 'C. the stylesheet of the feature draws no tree of its own: no rule names a class of the workbench tree', fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' ).indexOf( 'nino-admin-tree' ) === -1 );
+
+check( 'C. the tree of the extended view has the line of the path over it and is the block of the workbench', /Nino\.adminUi\.tree\(\s*\{[^}]*\bpath\s*:\s*true\b/.test( script ) === true && /treeBox\.appendChild\( S\.tree\.path \)/.test( script ) === true );
 
 check( 'C. a component is moved among its neighbours - over free markup too, never off the end - and taken out with the blanks that lay it out, so that no two texts stand side by side, and the undo gives back the tree to the byte', ( function() {
 	extended();

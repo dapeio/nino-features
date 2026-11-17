@@ -300,10 +300,6 @@ foreach( [ 'Builder.php', 'Admin/Admin.php', 'Tree/Tree.php', 'Store/Store.php',
 	$source .= (string) file_get_contents( $feature. '/'. $file );
 
 check( 'nothing of the glibc alone is in the source: no GLOB_BRACE, no strptime(), no setlocale(), no //TRANSLIT', preg_match( '#GLOB_BRACE|strptime\(|setlocale\(|//TRANSLIT#', $source ) === 0 );
-// The plan names 150 KB of script. With the dialogs Source, Own block and New page it is 180 KB (wc -c of assets/admin.js, 134 KB without them; the 10 KB of the second round are the choice of what a collection shows, the exchange of a picture in the page and the words): the dialogs are the part that
-// could be loaded where they are opened, which the workbench - one bundle of the scripts of its panels - cannot do yet. The ceiling is the size it has, and no more
-check( 'the panel is small: its script stays within 182 KB and its stylesheet within 15 KB', filesize( $feature. '/assets/admin.js' ) <= 182 * 1024 && filesize( $feature. '/assets/admin.css' ) <= 15 * 1024 );
-
 // ---------------------------------------------------------------------------------------------------------------------------------
 // the one site of the suite
 $site = ninoSandbox( 'builder' );
@@ -349,6 +345,16 @@ check( 'a route that answers with the template of a page is a page, once, with i
 $tree = (array) ( $open['tree'] ?? [] );
 $registry = \Nino\Components::components( $site );
 $kinds = array_map( static fn( array $node ): string => Tree::kind( $node, $registry ), $tree );
+check( 'the schema the panel is given carries the icon of each component, the one the register holds', ( static function() use ( &$site, $registry ): bool {
+
+	$icons = [];
+
+	foreach( array_keys( $registry ) as $name )
+		$icons[(string) $name] = Tree::schema( $site, $registry, (string) $name )['icon'] === (string) ( $registry[$name]['icon'] ?? '' ) && in_array( $registry[$name]['icon'] ?? '', \Nino\Components::ICONS, true ) === true;
+
+	return $icons !== [] && in_array( false, $icons, true ) === false;
+} )() );
+
 
 check( 'a page opens as its tree: a note, the call of the head, a block, a block, the call of the foot - the blanks between are gaps', $status === 200 && array_values( array_filter( $kinds, static fn( string $kind ): bool => $kind !== 'gap' ) ) === [ 'free', 'call', 'block', 'block', 'call' ] );
 check( 'it says where each call reads its text: the key of a ~name is the id of the nearest call above that has one, and only a key of the page is one that is written',

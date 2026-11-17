@@ -4,6 +4,7 @@ declare(strict_types=1);
 return [
 	'group'      => 'collection',
 	'label'      => [ 'de_DE' => 'Spalte', 'en_US' => 'Column' ],
+	'icon'       => 'columns-3',
 	'in'         => [ 'collection-table' ],
 	'preview'    => 'cells',
 	'attributes' => [

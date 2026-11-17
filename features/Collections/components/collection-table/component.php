@@ -4,6 +4,7 @@ declare(strict_types=1);
 return [
 	'group'      => 'collection',
 	'label'      => [ 'de_DE' => 'Tabelle', 'en_US' => 'Table' ],
+	'icon'       => 'table',
 	'in'         => [ 'flow', 'collection-filter' ],
 	'offers'     => [],
 	'children'   => 'nodes',

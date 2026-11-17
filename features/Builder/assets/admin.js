@@ -3027,15 +3027,40 @@
 		const title = titleOfRel( rel );
 
 		if( container === true )
-			list.push( { key : 'add', label : '+', name : word( 'label/add-in', title ) } );
+			list.push( { key : 'add', icon : 'plus', name : word( 'label/add-in', title ) } );
 
 		if( rel !== 'root' ) {
-			list.push( { key : 'up', label : '↑', name : word( 'label/up-comp', title ), disabled : siblingAt( rel, -1 ) === -1 } );
-			list.push( { key : 'down', label : '↓', name : word( 'label/down-comp', title ), disabled : siblingAt( rel, 1 ) === -1 } );
-			list.push( { key : 'remove', label : '×', name : word( 'label/remove-comp', title ), danger : true } );
+			list.push( { key : 'up', icon : 'arrow-up', name : word( 'label/up-comp', title ), disabled : siblingAt( rel, -1 ) === -1 } );
+			list.push( { key : 'down', icon : 'arrow-down', name : word( 'label/down-comp', title ), disabled : siblingAt( rel, 1 ) === -1 } );
+			list.push( { key : 'remove', icon : 'trash-2', name : word( 'label/remove-comp', title ), danger : true } );
 		}
 
 		return list;
+	};
+
+	// The note at the right of an entry: the width of a column - the one every screen has - and the variant where it is not the standard one
+	const metaOf = function( node, schema ) {
+
+		const parts = [];
+		const width = schema.attributes.size !== undefined && schema.attributes.size.responsive === true ? widthsOf( ( node.a ?? {} ).size )[''] : '';
+		const variant = typeof ( node.a ?? {} ).variant === 'string' ? node.a.variant : '';
+
+		if( width !== '' )
+			parts.push( width+ ' %' );
+
+		if( variant !== '' && variant !== schema.standard )
+			parts.push( variantLabel( schema, variant ) );
+
+		return parts.join(' · ');
+	};
+
+	// What a loop shows, in a note: the title of the type of its elements and how they are sorted
+	const loopNote = function( node, schema ) {
+
+		const type = typeof node.s === 'string' && node.s.charAt(0) === '/' ? typeTitle( node.s ) : '';
+		const sort = schema.attributes.sort !== undefined && typeof ( node.a ?? {} ).sort === 'string' ? node.a.sort : '';
+
+		return [ type, sort ].filter( function( part ) { return part !== '' } ).join(' · ');
 	};
 
 	// The entry of the tree for a component or for a piece that is locked, and for everything inside it
@@ -3059,16 +3084,32 @@
 			}
 		}
 
-		return {
+		const entry = {
 			id			: rel,
-			label		: titleOfRel( rel ),
-			detail	: schema === undefined ? '' : ownText( node, rel, 40 ),
+			kind		: titleOfRel( rel ),
+			icon		: schema === undefined ? 'code' : schema.icon,
 			children	: children,
 			open		: true,
 			locked	: schema === undefined,
-			hint		: hintOf( absOf( rel ) ),
+			finding	: hintOf( absOf( rel ) ),
 			actions	: actionsOf( rel, schema !== undefined && schema.container === true ),
 		};
+
+		if( schema === undefined )
+			return entry;
+
+		entry.name = ownText( node, rel, 40 );
+		entry.meta = metaOf( node, schema );
+
+		// A value that comes from a field of the element - its first word begins with a dot - is the field, and no text of its own
+		if( typeof node.s === 'string' && node.s.charAt(0) === '.' )
+			entry.source = node.s;
+
+		// What is inside a loop is drawn for each element: the type is told in the tag where the loop stands in another
+		if( schema.loop === true )
+			entry.loop = { detail : loopNote( node, schema ), type : typeof node.s === 'string' && node.s.charAt(0) === '/' ? typeTitle( node.s ) : '' };
+
+		return entry;
 	};
 
 	const itemsNow = function() {
@@ -4617,12 +4658,33 @@
 		return body;
 	};
 
+	// The title the project gives a type of elements, else what the loop names
+	const typeTitle = function( given ) {
+		return ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : given.indexOf('/_') === 0 ? word('type/example') : given } ).title;
+	};
+
+	// The types of elements of the project are asked for once, where a loop shows one by its title; what comes is told to the caller
+	const askTypes = function( then ) {
+
+		if( S.types.length > 0 || S.typesAsked === true )
+			return;
+
+		S.typesAsked = true;
+		api( 'keys', { kind : 'types' }, function( status, response ) {
+
+			if( status === 200 && response.types.length > 0 ) {
+				S.types = response.types;
+				then();
+			}
+		} );
+	};
+
 	// What a loop shows: the type of elements it names as its first word, in the words the project gives the type, and the dialog that chooses another
 	const typeBody = function( rel, node, body ) {
 
 		const given = typeof node.s === 'string' ? node.s : '';
 		const line = el( 'p', 'nino-admin-hint builder-source', '' );
-		const say = function() { line.textContent = given === '' ? word('type/none') : word( 'type/is', ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : given.indexOf('/_') === 0 ? word('type/example') : given } ).title ) };
+		const say = function() { line.textContent = given === '' ? word('type/none') : word( 'type/is', typeTitle( given ) ) };
 		const choose = Nino.adminUi.button( word('type/change'), function() { openType( rel, choose ) }, { className : 'nino-admin-btn--small' } );
 
 		choose.dataset.key = rel+ ':source:';
@@ -4630,17 +4692,7 @@
 		body.appendChild( line );
 		body.appendChild( choose );
 
-		if( S.types.length === 0 && S.typesAsked === false ) {
-
-			S.typesAsked = true;
-			api( 'keys', { kind : 'types' }, function( status, response ) {
-
-				if( status === 200 && response.types.length > 0 ) {
-					S.types = response.types;
-					say();
-				}
-			} );
-		}
+		askTypes( say );
 
 		return body;
 	};
@@ -4769,6 +4821,7 @@
 			id				: 'builder-tree',
 			label			: word('adv/tree-label'),
 			items			: itemsNow(),
+			path			: true,
 			selected	: S.marked === '' ? 'root' : S.marked,
 			onSelect	: function( id ) { Nino.admin.builder.go( partsOf( id, sectionOf( id ) ), { focus : 'back' } ) },
 			onAction	: function( key, id ) {
@@ -4793,6 +4846,9 @@
 					S.mark( true );
 			},
 		} );
+		// A loop is told by the title of its type: the types come and the entries are drawn again
+		askTypes( function() { if( S.tree !== null ) S.tree.update( itemsNow() ) } );
+		treeBox.appendChild( S.tree.path );
 		treeBox.appendChild( S.tree.el );
 
 		idLine.appendChild( el( 'span', 'builder-field-label', word('field/id') ) );

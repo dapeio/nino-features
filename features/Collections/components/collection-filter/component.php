@@ -4,6 +4,7 @@ declare(strict_types=1);
 return [
 	'group'      => 'collection',
 	'label'      => [ 'de_DE' => 'Filter', 'en_US' => 'Filter' ],
+	'icon'       => 'sliders-horizontal',
 	'in'         => [ 'page', 'flow', 'section-row' ],
 	'offers'     => [],
 	'through'    => true,
