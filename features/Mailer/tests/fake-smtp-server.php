@@ -65,6 +65,20 @@ function fakeSmtpSession( $conn, array $control ): array {
 	$authMethods	= (string) ( $control['authMethods'] ?? 'PLAIN LOGIN' );
 	$data					= '';
 
+	// A server that answers a byte at a time and never ends its line: it stops after a bound of its own, or when the client leaves
+	if( ( $control['drip'] ?? false ) === true ) {
+
+		for( $n = 0; $n < 3000; $n++ ) {
+
+			if( @fwrite( $conn, '2' ) === false )
+				break;
+
+			usleep( 1000 );
+		}
+
+		return [ 'commands' => [], 'data' => '' ];
+	}
+
 	$write( '220 fake.smtp.test ESMTP ready' );
 
 	while( true ) {
@@ -83,6 +97,9 @@ function fakeSmtpSession( $conn, array $control ): array {
 			$write( '250 fake.smtp.test greets you' );
 		} else if( $upper === 'STARTTLS' ) {
 			$write( '220 ready to start TLS' );
+			// Where the control file says so, the answer to the handshake is no handshake: what a server that says yes and then speaks plain text does
+			if( ( $control['junkTls'] ?? false ) === true )
+				$write( 'this is not tls' );
 		} else if( $upper === 'AUTH LOGIN' ) {
 			$write( '334 VXNlcm5hbWU6' );
 			$read();
@@ -154,7 +171,7 @@ while( true ) {
 	$session = fakeSmtpSession( $conn, $control );
 
 	if( $logFile !== '' )
-		file_put_contents( $logFile, json_encode( $session, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
+		file_put_contents( $logFile, json_encode( $session, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE ) );
 
 	fclose( $conn );
 }

@@ -97,7 +97,10 @@ namespace Nino\Modules\Mailer {
 				'port'				=> \Nino\Modules\Mailer::port( $settings ),
 				'encryption'	=> $settings['encryption'],
 				'testTo'			=> $testTo,
-				'errors'			=> \Nino\Modules\Mailer::errors( $appData ),
+				// The dates the way the workbench writes them in its language
+				'errors'			=> array_map( static function( array $error ) use ( &$appData ): array {
+					return [ 'date' => (string) ( \Nino\Format::datetime( $appData, $error['date'] ) ?? $error['date'] ), 'reason' => $error['reason'] ];
+				}, \Nino\Modules\Mailer::errors( $appData ) ),
 			] );
 		}
 

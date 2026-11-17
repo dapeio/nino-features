@@ -129,32 +129,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Migrate a stored port that only says what the encryption already
-		 *	says. The Features form posts every field, so a project that ever
-		 *	saved this feature's settings holds an explicit 587 whatever it
-		 *	chose - and "from the encryption", which is what 0 means, would
-		 *	never reach it. A port that is the encryption's own standard one is
-		 *	set to 0, which sends to the same port and follows the encryption
-		 *	from then on; any other number stays. Idempotent, so it needs no
-		 *	version guard
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$from					The version that was recorded
-		 *
-		 *	@return 	bool
-		 */
-		public static function upgrade( array &$appData, string $from ): bool {
-
-			$settings = \Nino\Features::settings( $appData, self::FEATURE_KEY );
-			$port			= (int) ( $settings['port'] ?? 0 );
-
-			if( $port === 0 || $port !== self::port( [ 'port' => 0, 'encryption' => $settings['encryption'] ?? 'starttls' ] ) )
-				return true;
-
-			return \Nino\Features::saveSettings( $appData, self::FEATURE_KEY, [ 'port' => 0 ] ) === [];
-		}
-
-		/**
 		 *	The transport itself. Leaves 'sent' at null - passing the mail on
 		 *	to the next transport, or finally to mail() - while the feature
 		 *	has no host configured; otherwise sends over SMTP and sets 'sent'
@@ -202,6 +176,10 @@ namespace Nino\Modules {
 				sender is the envelope and the header, as it always was	*/
 			$ownFrom			= trim( (string) ( $settings['from'] ?? '' ) );
 			$fromAddress	= $ownFrom !== '' ? $ownFrom : (string) $mail['sender'];
+
+			// Both addresses end in a command and a header line: one that is not an address is none
+			if( $fromAddress !== '' && filter_var( $fromAddress, FILTER_VALIDATE_EMAIL ) === false )
+				$fromAddress = '';
 
 			if( $fromAddress === '' ) {
 				$mail['sent'] = false;
@@ -361,7 +339,7 @@ namespace Nino\Modules {
 			$lines = [];
 			$lines[] = 'Date: '. date( DATE_RFC2822 );
 			$lines[] = 'Message-ID: <'. bin2hex( random_bytes( 16 ) ). '@'. self::_messageIdHost( $smtpHost ). '>';
-			$lines[] = 'To: '. $mail['to'];
+			$lines[] = 'To: '. self::_clean( (string) $mail['to'] );
 			$lines[] = 'Subject: '. self::_encodeHeaderValue( (string) $mail['subject'] );
 			$lines[] = 'MIME-Version: 1.0';
 
@@ -402,7 +380,7 @@ namespace Nino\Modules {
 			// address the From: line no longer carries - not to the mailbox
 			// of the SMTP account
 			if( $ownFrom === true && $hasReplyTo === false && trim( (string) $mail['sender'] ) !== '' )
-				$lines[] = 'Reply-To: '. trim( (string) $mail['sender'] );
+				$lines[] = 'Reply-To: '. self::_clean( trim( (string) $mail['sender'] ) );
 
 			if( $ownFrom === true && $fromWritten === false )
 				$lines[] = 'From: '. self::_fromHeaderValue( $fromAddress, $fromName );
@@ -439,6 +417,9 @@ namespace Nino\Modules {
 		 *	@return 	string									"address", "\"name\" <address>", or the name as RFC 2047 words before <address> when it is not plain ASCII
 		 */
 		private static function _fromHeaderValue( string $address, string $name ): string {
+
+			$address = self::_clean( $address );
+			$name = self::_clean( $name );
 
 			if( $name === '' )
 				return $address;
@@ -477,6 +458,7 @@ namespace Nino\Modules {
 		 */
 		private static function _encodeHeaderValue( string $value ): string {
 
+			$value = self::_clean( $value );
 			$encoded = mb_encode_mimeheader( $value, 'UTF-8', 'B' );
 
 			// Plain ASCII is left alone and folded only at a space, so a long
@@ -494,6 +476,19 @@ namespace Nino\Modules {
 				}
 
 			return $encoded;
+		}
+
+		/**
+		 *	A value that goes into a line of the header, without a line end or any other control character: a value the settings or the
+		 *	caller holds is no trusted text, and a CR or LF in it would start a header of its own - a Bcc: - or the body
+		 *
+		 *	@param		string		$value
+		 *
+		 *	@return 	string
+		 */
+		private static function _clean( string $value ): string {
+
+			return trim( (string) preg_replace( '/[\x00-\x1F\x7F]+/', ' ', $value ) );
 		}
 
 		/**

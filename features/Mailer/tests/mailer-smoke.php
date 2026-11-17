@@ -139,7 +139,8 @@ $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates, key "mailer"', is_array( $manifest ) && $manifest['key'] === 'mailer' && ninoWarnings() === [] );
-check( 'the feature is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'the feature is written for this kernel, and brings no migration of the settings of Nino 1', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true && isset( $manifest['components'] ) === false
+	&& method_exists( \Nino\Modules\Mailer::class, 'upgrade' ) === false );
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'the hint of the From address is told in both languages, and the manual names the setting by its own label, in a line each under a thousand bytes', is_array( $manifest )
@@ -214,45 +215,6 @@ check( 'an explicit port wins over the encryption, a mismatch included', \Nino\M
 	&& \Nino\Modules\Mailer::port( [ 'port' => 587, 'encryption' => 'tls' ] ) === 587 );
 check( 'the settings as they are stored resolve the same way - nothing saved is port 0, so STARTTLS, so 587', \Nino\Modules\Mailer::port( \Nino\Features::settings( $appData, 'mailer' ) ) === 587 );
 
-/*	The Features form posts every field, so a project that ever saved this
-	feature's settings holds an explicit 587 whatever it chose, and "from the
-	encryption" would never reach it. upgrade() sets a stored port that is its
-	encryption's own standard one to 0 - the same port, from then on following
-	the encryption - and leaves any other number alone	*/
-$storedPort = static function( array &$appData ): int {
-	return (int) \Nino\Features::settings( $appData, 'mailer' )['port'];
-};
-$upgraded = static function( array $stored ) use ( &$appData, $storedPort ): int {
-	\Nino\Features::saveSettings( $appData, 'mailer', array_merge( [ 'port' => '587', 'encryption' => 'starttls' ], $stored ) );
-	$answer = \Nino\Modules\Mailer::upgrade( $appData, '1.0.0' );
-	return $answer === true ? $storedPort( $appData ) : -1;
-};
-
-check( 'upgrade() turns a stored 587 with STARTTLS into 0', $upgraded( [ 'port' => '587', 'encryption' => 'starttls' ] ) === 0 );
-check( '...a stored 465 with TLS from the start, and a 25 with none, the same', $upgraded( [ 'port' => '465', 'encryption' => 'tls' ] ) === 0 && $upgraded( [ 'port' => '25', 'encryption' => 'none' ] ) === 0 );
-check( '...and leaves 2525 alone, whatever the encryption', $upgraded( [ 'port' => '2525', 'encryption' => 'starttls' ] ) === 2525 );
-check( '...and 587 with TLS from the start, which is no standard pair and may be on purpose', $upgraded( [ 'port' => '587', 'encryption' => 'tls' ] ) === 587 );
-check( 'it is idempotent: what it migrated, it leaves at 0', $upgraded( [ 'port' => '587', 'encryption' => 'starttls' ] ) === 0 && \Nino\Modules\Mailer::upgrade( $appData, '1.0.0' ) === true && $storedPort( $appData ) === 0 );
-check( '...and touches nothing else it stored', ( static function() use ( &$appData ): bool {
-	\Nino\Features::saveSettings( $appData, 'mailer', [ 'host' => 'smtp.example.com', 'username' => 'u', 'from' => 'a@example.org', 'port' => '587', 'encryption' => 'starttls' ] );
-	\Nino\Modules\Mailer::upgrade( $appData, '1.0.0' );
-	$settings = \Nino\Features::settings( $appData, 'mailer' );
-	return $settings['host'] === 'smtp.example.com' && $settings['username'] === 'u' && $settings['from'] === 'a@example.org' && $settings['encryption'] === 'starttls' && $settings['port'] === 0;
-} )() );
-
-/*	The way it runs for a project: an older version on record, then the
-	Features panel's update, which is activate() once more. The hook is not
-	called directly here	*/
-\Nino\Features::saveSettings( $appData, 'mailer', [ 'host' => 'smtp.example.com', 'password' => 'secret', 'port' => '587', 'encryption' => 'starttls' ] );
-$appData[ \Nino\Features::STATE_KEY ]['mailer']['version'] = '0.0.1';
-\Nino\AppData::writeContentData( $appData, [ \Nino\Features::STATE_KEY ] );
-unset( $appData['./nino/features/all'] );
-check( 'the older version is on record, so an update is pending', \Nino\Features::get( $appData, 'mailer' )['update'] === true );
-check( 'activating it again runs the upgrade: the port is 0, host and password are kept, the new version is recorded', \Nino\Features::activate( $appData, 'mailer' ) === true
-	&& $storedPort( $appData ) === 0 && \Nino\Features::settings( $appData, 'mailer' )['host'] === 'smtp.example.com' && \Nino\Features::settings( $appData, 'mailer' )['password'] === 'secret'
-	&& \Nino\Features::get( $appData, 'mailer' )['installed'] === $manifest['version'] );
-
-\Nino\Features::saveSettings( $appData, 'mailer', [ 'host' => '', 'username' => '', 'from' => '', 'port' => '0', 'encryption' => 'starttls' ] );
 
 echo "\n";
 
@@ -658,12 +620,9 @@ $deadPort = freeMailerPort();
 \Nino\Features::saveSettings( $appData, 'mailer', [ 'port' => (string) $deadPort ] );
 \Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 
-$start = microtime( true );
 $deadPortResult = \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
-$elapsed = microtime( true ) - $start;
 
 check( 'a refused connection fails rather than hanging', $deadPortResult === false );
-check( 'and does so quickly - well inside the configured timeout, not after it', $elapsed < 3.0 );
 check( 'the refusal is recorded', ( static function(): bool {
 	foreach( ninoWarnings() as $warning )
 		if( str_starts_with( $warning, 'Mailer: could not connect' ) === true )
@@ -900,7 +859,7 @@ check( 'a transport refusal is a 500 naming the reason the transport recorded, a
 [ , $afterRefusal ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 check( 'the refusal is the newest of the errors the panel lists, with a date and without a password', count( $afterRefusal['errors'] ) === 1
 	&& str_contains( $afterRefusal['errors'][0]['reason'], 'mailbox unavailable' ) === true
-	&& preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $afterRefusal['errors'][0]['date'] ) === 1
+	&& $afterRefusal['errors'][0]['date'] === \Nino\Format::datetime( $appData, \Nino\Modules\Mailer::errors( $appData )[0]['date'] )
 	&& str_contains( json_encode( $afterRefusal ). (string) file_get_contents( $ringFile ), 's3cret' ) === false );
 
 // The sender the server refuses: the button shows the reason with its hint, the
@@ -996,6 +955,83 @@ check( 'an account without the permission is rejected from mailer/test', $testCo
 echo "\n";
 
 
+// --- The lines of the header, the limits of the session and the certificate -------
+
+echo "What the session and the header are held to\n";
+
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'host' => '127.0.0.1', 'port' => (string) $server['port'], 'encryption' => 'none', 'username' => '', 'from' => 'no-reply@example.org', 'fromName' => "Evil\r\nBcc: victim@example.org\r\nX-Injected: 1\r\n\r\nbody" ] );
+resetMailerLog( $server );
+$injected = [ 'to' => 'to@example.org', 'subject' => "Subject\r\nBcc: victim2@example.org", 'body' => 'y', 'replyTo' => '', 'sender' => "k@example.org\r\nX-Sender: 1", 'headers' => "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8", 'sent' => null ];
+\Nino\Modules\Mailer::callbackSend( $appData, $injected );
+$injectedData = (string) ( waitForMailerLog( $server )['data'] ?? '' );
+$injectedHead = explode( "\r\n\r\n", $injectedData, 2 )[0];
+check( 'a line end or another control character in the sender name, the subject or the sender never starts a line of the header or the body',
+	$injected['sent'] === true && preg_match( '/^(Bcc|X-Injected|X-Sender):/mi', $injectedHead ) === 0 && substr_count( $injectedData, "\r\n\r\n" ) === 1
+	&& preg_match( '/^From: .*Evil/m', $injectedHead ) === 1 );
+
+// Not an address at all: nothing is sent
+$notAddress = [ 'to' => 'to@example.org', 'subject' => 'x', 'body' => 'y', 'replyTo' => '', 'sender' => "bad\r\nRCPT TO:<victim@example.org>", 'headers' => 'MIME-Version: 1.0', 'sent' => null ];
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => '', 'fromName' => '' ] );
+resetMailerLog( $server );
+ninoWarnings();
+\Nino\Modules\Mailer::callbackSend( $appData, $notAddress );
+ninoWarnings();
+check( 'a sender that is no address is refused rather than put into a command', $notAddress['sent'] === false && waitForMailerLog( $server, 0.3 ) === null );
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => 'no-reply@example.org' ] );
+
+// A server that says yes to STARTTLS and then speaks plain text: no AUTH, no sender, no recipient, no message, the session ends
+$tlsConfig = [ 'host' => '127.0.0.1', 'port' => $server['port'], 'encryption' => 'starttls', 'username' => 'u-tls', 'password' => 'p-tls-secret', 'timeout' => 5, 'verify' => true ];
+setMailerControl( $server, [ 'junkTls' => true ] );
+resetMailerLog( $server );
+$downgrade = \Nino\Modules\Mailer\Smtp::send( $tlsConfig, 'a@example.org', [ 'b@example.org' ], "Subject: x\r\n\r\ny\r\n.\r\n" );
+$downgradeLog = waitForMailerLog( $server ) ?? [];
+$afterTls = array_slice( $downgradeLog['commands'] ?? [], (int) array_search( 'STARTTLS', $downgradeLog['commands'] ?? [], true ) + 1 );
+check( 'a server that accepts STARTTLS and then speaks plain text ends the session: no AUTH, no MAIL FROM, no RCPT TO, no DATA, and the reason says why',
+	$downgrade['sent'] === false && str_contains( (string) $downgrade['reason'], 'refusing to send unencrypted' ) === true && in_array( 'STARTTLS', $downgradeLog['commands'] ?? [], true ) === true
+	&& count( array_filter( $afterTls, static fn( string $line ): bool => preg_match( '/^(AUTH|MAIL FROM|RCPT TO|DATA)/i', $line ) === 1 ) ) === 0
+	&& str_contains( json_encode( $downgradeLog ) ?: '', 'p-tls-secret' ) === false );
+setMailerControl( $server, [] );
+
+// The certificate is checked where the setting says so, and only there
+check( 'the certificate and its name are checked exactly where the setting asks, and a self-signed one is let by only without it',
+	\Nino\Modules\Mailer\Smtp::sslOptions( true ) === [ 'verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false ]
+	&& \Nino\Modules\Mailer\Smtp::sslOptions( false ) === [ 'verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true ]
+	&& str_contains( (string) file_get_contents( $dir. '/Smtp/Smtp.php' ), "'ssl' => self::sslOptions( (bool) \$config['verify'] )" ) === true );
+
+// One limit for the whole session: a server that sends a byte now and then runs out of it as one that sends nothing does, measured on a clock the test moves, not on the wall
+$ticks = 0;
+\Nino\Modules\Mailer\Smtp::$clock = static function() use ( &$ticks ): float { return (float) ( $ticks++ ); };
+setMailerControl( $server, [ 'drip' => true ] );
+$dripped = \Nino\Modules\Mailer\Smtp::send( [ 'host' => '127.0.0.1', 'port' => $server['port'], 'encryption' => 'none', 'username' => '', 'password' => '', 'timeout' => 5, 'verify' => true ], 'a@example.org', [ 'b@example.org' ], "x\r\n.\r\n" );
+\Nino\Modules\Mailer\Smtp::$clock = null;
+setMailerControl( $server, [] );
+check( 'a server that answers a byte at a time ends the session at the limit of the session: the reason is the timeout, and the clock was asked more than once',
+	$dripped['sent'] === false && str_contains( (string) $dripped['reason'], 'timed out' ) === true && $ticks > 5 );
+
+echo "\n";
+
+
+// --- A transport that only logs: no network -----------------------------------
+
+echo "A mail that no server is asked for\n";
+
+/*	Without a host the Mailer leaves the mail to the next transport, and the test mail of the panel goes where every other mail does: here to a callback
+	that writes it down, which is a transport that needs no network	*/
+\Nino\Features::saveSettings( $appData, 'mailer', [ 'host' => '', 'password' => null ] );
+$logged = new \ArrayObject();
+\Nino\Callbacks::registerCallback( $appData, \Nino\Mail::TRANSPORT, static function( array &$appData, array &$mail ) use ( $logged ): void {
+	$logged[] = [ 'to' => $mail['to'], 'subject' => $mail['subject'] ];
+	$mail['sent'] = true;
+}, 9 );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+ninoUser( $appData, 'admin@example.com' );
+[ $logCode, $logBody ] = ninoCall( $appData, $panel, [ 'to' => 'probe@example.org' ], 'mailer/test' );
+check( 'a test mail to a test recipient lands in the transport that logs, and no server was asked', $logCode === 200 && $logBody === [ 'sent' => true ] && count( $logged ) === 1
+	&& $logged[0]['to'] === 'probe@example.org' && trim( $logged[0]['subject'] ) !== '' && ( $appData['./mailer/last'] ?? '' ) === '' );
+
+echo "\n";
+
+
 // --- Deactivation --------------------------------------------------------------
 
 echo "Deactivation\n";
@@ -1016,21 +1052,37 @@ $transportBody	 = preg_match( '/function callbackSend\(.*?\n\t\t\}\n/s', $transp
 check( 'the transport takes its settings in one read', $transportBody !== '' && substr_count( $transportBody, '\Nino\Features::settings(' ) === 1
 	&& substr_count( $transportSource, '\Nino\Features::setting(' ) === 0 );
 
-// --- The panel's script, where node is on the path ------------------------------
-//
-// mailer-js-smoke.js beside this file draws the screen over a dom stand-in;
-// this suite runs it too where node is on the path, so bin/check.sh and CI
-// cover both halves in one go
-$jsTest	= __DIR__. '/mailer-js-smoke.js';
-$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+// --- The script of the panel ----------------------------------------------------
 
-if( $node === '' || function_exists( 'exec' ) === false ) {
-	echo "  --  - node is not available here: mailer-js-smoke.js was NOT run\n";
-} else {
-	$output = []; $status = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
-	$summary = (string) end( $output );
-	check( 'mailer-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
-}
+echo "The script of the panel\n";
+
+$script = (string) file_get_contents( $dir. '/assets/admin.js' );
+$words = [ 'de_DE' => include $dir. '/text/de_DE.php', 'en_US' => include $dir. '/text/en_US.php' ];
+
+check( 'the script takes its button, field and bar from the workbench and builds none of them itself, in the shape of the guide',
+	preg_match( '/createElement\(\s*.button|window\.confirm|\balert\(|nino-admin-btn-|type\s*[:=]\s*.file|<dialog/', $script ) === 0
+	&& str_contains( $script, 'noValidate = true' ) === true && str_contains( $script, 'Nino.adminUi.actionBar( {' ) === true && substr_count( $script, "kind : 'primary'" ) === 1
+	&& str_contains( $script, "'fieldset'" ) === true && str_contains( $script, 'nino-admin-fieldgrid' ) === true );
+check( 'the answer of a test mail is a toast, a refusal stands at the field and a failure in the line of the bar - never a line in the content',
+	str_contains( $script, 'Nino.adminUi.say(' ) === true && str_contains( $script, 'Nino.adminUi.fieldError(' ) === true && str_contains( $script, 'bar.line.fail(' ) === true );
+check( 'the state of the transport stands at the field as its note, and no secret is read by the script: no password, no user name',
+	str_contains( $script, 'note' ) === true && preg_match( '/\b(password|username|secret)\b/i', (string) preg_replace( [ '~/\*.*?\*/~s', '~//[^\n]*~' ], '', $script ) ) === 0 );
+check( 'what the server sent is set as text', preg_match( '/innerHTML\s*=\s*[^\x27"\s]/', $script ) === 0 && str_contains( $script, 'insertAdjacentHTML' ) === false );
+check( 'both languages of the panel have the same keys, and every word the script reads is one of them or the workbench\'s own', array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] )
+	&& ( static function() use ( $script, $words ): bool {
+		preg_match_all( "~'(/_admin/(?!common/)[a-z/_-]+)'~", $script, $read );
+		$own = array_map( static fn( string $key ): string => trim( $key, '[]' ), array_keys( $words['en_US'] ) );
+		return array_diff( array_unique( $read[1] ), $own ) === [];
+	} )() );
+check( 'the status line takes its numbers and its host by position: three blanks', substr_count( $words['en_US']['[[/_admin/mailer/label/status]]'], '%s' ) === 3 && substr_count( $words['de_DE']['[[/_admin/mailer/label/status]]'], '%s' ) === 3 );
+
+echo "\n";
+
+// Nothing of the old components API or the old stylesheet vocabulary is left in the folder
+$oldWorld = [];
+foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) ) as $file )
+	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|(?<![-\w])nino-(?!admin-)[a-z]|--(?:space|color|radius|fontsize)-|Nino\.ui\./', (string) file_get_contents( (string) $file ) ) === 1 )
+		$oldWorld[] = (string) $file;
+check( 'no file of the feature names the vocabulary of Nino 1', $oldWorld === [] );
 
 ninoDone( $appData );

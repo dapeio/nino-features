@@ -30,6 +30,39 @@ namespace Nino\Modules\Mailer {
 	 */
 	class Smtp {
 
+		/**	The clock of the session, in seconds: a test replaces it, nothing else does	*/
+		public static ?\Closure $clock = null;
+
+		// The end of the session in the clock's seconds, and what was read from the server and not yet used as a line
+		private static float $deadline = 0.0;
+		private static string $buffer = '';
+
+		/**
+		 *	The seconds on the clock of the session
+		 *
+		 *	@return 	float
+		 */
+		private static function _now(): float {
+
+			return self::$clock !== null ? (float) ( self::$clock )() : hrtime( true ) / 1e9;
+		}
+
+		/**
+		 *	The options of the stream context of a session: the certificate and its name are checked exactly where the setting says so
+		 *
+		 *	@param		bool			$verify				The setting
+		 *
+		 *	@return 	array
+		 */
+		public static function sslOptions( bool $verify ): array {
+
+			return [
+				'verify_peer'				=> $verify,
+				'verify_peer_name'	=> $verify,
+				'allow_self_signed'	=> $verify !== true,
+			];
+		}
+
 		/**
 		 *	Send one message over one SMTP session. Never throws - every
 		 *	failure comes back as { sent: false, reason: '...' }, the reason
@@ -45,6 +78,10 @@ namespace Nino\Modules\Mailer {
 		 *	@return 	array										{ sent: bool, reason: string|null, senderRefused?: bool }
 		 */
 		public static function send( array $config, string $envelopeFrom, array $recipients, string $payload ): array {
+
+			// One limit for the whole session, the connect and every reply in it: a server that answers a byte at a time ends it as well as one that does not answer
+			self::$deadline = self::_now() + (float) $config['timeout'];
+			self::$buffer = '';
 
 			$stream = self::_connect( $config );
 
@@ -126,13 +163,7 @@ namespace Nino\Modules\Mailer {
 		 */
 		private static function _connect( array $config ): mixed {
 
-			$context = stream_context_create( [
-				'ssl' => [
-					'verify_peer'				=> $config['verify'],
-					'verify_peer_name'	=> $config['verify'],
-					'allow_self_signed'	=> $config['verify'] !== true,
-				],
-			] );
+			$context = stream_context_create( [ 'ssl' => self::sslOptions( (bool) $config['verify'] ) ] );
 
 			$scheme	= $config['encryption'] === 'tls' ? 'tls://' : 'tcp://';
 			$target	= $scheme. $config['host']. ':'. $config['port'];
@@ -142,7 +173,8 @@ namespace Nino\Modules\Mailer {
 			if( $stream === false )
 				return 'could not connect to '. $config['host']. ':'. $config['port']. ( $errstr !== '' ? ' - '. $errstr : '' );
 
-			stream_set_timeout( $stream, $config['timeout'] );
+			// Writes wait as long as the session may last; reads are bound by what is left of it (see _line())
+			stream_set_timeout( $stream, max( 1, (int) $config['timeout'] ) );
 
 			return $stream;
 		}
@@ -193,6 +225,9 @@ namespace Nino\Modules\Mailer {
 
 			if( self::_ok( $reply ) === false )
 				return self::_reason( $reply, 'STARTTLS refused' );
+
+			self::$buffer = '';
+			stream_set_timeout( $stream, max( 1, (int) ceil( self::$deadline - self::_now() ) ) );
 
 			if( @stream_socket_enable_crypto( $stream, true, STREAM_CRYPTO_METHOD_TLS_CLIENT ) !== true )
 				return 'STARTTLS negotiation failed - refusing to send unencrypted';
@@ -325,12 +360,10 @@ namespace Nino\Modules\Mailer {
 
 			while( true ) {
 
-				$line = fgets( $stream, 2048 );
+				$line = self::_line( $stream );
 
-				if( $line === false ) {
-					$meta = stream_get_meta_data( $stream );
-					return $meta['timed_out'] === true ? 'timed out waiting for the server' : 'the connection closed while waiting for a reply';
-				}
+				if( $line === false )
+					return self::_now() >= self::$deadline ? 'timed out waiting for the server' : 'the connection closed while waiting for a reply';
 
 				$line = rtrim( $line, "\r\n" );
 
@@ -345,6 +378,69 @@ namespace Nino\Modules\Mailer {
 			}
 
 			return [ 'code' => $code, 'lines' => $lines ];
+		}
+
+		/**
+		 *	One line from the server, within what is left of the session: the stream is waited on for at most the time that is left, a
+		 *	piece at a time, so a server that sends a byte now and then runs out of the same time as one that sends nothing. A line is cut at
+		 *	2048 bytes, as it was read before
+		 *
+		 *	@param		mixed			$stream
+		 *
+		 *	@return 	string|false							The line with its line end, false at the end of the time or of the connection
+		 */
+		private static function _line( mixed $stream ): string|false {
+
+			// A stream that is no socket (a test's stand-in) cannot be waited on: it is read as it is
+			if( str_contains( (string) ( stream_get_meta_data( $stream )['stream_type'] ?? '' ), 'socket' ) === false ) {
+
+				$line = fgets( $stream, 2048 );
+
+				return $line === false || $line === '' ? false : $line;
+			}
+
+			while( true ) {
+
+				$end = strpos( self::$buffer, "\n" );
+
+				if( $end !== false || strlen( self::$buffer ) >= 2048 ) {
+					$length = $end !== false ? min( $end + 1, 2048 ) : 2048;
+					$line = substr( self::$buffer, 0, $length );
+					self::$buffer = (string) substr( self::$buffer, $length );
+					return $line;
+				}
+
+				$left = self::$deadline - self::_now();
+
+				if( $left <= 0 )
+					return false;
+
+				// What a TLS stream has decrypted already is not seen by select: ask the stream first
+				$pending = stream_get_meta_data( $stream )['unread_bytes'] ?? 0;
+
+				if( $pending < 1 ) {
+
+					$read = [ $stream ];
+					$write = null;
+					$except = null;
+					$ready = @stream_select( $read, $write, $except, (int) floor( $left ), (int) ( ( $left - floor( $left ) ) * 1e6 ) );
+
+					if( $ready === false || $ready === 0 )
+						continue;
+				}
+
+				$chunk = @fread( $stream, 2048 );
+
+				if( $chunk === false || $chunk === '' ) {
+
+					if( feof( $stream ) === true )
+						return false;
+
+					continue;
+				}
+
+				self::$buffer .= $chunk;
+			}
 		}
 
 		/**

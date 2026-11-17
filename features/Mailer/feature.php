@@ -14,8 +14,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Mailer' => [
-				'en_US' => 'Sends a test mail and shows the last errors; send yourself one first, because from then on every mail Nino sends goes over SMTP.',
-				'de_DE' => 'Schickt eine Testmail und zeigt die letzten Fehler; schick Dir erst eine, denn ab dann geht jede Mail von Nino über SMTP.',
+				'en_US' => 'Sends a test mail from a form of one field and lists the last errors; send yourself one first, because from then on every mail Nino sends goes over SMTP.',
+				'de_DE' => 'Schickt eine Testmail aus einem Formular mit einem Feld und listet die letzten Fehler; schick Dir erst eine, denn ab dann geht jede Mail von Nino über SMTP.',
 			],
 		],
 		'callbacks' => [
@@ -32,8 +32,8 @@ return [
 		],
 	],
 	'category'		=> 'system',
-	'version'			=> '1.1.2',
-	'nino'				=> '^1.8',
+	'version'			=> '2.0.0',
+	'nino'				=> '^2.0',
 	'requires'		=> [],
 	// The last five failures, newest first (no password, never): what the
 	// panel lists. The newest also lives for the current request alone, under
