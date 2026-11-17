@@ -6,6 +6,7 @@ return [
 	'label'      => [ 'de_DE' => 'Filter', 'en_US' => 'Filter' ],
 	'in'         => [ 'page', 'flow', 'section-row' ],
 	'offers'     => [],
+	'through'    => true,
 	'children'   => 'nodes',
 	'preview'    => 'button',
 	'attributes' => [

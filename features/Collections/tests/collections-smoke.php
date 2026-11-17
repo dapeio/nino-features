@@ -331,15 +331,33 @@ $through = static function( string $parent, string $container ) use ( &$appData 
 
 	return $list;
 };
-check( 'only the loop that draws no element round what it holds is through: collection says so, and the list, the table, the column and the filter - each draws a box, a ul, a table, a cell - do not',
-	( $schemas['collection']['through'] ?? false ) === true && array_filter( [ 'collection-list', 'collection-table', 'collection-col', 'collection-filter' ], static fn( string $name ): bool => ( $schemas[$name]['through'] ?? false ) !== false ) === [] );
+check( 'what puts no box round what it holds is through: the loop and the filter say so, and the list, the table and the column - each draws a ul, a table, a cell - do not',
+	( $schemas['collection']['through'] ?? false ) === true && ( $schemas['collection-filter']['through'] ?? false ) === true
+	&& array_filter( [ 'collection-list', 'collection-table', 'collection-col' ], static fn( string $name ): bool => ( $schemas[$name]['through'] ?? false ) !== false ) === [] );
 check( 'a collection in a row holds what a row holds, in a flow what a flow holds and in the page what the page holds - and not what its places say together',
 	$through( 'collection', 'section-row' ) === $allowed( 'section-row' ) && $through( 'collection', 'flow' ) === $allowed( 'flow' ) && $through( 'collection', 'page' ) === $allowed( 'page' ) && $through( 'collection', '' ) === $allowed( 'collection' )
 	&& in_array( 'section-col', $through( 'collection', 'section-row' ), true ) === true && in_array( 'text', $through( 'collection', 'section-row' ), true ) === false && in_array( 'section-wrap', $through( 'collection', 'section-row' ), true ) === false
 	&& in_array( 'text', $through( 'collection', 'flow' ), true ) === true && in_array( 'section-col', $through( 'collection', 'flow' ), true ) === false
 	&& in_array( 'section-wrap', $through( 'collection', 'page' ), true ) === true && in_array( 'text', $through( 'collection', 'page' ), true ) === false );
-check( 'the list, the table and the filter take no notice of where they stand: what they hold is their own', $through( 'collection-list', 'section-row' ) === $allowed( 'collection-list' ) && $through( 'collection-table', 'flow' ) === [ 'collection-col' ]
-	&& $through( 'collection-filter', 'section-row' ) === $allowed( 'collection-filter' ) && $through( 'collection-col', 'flow' ) === [] );
+check( 'the list and the table take no notice of where they stand: what they hold is their own', $through( 'collection-list', 'section-row' ) === $allowed( 'collection-list' ) && $through( 'collection-table', 'flow' ) === [ 'collection-col' ]
+	&& $through( 'collection-col', 'flow' ) === [] );
+
+// The filter is through and offers no place of its own: what the register offers in it is a loop that names it and that could stand where the filter stands - the
+// loop in a row, the three of them in a column - and the columns of a row stand in the loop below it, which checks without a finding
+$offered = static function( array $path ) use ( &$appData ): array {
+
+	$list = array_keys( array_filter( \Nino\Components::offer( $appData, $path, [] ), static fn( mixed $answer ): bool => $answer === true ) );
+	sort( $list );
+
+	return $list;
+};
+$filtered = \Nino\Markup::parse( '[section-wrap][section-row][collection-filter by=".title"][collection /_placeholder][section-col][text .title][/section-col][/collection][/collection-filter][/section-row][/section-wrap]', \Nino\Components::containers( $appData ) );
+check( 'in a filter stands a loop that names it and nothing else, by the place the filter stands at: the loop in a row, the loop, the list and the table in a column; a loop in it holds the columns of the row, and a filter stands in no filter',
+	$offered( [ 'section-wrap', 'section-row', 'collection-filter' ] ) === [ 'collection' ]
+	&& $offered( [ 'section-wrap', 'section-row', 'section-col', 'collection-filter' ] ) === [ 'collection', 'collection-list', 'collection-table' ]
+	&& in_array( 'section-col', $offered( [ 'section-wrap', 'section-row', 'collection-filter', 'collection' ] ), true ) === true
+	&& in_array( 'collection-filter', $offered( [ 'section-wrap', 'section-row', 'collection-filter', 'collection' ] ), true ) === false
+	&& \Nino\Components::check( $appData, $filtered ) === [] );
 
 $containers = array_values( array_intersect( array_keys( array_filter( \Nino\Components::containers( $appData ) ) ), COLLECTIONS_COMPONENTS ) );
 sort( $containers );
