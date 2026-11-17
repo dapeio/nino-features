@@ -569,9 +569,8 @@
 	};
 
 	/**
-	 *	The places of the page a block can be put in: each seam of the top level between the calls of the frames - behind the first and up to the last - and, where
-	 *	the page has no frame calls, each seam there is, the top and the end of the page and an empty page too. A place knows the row before it and the row behind it,
-	 *	the block that carries its button in the page - the one before it, else the one behind it - and the name the person knows its neighbour by. A frame has none
+	 *	The places of the page a block can be put in: each seam of the top level between the calls of the frames and, where the page has none, each seam there is.
+	 *	A place knows the row before and behind it, the block that carries its button and the name of its neighbour. A frame has none
 	 *
 	 *	@return		{Array}										[ { b, after, before, block, carry : 'after'|'before'|'', name } ]
 	 */
@@ -625,14 +624,13 @@
 	};
 
 	/**
-	 *	Put a block in the page: the tree of the block with ids that are free - its root has its own id or the first number behind it that nobody has, what is inside
-	 *	begins with it - laid out as the server wrote it, and the texts of the block under the keys of the new ids, each language with its own
+	 *	Put a block in the page: its tree with free ids (its own id or the first number behind it; what is inside begins with it) and its texts under the keys
+	 *	of the new ids, each language with its own
 	 *
 	 *	@param		{Object}		place					One of points()
-	 *	@param		{Object}		block					The answer of the server: key, id, tree, known, texts, slots
-	 *	@param		{string}		[from]				Where the action was started: outline or frame
+	 *	@param		{Object}		block					The answer of the server
+	 *	@param		{string}		[from]				outline or frame
 	 *	@param		{string|Object}	[name]		What the dialog calls the block
-	 *
 	 */
 	const insert = function( place, block, from, name ) {
 
@@ -1010,7 +1008,6 @@
 	 *	The blocks and the texts of the page in the frame, from the comments the trace of the drawing writes: a block is the elements between the comment
 	 *	that opens a call of the top level of this template and the one that ends it, a text is the element that holds a value between the comments of its source
 	 *
-	 *
 	 *	@return		{Object}									{ blocks : [ { at, elements } ], texts : [ { element, path, written } ], all : [ { path, elements } ] }
 	 */
 	const traced = function( doc ) {
@@ -1080,8 +1077,7 @@
 	};
 
 	/**
-	 *	Settle a text that was written: a value that is the one the element showed when the writing began is no change - a click is no step of the undo - and
-	 *	any other is the text of the key in the language of the view, or the fixed text of the call
+	 *	Settle a text that was written: the value the element showed at the start is no change, any other is the text of the key in the language of the view
 	 *
 	 *	@param		{Object}		entry					The source of the page
 	 *	@param		{string}		path					Where the call is in the tree
@@ -1155,9 +1151,8 @@
 	};
 
 	/**
-	 *	Write a text where it stands: the element of the frame is made editable - as plain text where the key is a plain one, else as it is - and what is
-	 *	typed is the new text of the key in the language of the view. Enter, Tab and Escape end it (Enter in a text of lines or of blocks is a line),
-	 *	and Escape takes it back. A text that the language of the view has none of shows the one of another language: the writing begins with nothing
+	 *	Write a text where it stands: the element of the frame is made editable and what is typed is the new text of the key in the language of the view. Enter,
+	 *	Tab and Escape end it (Enter in a text of lines or blocks is a line), and Escape takes it back
 	 *
 	 *	@param		{Object}		text					{ element, path, written }
 	 *	@param		{Object}		entry					The source of the page this text is
@@ -1527,9 +1522,10 @@
 
 			const wanted = S.refocus;
 
-			S.refocus = null;
-
 			const target = shadow.querySelector( 'button[data-at="'+ wanted.at+ '"][data-action="'+ wanted.action+ '"]:not(:disabled)' ) ?? shadow.querySelector( 'button[data-at="'+ wanted.at+ '"]:not(:disabled)' );
+
+			// The way back from the extended view waits for the drawing that has the block: the page that is loaded first need not be that one
+			S.refocus = target === null && wanted.action === 'advanced' ? wanted : null;
 
 			if( target !== null )
 				target.focus();
@@ -1818,27 +1814,16 @@
 		} );
 	};
 
+	// A variant of a hint, as the register labels it, else as the panel does - '' where it has no word: a key is none for a person
+	const hintWord = function( hint, which ) {
+		return labelOfVariant( { [hint[which]] : ( hint.labels ?? {} )[which] }, hint[which] );
+	};
+
 	/**
 	 *	A block of the dialog: the button that puts it in, with its picture, its name, what it is for, where it comes from and - where the theme does not have a
 	 *	variant it names - the one it appears as. A block that is left out because a feature is off is no button: it says which one
 	 *
-	 *	@param		{Object}		entry					An entry of the answer of the server
-	 *	@param		{Function}	pick					Called with the entry that was chosen
-	 *
 	 */
-	// A variant of a hint, as the register labels it, else as the panel does, else as the word it is
-	const hintWord = function( hint, which ) {
-
-		const label = ( hint.labels ?? {} )[which];
-
-		if( label !== undefined && label !== null )
-			return localized( label );
-
-		const own = Nino.content.getText( '/_admin/builder/variant/'+ hint[which] );
-
-		return own !== '' ? own : hint[which];
-	};
-
 	const tileOf = function( entry, pick, drop ) {
 
 		const item = el( 'li', 'builder-tile'+ ( entry.off === null ? '' : ' builder-tile--off' ) );
@@ -1847,7 +1832,7 @@
 		const name = el( 'strong', 'builder-tile-name', localized( entry.name ) );
 		const about = el( 'span', 'nino-admin-hint builder-tile-about', localized( entry.description ) );
 		const chips = el( 'span', 'builder-tile-chips' );
-		const note = entry.off !== null ? word( 'insert/off', entry.off.map( localized ).join(', ') ) : ( entry.hint === null ? '' : word( 'insert/variant', hintWord( entry.hint, 'variant' ), hintWord( entry.hint, 'standard' ) ) );
+		const note = entry.off !== null ? word( 'insert/off', entry.off.map( localized ).join(', ') ) : ( entry.hint === null ? '' : ( hintWord( entry.hint, 'variant' ) === '' || hintWord( entry.hint, 'standard' ) === '' ? word('insert/variant-plain') : word( 'insert/variant', hintWord( entry.hint, 'variant' ), hintWord( entry.hint, 'standard' ) ) ) );
 		const described = [];
 
 		thumb.setAttribute( 'aria-hidden', 'true' );
@@ -1899,9 +1884,6 @@
 	/**
 	 *	The dialog: the categories as tabs - the arrows walk them - and the blocks of the one that is chosen, each as a tile. A block that is chosen closes the dialog,
 	 *	is asked for and put in; Cancel and Escape give the focus back to what opened it
-	 *
-	 *	@param		{Object}		catalog				The answer of the server: blocks, categories
-	 *	@param		{Object}		place					One of points()
 	 */
 	const insertDialog = function( catalog, place, opener, from ) {
 
@@ -2445,8 +2427,14 @@
 			back.setAttribute( 'data-keep-draft', '' );
 
 		back.addEventListener( 'click', function( event ) {
+
 			event.preventDefault();
-			Nino.admin.builder.go( home );
+
+			// The focus goes back to where the person came from: the block that was opened, or the title of the page a frame was opened from
+			if( advanced === true && S.frame === false )
+				S.refocus = { at : rootAt(), action : 'advanced', from : 'frame' };
+
+			Nino.admin.builder.go( home, advanced === true && S.frame === true ? { focus : 'page' } : undefined );
 		} );
 
 		const head = el( 'div', 'builder-head' );
@@ -2557,9 +2545,17 @@
 
 		view.bar.set( { dirty : isDirty(), restorable : S.last > 0 } );
 
-		if( S.last > 0 && S.unback !== '' ) {
+		// The reason stands beside the button, where it is read, and not in its title alone
+		const off = S.last > 0 && S.unback !== '';
+
+		if( off === true ) {
 			view.bar.restore.disabled = true;
 			view.bar.restore.title = word('msg/no-restore');
+		}
+
+		if( off === true || view.note !== undefined ) {
+			view.note = view.note ?? view.bar.el.insertBefore( el( 'span', 'nino-admin-hint builder-restore-note' ), view.bar.restore );
+			view.note.textContent = off === true ? word('msg/no-restore') : '';
 		}
 	};
 
@@ -2969,7 +2965,7 @@
 				return word( 'finding/'+ entry[0], attribute( entry[1] ) );
 
 			if( entry[0] === 'variant' )
-				return word( 'finding/variant', schema === undefined ? entry[1] : variantLabel( schema, entry[1] ) );
+				return schema === undefined || labelOfVariant( schema.variantLabels, entry[1] ) === '' ? word('finding/variant-plain') : word( 'finding/variant', variantLabel( schema, entry[1] ) );
 
 			if( entry[0] === 'unknown' )
 				return entry[2] === undefined ? word( 'finding/nofeature', component( entry[1] ) ) : word( 'finding/unknown', component( entry[1] ), localized( entry[2] ) );
@@ -2980,15 +2976,17 @@
 		return { text : found.map( say ).join(' '), state : 'warn' };
 	};
 
-	// The word of a variant: the label the register gives it, else the word of this panel for the standard one, else the variant itself
+	// The word of a variant: the label the register gives it, else the word of this panel for the standard one, else ''
+	const labelOfVariant = function( labels, variant ) {
+
+		if( labels !== undefined && labels !== null && labels[variant] !== undefined && labels[variant] !== null )
+			return localized( labels[variant] );
+
+		return Nino.content.getText( '/_admin/builder/variant/'+ variant );
+	};
+
 	const variantLabel = function( schema, variant ) {
-
-		if( schema.variantLabels !== undefined && schema.variantLabels[variant] !== undefined )
-			return localized( schema.variantLabels[variant] );
-
-		const own = Nino.content.getText( '/_admin/builder/variant/'+ variant );
-
-		return own !== '' ? own : variant;
+		return labelOfVariant( schema.variantLabels, variant ) || variant;
 	};
 
 	const actionsOf = function( rel, container ) {
@@ -3195,10 +3193,6 @@
 	/**
 	 *	Put a component into a container, behind the last call it holds, laid out the way the page is: the blanks come from the server, which writes a template as the
 	 *	kernel does. A component with a text reads it from a key of its own under the nearest id - where there is none, the text is fixed - and has a first text
-	 *
-	 *	@param		{string}		rel						The container
-	 *	@param		{Object}		offer					The entry the server offered: name, node
-	 *	@param		{string}		blank					The blanks that lie a call out at this depth
 	 */
 	const addComponent = function( rel, offer, blank ) {
 
@@ -3521,9 +3515,6 @@
 	/**
 	 *	The dialog Source: where the content of a call comes from. Tabs - the arrows walk them - for the text of a key that is there, a new one, a fixed one; for an
 	 *	address also a page of the site and an address; for a picture a slot that is there or a new one. A source that is chosen closes the dialog and is put into the call
-	 *
-	 *	@param		{string}		rel						The call
-	 *	@param		{Object}		spec					{ kind : text|image|link, attr : '' for the first word, label }
 	 */
 	const openSource = function( rel, spec, opener ) {
 
@@ -3991,7 +3982,7 @@
 			box.appendChild( image );
 		}
 		else
-			box.appendChild( el( 'p', 'nino-admin-hint', word('picture/none') ) );
+			box.appendChild( el( 'p', 'nino-admin-hint', word( S.pictures[key] !== undefined && S.pictures[key].file === undefined ? 'picture/placeholder' : 'picture/none' ) ) );
 
 		line.setAttribute( 'role', 'status' );
 
@@ -5180,7 +5171,7 @@
 			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
-			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar,
+			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord,
 		},
 
 		go : function( parts, options ) {

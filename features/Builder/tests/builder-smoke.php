@@ -283,7 +283,7 @@ check( 'the manifest is the one of a feature that is written for the kernel of N
 check( 'the right is /_admin/builder/manage, and the manual of the feature names the panel', \Nino\Modules\Builder::PERM === '/_admin/builder/manage' && str_contains( $manifest['manual']['panel']['Builder']['en_US'], '/_admin/builder/manage' ) === true );
 
 $words = [ 'de_DE' => require $feature. '/text/de_DE.php', 'en_US' => require $feature. '/text/en_US.php' ];
-$codes = [ 'unknown', 'unreadable', 'tree', 'block', 'level', 'place', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_html', 'refused_check', 'refused_link', 'refused_value', 'refused_image', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing', 'refused_source', 'picture', 'picture_gone',
+$codes = [ 'unknown', 'unreadable', 'tree', 'block', 'level', 'place', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_html', 'refused_check', 'refused_link', 'refused_value', 'refused_image', 'refused_variant', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing', 'refused_source', 'picture', 'picture_gone',
 	'own_block', 'own_key', 'own_name', 'own_category', 'own_id', 'own_locked', 'own_html', 'own_foreign', 'own_address', 'own_picture', 'own_empty', 'own_long', 'own_taken', 'own_invalid', 'own_write',
 	'page_missing_name', 'page_invalid_uri', 'page_invalid_http_uri', 'page_missing_http_uri', 'page_reserved_http_uri', 'page_duplicate_uri', 'page_duplicate_http_uri', 'page_reserved_uri', 'page_http_uri_taken', 'page_invalid_template', 'page_reserved_template', 'page_template_exists' ];
 
@@ -1293,6 +1293,17 @@ foreach( $basis as $key ) {
 
 check( 'each block of the dialog is put in and saved, and its copy is drawn and saved', count( $dialogCopies ) === count( $basis ) && count( $basis ) === 6 && array_values( array_unique( array_map( 'json_encode', $dialogCopies ) ) ) === [ '[200,200,200]' ] );
 
+// a source that is known only because it stood in the template - the key of the kernel that the hero reads - is known to that call and its copies, and is no source for
+// another call of the same name that is set anew
+[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$before = builderSnapshot( $site );
+[ $status, $why ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => builderEdit( $page['tree'], builderFind( $page['tree'], static fn( array $node ): bool => ( $node['a']['id'] ?? '' ) === 'start-1' ) ?? '', static function( array $node ): array {
+	$node['c'][] = [ 'n' => 'button', 's' => '/_nino/webpage/contact/name', 'a' => [], 'c' => null ];
+	return $node;
+} ), 'texts' => [], 'base' => $page['stamp'] ] );
+
+check( 'the key of the kernel that the hero reads is no source for a button that is put in anew elsewhere: a 403 for the source, and nothing is written', $status === 403 && ( $why['code'] ?? '' ) === 'builder_refused_source' && $before === builderSnapshot( $site ) );
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nI. The extended view\n";
 
@@ -1390,6 +1401,27 @@ check( 'a variant that nobody knows is a hint and never a refusal, for the one w
 	$variantStatus === [ 200, 200 ] && str_contains( $variantSaved[0], 'variant="nothing-like-it"' ) === true && str_contains( $variantSaved[1], 'variant="nothing-like-it"' ) === true && str_contains( \Nino\Html::renderSource( $site, $variantSaved[1] ), 'nothing-like-it' ) === false );
 
 builderAccount( $site, 'designer-after-variant@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $after );
+
+// a variant has the form and the length of a word of the register: another is refused with a sentence of its own, unless it stood in the template
+[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$shaped = [];
+
+foreach( [ 'Band', 'a b', str_repeat( 'a', 41 ), '[[/x]]' ] as $word )
+	$shaped[] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => builderEdit( $page['tree'], $column, static function( array $node ) use ( $word ): array {
+		$node['a']['variant'] = $word;
+		return $node;
+	} ), 'texts' => [], 'base' => $page['stamp'] ] );
+
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', str_replace( 'id="start-1" size="100 m:50" variant="card"', 'id="start-1" size="100 m:50" variant="Odd Word"', $after ) );
+[ , $stood ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+[ $kept ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => builderEdit( $stood['tree'], $column, static function( array $node ): array {
+	$node['a']['size'] = '100 m:33';
+	return $node;
+} ), 'texts' => [], 'base' => $stood['stamp'] ] );
+
+check( 'a variant that is no word of the register - capitals, a blank, more than a name may have - is refused with a sentence of its own and one that stood in the template stays',
+	array_column( $shaped, 0 ) === [ 403, 403, 403, 403 ] && $shaped[0][1]['code'] === 'builder_refused_variant' && $shaped[2][1]['code'] === 'builder_refused_variant' && $kept === 200 && str_contains( (string) file_get_contents( builderFile( $site, 'page-home' ) ), 'variant="Odd Word"' ) === true );
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $after );
 
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', str_replace( 'id="start-3" size="100 m:33"', 'id="start-3" size="777"', $after ) );

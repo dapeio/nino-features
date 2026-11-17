@@ -353,13 +353,19 @@ check( 'B. back from the extended view of a page keeps the draft and goes to the
 	S.adv = null;
 	return JSON.stringify( page ) === '{"parts":["home"],"keep":true}' && JSON.stringify( frame ) === '{"parts":["contact"],"keep":false}' && alone.parts[0] === '@header' && JSON.stringify( builder.backOf( false ) ) === '{"parts":[],"keep":false}';
 } )() );
+check( 'B. a variant that a hint names is told by the label the register gives it, and a variant that has none has no word - never its key', ( function() {
+	const labelled = builder.hintWord( { variant : 'band', standard : 'soft', labels : { variant : null, standard : { en_US : 'Soft surface' } } }, 'standard' );
+	const bare = builder.hintWord( { variant : 'band', standard : 'soft', labels : { variant : null, standard : null } }, 'variant' );
+	return labelled === 'Soft surface' && bare === '';
+} )() );
 check( 'B. the bar offers the last state where there is one, and has it off with its reason where the account may not put it back', ( function() {
 	fresh();
 	const made = function( last, unback ) {
 		const restore = { disabled : false, title : null };
 		S.last = last;
 		S.unback = unback;
-		builder.paintBar( { bar : { set : function() {}, restore : restore } } );
+		const bar = { set : function() {}, restore : restore, el : { insertBefore : function( node ) { return node } } };
+		builder.paintBar( { bar : bar } );
 		return restore;
 	};
 	const may = made( 1, '' );

@@ -798,7 +798,7 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$taken				What the old page uses as an id, see taken()
 		 *	@param		bool			$develop			Whether the call of html may be new
 		 *
-		 *	@return 	string|null								What is refused: 'ids', 'html', 'free', 'unit', 'check', 'link', 'value', 'image' or 'id'; null where the tree is taken
+		 *	@return 	string|null								What is refused: 'ids', 'html', 'free', 'unit', 'check', 'link', 'value', 'variant', 'image' or 'id'; null where the tree is taken
 		 */
 		public static function designed( array &$appData, array $old, array $new, array $registry, array $taken, bool $develop ): ?string {
 
@@ -846,7 +846,7 @@ namespace Nino\Modules\Builder {
 			self::_values( $new, $registry, $given );
 			$known = array_count_values( array_column( $known, 0 ) );
 
-			foreach( $given as [ $key, $value, $link, $picture ] ) {
+			foreach( $given as [ $key, $value, $link, $picture, $variant ] ) {
 
 				if( ( $known[$key] ?? 0 ) > 0 ) {
 					$known[$key]--;
@@ -858,6 +858,10 @@ namespace Nino\Modules\Builder {
 
 				if( $link === true && self::linkTarget( $appData, $value ) === false )
 					return 'link';
+
+				// A variant is a word of the register: as long as a name may be and written as one
+				if( $variant === true && ( strlen( $value ) > \Nino\Components::NAME_LENGTH || preg_match( \Nino\Components::NAME, $value ) !== 1 ) )
+					return 'variant';
 
 				// A picture is a place for a picture: the page draws none from an address, so a new one is no picture the page would show
 				if( $picture === true && preg_match( '#^\s*(?:[a-z][a-z0-9+.\-]*:|//)#i', $value ) === 1 )
@@ -1165,7 +1169,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Whether every source a tree names that the old tree did not name - by the call, the attribute and what is written - is a source (see sourced()). What stood
+		 *	Whether every source a tree names that the old tree did not name - by the call, the attribute, what is written and the block it stands in - is a source (see sourced()). What stood
 		 *	there is left as it is: the register draws it as it does. Neither a key of the wrong form nor a field outside a loop nor a field the type has no such field
 		 *	of is written
 		 *
@@ -1182,14 +1186,17 @@ namespace Nino\Modules\Builder {
 			$now = [];
 			self::_references( $old, $registry, '', null, $was );
 			self::_references( $new, $registry, '', null, $now );
-			$had = array_count_values( array_map( static fn( array $reference ): string => $reference[0]. "\0". $reference[1]. "\0". $reference[2], $was ) );
+			$copies = self::_copies( $old, $new, $registry );
+			$had = array_count_values( array_map( static fn( array $reference ): string => $reference[0]. "\0". $reference[1]. "\0". $reference[2]. "\0". $reference[4], $was ) );
+			$used = [];
 
 			foreach( $now as [ $name, $attribute, $written, $kind, $scope, $loop ] ) {
 
-				$mark = $name. "\0". $attribute. "\0". $written;
+				// What the old tree read at a call is known to that call and to the copies of the block it stands in - the copy has the scope of its own id - and to no other call
+				$mark = $name. "\0". $attribute. "\0". $written. "\0";
+				$used[$mark. $scope] = ( $used[$mark. $scope] ?? 0 ) + 1;
 
-				// What the old tree read at this call, in this attribute, in these words is known to every call of that name: a copy reads what its original reads
-				if( ( $had[$mark] ?? 0 ) > 0 )
+				if( $used[$mark. $scope] <= ( $had[$mark. ( $copies[$scope] ?? $scope )] ?? 0 ) )
 					continue;
 
 				if( self::sourced( $appData, $written, $kind, $attribute === '', $scope, $loop ) === false )
@@ -1200,12 +1207,37 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	Which id of a block that is new is which id of the block of the old tree that it is a copy of, and of the calls inside it
+		 *
+		 *	@param		array			$old
+		 *	@param		array			$new
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array											id of the copy => id of the original
+		 */
+		private static function _copies( array $old, array $new, array $registry ): array {
+
+			$here = self::taken( $old, $registry, [] );
+			$pairs = [];
+
+			foreach( $new as $node )
+				if( isset( $node['n'] ) === true && ( $id = self::_id( $node, $registry ) ) !== '' && in_array( $id, $here, true ) === false )
+					foreach( $old as $original )
+						if( isset( $original['n'] ) === true && self::likeBlock( $node, $original, $registry ) === true ) {
+							$pairs += self::pairs( $original, $node, $registry );
+							break;
+						}
+
+			return $pairs;
+		}
+
+		/**
 		 *	The values of the attributes of the calls of a tree that have a schema, each with the name of the call and of the attribute - which is what makes it
 		 *	known - and whether the attribute is a link and whether it is a picture
 		 *
 		 *	@param		array			$nodes
 		 *	@param		array			$registry
-		 *	@param		array			&$out					(reference) [ [ call, attribute and value as one string, value, link, picture ], ... ]
+		 *	@param		array			&$out					(reference) [ [ call, attribute and value as one string, value, link, picture, variant ], ... ]
 		 *
 		 *	@return 	void
 		 */
@@ -1218,11 +1250,11 @@ namespace Nino\Modules\Builder {
 
 				// The first word of a call that reads an address is held to the same rule as the value of an attribute that does
 				if( is_string( $node['s'] ?? null ) === true && $node['s'] !== '' && ( $registry[$node['n']]['source'] ?? 'none' ) === 'link' )
-					$out[] = [ $node['n']. "\0\0". $node['s'], $node['s'], true, false ];
+					$out[] = [ $node['n']. "\0\0". $node['s'], $node['s'], true, false, false ];
 
 				foreach( (array) ( $node['a'] ?? [] ) as $name => $value )
 					if( is_string( $value ) === true )
-						$out[] = [ $node['n']. "\0". $name. "\0". $value, $value, ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'link', ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'image' ];
+						$out[] = [ $node['n']. "\0". $name. "\0". $value, $value, ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'link', ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'image', $name === 'variant' ];
 
 				if( is_array( $node['c'] ?? null ) === true )
 					self::_values( $node['c'], $registry, $out );
