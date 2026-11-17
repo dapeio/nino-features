@@ -47,6 +47,12 @@ namespace Nino\Modules\Themes {
 			return [ 'themes', '/_admin/themes/nav', 60 ];
 		}
 
+		// The one tab the panel brings: the fonts of the project (see Typefaces). The tab of the settings, which the registry attaches to a
+		// feature that declares some, comes after it
+		public static function tabs(): array {
+			return [ Typefaces::class ];
+		}
+
 		// The mounts of the panel: its list of themes and the screen of one theme, which assets/admin.js draws
 		public static function template(): string {
 			return \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/templates/panel' );
@@ -797,6 +803,7 @@ namespace Nino\Modules\Themes {
 			$file = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::SHEET );
 			$text = Store::sheet( $file );
 			$back = [];
+			$drifted = Typefaces::drifted( $appData, (string) $text );
 
 			// A font that had no folder when the stylesheet was built has the stack of the system in it; the folder that is there again is not in the
 			// stylesheet before the next build
@@ -813,7 +820,9 @@ namespace Nino\Modules\Themes {
 				'active'		=> $active === null ? null : [
 					'theme'		=> $active['theme'],
 					'built'		=> (string) ( $active['built'] ?? '' ),
-					'stale'		=> ( $active['feature'] ?? '' ) !== (string) ( \Nino\Features::get( $appData, 'themes' )['version'] ?? '' ) || ( $active['register'] ?? '' ) !== \Nino\Components::version( $appData ) || $back !== [],
+					'stale'		=> ( $active['feature'] ?? '' ) !== (string) ( \Nino\Features::get( $appData, 'themes' )['version'] ?? '' ) || ( $active['register'] ?? '' ) !== \Nino\Components::version( $appData ) || $back !== [] || $drifted === true,
+					// The stylesheet names files of a font that its folder has not: the list says that, and not that the feature changed
+					'fonts'		=> $drifted,
 					'back'		=> $back,
 				],
 				'foreign'		=> $text === false || ( $text !== null && $text !== '' && Compiler::isOwn( $text ) === false ),

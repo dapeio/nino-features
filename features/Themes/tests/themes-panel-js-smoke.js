@@ -47,6 +47,19 @@ const words = {
 };
 const workbench = fills('_admin/text/en_US.php');
 
+// The slug of the kernel, which the workbench has from /_nino/Nino.js: the script of the site in a window of its own, and its function taken out
+const kernelSlug = ( function() {
+
+	const node = function() { return { classList : { add : function() {}, remove : function() {}, contains : function() { return false } }, addEventListener : function() {}, setAttribute : function() {}, getAttribute : function() { return null }, querySelectorAll : function() { return [] }, querySelector : function() { return null }, dataset : {}, style : {} } };
+	const page = Object.assign( node(), { documentElement : node(), body : node(), head : node(), createElement : node, getElementById : function() { return null }, readyState : 'complete', cookie : '' } );
+	const site = { document : page, console : console, addEventListener : function() {}, location : { href : 'http://site.test/', hash : '' }, navigator : {}, setTimeout : function() {}, matchMedia : function() { return { matches : false, addEventListener : function() {} } } };
+
+	site.window = site;
+	load( '_nino/Nino.js', vm.createContext( site ) );
+
+	return site.Nino.slug;
+} )();
+
 // The words of the panel and of the API, by their keys: a test of what the panel says asks for the fill and never writes the sentence
 const W = function( key ) { return words.en['/_admin/themes/'+ key] };
 const E = function( code ) { return words.en['/_admin/error/'+ code] };
@@ -71,7 +84,7 @@ const CHANGED = '\u25CF '+ W('state/changed');
 		asked.add( match[1] );
 
 	// The keys put together from a name or read by the panel of the shell: the sections of the page, the three widths, the two states, the plurals of a summary, the failure of a load
-	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button', 'tab/themes' ]
+	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button' ]
 		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary' ].map( function( role ) { return 'role/'+ role } ) )
 		.forEach( function( key ) { asked.add( key ) } );
 
@@ -229,7 +242,7 @@ function listAnswer( active, extra, pages, demos, copies ) {
 			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : 'craft@1.0.0', header : 'standard' }, active : active === 'own:lindner' },
 		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
-		groups : [ 'brand', 'footer', 'section', 'settings', 'css', 'groups', 'header', 'fonts' ].map( function( key ) { return { key : key, label : GROUP_LABEL[key], feature : 'basis', components : [], demo : ( demos ?? [] ).indexOf( key ) !== -1 } } ),
+		groups : [ 'brand', 'footer', 'section', 'settings', 'css', 'groups', 'header' ].map( function( key ) { return { key : key, label : GROUP_LABEL[key], feature : 'basis', components : [], demo : ( demos ?? [] ).indexOf( key ) !== -1 } } ),
 		fonts : FONTS, limits : { css : 65536, name : 60, key : 40 }, state : 'state-1', pages : ( pages ?? [ { path : '/', title : 'Start' }, { path : '/contact', title : '' } ] ).map( function( page ) { return typeof page === 'string' ? { path : page, title : '' } : page } ),
 		active : active === '' ? null : { theme : active, built : '', stale : false }, foreign : false, canRestore : false,
 	}, extra ?? {} );
@@ -345,6 +358,7 @@ function world( options ) {
 
 	const Nino = {
 		dir : '/site',
+		slug : kernelSlug,
 		events : { bindCallback : function() {} },
 		content : { getText : function( key ) { return words.en[ '[['+ key+ ']]' ] === undefined && key.indexOf('/_admin/themes/') === 0 ? ( options.lang === 'de-DE' ? words.de[key] : words.en[key] ) ?? '' : '' } },
 		http : { sendRequest : function( uri, method, callback, data ) {
@@ -2773,75 +2787,27 @@ function said( w, node ) {
 	check( 'N. ...and the middle again is none, which the saved mix says with a 0 and the draft by leaving the knob out', w.dirty.entries.themes.isDirty() === false && w.state_() === APPLIED.replace( 'and active', '' ).trim() || w.dirty.entries.themes.isDirty() === false );
 }
 
-// --- T. the tabs: the views of the panel -----------------------------------------------------------------------------------------
+// --- T. the tabs are the workbench's -----------------------------------------------------------------------------------------------
 
 {
-	// one view is no strip: no empty shell and no tab that leads nowhere
+	// the pane has its tabs from the registry, in its head: the panel draws no strip of its own and keeps no address for one
 	const w = world( { active : 'nino' } );
 
 	w.at( '#themes' );
 
-	check( 'T. with one view - the themes - there is no strip of tabs: nothing is drawn, in the head of the pane or beside it', w.doc.getElementById('themes-tabs') === null && w.panel.views.length === 1 && w.panel.views[0].key === 'themes' );
-	check( 'T. a group that is called as a view - the fixture has fonts - is no group of the list, as the sections of the first level are none: the names of the views are reserved', ( function() {
-		w.state.hash = '#themes/nino/groups';
-		w.panel.showCurrent();
-		w.serve();
-		return w.byClass( w.theme, 'themes-groups' )[0].children.map( function( item ) { return item.children[0].dataset.group } ).join() === 'brand,page,header,section,footer';
-	} )() );
-}
+	check( 'T. the panel draws no strip of tabs and has no views to hang one in: the tabs of the pane are the registry\'s', w.doc.getElementById('themes-tabs') === null && w.panel.views === undefined && w.doc.getElementById('themes-view') === null );
+	// a group of the register may be called fonts: the name is no section of the panel
+	const named = world( { active : 'nino' } );
 
-{
-	// a second view is hung in: the strip is drawn, and the address of the view is #themes/<key>
-	const w = world( { active : 'nino' } );
-	const shown = [];
+	named.state.hash = '#themes/nino/groups';
+	named.panel.showCurrent();
+	named.serve( { listExtra : { groups : [ 'brand', 'footer', 'section', 'header', 'fonts' ].map( function( key ) { return { key : key, label : GROUP_LABEL[key], feature : 'basis', components : [], demo : false } } ) } } );
+	check( 'T. a group that is called fonts is a group like every other: it is a row of the groups, and the one called brand is named as kept', named.byClass( named.theme, 'themes-groups' )[0].children.map( function( item ) { return item.children[0].dataset.group } ).indexOf('fonts') !== -1
+		&& named.byClass( named.theme, 'themes-reserved' ).length === 1 );
 
-	w.panel.views.push( { key : 'fonts', word : 'tab/themes', show : function( box ) { shown.push( box.id ); box.textContent = 'the fonts' } } );
-	w.at( '#themes' );
-
-	const strip = w.doc.getElementById('themes-tabs');
-	const tabs = strip === null ? [] : findAll( strip, function( node ) { return node.tagName === 'BUTTON' } );
-
-	check( 'T. with a second view the strip is drawn - a tablist of the workbench\'s own tabs, one for each view, the first selected and the only one in the tab order - over the mount of the panel where the script is in no pane', strip !== null && strip.attributes.role === 'tablist' && strip.className.indexOf('nino-admin-tabs--bar') !== -1 && tabs.length === 2
-		&& tabs.map( function( tab ) { return tab.attributes.role+ ':'+ tab.attributes['aria-selected']+ ':'+ tab.tabIndex } ).join() === 'tab:true:0,tab:false:-1' && w.app.parentNode.children.indexOf( strip ) === w.app.parentNode.children.indexOf( w.app ) - 1 );
-
-	fire( tabs[1], 'click' );
-
-	check( 'T. a tab is an address: the view is shown in a level of its own, the list and the theme are hidden, the address is #themes/<key> and a step for Back is written', shown.join() === 'themes-view' && w.state.hash === '#themes/fonts' && w.state.pushed.indexOf('#themes/fonts') !== -1
-		&& w.doc.getElementById('themes-view').className.indexOf('admin-hidden') === -1 && w.list.className.indexOf('admin-hidden') !== -1 && w.theme.className.indexOf('admin-hidden') !== -1 && tabs[1].attributes['aria-selected'] === 'true' && tabs[0].attributes['aria-selected'] === 'false' );
-
-	fire( tabs[0], 'click' );
-
-	check( 'T. the first tab is the address #themes again, the list is shown and the tab is selected', w.state.hash === '#themes' && w.list.className.indexOf('admin-hidden') === -1 && w.doc.getElementById('themes-view').className.indexOf('admin-hidden') !== -1 && tabs[0].attributes['aria-selected'] === 'true' );
-
-	// an address that names the view is followed by the panel, and a step of the history to it
 	w.state.hash = '#themes/fonts';
 	w.panel.showCurrent();
-
-	check( 'T. a step of the history to the address of a view shows the view, and selects its tab', shown.length === 2 && tabs[1].attributes['aria-selected'] === 'true' && w.list.className.indexOf('admin-hidden') !== -1 );
-
-	// the strip stands over the screens of a theme too: a tab picked there leaves the theme, and asks first where a draft would be lost
-	w.state.hash = '#themes/nino/section/section-wrap';
-	w.panel.showCurrent();
-	w.serve();
-	fire( w.step( 'themes-section-section-wrap-space', 3 ), 'click' );
-	w.dirtyAnswers.push( 'cancel' );
-	fire( tabs[1], 'click' );
-
-	check( 'T. a tab picked while the theme holds a draft asks first, like every way out of it; Cancel leaves the screen of the theme as it is', w.dirty.asked === 1 && w.theme.className.indexOf('admin-hidden') === -1 && w.state.hash === '#themes/nino/section/section-wrap' && shown.length === 2, w.state.hash );
-}
-
-{
-	// the keyboard walks the strip as it walks the strip of any panel
-	const w = world( { active : 'nino' } );
-
-	w.panel.views.push( { key : 'fonts', word : 'tab/themes', show : function( box ) { box.textContent = 'the fonts' } } );
-	w.at( '#themes' );
-
-	const tabs = findAll( w.doc.getElementById('themes-tabs'), function( node ) { return node.tagName === 'BUTTON' } );
-
-	fire( tabs[0], 'keydown', { key : 'ArrowRight' } );
-
-	check( 'T. the arrow keys move along the strip and Home and End to its ends, as in every panel', tabs[1].focused === true && tabs[1].tabIndex === 0 && tabs[0].tabIndex === -1 );
+	check( 'T. the address #themes/fonts names a theme of that key and nothing else: the panel asks to open it', w.requests.length === 1 && w.requests[0].action === 'themes/open' && w.requests[0].payload.theme === 'fonts' );
 }
 
 // --- U. a theme is copied -------------------------------------------------------------------------------------------------------
@@ -3003,6 +2969,89 @@ function nameField( w ) {
 	w.serve();
 
 	check( 'U. ...copying it as it is saved sends the copy again with the stamp that stands now, and it is made', w.sent.filter( function( request ) { return request.action === 'themes/duplicate' } ).slice( -1 )[0].payload.base === 'stamp-9' && w.copies.length === 1 );
+}
+
+{
+	// the other two answers of that question: Cancel, and Reload
+	const w = world( { active : 'nino' } );
+	const line = function() { return w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ) };
+
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-duplicate' ), 'click' );
+	pressed( w, W('label/save') );
+	w.stamp = 'stamp-9';
+	w.serve();
+
+	check( 'U. while the question stands the line of the bar says that the copy is under way', line() === workbench['/_admin/common/msg/saving'] );
+
+	pressed( w, CANCEL );
+
+	check( 'U. Cancel makes no copy and asks nothing - and the line does not go on saying that something is saved', w.copies.length === 0 && w.requests.length === 0 && line() !== workbench['/_admin/common/msg/saving'] );
+
+	fire( byId( w.theme, 'themes-duplicate' ), 'click' );
+	pressed( w, W('label/save') );
+	w.serve();
+	pressed( w, W('label/reload') );
+
+	check( 'U. Reload makes no copy: the theme is asked for as it is saved', w.requests.length === 1 && w.requests[0].action === 'themes/open' && w.requests[0].payload.theme === 'own:lindner' && w.copies.length === 0 );
+
+	w.serve();
+
+	check( 'U. ...and is on the screen as it is saved, in the section it was in, with nothing under way', w.state.hash === '#themes/own.lindner/settings' && w.copies.length === 0 && line() !== workbench['/_admin/common/msg/saving'] && w.sent.filter( function( request ) { return request.action === 'themes/duplicate' } ).length === 2 );
+}
+
+{
+	// the key a name makes is the server's: an umlaut is ae there, so "Mueller (copy)" is the copy of "Müller" that is taken
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	w.panel.reload();
+	w.serve( { listExtra : { themes : [ { key : 'own:mueller', kind : 'own', name : 'Müller', from : {}, stamp : 'stamp-1', active : false }, { key : 'own:mueller-copy', kind : 'own', name : 'Mueller (copy)', from : {}, stamp : 'stamp-1', active : false } ] } } );
+	fire( findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:mueller' } )[0], 'click' );
+
+	check( 'U. a name with an umlaut makes the key the server makes of it: the first copy of Müller is taken by Mueller (copy), and the second is suggested', Wp( 'msg/copy-name', 'Mueller' ) === 'Mueller (copy)' && nameField( w ).value === Wp( 'msg/copy-name-n', 'Müller', 2 ), nameField( w ).value );
+}
+
+{
+	// a name that is cut does not end on the space or the mark the cut fell on
+	const cut = 'Lindner'+ ' –'.repeat( 30 )+ ' Sons';
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	w.panel.reload();
+	w.serve( { listExtra : { themes : [ { key : 'own:cut', kind : 'own', name : cut, from : {}, stamp : 'stamp-1', active : false } ] } } );
+	fire( findAll( w.list, function( node ) { return node.dataset.duplicate === 'own:cut' } )[0], 'click' );
+
+	check( 'U. a suggestion that is cut ends on the last word that is whole in it, not on the spaces and dashes the cut fell among: a name of 72 characters, Lindner and thirty dashes before its last word, is suggested as the copy of Lindner', Array.from( cut ).length === 72 && nameField( w ).value === Wp( 'msg/copy-name', 'Lindner' ), nameField( w ).value );
+}
+
+{
+	// a stylesheet that is stale says why: for the feature or its components, or for a font whose files changed
+	const notices = function( active ) {
+
+		const w = world( { active : 'nino' } );
+
+		w.at( '#themes' );
+		w.panel.reload();
+		w.serve( { listExtra : { active : active } } );
+
+		return w.byClass( w.list, 'nino-admin-notice' ).map( function( node ) { return w.text( node ) } ).join('|');
+	};
+
+	check( 'X. the list says of a stale stylesheet what made it stale: a font whose files are others than the stylesheet names, or else the feature and its components - and nothing where it is not stale',
+		notices( { theme : 'nino', built : '', stale : true, back : {}, fonts : true } ) === W('msg/stale-fonts') && notices( { theme : 'nino', built : '', stale : true, back : {}, fonts : false } ) === W('msg/stale')
+		&& notices( { theme : 'nino', built : '', stale : false, back : {}, fonts : false } ) === '' && W('msg/stale-fonts') !== W('msg/stale') );
+}
+
+{
+	// a list that is drawn again behind the screen of a theme
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/groups' );
+	w.panel.reload();
+	w.serve();
+
+	check( 'Y. a list that is drawn again while a theme is on screen has its boxes and watches none of them: no picture is asked for behind a theme', w.byClass( w.list, 'themes-thumb' ).length === 4 && w.watched.length === 0 && w.requests.length === 0 );
 }
 
 {
@@ -3584,7 +3633,7 @@ function nameField( w ) {
 
 	const notes = w.byClass( w.theme, 'themes-reserved' ).map( function( node ) { return node.textContent } );
 
-	check( 'T. a group of the register whose name the panel keeps - the fixture has brand, settings, css, groups and fonts - is named in the groups with the reason, once each, and is no row of the list', notes.length === 5 && notes.indexOf( Wp( 'msg/group-reserved', 'Fonts', 'fonts' ) ) !== -1 && w.byClass( w.theme, 'themes-groups' )[0].children.length === 5 );
+	check( 'T. a group of the register whose name the panel keeps - the fixture has brand, settings, css and groups - is named in the groups with the reason, once each, and is no row of the list', notes.length === 4 && notes.indexOf( Wp( 'msg/group-reserved', 'Fonts', 'fonts' ) ) === -1 && w.byClass( w.theme, 'themes-groups' )[0].children.length === 5 );
 }
 
 {

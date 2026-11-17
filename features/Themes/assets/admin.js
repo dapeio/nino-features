@@ -47,20 +47,13 @@
 	// The query that asks the website for the demo of a group in place of a page (see Modules\Themes)
 	const DEMO		= 'nino-theme-demo';
 
-	// The views of the panel, each a tab above the list and the screens of a theme: the themes, which are the panel's own, and whatever is hung in
-	// here besides - { key, word, show( box ) } with the key as the address after #themes (the themes themselves are #themes) and the word of the tab
-	// under /_admin/themes/tab/. The strip is drawn where there is more than one view, and a view but the first has a screen once one is hung in. The
-	// names of the views are reserved: no theme and no group is called by one of them (see RESERVED and \Nino\Modules\Themes\Reader)
-	const VIEWS		= [ { key : 'themes', word : 'tab/themes', show : null } ];
-
 	// The page has no components: its knobs stand in these sections, in this order, and a knob that is in none stands in 'more'
 	const PAGE_SECTIONS	= [ [ 'type', [ 'size', 'text', 'weight' ] ], [ 'measures', [ 'width', 'space', 'radius', 'line', 'density' ] ], [ 'motion', [ 'motion' ] ] ];
 	const MORE					= 'more';
 
-	// The names of the sections on the first level of a theme - the groups, the settings, the own css - of the brand, which has a level of its
-	// own, and of the views of the panel that are no themes - fonts. No group of the register takes one of them, and a group that is called one is
-	// not shown
-	const RESERVED	= [ 'groups', 'brand', 'settings', 'css', 'fonts' ];
+	// The names of the sections on the first level of a theme - the groups, the settings, the own css - and of the brand, which has a level of its
+	// own. No group of the register takes one of them, and a group that is called one is not shown
+	const RESERVED	= [ 'groups', 'brand', 'settings', 'css' ];
 	const LEVEL_ONE	= [ 'groups', 'settings', 'css' ];
 
 	// The values of the brand, and the sections they stand in on its level
@@ -100,8 +93,6 @@
 		query			: '',
 		picked		: {},
 		demo			: '',
-		tab				: 'themes',
-		selectTab	: null,
 		cssFaults	: [],
 		listing		: true,
 		markedLabel	: '',
@@ -2177,12 +2168,16 @@
 	 */
 	const copyName = function( name ) {
 
-		const keyOf = function( text ) {
-			return text.normalize('NFKD').replace( /[\u0300-\u036f]/g, '' ).toLowerCase().replace( /[^a-z0-9]+/g, '-' ).replace( /^-+|-+$/g, '' );
+		// The key a name makes is the slug of the kernel, the one the server makes of it (\Nino\Feature::slug()): an umlaut is ae, oe or ue in both
+		const keyOf = function( text, max ) {
+			return Nino.slug( text, max );
 		};
 
+		// A key as long as its name makes it: longer than any name may be
+		const WHOLE = 10000;
+
 		// The names the own themes have, as the server tells two names apart: by the key they make, which is cut at the length of a key
-		const taken = S.list.themes.filter( function( theme ) { return theme.kind === 'own' } ).map( function( theme ) { return keyOf( localized( theme.name ) ).slice( 0, S.list.limits.key ) } );
+		const taken = S.list.themes.filter( function( theme ) { return theme.kind === 'own' } ).map( function( theme ) { return keyOf( localized( theme.name ), S.list.limits.key ) } );
 
 		for( let number = 1; ; number++ ) {
 
@@ -2191,13 +2186,19 @@
 			// The name is cut until the whole of the suggestion is in the key and in the length a name may have - a name that is cut at the end of its
 			// key is the name it was made from
 			const letters = Array.from( name );
+			const whole = letters.length;
 
-			while( letters.length > 0 && ( Array.from( made( letters.join('') ) ).length > S.list.limits.name || keyOf( made( letters.join('') ) ).length > S.list.limits.key ) )
+			// A name that was cut does not end where the cut fell on a space or a mark of punctuation: "Lindner & Sons (copy)", not "Lindner & (copy)"
+			const base = function() {
+				return letters.length === whole ? letters.join('') : letters.join('').replace( /[\s\p{P}\p{S}]+$/u, '' );
+			};
+
+			while( letters.length > 0 && ( Array.from( made( base() ) ).length > S.list.limits.name || keyOf( made( base() ), WHOLE ).length > S.list.limits.key ) )
 				letters.pop();
 
-			const suggestion = made( letters.join('') );
+			const suggestion = made( base() );
 
-			if( taken.indexOf( keyOf( suggestion ).slice( 0, S.list.limits.key ) ) === -1 )
+			if( taken.indexOf( keyOf( suggestion, S.list.limits.key ) ) === -1 )
 				return suggestion;
 		}
 	};
@@ -2275,7 +2276,9 @@
 						],
 						onChoose	: function( value ) {
 
+							// Nothing is under way any more: the line that said so says what the theme is
 							if( value === 'cancel' ) {
+								S.view.line.idle();
 								cancelled();
 								return;
 							}
@@ -3516,8 +3519,6 @@
 
 		const mount = dc.getElementById('themes-list');
 
-		S.listing = false;
-
 		if( mount === null )
 			return;
 
@@ -3530,8 +3531,6 @@
 	const thumbsBack = function() {
 
 		const mount = dc.getElementById('themes-list');
-
-		S.listing = true;
 
 		if( mount !== null && S.looking !== null )
 			Array.from( mount.querySelectorAll('.themes-thumb') ).forEach( function( box ) { S.looking.observe( box ) } );
@@ -3650,90 +3649,6 @@
 		return card;
 	};
 
-	// --- the views --------------------------------------------------------------------------------------------
-
-	/**
-	 *	The strip of the views, where there is more than one: in the head of the pane beside the name of the panel, the workbench's own place for it
-	 *	(Nino.adminUi.panelHead()) - above the list and above the screens of a theme, so that a tab picked while a theme is open leaves it, and asks
-	 *	first where a draft would be lost. A tab is an address: #themes, and the key of the view after it. With one view there is no strip
-	 *
-	 *	@return		{void}
-	 */
-	const paintTabs = function() {
-
-		const mount = dc.getElementById('themes-app');
-		const old = dc.getElementById('themes-tabs');
-
-		if( old !== null )
-			old.remove();
-
-		S.selectTab = null;
-
-		if( mount === null || VIEWS.length < 2 )
-			return;
-
-		const strip = el( 'div', 'nino-admin-tabs nino-admin-tabs--bar nino-admin-tabs--panel admin-panel-tabs' );
-		const buttons = {};
-		const head = Nino.adminUi.panelHead( mount );
-
-		strip.id = 'themes-tabs';
-		strip.setAttribute( 'role', 'tablist' );
-
-		VIEWS.forEach( function( view ) {
-
-			const button = el( 'button', 'nino-admin-tab', word( view.word ) );
-
-			button.type = 'button';
-			button.id = 'themes-tab-'+ view.key;
-			button.setAttribute( 'role', 'tab' );
-			button.setAttribute( 'aria-controls', 'themes-app' );
-			strip.appendChild( button );
-			buttons[view.key] = button;
-		} );
-
-		S.selectTab = Nino.adminUi.buttonRow( buttons, S.tab, function( key ) {
-			Nino.admin.themes.go( key === VIEWS[0].key ? [] : [ key ], { focus : false } );
-		}, 'aria-selected' );
-
-		// Where the script is not in a pane there is no head: the strip stands over the mount, outside of the levels it shows and hides
-		if( head === null )
-			mount.parentNode.insertBefore( strip, mount );
-		else
-			head.tabs( strip );
-	};
-
-	/**
-	 *	A view that is not the themes: the screen it draws into a level of its own
-	 *
-	 *	@param		{Object}		view				One of VIEWS
-	 *	@param		{Object}		[options]		What follow() takes
-	 *
-	 *	@return		{void}
-	 */
-	const showView = function( view, options ) {
-
-		let box = dc.getElementById('themes-view');
-
-		S.ready = false;
-		S.view = null;
-		S.tab = view.key;
-		dc.getElementById('themes-theme').innerHTML = '';
-
-		if( box === null ) {
-			box = el( 'div', 'themes-level admin-hidden' );
-			box.id = 'themes-view';
-			dc.getElementById('themes-app').appendChild( box );
-		}
-
-		view.show( box );
-		thumbsAway();
-		Nino.admin.router.set( 'themes', [ view.key ] );
-		Nino.adminUi.showLevel( box, { focus : options !== undefined && options.focus === false ? false : true } );
-
-		if( typeof S.selectTab === 'function' )
-			S.selectTab( S.tab );
-	};
-
 	// The list: the themes that come with a package, then the own ones, and what the website shows
 	const render = function( data ) {
 
@@ -3777,7 +3692,7 @@
 			mount.appendChild( Nino.adminUi.notice( word( data.unreadable === true ? 'msg/unreadable' : 'msg/foreign' ) ) );
 
 		if( data.active !== null && data.active.stale === true )
-			mount.appendChild( Nino.adminUi.notice( word('msg/stale') ) );
+			mount.appendChild( Nino.adminUi.notice( data.active.fonts === true ? word('msg/stale-fonts') : word('msg/stale') ) );
 
 		sorted( packaged ).concat( sorted( own ) ).forEach( function( theme ) { wrap.appendChild( cardOf( theme ) ) } );
 
@@ -3791,7 +3706,6 @@
 		} );
 
 		mount.appendChild( Nino.adminUi.hint( ( data.active === null ? word('hint/list-none') : word('hint/list') ) ) );
-		paintTabs();
 	};
 
 	// --- the panel --------------------------------------------------------------------------------------------
@@ -3818,8 +3732,14 @@
 
 	Object.assign( Nino.admin.themes, {
 
-		// The views: what is hung in here is a tab and an address (see VIEWS)
-		views : VIEWS,
+		// Where the focus goes when an action is done (see land()): the tab of the fonts, assets/admin-fonts.js, lands the same way
+		land : land,
+
+		// The fonts of public/fonts/ changed on the tab of the fonts: the settings of an open theme are drawn again from the list, the draft as it is
+		redraw : function() {
+			if( S.view !== null )
+				draw( S.view.group );
+		},
 
 		// A line in the list: what was done
 		say : function( text ) {
@@ -3858,18 +3778,6 @@
 		follow : function( options ) {
 
 			const parts = here().panel === 'themes' ? here().parts : [];
-			const view = VIEWS.find( function( candidate ) { return candidate.show !== null && candidate.key === parts[0] } );
-
-			if( view !== undefined ) {
-				showView( view, options );
-				return;
-			}
-
-			S.tab = VIEWS[0].key;
-
-			if( typeof S.selectTab === 'function' )
-				S.selectTab( S.tab );
-
 			if( parts.length === 0 ) {
 				S.ready = false;
 				S.view = null;

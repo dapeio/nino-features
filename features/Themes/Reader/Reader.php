@@ -45,10 +45,6 @@ namespace Nino\Modules\Themes {
 		// <key>/theme.json
 		public const string ROOTS = '/nino/themes/roots';
 
-
-		// The addresses the panel keeps for its own views, #themes/fonts and #themes/settings: no theme is called by one of them
-		public const array RESERVED = [ 'fonts', 'settings' ];
-
 		// What a theme.json and a part.json may say, and the tokens of the page a knob of it may set (the fixed set of the
 		// contract, S1)
 		private const array THEME_KEYS = [ 'key', 'version', 'name', 'description', 'brand' ];
@@ -187,9 +183,6 @@ namespace Nino\Modules\Themes {
 
 			if( is_string( $key ) === false || preg_match( \Nino\Components::NAME, $key ) !== 1 || strlen( $key ) > \Nino\Components::NAME_LENGTH || ( $name !== '' && $key !== $name ) )
 				return '"key" is a slug of at most '. \Nino\Components::NAME_LENGTH. ' characters, and the name of the folder';
-
-			if( in_array( $key, self::RESERVED, true ) === true )
-				return '"key" is one of the names the panel keeps for itself: '. implode( ', ', self::RESERVED );
 
 			if( is_string( $json['version'] ?? null ) === false || preg_match( self::VERSION, $json['version'] ) !== 1 )
 				return '"version" is major.minor.patch';

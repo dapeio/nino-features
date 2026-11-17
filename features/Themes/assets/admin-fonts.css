@@ -1,0 +1,160 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	Themes						What the tab of the fonts needs beyond the design system: the cards of the installed families, the rows of the
+ *										list of the repository, the licence and a link that is drawn as a button. Scoped to the mount of the tab.
+ *
+ *	@package					Dape/Nino
+ *	@author						David Perchermeier <mail@dape.io>
+ *	@link							https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+#themes-fonts-list .themes-fonts-say {
+	min-height: 1.4em;
+	margin: 0;
+}
+
+#themes-fonts-list .themes-fonts-half {
+	margin-top: 1.25rem;
+}
+
+#themes-fonts-list .themes-fonts-half:first-child {
+	margin-top: .25rem;
+}
+
+#themes-fonts-list .themes-fonts-half > h3 {
+	margin: 0 0 .5rem;
+}
+
+/* The installed families: a card each, as many beside one another as there is room for, all of one height in a row */
+#themes-fonts-list .themes-fonts-cards {
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( min( 100%, 19rem ), 1fr ) );
+	gap: 1rem;
+}
+
+#themes-fonts-list .themes-font {
+	display: flex;
+	flex-direction: column;
+	gap: .5rem;
+	min-width: 0;
+	margin: 0;
+}
+
+#themes-fonts-list .themes-font > p {
+	margin: 0;
+}
+
+#themes-fonts-list .themes-font-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .35rem .5rem;
+}
+
+#themes-fonts-list .themes-font-head h4 {
+	flex: 1 1 100%;
+	margin: 0;
+	min-width: 0;
+	overflow-wrap: anywhere;
+	font-size: 1rem;
+}
+
+#themes-fonts-list .themes-font .nino-admin-actions {
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+	margin: 0;
+}
+
+/* The licence of a family: the text as it is, in a box that scrolls when it is long, and that a keyboard can reach to scroll it */
+#themes-fonts-list .themes-fonts-license-text {
+	max-height: 16rem;
+	margin: .25rem 0 0;
+	padding: .5rem .75rem;
+	overflow: auto;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg);
+	font-size: max( .76rem, 12px );
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+#themes-fonts-list .themes-fonts-bar {
+	margin-bottom: .5rem;
+}
+
+#themes-fonts-list .themes-fonts-tools {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem 1rem;
+	align-items: end;
+	margin: .5rem 0;
+}
+
+#themes-fonts-list .themes-fonts-tools .nino-admin-field {
+	min-width: min(100%, 14rem);
+}
+
+/* The families of the list: a row each, the words on the left and the button at the right edge, under one another where there is no room for both */
+#themes-fonts-list .themes-fonts-rows {
+	display: grid;
+	gap: .5rem;
+	margin: .5rem 0;
+	padding: 0;
+	list-style: none;
+}
+
+#themes-fonts-list .themes-fonts-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: .5rem 1rem;
+	padding: .6rem .75rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-elevated);
+}
+
+#themes-fonts-list .themes-fonts-row-text {
+	display: grid;
+	gap: .15rem;
+	min-width: 0;
+	flex: 1 1 16rem;
+	overflow-wrap: anywhere;
+}
+
+#themes-fonts-list .themes-fonts-pager {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+}
+
+/* A link that has the look of a button: the way to the settings of the workbench */
+#themes-fonts-list .themes-fonts-link-button {
+	display: inline-flex;
+	align-items: center;
+	min-height: 30px;
+	padding: .25rem .75rem;
+	border-radius: var(--editor-radius-sm);
+	font-size: max( .84rem, 12px );
+	font-weight: 650;
+	text-decoration: none;
+}
+
+#themes-fonts-list .themes-fonts-link {
+	display: inline-flex;
+	align-items: center;
+	min-height: 24px;
+	padding: 0 .25rem;
+	font-size: max( .84rem, 12px );
+	font-weight: 650;
+}
+
+}

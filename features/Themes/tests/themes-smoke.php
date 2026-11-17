@@ -2768,8 +2768,7 @@ $view = static function( string $query ) use ( &$thumb ): string {
 check( 'M. a page asked with the token of a thumbnail is drawn with the stylesheet of that theme - and with a token that the session no longer holds, it is drawn as the website has it', str_contains( $view( $fresh['query'] ), '.thumb-marker' ) === true && str_contains( $view( $fresh['query'] ), 'data-nino-theme-preview' ) === true
 	&& ( $_SESSION[$thumb['./nino/uid']]['./themes/thumbs'] = [] ) === [] && str_contains( $view( $fresh['query'] ), 'data-nino-theme-preview' ) === false );
 
-// -- the names of the views: no theme is called by one of them
-$reserved = ( new \ReflectionClassConstant( \Nino\Modules\Themes\Reader::class, 'RESERVED' ) )->getValue();
+// -- a theme may be called fonts or settings: the tabs of the pane have addresses of their own, #themes-fonts and #themes-settings
 $sandbox = ninoSandboxDir( $thumb ). '/themes';
 $why = [];
 
@@ -2780,10 +2779,12 @@ foreach( [ 'fonts', 'settings' ] as $key ) {
 	$why[$key] = \Nino\Modules\Themes\Reader::theme( $sandbox. '/'. $key, $key );
 }
 
-check( 'M. no theme is called by the name of a view of the panel - fonts and settings, which are addresses - a folder of that name is not a theme and says why, in the list of what is not read, and a theme with another name is read as it was', $reserved === [ 'fonts', 'settings' ] && is_string( $why['fonts'] ) === true && is_string( $why['settings'] ) === true && str_contains( $why['fonts'], 'fonts' ) === true
-	&& is_array( \Nino\Modules\Themes\Reader::theme( $sandbox. '/band-probe', 'band-probe' ) ) === true );
 unset( $thumb['./nino/themes/read'] );
-check( 'M. ...and the list says so: the folders are in what was refused, and the themes that were there are still there', count( array_filter( themesCall( $thumb, 'themes/list' )[1]['rejected'], static fn( array $row ): bool => in_array( $row['folder'], [ 'fonts', 'settings' ], true ) ) ) === 2 && count( themesCall( $thumb, 'themes/list' )[1]['themes'] ) >= 3 );
+$listed = themesCall( $thumb, 'themes/list' )[1];
+check( 'M. a theme may be called fonts or settings - the tabs of the pane are no addresses below #themes - and the reader keeps no name for the panel: the two folders are themes of the list, none of them refused, and each opens',
+	is_array( $why['fonts'] ) === true && is_array( $why['settings'] ) === true && ( new \ReflectionClass( \Nino\Modules\Themes\Reader::class ) )->hasConstant( 'RESERVED' ) === false
+	&& count( array_intersect( [ 'fonts', 'settings' ], array_column( $listed['themes'], 'key' ) ) ) === 2 && array_filter( $listed['rejected'], static fn( array $row ): bool => in_array( $row['folder'], [ 'fonts', 'settings' ], true ) ) === []
+	&& themesCall( $thumb, 'themes/open', [ 'theme' => 'fonts' ] )[0] === 200 && themesCall( $thumb, 'themes/open', [ 'theme' => 'settings' ] )[0] === 200 );
 
 // -- a font that is gone and back
 $fonts = themesSite();

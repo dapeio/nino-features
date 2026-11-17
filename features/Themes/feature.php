@@ -59,6 +59,14 @@ return [
 				'en_US' => 'The screen of the workbench for the themes: the list, and for a theme its groups, brand, settings and own css beside a preview of the draft or a demo; the right is /_admin/themes/manage.',
 				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, und je Theme Gruppen, Marke, Einstellungen und eigenes CSS neben einer Vorschau des Entwurfs oder einer Demo; das Recht: /_admin/themes/manage.',
 			],
+			'Themes > Fonts' => [
+				'en_US' => 'The fonts of public/fonts/ with their licence and their place in the brand, and the signed list of the repository, loaded on the button alone, to install a family from.',
+				'de_DE' => 'Die Schriften aus public/fonts/ mit Lizenz und ihrem Platz in der Marke, dazu die signierte Liste des Repositorys, geladen nur auf Knopfdruck, um eine Familie zu installieren.',
+			],
+			'Themes > Settings' => [
+				'en_US' => 'The form of the two settings of the repository, its address and its public key, which the workbench draws from the manifest; it needs the right /_admin/features/manage.',
+				'de_DE' => 'Das Formular der zwei Einstellungen des Repositorys, Adresse und öffentlicher Schlüssel, das die Werkbank aus dem Manifest zeichnet; es braucht das Recht /_admin/features/manage.',
+			],
 		],
 		'callbacks' => [
 			'/nino/components/variants' => [
@@ -79,6 +87,14 @@ return [
 				'en_US' => 'The state, the last state, the own themes, the brand and a copy of every part in use, which the backup carries and an update does not change.',
 				'de_DE' => 'Der Stand, der letzte Stand, die eigenen Themes, die Marke und eine Kopie jedes verwendeten Teils, die das Backup mitnimmt und ein Update nicht ändert.',
 			],
+			'public/fonts/<slug>/' => [
+				'en_US' => 'A family installed from the repository: .woff2 files, LICENSE.txt and font.json, checked against the signed list and moved into place whole; a folder put there by hand is not replaced.',
+				'de_DE' => 'Eine aus dem Repository installierte Familie: .woff2-Dateien, LICENSE.txt und font.json, gegen die signierte Liste geprüft und als Ganzes abgelegt; ein Ordner von Hand wird nicht ersetzt.',
+			],
+			'data/theme/.fonts/' => [
+				'en_US' => 'The list of the repository as it was fetched last, with its signature, and the lock of an install; a backup does not carry them.',
+				'de_DE' => 'Die zuletzt geholte Liste des Repositorys mit ihrer Signatur und die Sperre einer Installation; das Backup nimmt beides nicht mit.',
+			],
 		],
 	],
 	'category'		=> 'ui',
@@ -87,6 +103,27 @@ return [
 	'php'					=> [],
 	'requires'		=> [],
 	'data'				=> [ '/data/theme' ],
-	'settings'		=> [],
+	// Where the Fonts tab reads the signed list of fonts from, and the key that list has to be signed with. The two are the feature's own
+	// repository by default; a project that publishes fonts of its own changes both
+	'settings'		=> [
+		'fontsUrl' => [
+			'type'		=> 'url',
+			'label'		=> [ 'en_US' => 'Font repository', 'de_DE' => 'Schrift-Repository' ],
+			'hint'		=> [
+				'en_US' => 'Where the signed list of fonts is published. The Fonts tab loads it when asked and never on its own. Empty, an address that is not https or the name of a host that is not public switches the Available half of that tab off.',
+				'de_DE' => 'Wo die signierte Liste der Schriftarten veröffentlicht ist. Der Reiter Schriftarten lädt sie auf Knopfdruck und nie von selbst. Leer, keine https-Adresse oder ein Rechnername, der nicht öffentlich ist, schaltet die Hälfte „Verfügbar“ dieses Reiters ab.',
+			],
+			'default'	=> 'https://webfonts.getnino.dev/webfonts.json',
+		],
+		'fontsKey' => [
+			'type'		=> 'text',
+			'label'		=> [ 'en_US' => 'Repository public key', 'de_DE' => 'Öffentlicher Schlüssel des Repositorys' ],
+			'hint'		=> [
+				'en_US' => 'The PEM public key that signed the list, for a repository of your own. Empty means the feature\'s own.',
+				'de_DE' => 'Der öffentliche Schlüssel im PEM-Format, mit dem die Liste signiert ist, für ein eigenes Repository. Leer heißt: der des Features.',
+			],
+			'default'	=> '',
+		],
+	],
 	'assets'			=> [],
 ];

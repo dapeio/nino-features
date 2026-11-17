@@ -102,8 +102,25 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	@param		mixed			$weight				400, or '100 900' for a file that carries the weight axis
+		 *
+		 *	@return 	int|string|null								The weight as it is kept, null where it is none
+		 */
+		public static function weight( mixed $weight ): int|string|null {
+
+			if( is_int( $weight ) === true )
+				return $weight >= 100 && $weight <= 900 ? $weight : null;
+
+			if( is_string( $weight ) === true && preg_match( '/^([1-9]\d*) ([1-9]\d*)$/D', $weight, $axis ) === 1 )
+				return (int) $axis[1] >= 100 && (int) $axis[1] < (int) $axis[2] && (int) $axis[2] <= 900 ? (int) $axis[1]. ' '. (int) $axis[2] : null;
+
+			return null;
+		}
+
+		/**
 		 *	One folder of public/fonts/ as a font: { "name": "Open Sans", "fallback": "sans-serif", "faces": [ { "weight": 400,
-		 *	"style": "normal", "file": "open-sans-400.woff2" } ] }, every file there
+		 *	"style": "normal", "file": "open-sans-400.woff2" } ] }, every file there. A weight is a number from 100 to 900, or "100 900"
+		 *	for a file that carries the weight axis
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$slug					The folder
@@ -123,7 +140,7 @@ namespace Nino\Modules\Themes {
 
 			foreach( $declared['faces'] as $face ) {
 
-				if( is_array( $face ) === false || is_int( $face['weight'] ?? null ) === false || $face['weight'] < 100 || $face['weight'] > 900
+				if( is_array( $face ) === false || self::weight( $face['weight'] ?? null ) === null
 					|| in_array( $face['style'] ?? '', [ 'normal', 'italic' ], true ) === false || is_string( $face['file'] ?? null ) === false
 					|| preg_match( self::FILE, $face['file'] ) !== 1 || is_file( \Nino\Filesystem::path( $appData, '/fonts/'. $slug. '/'. $face['file'] ) ) === false )
 					return null;
