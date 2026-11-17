@@ -357,6 +357,189 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	What the screen knows of one component to show its settings: its label, group, where it holds calls, what its source is, its attributes as the schema
+		 *	declares them - with the options a method answered - and its variants, the schema's and what the callbacks of the theme add, with the standard
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$registry
+		 *	@param		string		$name
+		 *
+		 *	@return 	array											'label', 'group', 'container', 'source', 'format', 'id', 'attributes', 'variants', 'standard'
+		 */
+		public static function schema( array &$appData, array $registry, string $name ): array {
+
+			$schema = $registry[$name];
+			$attributes = [];
+
+			foreach( (array) ( $schema['attributes'] ?? [] ) as $attribute => $declared )
+				$attributes[(string) $attribute] = [
+					'type'				=> (string) $declared['type'],
+					'label'				=> $declared['label'] ?? (string) $attribute,
+					'hint'				=> $declared['hint'] ?? '',
+					'default'			=> $declared['default'] ?? '',
+					'options'			=> is_array( $declared['options'] ?? null ) === true ? array_values( $declared['options'] ) : null,
+					'optionLabels'	=> is_array( $declared['optionLabels'] ?? null ) === true ? $declared['optionLabels'] : ( is_array( $declared['labels'] ?? null ) === true ? $declared['labels'] : null ),
+					'responsive'	=> ( $declared['responsive'] ?? false ) === true,
+					'min'					=> $declared['min'] ?? null,
+					'max'					=> $declared['max'] ?? null,
+				];
+
+			[ $variants, $standard, $variantLabels ] = self::variants( $appData, $name );
+
+			return [
+				'label'				=> $schema['label'],
+				'group'				=> (string) ( $schema['group'] ?? '' ),
+				'container'		=> isset( $schema['offers'] ) === true && $name !== 'html',
+				'source'			=> (string) ( $schema['source'] ?? 'none' ),
+				'format'			=> (string) ( $schema['format'] ?? '' ),
+				'id'					=> self::idAttribute( $schema ),
+				'attributes'	=> $attributes,
+				'variants'		=> $variants,
+				'variantLabels'	=> $variantLabels,
+				'standard'		=> $standard,
+			];
+		}
+
+		/**
+		 *	The schemas of the calls of a tree, and of the names that are asked for besides
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes
+		 *	@param		array			$registry
+		 *	@param		array			$more					Names to add
+		 *
+		 *	@return 	array											name => schema()
+		 */
+		public static function schemas( array &$appData, array $nodes, array $registry, array $more = [] ): array {
+
+			$names = [];
+			self::names( $nodes, $names );
+			$out = [];
+
+			foreach( array_merge( array_keys( $names ), $more ) as $name )
+				if( isset( $registry[$name] ) === true )
+					$out[(string) $name] = self::schema( $appData, $registry, (string) $name );
+
+			return $out;
+		}
+
+		/**
+		 *	The variants of a component, the standard one and the label of each that has one - as the register reads them: the schema's, what the callbacks of the
+		 *	variants add, and the labels of both
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name
+		 *
+		 *	@return 	array											[ the variants, the standard, variant => label (a text or a locale => text map) ]
+		 */
+		public static function variants( array &$appData, string $name ): array {
+
+			$answer = \Nino\Components::variants( $appData, $name );
+			$labels = [];
+
+			foreach( $answer['variants'] as $word => $label )
+				if( $label !== null )
+					$labels[(string) $word] = $label;
+
+			return [ array_map( 'strval', array_keys( $answer['variants'] ) ), $answer['standard'], $labels ];
+		}
+
+		/**
+		 *	The node a position names, '0.1.0': the index in each level, the blanks counted
+		 *
+		 *	@param		array			$nodes
+		 *	@param		string		$position
+		 *
+		 *	@return 	array|null
+		 */
+		public static function at( array $nodes, string $position ): ?array {
+
+			if( preg_match( '/^\d+(?:\.\d+)*$/D', $position ) !== 1 )
+				return null;
+
+			$node = null;
+
+			foreach( explode( '.', $position ) as $index ) {
+
+				$node = $nodes[(int) $index] ?? null;
+
+				if( is_array( $node ) === false )
+					return null;
+
+				$nodes = is_array( $node['c'] ?? null ) === true ? $node['c'] : [];
+			}
+
+			return $node;
+		}
+
+		/**
+		 *	The names of the calls from the top of a tree down to the node a position names, the node itself last - the path the register asks for
+		 *
+		 *	@param		array			$nodes
+		 *	@param		string		$position
+		 *
+		 *	@return 	array|null								null where the position names no call
+		 */
+		public static function route( array $nodes, string $position ): ?array {
+
+			if( preg_match( '/^\d+(?:\.\d+)*$/D', $position ) !== 1 )
+				return null;
+
+			$names = [];
+
+			foreach( explode( '.', $position ) as $index ) {
+
+				$node = $nodes[(int) $index] ?? null;
+
+				if( is_array( $node ) === false || is_string( $node['n'] ?? null ) === false )
+					return null;
+
+				$names[] = $node['n'];
+				$nodes = is_array( $node['c'] ?? null ) === true ? $node['c'] : [];
+			}
+
+			return $names;
+		}
+
+		/**
+		 *	A call as the first line of its notation: its name and attributes, with no content and no end
+		 *
+		 *	@param		array			$node
+		 *	@param		array			$containers		As \Nino\Components::containers() answers
+		 *
+		 *	@return 	string
+		 */
+		public static function opening( array $node, array $containers ): string {
+
+			$name = (string) ( $node['n'] ?? '' );
+			$written = \Nino\Markup::write( [ [ 'c' => ( $containers[$name] ?? false ) === true ? [] : null ] + $node ], $containers );
+
+			return ( $containers[$name] ?? false ) === true && str_ends_with( $written, '[/'. $name. ']' ) === true ? substr( $written, 0, -strlen( '[/'. $name. ']' ) ) : $written;
+		}
+
+		/**
+		 *	What check() finds in a tree, as the screen says it: position => [ [ code, detail ], ... ] - the findings of the pieces that are locked and of the call of html
+		 *	are left out, the screen shows those as locked
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes
+		 *
+		 *	@return 	array
+		 */
+		public static function findings( array &$appData, array $nodes ): array {
+
+			$out = [];
+			$skip = [ \Nino\Components::CODE_BARE, \Nino\Components::CODE_FREE, \Nino\Components::CODE_HTML ];
+
+			foreach( \Nino\Components::check( $appData, $nodes ) as $position => $found )
+				foreach( $found as $finding )
+					if( in_array( $finding['code'], $skip, true ) === false )
+						$out[(string) $position][] = [ $finding['code'], $finding['detail'] ];
+
+			return $out;
+		}
+
+		/**
 		 *	A tree as a draft draws it: the source of each picture that has no file yet is the picture the kernel brings for it, so that the page shows what it will
 		 *	have and nothing is written for it
 		 *
@@ -497,22 +680,21 @@ namespace Nino\Modules\Builder {
 		 *	they like; the fixed texts of its calls may be what they like); it is not moved, copied or taken out, and what is between two of them stays between them.
 		 *	Every other block is one of the old ones of its run, with the fixed texts of its calls as they please and nothing else changed, or a copy of one: its
 		 *	root has the id of the original with the next number - an id that is no id of the page and has no words or slots - and what is inside has that id in front
-		 *	(inner()). No id stands twice. A frame has the blocks it had - as many, with the names they had, in their order - and no copy
+		 *	(inner()). No id stands twice
 		 *
 		 *	A block that is none of the old ones is a new one where $offers has the tree of a block for its id: it is that tree but for the ids and the fixed texts, and
 		 *	its root has the id of the block or the first number behind it that is no id of the page and has no words or slots, as a copy has. It stands in a run of the
-		 *	top level like any other block; a frame takes none
+		 *	top level like any other block
 		 *
 		 *	@param		array			$old
 		 *	@param		array			$new
 		 *	@param		array			$registry			The schemas
-		 *	@param		bool			$frame				A frame of the site
 		 *	@param		array			$taken				What the old page uses as an id, see taken()
 		 *	@param		array			$offers				id of the root of a new block => the root of the block it is, laid out as it is put in
 		 *
-		 *	@return 	string|null								What is refused: 'ids', 'free', 'block', 'copy', 'id' or 'frame'; null where it is the old page made new
+		 *	@return 	string|null								What is refused: 'ids', 'free', 'block', 'copy' or 'id'; null where it is the old page made new
 		 */
-		public static function refused( array $old, array $new, array $registry, bool $frame, array $taken = [], array $offers = [] ): ?string {
+		public static function refused( array $old, array $new, array $registry, array $taken = [], array $offers = [] ): ?string {
 
 			if( self::twice( $new, $registry ) !== null )
 				return 'ids';
@@ -552,19 +734,234 @@ namespace Nino\Modules\Builder {
 					$frames[] = $at;
 
 			foreach( $runs[1] as $run => $news )
-				foreach( self::_run( $runs[0][$run] ?? [], $news, $registry, $frame, $taken, $offers, $frames === [] || ( $run > $frames[0] && ( count( $frames ) === 1 || $run <= end( $frames ) ) ) ) as $why )
+				foreach( self::_run( $runs[0][$run] ?? [], $news, $registry, $taken, $offers, $frames === [] || ( $run > $frames[0] && ( count( $frames ) === 1 || $run <= end( $frames ) ) ) ) as $why )
 					return $why;
 
-			// A frame has the blocks it had: as many, with the names they had, in the order they had
-			if( $frame === true ) {
+			return null;
+		}
 
-				$names = static fn( array $nodes ): array => array_map( static fn( array $node ): string => (string) $node['n'], array_values( array_filter( $nodes, static fn( array $node ): bool => isset( $node['n'] ) === true ) ) );
+		/**
+		 *	What a person who may design may do to a template, and the one who may develop: the new tree differs from the old as far as it likes, in what the register
+		 *	holds, and in nothing else. The register is asked of both (\Nino\Components::check()) and the new tree may have nothing against it that the old one had not
+		 *	by the same name and attributes. Free markup and calls without a schema - and for the one who may not develop the call of html and what it holds - are
+		 *	pieces of the old tree to the byte, and the pieces that follow one another are one unit: it stays in its container, whole and in its order, and is moved
+		 *	or taken out as a whole, never split, never put in another container, never made twice. No id stands twice, a new id is no id of the page and has no
+		 *	words or slots. An address that runs a script or leaves the site and a textfill in a value are the old ones or none, where old means the same attribute of
+		 *	a call of the same name. The size, the number of calls and the depth are the canonical reading's
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$old					The tree the page has
+		 *	@param		array			$new					The tree that is asked for
+		 *	@param		array			$registry
+		 *	@param		array			$taken				What the old page uses as an id, see taken()
+		 *	@param		bool			$develop			Whether the call of html may be new
+		 *
+		 *	@return 	string|null								What is refused: 'ids', 'html', 'free', 'unit', 'check', 'link', 'value' or 'id'; null where the tree is taken
+		 */
+		public static function designed( array &$appData, array $old, array $new, array $registry, array $taken, bool $develop ): ?string {
 
-				if( $names( $old ) !== $names( $new ) )
-					return 'frame';
+			if( self::twice( $new, $registry ) !== null )
+				return 'ids';
+
+			$was = [];
+			$now = [];
+			$wasUnits = [];
+			$nowUnits = [];
+			self::_pieces( $old, $registry, $develop, $was, $wasUnits );
+			self::_pieces( $new, $registry, $develop, $now, $nowUnits );
+			$had = array_count_values( array_column( $was, 0 ) );
+
+			foreach( $now as $piece ) {
+
+				if( ( $had[$piece[0]] ?? 0 ) > 0 )
+					$had[$piece[0]]--;
+				else
+					return $piece[1] === true ? 'html' : 'free';
 			}
 
+			$had = array_count_values( $wasUnits );
+
+			foreach( $nowUnits as $unit ) {
+
+				if( ( $had[$unit] ?? 0 ) > 0 )
+					$had[$unit]--;
+				else
+					return 'unit';
+			}
+
+			$stood = array_count_values( self::_marks( $appData, $old ) );
+
+			foreach( array_count_values( self::_marks( $appData, $new ) ) as $mark => $count )
+				if( $count > ( $stood[$mark] ?? 0 ) )
+					return 'check';
+
+			$known = [];
+			$given = [];
+			self::_values( $old, $registry, $known );
+			self::_values( $new, $registry, $given );
+			$known = array_count_values( array_column( $known, 0 ) );
+
+			foreach( $given as [ $key, $value, $link ] ) {
+
+				if( ( $known[$key] ?? 0 ) > 0 ) {
+					$known[$key]--;
+					continue;
+				}
+
+				if( str_contains( $value, '[[' ) === true )
+					return 'value';
+
+				if( $link === true && preg_match( '#^(?:(?:javascript|data|vbscript):|[/\\\\]{2})#', strtolower( (string) preg_replace( '/[\x00-\x20]+/', '', $value ) ) ) === 1 )
+					return 'link';
+			}
+
+			$here = self::taken( $old, $registry, [] );
+
+			foreach( self::taken( $new, $registry, [] ) as $id )
+				if( in_array( $id, $here, true ) === false && ( self::isId( $id ) === false || in_array( $id, $taken, true ) === true ) )
+					return 'id';
+
 			return null;
+		}
+
+		/**
+		 *	The pieces of a tree that a person who designs does not write: free markup, a fill, a call that has no schema, and - where the call of html is not for the
+		 *	person - html with what it holds. A piece is the text without its blanks, or the node as it is written. The pieces that follow one another in a container,
+		 *	with nothing but blanks between, are a unit; it is told by the container it stands in - the names of the calls it stands in, from the top of the page down, so that it never gets an ancestor it did not have: no loop, no other kind of container - and what it holds
+		 *
+		 *	@param		array			$nodes
+		 *	@param		array			$registry
+		 *	@param		bool			$develop
+		 *	@param		array			&$pieces			(reference) [ [ the piece as it is compared, whether it is the call of html ], ... ]
+		 *	@param		array			&$units				(reference) The units, each as a string
+		 *	@param		string		$parent				The names of the calls the nodes stand in, from the top down
+		 *
+		 *	@return 	void
+		 */
+		private static function _pieces( array $nodes, array $registry, bool $develop, array &$pieces, array &$units, string $parent = '' ): void {
+
+			$run = [];
+
+			foreach( $nodes as $node ) {
+
+				$piece = null;
+
+				if( isset( $node['n'] ) === true ) {
+
+					if( isset( $registry[$node['n']] ) === true && ( $node['n'] !== 'html' || $develop === true ) ) {
+
+						if( $run !== [] )
+							$units[] = (string) json_encode( [ $parent, $run ] );
+
+						$run = [];
+
+						if( is_array( $node['c'] ?? null ) === true )
+							self::_pieces( $node['c'], $registry, $develop, $pieces, $units, $parent. '/'. $node['n'] );
+
+						continue;
+					}
+
+					$piece = [ (string) json_encode( $node ), $node['n'] === 'html' ];
+				}
+				else if( isset( $node['f'] ) === true )
+					$piece = [ (string) json_encode( $node ), false ];
+				else if( isset( $node['t'] ) === true && trim( (string) $node['t'], " \t\r\n" ) !== '' )
+					$piece = [ (string) json_encode( [ 't' => trim( (string) $node['t'], " \t\r\n" ) ] ), false ];
+
+				if( $piece !== null ) {
+					$pieces[] = $piece;
+					$run[] = $piece[0];
+				}
+			}
+
+			if( $run !== [] )
+				$units[] = (string) json_encode( [ $parent, $run ] );
+		}
+
+		/**
+		 *	What the register has against a tree, as marks that do not depend on the place: the code, what it is about and - for a value that is none of its attribute's
+		 *	and for an attribute that is none - the value, so that the same wrong value is the same mark wherever it stands and a new one is a new mark
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes
+		 *
+		 *	@return 	array											A list of marks, one for each finding
+		 */
+		private static function _marks( array &$appData, array $nodes ): array {
+
+			$marks = [];
+
+			foreach( \Nino\Components::check( $appData, $nodes ) as $position => $found ) {
+
+				$node = self::at( $nodes, (string) $position ) ?? [];
+
+				foreach( $found as $finding ) {
+
+					// What is not in the register - html, a call without a schema, free markup - is the pieces' rule
+					if( in_array( $finding['code'], [ \Nino\Components::CODE_HTML, \Nino\Components::CODE_BARE, \Nino\Components::CODE_FREE, \Nino\Components::CODE_UNKNOWN ], true ) === true )
+						continue;
+
+					$value = in_array( $finding['code'], [ \Nino\Components::CODE_OUTSIDE, \Nino\Components::CODE_FOREIGN ], true ) === true ? (string) json_encode( $node['a'][$finding['detail']] ?? null ) : '';
+					$marks[] = $finding['code']. '|'. $finding['detail']. '|'. $value;
+				}
+			}
+
+			return $marks;
+		}
+
+		/**
+		 *	The values of the attributes of the calls of a tree that have a schema, each with the name of the call and of the attribute - which is what makes it
+		 *	known - and whether the attribute is a link
+		 *
+		 *	@param		array			$nodes
+		 *	@param		array			$registry
+		 *	@param		array			&$out					(reference) [ [ call, attribute and value as one string, value, link ], ... ]
+		 *
+		 *	@return 	void
+		 */
+		private static function _values( array $nodes, array $registry, array &$out ): void {
+
+			foreach( $nodes as $node ) {
+
+				if( isset( $node['n'] ) === false || isset( $registry[$node['n']] ) === false )
+					continue;
+
+				foreach( (array) ( $node['a'] ?? [] ) as $name => $value )
+					if( is_string( $value ) === true )
+						$out[] = [ $node['n']. "\0". $name. "\0". $value, $value, ( $registry[$node['n']]['attributes'][$name]['type'] ?? '' ) === 'link' ];
+
+				if( is_array( $node['c'] ?? null ) === true )
+					self::_values( $node['c'], $registry, $out );
+			}
+		}
+
+		/**
+		 *	The fixed texts of a tree that hold the start of a textfill, by the call they are of: what a text may keep that it had
+		 *
+		 *	@param		array			$nodes
+		 *
+		 *	@return 	array											call and text as one string => how many
+		 */
+		public static function fills( array $nodes ): array {
+
+			$out = [];
+
+			foreach( $nodes as $node ) {
+
+				if( isset( $node['n'] ) === false )
+					continue;
+
+				if( is_string( $node['a']['text'] ?? null ) === true && str_contains( $node['a']['text'], '[[' ) === true ) {
+					$key = $node['n']. "\0". $node['a']['text'];
+					$out[$key] = ( $out[$key] ?? 0 ) + 1;
+				}
+
+				if( is_array( $node['c'] ?? null ) === true )
+					foreach( self::fills( $node['c'] ) as $key => $count )
+						$out[$key] = ( $out[$key] ?? 0 ) + $count;
+			}
+
+			return $out;
 		}
 
 		/**
@@ -573,14 +970,13 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$olds
 		 *	@param		array			$news
 		 *	@param		array			$registry
-		 *	@param		bool			$frame
 		 *	@param		array			$taken
 		 *	@param		array			$offers				See refused()
 		 *	@param		bool			$room					Whether a new block may stand in this run
 		 *
-		 *	@return 	array											[ 'block' ], [ 'frame' ] or [ 'id' ] for what is refused, [] for nothing
+		 *	@return 	array											[ 'block' ] or [ 'id' ] for what is refused, [] for nothing
 		 */
-		private static function _run( array $olds, array $news, array $registry, bool $frame, array $taken, array $offers, bool $room ): array {
+		private static function _run( array $olds, array $news, array $registry, array $taken, array $offers, bool $room ): array {
 
 			// The blocks that are the old ones come first: a copy that stands before its original is not mistaken for it
 			$settled = [];
@@ -614,7 +1010,7 @@ namespace Nino\Modules\Builder {
 
 				if( $pick === null ) {
 
-					if( $frame === true || $room === false || $now === '' || isset( $offers[$now] ) === false )
+					if( $room === false || $now === '' || isset( $offers[$now] ) === false )
 						return [ 'block' ];
 
 					// A block that is put in: the tree of its block, with an id that nobody uses
@@ -626,9 +1022,6 @@ namespace Nino\Modules\Builder {
 
 					continue;
 				}
-
-				if( $frame === true )
-					return [ 'frame' ];
 
 				// The id of a copy is the one the rule makes: the base of the original and the next number, one nobody uses
 				$was = self::_id( $olds[$pick], $registry );

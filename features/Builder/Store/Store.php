@@ -92,9 +92,9 @@ namespace Nino\Modules\Builder {
 		 *	@param		mixed			$copies				slot of a copy => the slot of the original it is made from
 		 *	@param		mixed			$inserted			id of the root of a block that was put in => the key of the block, which \Nino\Blocks is asked for
 		 *
-		 *	@return 	array											'source', 'draft' (the source as a draft draws it), 'tree', 'sources', 'formats', 'texts' (key => language => text as it is kept), 'slots' (the slots of the copies and of the blocks put in, uri => slot), 'files' - or 'failure' => [ status, message, code, params, field ]
+		 *	@return 	array											'source', 'draft' (the source as a draft draws it), 'tree', 'sources', 'formats', 'texts' (key => language => text as it is kept), 'slots' (the slots of the copies and of the blocks put in, uri => slot), 'files', 'findings' (what the register has against the tree, for the screen of a person who designs) - or 'failure' => [ status, message, code, params, field ]
 		 */
-		public static function prepare( array &$appData, string $template, array $state, mixed $tree, mixed $texts, mixed $copies = [], mixed $inserted = [] ): array {
+		public static function prepare( array &$appData, string $template, array $state, mixed $tree, mixed $texts, mixed $copies = [], mixed $inserted = [], int $level = \Nino\Modules\Builder::LEVEL_CONTENT ): array {
 
 			$registry = \Nino\Components::components( $appData );
 			$canonical = \Nino\Modules\Builder\Tree::canonical( $appData, $tree );
@@ -104,7 +104,6 @@ namespace Nino\Modules\Builder {
 
 			[ $source, $nodes ] = $canonical;
 			$old = \Nino\Modules\Builder\Tree::read( $appData, $state['source'] );
-			$frame = self::named( $template )['frame'] ?? false;
 
 			$taken = \Nino\Modules\Builder\Tree::taken( $old, $registry, array_merge( array_keys( $state['texts'] ), array_keys( $state['slots'] ) ) );
 
@@ -126,10 +125,18 @@ namespace Nino\Modules\Builder {
 				$offers[$id] = $block['tree'][0];
 			}
 
-			if( ( $why = \Nino\Modules\Builder\Tree::refused( $old, $nodes, $registry, $frame, $taken, $offers ) ) !== null )
+			$why = $level >= \Nino\Modules\Builder::LEVEL_DESIGN
+				? \Nino\Modules\Builder\Tree::designed( $appData, $old, $nodes, $registry, $taken, $level >= \Nino\Modules\Builder::LEVEL_DEVELOP )
+				: \Nino\Modules\Builder\Tree::refused( $old, $nodes, $registry, $taken, $offers );
+
+			if( $why !== null )
 				return [ 'failure' => [ 403, 'the page may not be changed like that: '. $why, 'builder_refused_'. $why, [], 'tree' ] ];
 
-			$nodes = self::_fixed( $nodes, $registry );
+			$fills = \Nino\Modules\Builder\Tree::fills( $old );
+			$nodes = self::_fixed( $nodes, $registry, $fills );
+
+			if( $nodes === 'fill' )
+				return [ 'failure' => [ 403, 'a fixed text may not hold the start of a fill', 'builder_refused_value', [], 'tree' ] ];
 
 			if( $nodes === null )
 				return [ 'failure' => [ 400, 'a fixed text is not one', 'builder_fixed', [ \Nino\Modules\Builder\Tree::MAX_TEXT ], 'tree' ] ];
@@ -283,7 +290,7 @@ namespace Nino\Modules\Builder {
 
 			$draft = $pictures === [] ? $source : \Nino\Markup::write( \Nino\Modules\Builder\Tree::shown( $nodes, $sources, $pictures ), \Nino\Components::containers( $appData ) );
 
-			return [ 'source' => $source, 'draft' => $draft, 'tree' => $nodes, 'sources' => $sources, 'formats' => $formats, 'texts' => $kept, 'raw' => $raw, 'reads' => array_keys( $reads ), 'images' => array_keys( $images ), 'slots' => $slots, 'shown' => $shown, 'files' => $files, 'registry' => $registry ];
+			return [ 'source' => $source, 'draft' => $draft, 'tree' => $nodes, 'sources' => $sources, 'formats' => $formats, 'texts' => $kept, 'raw' => $raw, 'reads' => array_keys( $reads ), 'images' => array_keys( $images ), 'slots' => $slots, 'shown' => $shown, 'files' => $files, 'registry' => $registry, 'findings' => $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? \Nino\Modules\Builder\Tree::findings( $appData, $nodes ) : [] ];
 		}
 
 		/**
@@ -294,7 +301,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array|null								The nodes; null where a fixed text is none
 		 */
-		private static function _fixed( array $nodes, array $registry ): ?array {
+		private static function _fixed( array $nodes, array $registry, array &$fills ): array|string|null {
 
 			foreach( $nodes as $at => $node ) {
 
@@ -307,10 +314,26 @@ namespace Nino\Modules\Builder {
 
 					if( is_string( $text ) === false || mb_strlen( $text ) > \Nino\Modules\Builder\Tree::MAX_TEXT || preg_match( '/[\x00-\x1F\x7F]/', $text ) === 1 )
 						return null;
+
+					// The start of a textfill is a text of the template that was there, in that call, and no text a person writes
+					if( str_contains( $text, '[[' ) === true ) {
+
+						$key = $node['n']. "\0". $text;
+
+						if( ( $fills[$key] ?? 0 ) < 1 )
+							return 'fill';
+
+						$fills[$key]--;
+					}
 				}
 
-				if( is_array( $node['c'] ?? null ) === true && ( $inner = self::_fixed( $node['c'], $registry ) ) === null )
-					return null;
+				if( is_array( $node['c'] ?? null ) === true ) {
+
+					$inner = self::_fixed( $node['c'], $registry, $fills );
+
+					if( $inner === null || $inner === 'fill' )
+						return $inner;
+				}
 			}
 
 			return $nodes;
@@ -367,8 +390,8 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	bool
 		 */
-		public static function keep( array &$appData, string $template, array $state ): bool {
-			return \Nino\Filesystem::putFileContent( $appData, self::PREVIOUS. '/'. $template. '.php', [ 'saved' => time() ] + $state ) === true;
+		public static function keep( array &$appData, string $template, array $state, int $level = \Nino\Modules\Builder::LEVEL_CONTENT ): bool {
+			return \Nino\Filesystem::putFileContent( $appData, self::PREVIOUS. '/'. $template. '.php', [ 'saved' => time(), 'level' => $level ] + $state ) === true;
 		}
 
 		/**
@@ -591,14 +614,14 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	string|null								null where it was written, else 'keep', 'texts', 'slots', 'template' or 'changed'
 		 */
-		public static function commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats = [], ?string $seen = null, array $files = [] ): ?string {
+		public static function commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats = [], ?string $seen = null, array $files = [], int $level = \Nino\Modules\Builder::LEVEL_CONTENT ): ?string {
 
 			$before = self::_files( $appData, $template );
 			$older = self::previous( $appData, $template );
 			$wrote = [];
 			$made = [];
 
-			if( self::keep( $appData, $template, $state ) === false ) {
+			if( self::keep( $appData, $template, $state, $level ) === false ) {
 				self::_back( $appData, $before, $wrote, $made );
 				return 'keep';
 			}

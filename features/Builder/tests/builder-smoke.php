@@ -202,6 +202,73 @@ function builderAt( array $tree, string $id ): int {
 	return -1;
 }
 
+
+/** The position of the first node a test says yes to, depth first - '2.1.1', the blanks counted - or null */
+function builderFind( array $nodes, callable $test, string $prefix = '' ): ?string {
+
+	foreach( $nodes as $at => $node ) {
+
+		$here = $prefix === '' ? (string) $at : $prefix. '.'. $at;
+
+		if( $test( $node ) === true )
+			return $here;
+
+		if( is_array( $node['c'] ?? null ) === true && ( $found = builderFind( $node['c'], $test, $here ) ) !== null )
+			return $found;
+	}
+
+	return null;
+}
+
+/** A tree with the node at a position changed: $change gets the node and answers the one that takes its place */
+function builderEdit( array $nodes, string $position, callable $change ): array {
+
+	$parts = explode( '.', $position );
+	$index = (int) array_shift( $parts );
+
+	if( $parts === [] )
+		$nodes[$index] = $change( $nodes[$index] );
+	else
+		$nodes[$index]['c'] = builderEdit( $nodes[$index]['c'], implode( '.', $parts ), $change );
+
+	return $nodes;
+}
+
+/** How many lines of a template are not the ones the template was - the lines, as the diff of the file has them */
+function builderChanged( string $before, string $after ): int {
+
+	$one = explode( "\n", $before );
+	$two = explode( "\n", $after );
+
+	return count( $one ) === count( $two ) ? count( array_filter( array_keys( $one ), static fn( int $at ): bool => $one[$at] !== $two[$at] ) ) : PHP_INT_MAX;
+}
+
+/** A tree with the texts that follow one another made one, as the reading of a template has them */
+function builderMerge( array $nodes ): array {
+
+	$out = [];
+
+	foreach( $nodes as $node ) {
+
+		if( is_array( $node['c'] ?? null ) === true )
+			$node['c'] = builderMerge( $node['c'] );
+
+		$last = count( $out ) - 1;
+
+		if( isset( $node['t'] ) === true && $last >= 0 && isset( $out[$last]['t'] ) === true )
+			$out[$last]['t'] .= $node['t'];
+		else
+			$out[] = $node;
+	}
+
+	return $out;
+}
+
+/** An account of the site: it is the one that is signed in afterwards */
+function builderAccount( array &$appData, string $mail, array $perms ): void {
+	ninoUser( $appData, $mail, $perms );
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nA. The feature\n";
 
@@ -216,7 +283,7 @@ check( 'the manifest is the one of a feature that is written for the kernel of N
 check( 'the right is /_admin/builder/manage, and the manual of the feature names the panel', \Nino\Modules\Builder::PERM === '/_admin/builder/manage' && str_contains( $manifest['manual']['panel']['Builder']['en_US'], '/_admin/builder/manage' ) === true );
 
 $words = [ 'de_DE' => require $feature. '/text/de_DE.php', 'en_US' => require $feature. '/text/en_US.php' ];
-$codes = [ 'unknown', 'unreadable', 'tree', 'block', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_frame', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing' ];
+$codes = [ 'unknown', 'unreadable', 'tree', 'block', 'level', 'place', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_html', 'refused_check', 'refused_link', 'refused_value', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing' ];
 
 check( 'every failure code the API answers has its sentence in both interface languages, and the two files have the same keys',
 	array_filter( $codes, static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/builder_'. $code. ']]'], $words['en_US']['[[/_admin/error/builder_'. $code. ']]'] ) === false ) === [] && array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) );
@@ -254,7 +321,7 @@ $site['/nino/html/images']['/template/page-home/hero/background'] = [ 'label' =>
 \Nino\Images::restore( $site, 'template/page-home/hero/background.svg', '<svg xmlns="http://www.w3.org/2000/svg"><!-- the original --></svg>' );
 \Nino\Filesystem::putFileContent( $site, '/config.php', [ '/nino/html/images' => $site['/nino/html/images'] ] );
 
-ninoUser( $site, 'builder@example.com' );
+ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nB. The pages\n";
@@ -502,27 +569,16 @@ check( 'the id of a copy is the rule\'s: an id with quotes, one of capitals, a n
 check( 'and a copy that is made by the rule - start-9 for start - is taken', builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => Tree::strip( $ids( 'start-9' ) ), 'texts' => [], 'base' => $open['stamp'] ] )[0] === 200 );
 
 \Nino\Filesystem::putFileContent( $site, '/templates/frame-header.tpl', "[header-wrap id=\"header\"]\n\t[header-logo]\n[/header-wrap]\n" );
-[ , $frame ] = builderCall( $site, 'builder/open', [ 'template' => 'frame-header' ] );
-$renamed = $frame['tree'];
-$renamed[0]['a']['id'] = 'header-2';
-$doubled = $frame['tree'];
-array_splice( $doubled, 1, 0, [ [ 't' => "\n" ], $frame['tree'][0] ] );
+\Nino\Filesystem::putFileContent( $site, '/templates/frame-footer.tpl', "[footer-wrap id=\"footer\"]\n[/footer-wrap]\n" );
 $snapshot = builderSnapshot( $site );
+$answers = [];
 
-$none = [ [ 't' => "\n" ] ];
-$two = Tree::read( $site, "[header-wrap id=\"header\"]\n[/header-wrap]\n[footer-wrap id=\"foot\"]\n[/footer-wrap]\n" );
-\Nino\Filesystem::putFileContent( $site, '/templates/frame-footer.tpl', "[header-wrap id=\"header\"]\n[/header-wrap]\n[footer-wrap id=\"foot\"]\n[/footer-wrap]\n" );
-[ , $two ] = builderCall( $site, 'builder/open', [ 'template' => 'frame-footer' ] );
-$swap = array_values( array_filter( $two['tree'], static fn( array $node ): bool => isset( $node['n'] ) === true ) );
-$order = $two['tree'];
-[ $order[0], $order[2] ] = [ $two['tree'][2], $two['tree'][0] ];
-$fewer = array_slice( $two['tree'], 0, 2 );
-$snapshot = builderSnapshot( $site );
-$answers = [ builderCall( $site, 'builder/save', [ 'template' => 'frame-header', 'tree' => $none, 'texts' => [], 'base' => $frame['stamp'], 'force' => true ] )[0], builderCall( $site, 'builder/save', [ 'template' => 'frame-footer', 'tree' => Tree::strip( $order ), 'texts' => [], 'base' => $two['stamp'], 'force' => true ] )[0], builderCall( $site, 'builder/save', [ 'template' => 'frame-footer', 'tree' => Tree::strip( $fewer ), 'texts' => [], 'base' => $two['stamp'], 'force' => true ] )[0] ];
+foreach( [ 'builder/open', 'builder/preview', 'builder/save', 'builder/restore', 'builder/tile' ] as $action )
+	foreach( [ 'frame-header', 'frame-footer' ] as $frameName )
+		$answers[] = builderCall( $site, $action, [ 'template' => $frameName, 'tree' => [ [ 't' => "\n" ] ], 'texts' => [], 'base' => 'x', 'force' => true, 'key' => 'hero-full' ] )[0];
 
-check( 'a frame keeps its blocks: none, one fewer or in another order is refused, and nothing is written', $answers === [ 403, 403, 403 ] && count( $swap ) === 2 && builderSnapshot( $site ) === $snapshot );
-
-check( 'a frame keeps its id and its blocks: a new id and a copy are refused, and nothing is written', builderCall( $site, 'builder/save', [ 'template' => 'frame-header', 'tree' => Tree::strip( $renamed ), 'texts' => [], 'base' => $frame['stamp'], 'force' => true ] )[0] === 403 && builderCall( $site, 'builder/save', [ 'template' => 'frame-header', 'tree' => Tree::strip( $doubled ), 'texts' => [], 'base' => $frame['stamp'], 'force' => true ] )[0] === 403 && builderSnapshot( $site ) === $snapshot );
+check( 'a frame is for the design: the list does not tell of it to an account that may change the content, and every action that names it - open, preview, save, restore, tile - is a 403 for that account, with nothing written',
+	builderCall( $site, 'builder/list' )[1]['frames'] === [] && array_unique( $answers ) === [ 403 ] && builderSnapshot( $site ) === $snapshot );
 
 // what holds free markup is not moved, copied or taken out in this version: the form of the contact page stays
 [ , $contact ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
@@ -1003,7 +1059,7 @@ $tries['words in the namespace of another page'] = [ $foreign, 403, 'key' ];
 $slotsOf = $send( $good, [ 'slots' => [ '/template/page-contact/'. $good['id']. '/background' => '/template/page-home/hero/background' ] ] );
 $tries['a picture slot in the namespace of another page'] = [ $slotsOf, 403, 'key' ];
 
-[ $frameStatus, $frameOpen ] = builderCall( $site, 'builder/open', [ 'template' => 'frame-footer' ] );
+[ $frameStatus ] = builderCall( $site, 'builder/open', [ 'template' => 'frame-footer' ] );
 $snapshot = builderSnapshot( $site );
 $answers = [];
 
@@ -1027,13 +1083,12 @@ check( 'a new block that stands before an old block of its shape is the new one 
 $snapshot = builderSnapshot( $site );
 
 // in a frame no block is put in, and a frame is a page that has none to give
-$frameTree = $frameOpen['tree'];
-$frameBlock = builderInsert( $site, [ 'tree' => $frameTree, 'texts' => [], 'slots' => [] ], 'hero-full', 0, 'hero' );
-[ $status ] = builderCall( $site, 'builder/save', [ 'template' => 'frame-footer', 'tree' => $frameBlock['tree'], 'texts' => $frameBlock['texts'], 'inserted' => $frameBlock['inserted'], 'base' => $frameOpen['stamp'], 'force' => true ] );
+$frameBlock = builderInsert( $site, [ 'tree' => Tree::read( $site, "[footer-wrap id=\"footer\"]\n[/footer-wrap]\n" ), 'texts' => [], 'slots' => [] ], 'hero-full', 0, 'hero' );
+[ $status ] = builderCall( $site, 'builder/save', [ 'template' => 'frame-footer', 'tree' => $frameBlock['tree'], 'texts' => $frameBlock['texts'], 'inserted' => $frameBlock['inserted'], 'base' => 'x', 'force' => true ] );
 
 [ $frameKey ] = builderCall( $site, 'builder/block', [ 'key' => 'header-line' ] );
 
-check( 'a frame takes no block, whatever the request says of it, and the block of a frame is none that is put in anywhere', $frameStatus === 200 && $frameKey === 404 && $status === 403 && builderSnapshot( $site ) === $snapshot );
+check( 'a frame takes no block from an account that may change the content, whatever the request says of it, and the block of a frame is none that is put in anywhere', $frameStatus === 403 && $frameKey === 404 && $status === 403 && builderSnapshot( $site ) === $snapshot );
 
 // a word that no call of the page reads is not kept, and one block that is put in leaves the others as they are
 \Nino\Text::put( $site, [], [ '/template/page-home/hero-5/title' ] );
@@ -1068,8 +1123,8 @@ for( $count = 0; $count < \Nino\Modules\Builder\Library::TILES + 4; $count++ )
 [ $nothing ] = builderCall( $site, 'builder/tile', [ 'template' => 'page-home', 'key' => 'no-such-block' ] );
 [ $aFrame ] = builderCall( $site, 'builder/tile', [ 'template' => 'frame-footer', 'key' => 'hero-full' ] );
 
-check( 'a session holds at most the number of tiles the kernel is told, whatever was asked, and a block that is not offered or a frame has no tile',
-	count( glob( $mine. '/*', GLOB_ONLYDIR ) ?: [] ) === \Nino\Modules\Builder\Library::TILES && $nothing === 404 && $aFrame === 404 );
+check( 'a session holds at most the number of tiles the kernel is told, whatever was asked, and a block that is not offered has no tile',
+	count( glob( $mine. '/*', GLOB_ONLYDIR ) ?: [] ) === \Nino\Modules\Builder\Library::TILES && $nothing === 404 && $aFrame === 403 );
 
 ninoUser( $site, 'other@example.com', [ '/_admin/builder/manage' ] );
 $others = $draw( $site, $tile['query'] );
@@ -1149,7 +1204,477 @@ $said = \Nino\Modules\Builder\Library::hint( $site, $band, true );
 check( 'a block that names a variant the active mix has not got says which one it appears as, and with the Themes off it says nothing', $band !== [] && $said === [ 'variant' => 'band', 'standard' => 'soft' ] && \Nino\Modules\Builder\Library::hint( $site, $band, false ) === null && array_key_exists( 'hint', $entries['has-band'] ) === true && $entries['has-band']['hint'] === null );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
-echo "\nI. What is measured\n";
+echo "\nI. The extended view\n";
+
+// the steps: what the account holds is the step it works in - the door alone may design, and what is described in detail holds only that
+$steps = [];
+
+foreach( [ 'door' => [ [ '/_admin/builder/manage' ], 2 ], 'content' => [ [ '/_admin/builder/manage', '/_admin/builder/content/*' ], 1 ], 'design' => [ [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 2 ],
+	'develop' => [ [ '/_admin/builder/manage', '/_admin/builder/develop/*' ], 3 ], 'blanket' => [ [ '/*' ], 3 ], 'other' => [ [ '/_admin/builder/manage', '/_admin/builder/content/edit', '/_admin/builder/zzz/edit' ], 1 ],
+	'none' => [ [ '/_admin/builder/manage', '/_admin/builder/zzz/edit' ], 0 ] ] as $name => [ $perms, $step ] ) {
+
+	builderAccount( $site, $name. '-steps@example.com', $perms );
+	$steps[$name] = \Nino\Modules\Builder::level( $site ) === $step;
+}
+
+$scopes = \Nino\Modules\Builder\Admin::scopes( $site )[0];
+
+check( 'the three steps are told from what an account holds: the door alone and the permission of the design may design, the content is a step of its own and the development holds the rest; a described account that holds none of them does nothing, and the roles tab offers the three',
+	array_filter( $steps, static fn( bool $ok ): bool => $ok === false ) === [] && array_column( $scopes['areas'], 'perm' ) === [ '/_admin/builder/content/*', '/_admin/builder/design/*', '/_admin/builder/develop/*' ] && $scopes['door'] === \Nino\Modules\Builder::PERM );
+
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-contact.tpl' ) );
+\Nino\Filesystem::putFileContent( $site, '/templates/frame-header.tpl', "[header-wrap id=\"header\" sticky]\n\t[header-logo]\n\t[header-nav menu=\"main\"]\n[/header-wrap]\n" );
+builderAccount( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$registry = \Nino\Components::components( $site );
+$column = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-col' && ( $node['a']['id'] ?? '' ) === 'start-1' ) ?? '';
+$source = (string) file_get_contents( builderFile( $site, 'page-home' ) );
+
+check( 'what the designer is told of the page: the schema of each component - its attributes with their types and options, its variants - what the register has against it, and the pages a link can name',
+	isset( $open['schemas']['section-col']['attributes']['size'] ) === true && $open['schemas']['section-col']['attributes']['size']['responsive'] === true && $open['schemas']['section-col']['container'] === true && $open['schemas']['button']['source'] === 'text'
+	&& is_array( $open['findings'] ) === true && in_array( 'card', $open['schemas']['section-col']['variants'], true ) === true && $open['level'] === 2 && is_array( $open['links'] ) === true );
+
+// a change of an attribute is one line of the template, and a page that is opened and saved is written nowhere
+$wide = builderEdit( $tree, $column, static function( array $node ): array {
+	$node['a']['size'] = '100 m:50';
+	return $node;
+} );
+[ $status, $saved ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $wide, 'texts' => [], 'base' => $open['stamp'] ] );
+$after = (string) file_get_contents( builderFile( $site, 'page-home' ) );
+
+check( 'a designer changes an attribute: it is one line of the template, the others stay to the byte, and the answer carries what the register has against the page now',
+	$status === 200 && builderChanged( $source, $after ) === 1 && str_contains( $after, 'size="100 m:50"' ) === true && isset( $saved['findings'] ) === true );
+
+// what stands wrong is kept, and what is new is not
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$wrong = builderEdit( $tree, $column, static function( array $node ): array {
+	$node['a']['size'] = '777';
+	return $node;
+} );
+$before = builderSnapshot( $site );
+[ $new ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $wrong, 'texts' => [], 'base' => $open['stamp'], 'force' => true ] );
+$foreign = builderEdit( $tree, $column, static function( array $node ): array {
+	$node['a']['nonsense'] = 'x';
+	return $node;
+} );
+$variant = builderEdit( $tree, $column, static function( array $node ): array {
+	$node['a']['variant'] = 'nothing-like-it';
+	return $node;
+} );
+$answers = [ $new, builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $foreign, 'texts' => [], 'base' => $open['stamp'], 'force' => true ] )[0], builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $variant, 'texts' => [], 'base' => $open['stamp'], 'force' => true ] )[0] ];
+
+check( 'a value the register has something against - one the attribute does not take, an attribute it does not have, a variant nobody knows - is refused, and nothing is written', $answers === [ 403, 403, 403 ] && builderSnapshot( $site ) === $before );
+
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', str_replace( 'id="start-3" size="100 m:33"', 'id="start-3" size="777"', $after ) );
+[ , $stood ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$moved = $stood['tree'];
+$start3 = builderFind( $moved, static fn( array $node ): bool => ( $node['a']['id'] ?? '' ) === 'start-3' ) ?? '';
+$moved = builderEdit( $moved, $start3, static function( array $node ): array {
+	$node['a']['pad'] = '2';
+	return $node;
+} );
+[ $status ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $moved, 'texts' => [], 'base' => $stood['stamp'] ] );
+
+check( 'a value that stood wrong in the template stays where it is while the component is changed in another way: the rule is about what is new', $status === 200 && str_contains( (string) file_get_contents( builderFile( $site, 'page-home' ) ), 'size="777" ' ) === true );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $source );
+
+// what a person who may change the content cannot do - a changed attribute, a new component - is a 403 for them, and nothing is written
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$spacer = [ 'n' => 'spacer', 's' => '', 'a' => [], 'c' => null ];
+$withSpacer = builderEdit( $tree, $column, static function( array $node ) use ( $spacer ): array {
+	array_splice( $node['c'], count( $node['c'] ) - 1, 0, [ [ 't' => "\n\t\t\t" ], $spacer ] );
+	return $node;
+} );
+$changed = builderEdit( $tree, $column, static function( array $node ): array {
+	$node['a']['size'] = '100';
+	return $node;
+} );
+builderAccount( $site, 'content-only@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+$before = builderSnapshot( $site );
+$answers = [];
+
+foreach( [ 'a changed attribute' => $changed, 'a new component' => $withSpacer ] as $label => $draft )
+	foreach( [ 'builder/save', 'builder/preview' ] as $action )
+		$answers[$label. $action] = builderCall( $site, $action, [ 'template' => 'page-home', 'tree' => $draft, 'texts' => [], 'base' => $open['stamp'], 'force' => true ] )[0];
+
+foreach( [ 'builder/offer', 'builder/notation' ] as $action )
+	$answers[$action] = builderCall( $site, $action, [ 'template' => 'page-home', 'tree' => $tree, 'at' => $column, 'look' => [ 'block' => '3' ] ] )[0];
+
+check( 'an account that may change the content has no part of the design: a changed attribute and a new component are refused as a draft and as a save - 403 - the two actions of the extended view are shut to it, and nothing is written',
+	array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 6 && builderSnapshot( $site ) === $before );
+
+// the place for a component: what the register offers there and nothing else, the call of html for the one who develops, and the blanks of the depth
+builderAccount( $site, 'designer2@example.com', [ '/_admin/builder/manage' ] );
+[ $status, $offer ] = builderCall( $site, 'builder/offer', [ 'template' => 'page-home', 'tree' => $tree, 'at' => $column ] );
+$route = Tree::route( $tree, $column ) ?? [];
+$register = \Nino\Components::offer( $site, $route, Tree::at( $tree, $column )['c'] );
+unset( $register['html'] );
+$names = array_column( array_filter( $offer['offers'] ?? [], static fn( array $entry ): bool => $entry['ok'] === true ), 'name' );
+$row = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-row' ) ?? '';
+[ , $rowOffer ] = builderCall( $site, 'builder/offer', [ 'template' => 'page-home', 'tree' => $tree, 'at' => $row ] );
+[ $nowhere ] = builderCall( $site, 'builder/offer', [ 'template' => 'page-home', 'tree' => $tree, 'at' => builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-title' ) ] );
+builderAccount( $site, 'developer@example.com', [ '/*' ] );
+[ , $withHtml ] = builderCall( $site, 'builder/offer', [ 'template' => 'page-home', 'tree' => $tree, 'at' => $column ] );
+
+check( 'a place offers what the register says for it, and the call of html only to the one who develops: the column offers the components of the flow - none of them a row or a column -, what the register would not have there is grey with its reason, a call that holds nothing offers nothing, and the blanks are those of the depth',
+	$status === 200 && $names === array_keys( array_filter( $register, static fn( mixed $answer ): bool => $answer === true ) ) && in_array( 'section-col', $names, true ) === false && in_array( 'section-row', $names, true ) === false
+	&& array_column( $rowOffer['offers'], 'name' ) === array_keys( \Nino\Components::offer( $site, Tree::route( $tree, $row ) ?? [], Tree::at( $tree, $row )['c'] ) ) && $nowhere === 400
+	&& in_array( 'html', array_column( $offer['offers'], 'name' ), true ) === false && in_array( 'html', array_column( $withHtml['offers'], 'name' ), true ) === true && $offer['blank'] === "\n". str_repeat( "\t", count( $route ) ) );
+
+// a new component goes in as the panel puts it, laid out like its neighbours, and is the one line of the diff - the words it reads are its own
+builderAccount( $site, 'designer3@example.com', [ '/_admin/builder/manage' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$source = (string) file_get_contents( builderFile( $site, 'page-home' ) );
+$button = array_values( array_filter( $offer['offers'], static fn( array $entry ): bool => $entry['name'] === 'button' ) )[0];
+$put = builderEdit( $tree, $column, static function( array $node ) use ( $button, $offer ): array {
+
+	$last = 0;
+
+	foreach( $node['c'] as $at => $inner )
+		if( isset( $inner['n'] ) === true )
+			$last = $at;
+
+	$button['node']['s'] = '~button';
+	array_splice( $node['c'], $last + 1, 0, [ [ 't' => $offer['blank'] ], $button['node'] ] );
+
+	return $node;
+} );
+[ $status ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $put, 'texts' => [ '/template/page-home/start-1/button' => [ 'de_DE' => 'Mehr' ] ], 'base' => $open['stamp'] ] );
+$after = (string) file_get_contents( builderFile( $site, 'page-home' ) );
+
+check( 'a component that is put in is a line of its own at the depth of its neighbours, the words it reads are saved under its place, and the rest of the template is as it was',
+	$status === 200 && str_contains( $after, "\t\t\t[button ~button]\n" ) === true && count( explode( "\n", $after ) ) === count( explode( "\n", $source ) ) + 1 && builderWords( $site, '/template/page-home/start-1/button' )['de_DE'] === 'Mehr' );
+
+// the place and the pieces: a designer does not write html, a call without a schema or free markup, and does not change them - and may move and take them out
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+$tree = $open['tree'];
+$cell = builderFind( $tree, static fn( array $node ): bool => ( $node['a']['size'] ?? '' ) === '100 m:50' ) ?? '';
+$html = [ 'n' => 'html', 's' => '', 'a' => [], 'c' => [] ];
+$call = [ 'n' => 'template', 's' => '/templates/mail', 'a' => [], 'c' => null ];
+$tries = [
+	'a call of html' => builderEdit( $tree, $cell, static function( array $node ) use ( $html ): array { $node['c'][] = $html; return $node; } ),
+	'free markup' => builderEdit( $tree, $cell, static function( array $node ): array { $node['c'][count( $node['c'] ) - 1]['t'] .= '<script>alert(1)</script>'; return $node; } ),
+	'a call without a schema' => builderEdit( $tree, $cell, static function( array $node ) use ( $call ): array { $node['c'][] = $call; return $node; } ),
+];
+$form = builderFind( $tree, static fn( array $node ): bool => isset( $node['t'] ) === true && str_contains( $node['t'], '<form' ) ) ?? '';
+$tries['the form of the page changed'] = builderEdit( $tree, substr( $form, 0, (int) strrpos( $form, '.' ) ), static function( array $node ): array {
+
+	foreach( $node['c'] as $at => $inner )
+		if( isset( $inner['t'] ) === true && str_contains( $inner['t'], '<form' ) === true )
+			$node['c'][$at]['t'] = str_replace( 'class="nino-form"', 'class="nino-form" onmouseover="alert(1)"', $inner['t'] );
+
+	return $node;
+} );
+$before = builderSnapshot( $site );
+$answers = [];
+
+foreach( $tries as $label => $draft )
+	foreach( [ 'builder/save', 'builder/preview' ] as $action ) {
+
+		[ $status, $body ] = builderCall( $site, $action, [ 'template' => 'page-contact', 'tree' => $draft, 'texts' => [], 'base' => $open['stamp'], 'force' => true ] );
+		$answers[$label. $action] = $status === 403 && ( $body['code'] ?? '' ) === ( $label === 'a call of html' ? 'builder_refused_html' : 'builder_refused_free' );
+	}
+
+check( 'a designer writes no html and no free markup, no call without a schema and no change of the form of a page - as a draft and as a save each is a 403, and nothing is written - and the draft is the one the save would take',
+	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && count( $answers ) === 8 && builderSnapshot( $site ) === $before );
+
+$columns = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-row' && ( $node['a']['gap'] ?? '' ) === '3' ) ?? '';
+$swap = builderEdit( $tree, $columns, static function( array $node ): array {
+
+	$calls = array_keys( array_filter( $node['c'], static fn( array $inner ): bool => isset( $inner['n'] ) === true ) );
+	[ $node['c'][$calls[0]], $node['c'][$calls[1]] ] = [ $node['c'][$calls[1]], $node['c'][$calls[0]] ];
+
+	return $node;
+} );
+$gone = builderEdit( $tree, $columns, static function( array $node ): array {
+
+	$calls = array_keys( array_filter( $node['c'], static fn( array $inner ): bool => isset( $inner['n'] ) === true ) );
+	array_splice( $node['c'], $calls[1] - 1, 2 );
+
+	return $node;
+} );
+$answers = [ builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => $swap, 'texts' => [], 'base' => $open['stamp'] ] ) ];
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+$answers[] = builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => $gone, 'texts' => [], 'base' => $open['stamp'] ] );
+$left = (string) file_get_contents( builderFile( $site, 'page-contact' ) );
+
+check( 'what is free stays what it is and is moved and taken out like the rest: the column with the form goes in front of the other, and then it is the one that is taken out - the form to the byte where it stays',
+	$answers[0][0] === 200 && $answers[1][0] === 200 && str_contains( $left, '<form' ) === false && str_contains( (string) file_get_contents( __DIR__. '/fixtures/pages/page-contact.tpl' ), '<form' ) === true );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-contact.tpl' ) );
+
+// what a person writes into a value: an address that runs a script or leaves the site, a fill of a text, an id that is none or is used
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$title = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-title' && ( $node['a']['href'] ?? '' ) !== '' ) ?? '';
+$set = static fn( string $position, string $name, string $value ): array => builderEdit( $tree, $position, static function( array $node ) use ( $name, $value ): array {
+	$node['a'][$name] = $value;
+	return $node;
+} );
+$tries = [
+	'an address with a script' => $set( $title, 'href', ' JavaScript:alert(1)' ),
+	'a data address' => $set( $title, 'href', 'data:text/html,x' ),
+	'an address that leaves the site' => $set( $title, 'href', '//evil.example/x' ),
+	'a fill in a value' => $set( builderFind( $tree, static fn( array $node ): bool => ( $node['a']['id'] ?? '' ) === 'start' ) ?? '', 'image', '[[/project/company/general/name]]' ),
+	'an id that is none' => $set( $column, 'id', 'Not An Id' ),
+	'an id the page has' => $set( $column, 'id', 'start-2' ),
+	'an id that has words' => $set( $column, 'id', 'start-9' ),
+];
+\Nino\Text::put( $site, [ '/template/page-home/start-9/title' => [ 'de_DE' => 'Alt' ] ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$before = builderSnapshot( $site );
+$answers = [];
+
+foreach( $tries as $label => $draft )
+	$answers[$label] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => Tree::strip( $draft ), 'texts' => [], 'base' => $open['stamp'], 'force' => true ] )[0];
+
+check( 'an address that runs a script - in any case, with blanks in front - or that leaves the site, the fill of a text in a value, an id that is none, an id the page has and one that has words are each refused, and nothing is written',
+	array_unique( array_values( $answers ) ) === [ 403 ] && builderSnapshot( $site ) === $before );
+$link = $set( $title, 'href', 'page:/contact' );
+
+check( 'and a page of the site is a link that is taken', builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $link, 'texts' => [], 'base' => $open['stamp'] ] )[0] === 200 );
+
+// the one who develops: the call of html is allowed - empty - and what it holds, and free markup, are not
+builderAccount( $site, 'developer2@example.com', [ '/*' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$withHtml = builderEdit( $tree, $column, static function( array $node ) use ( $html ): array {
+	$node['c'][] = [ 'n' => 'html', 's' => '', 'a' => [], 'c' => [] ];
+	return $node;
+} );
+$loaded = builderEdit( $tree, $column, static function( array $node ): array {
+	$node['c'][count( $node['c'] ) - 1]['t'] .= '<i>free</i>';
+	return $node;
+} );
+$before = builderSnapshot( $site );
+$status = [ builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $loaded, 'texts' => [], 'base' => $open['stamp'] ] )[0] ];
+$same = builderSnapshot( $site ) === $before;
+$status[] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $withHtml, 'texts' => [], 'base' => $open['stamp'] ] )[0];
+
+check( 'the one who develops may put in the call of html, and not free markup: that is not written in this version by anybody', $status === [ 403, 200 ] && $same === true && str_contains( (string) file_get_contents( builderFile( $site, 'page-home' ) ), '[html]' ) === true );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $source );
+
+// the frames: the designer reads and writes them, as every template, by the same rule - and the state before is kept
+builderAccount( $site, 'designer4@example.com', [ '/_admin/builder/manage' ] );
+[ $status, $frame ] = builderCall( $site, 'builder/open', [ 'template' => 'frame-header', 'page' => 'contact' ] );
+$sticky = builderEdit( $frame['tree'], '0', static function( array $node ): array {
+	unset( $node['a']['sticky'] );
+	return $node;
+} );
+$list = builderCall( $site, 'builder/list' )[1];
+[ $saved ] = builderCall( $site, 'builder/save', [ 'template' => 'frame-header', 'tree' => $sticky, 'texts' => [], 'base' => $frame['stamp'] ] );
+
+check( 'a frame is open to the designer: the list names it, it opens on the page it is asked for, and an attribute of it is saved as one of a page - one line, the state before kept',
+	$status === 200 && array_column( $list['frames'], 'template' ) === [ 'frame-header', 'frame-footer' ] && $frame['address'] === '/contact' && $saved === 200 && builderChanged( "[header-wrap id=\"header\" sticky]\n\t[header-logo]\n\t[header-nav menu=\"main\"]\n[/header-wrap]\n", (string) file_get_contents( builderFile( $site, 'frame-header' ) ) ) === 1
+	&& Store::previous( $site, 'frame-header' ) !== null );
+
+// a value that was there is the value of the same attribute of a call of the same name, and no other: a script address does not come in through a text
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $source );
+builderAccount( $site, 'designer5@example.com', [ '/_admin/builder/manage' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$title = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-title' && ( $node['a']['href'] ?? '' ) !== '' ) ?? '';
+$with = static fn( array $from, string $name, string $value ): array => builderEdit( $from, $title, static function( array $node ) use ( $name, $value ): array {
+	$node['a'][$name] = $value;
+	return $node;
+} );
+[ $first ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $with( $tree, 'text', 'javascript:alert(1)' ), 'texts' => [], 'base' => $open['stamp'] ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$before = builderSnapshot( $site );
+[ $second, $why ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $with( $open['tree'], 'href', 'javascript:alert(1)' ), 'texts' => [], 'base' => $open['stamp'] ] );
+[ $filled ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $with( $open['tree'], 'text', '[[/template/common/form/name]]' ), 'texts' => [], 'base' => $open['stamp'] ] );
+$still = builderSnapshot( $site ) === $before;
+builderAccount( $site, 'content-only2@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+$before = builderSnapshot( $site );
+[ $byContent, $whyContent ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $with( $open['tree'], 'text', '[[/template/common/form/name]]' ), 'texts' => [], 'base' => $open['stamp'] ] );
+
+check( 'a script address or a fill is no value that was there because another attribute held it: a text that holds a script address is taken, the same word in the link is refused - and a fill in a fixed text is refused for the content too, and nothing is written',
+	$first === 200 && $second === 403 && $why['code'] === 'builder_refused_link' && $filled === 403 && $byContent === 403 && $whyContent['code'] === 'builder_refused_value' && $still === true && builderSnapshot( $site ) === $before );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $source );
+
+// the pieces that follow one another are one unit: it is not split, not put in another container, not made twice - and it is moved and taken out whole
+builderAccount( $site, 'designer6@example.com', [ '/_admin/builder/manage' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+$tree = $open['tree'];
+$cell = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-col' && str_contains( json_encode( $node['c'] ), '<form' ) ) ?? '';
+$other = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-col' && str_contains( json_encode( $node['c'] ), 'button-group' ) ) ?? '';
+$guard = static function( array $node ): int {
+
+	foreach( $node['c'] as $at => $inner )
+		if( ( $inner['n'] ?? '' ) === 'csrf' )
+			return $at;
+
+	return -1;
+};
+$csrf = $guard( Tree::at( $tree, $cell ) ?? [ 'c' => [] ] );
+$call = Tree::at( $tree, $cell )['c'][$csrf] ?? [];
+$tries = [
+	'a call between the pieces' => builderEdit( $tree, $cell, static function( array $node ) use ( $csrf ): array {
+		array_splice( $node['c'], $csrf, 0, [ [ 'n' => 'spacer', 's' => '', 'a' => [], 'c' => null ] ] );
+		return $node;
+	} ),
+	'the call of the form in another column' => builderEdit( builderEdit( $tree, $cell, static function( array $node ) use ( $csrf ): array {
+		array_splice( $node['c'], $csrf, 1 );
+		return $node;
+	} ), $other, static function( array $node ) use ( $call ): array {
+		array_splice( $node['c'], count( $node['c'] ) - 1, 0, [ $call ] );
+		return $node;
+	} ),
+	'the call of the form in a group of buttons' => builderEdit( builderEdit( $tree, $cell, static function( array $node ) use ( $csrf ): array {
+		array_splice( $node['c'], $csrf, 1 );
+		return $node;
+	} ), $other. '.'. (string) ( builderFind( Tree::at( $tree, $other )['c'], static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'button-group' ) ?? '0' ), static function( array $node ) use ( $call ): array {
+		array_splice( $node['c'], count( $node['c'] ) - 1, 0, [ $call ] );
+		return $node;
+	} ),
+];
+$before = builderSnapshot( $site );
+$answers = [];
+
+foreach( $tries as $label => $draft ) {
+
+	[ $status, $body ] = builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => Tree::strip( builderMerge( $draft ) ), 'texts' => [], 'base' => $open['stamp'], 'force' => true ] );
+	$answers[$label] = $status === 403 && in_array( $body['code'] ?? '', [ 'builder_refused_unit', 'builder_refused_free' ], true ) === true && ( $label !== 'a call between the pieces' || $body['code'] === 'builder_refused_unit' );
+}
+
+check( 'the pieces that follow one another are one unit - a call put between them, the call of the form in another column or in a group of buttons is a 403 for what is refused and nothing is written',
+	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && $csrf > 0 && builderSnapshot( $site ) === $before );
+
+// the last state is held to the rule of the account as a save is: the pieces a developer took out are not brought back by a designer
+builderAccount( $site, 'developer3@example.com', [ '/*' ] );
+$gone = builderEdit( $tree, $columns = ( builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-row' && ( $node['a']['gap'] ?? '' ) === '3' ) ?? '' ), static function( array $node ): array {
+
+	$calls = array_keys( array_filter( $node['c'], static fn( array $inner ): bool => isset( $inner['n'] ) === true ) );
+	array_splice( $node['c'], $calls[1] - 1, 2 );
+
+	return $node;
+} );
+[ $took ] = builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => $gone, 'texts' => [], 'base' => $open['stamp'] ] );
+[ , $now ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+$cut = (string) file_get_contents( builderFile( $site, 'page-contact' ) );
+builderAccount( $site, 'designer7@example.com', [ '/_admin/builder/manage' ] );
+[ $refused, $reason ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-contact', 'base' => $now['stamp'] ] );
+$kept = (string) file_get_contents( builderFile( $site, 'page-contact' ) ) === $cut;
+builderAccount( $site, 'developer4@example.com', [ '/*' ] );
+[ $given ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-contact', 'base' => $now['stamp'] ] );
+
+check( 'the last state brings back what the account may write and no more: the form that a developer took out is not brought back by a designer - a 403 that says it takes the right to develop, nothing written - and is by the developer',
+	$took === 200 && str_contains( $cut, '<form' ) === false && $refused === 403 && $reason['code'] === 'builder_restore_develop' && $kept === true && $given === 200 && str_contains( (string) file_get_contents( builderFile( $site, 'page-contact' ) ), '<form' ) === true );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-contact.tpl' ) );
+
+// the last state of a save is that save taken back for the step that wrote it and the ones above: a designer gets their own deletion of the form back, and what a
+// developer saved is held to the rule of the designer
+builderAccount( $site, 'designer8@example.com', [ '/_admin/builder/manage' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+$whole = (string) file_get_contents( builderFile( $site, 'page-contact' ) );
+$tree = $open['tree'];
+$row = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-row' && ( $node['a']['gap'] ?? '' ) === '3' ) ?? '';
+$without = builderEdit( $tree, $row, static function( array $node ): array {
+
+	$calls = array_keys( array_filter( $node['c'], static fn( array $inner ): bool => isset( $inner['n'] ) === true ) );
+	array_splice( $node['c'], $calls[1] - 1, 2 );
+
+	return $node;
+} );
+[ $deleted ] = builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => $without, 'texts' => [], 'base' => $open['stamp'] ] );
+[ , $now ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+[ $back ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-contact', 'base' => $now['stamp'] ] );
+$asWas = (string) file_get_contents( builderFile( $site, 'page-contact' ) ) === $whole;
+builderAccount( $site, 'developer5@example.com', [ '/*' ] );
+[ , $now ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+[ $again ] = builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => $without, 'texts' => [], 'base' => $now['stamp'] ] );
+builderAccount( $site, 'designer9@example.com', [ '/_admin/builder/manage' ] );
+[ , $now ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+[ $higher ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-contact', 'base' => $now['stamp'] ] );
+
+check( 'a designer takes back their own deletion of the form with the last state - the file is as it was - and a last state that a developer kept is held to the rule of the designer: 403',
+	$deleted === 200 && $back === 200 && $asWas === true && $again === 200 && $higher === 403 );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', $whole );
+
+// a unit keeps the way of its ancestors: the column of the form in a group of buttons - what a loop would be - is a 403, two columns of one name may swap it
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
+$tree = $open['tree'];
+$wrapped = builderEdit( $tree, $row, static function( array $node ): array {
+
+	$calls = array_keys( array_filter( $node['c'], static fn( array $inner ): bool => isset( $inner['n'] ) === true ) );
+	$node['c'][$calls[1]] = [ 'n' => 'button-group', 's' => '', 'a' => [], 'c' => [ [ 't' => "\n\t\t\t" ], $node['c'][$calls[1]], [ 't' => "\n\t\t" ] ] ];
+
+	return $node;
+} );
+[ $loop, $why ] = builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => $wrapped, 'texts' => [], 'base' => $open['stamp'] ] );
+
+check( 'the way of a unit is the names of all the calls it stands in: put into a call it was not in - a group of buttons here, a loop in a site that has one - it is refused as a unit and nothing is written', $loop === 403 && $why['code'] === 'builder_refused_unit' && (string) file_get_contents( builderFile( $site, 'page-contact' ) ) === $whole );
+
+// a value that was there is there once: copied to a second call of the same name it is refused
+$button = builderFind( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'button' && str_contains( (string) ( $node['a']['href'] ?? '' ), '[[' ) ) ?? '';
+$twice = builderEdit( $tree, substr( $button, 0, (int) strrpos( $button, '.' ) ), static function( array $node ) use ( $button ): array {
+
+	array_splice( $node['c'], count( $node['c'] ) - 1, 0, [ [ 't' => "\n\t\t\t\t" ], [ 'n' => 'button', 's' => '~second', 'a' => [ 'href' => 'mailto:[[/project/company/contact/email]]' ], 'c' => null ] ] );
+
+	return $node;
+} );
+[ $copied, $because ] = builderCall( $site, 'builder/save', [ 'template' => 'page-contact', 'tree' => $twice, 'texts' => [], 'base' => $open['stamp'] ] );
+
+check( 'a value that stood in the template is there once: the same address with a fill copied to a second button is refused, and nothing is written', $copied === 403 && $because['code'] === 'builder_refused_value' && (string) file_get_contents( builderFile( $site, 'page-contact' ) ) === $whole );
+
+// the words of the roles tab: an area is shown as it is, so it is a word and no key, and each of the three has an action of its own
+$labels = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+
+	$site['/nino/locales/current'] = $locale;
+	\Nino\Locales::useLocale( $site, $locale );
+	$labels[$locale] = array_column( \Nino\Modules\Builder\Admin::scopes( $site )[0]['areas'], 'label' );
+}
+
+$panelWords = [ 'de_DE' => require dirname( __DIR__ ). '/text/de_DE.php', 'en_US' => require dirname( __DIR__ ). '/text/en_US.php' ];
+$actions = array_merge( ...array_map( static fn( array $area ): array => array_column( $area['actions'], 'label' ), \Nino\Modules\Builder\Admin::scopes( $site )[0]['areas'] ) );
+\Nino\Locales::useLocale( $site, 'en_US' );
+
+check( 'the three steps are words in the roles tab, in the language of the workbench: the label of an area is no key and no path, the two languages differ, and each area has an action with a sentence of its own in both languages',
+	array_filter( array_merge( ...array_values( $labels ) ), static fn( string $label ): bool => $label === '' || str_contains( $label, '/' ) === true || str_contains( $label, '[[' ) === true ) === [] && $labels['en_US'] !== $labels['de_DE'] && count( array_unique( $actions ) ) === 3
+	&& array_filter( $actions, static fn( string $key ): bool => isset( $panelWords['en_US']['[['. $key. ']]'], $panelWords['de_DE']['[['. $key. ']]'] ) === false ) === [] );
+
+// the words of a variant are the register's: what a callback says of a variant is what the panel is told, and a variant with no label has none
+\Nino\Callbacks::registerCallback( $site, \Nino\Components::VARIANTS, static function( array &$appData, array $asked ): array {
+	return $asked['name'] === 'section-col' ? $asked + [ 'labels' => [ 'card' => [ 'en_US' => 'Card', 'de_DE' => 'Karte' ] ] ] : $asked;
+} );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+
+check( 'the variants of a component come with the labels the register has for them, and a variant that has none is a word without a label', ( $open['schemas']['section-col']['variantLabels']['card']['de_DE'] ?? '' ) === 'Karte' && isset( $open['schemas']['section-col']['variantLabels']['regular'] ) === false );
+
+// the stamp and the last state hold for the designer as they do for everybody: a page that was changed meanwhile is a 409, and the last state comes back
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $source );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tall = builderEdit( $open['tree'], $column, static function( array $node ): array {
+	$node['a']['align'] = 'end';
+	return $node;
+} );
+[ $first ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $tall, 'texts' => [], 'base' => $open['stamp'] ] );
+[ $late, $why ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $tall, 'texts' => [], 'base' => $open['stamp'] ] );
+[ , $now ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+[ $back ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-home', 'base' => $now['stamp'] ] );
+
+check( 'a designer is held to the stamp - a save of a page that was changed since is a 409 - and has the last state back, which is the page before the change',
+	$first === 200 && $late === 409 && $why['code'] === 'builder_changed' && $back === 200 && (string) file_get_contents( builderFile( $site, 'page-home' ) ) === $source );
+
+// the notation: the block and the call as the template writes them
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$tree = $open['tree'];
+$blockAt = (string) builderAt( $tree, 'start' );
+[ $status, $written ] = builderCall( $site, 'builder/notation', [ 'template' => 'page-home', 'tree' => $tree, 'look' => [ 'block' => $blockAt, 'node' => $column ] ] );
+[ , $previewed ] = builderCall( $site, 'builder/preview', [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [], 'look' => [ 'block' => $blockAt, 'node' => $column ], 'page' => '' ] );
+
+check( 'the notation of the block is the template as it is written and that of a component is its first line, for the draft - the answer of the draft says the same - and a position that names no call says nothing',
+	$status === 200 && str_contains( (string) file_get_contents( builderFile( $site, 'page-home' ) ), $written['notation']['block'] ) === true && $written['notation']['node'] === '[section-col id="start-1" size="100 m:33" variant="card"]' && $previewed['notation'] === $written['notation']
+	&& builderCall( $site, 'builder/notation', [ 'template' => 'page-home', 'tree' => $tree, 'look' => [ 'block' => '0', 'node' => '99.9' ] ] )[1]['notation'] === [] );
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nJ. What is measured\n";
 
 \Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
 [ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );

@@ -4,8 +4,8 @@ return [
 	'key'					=> 'builder',
 	'name'				=> [ 'en_US' => 'Builder', 'de_DE' => 'Builder' ],
 	'description'	=> [
-		'en_US' => 'Builder shows a page of the site as a row of blocks. A block is moved, copied or removed on the page itself, and a text is clicked and written where it stands. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
-		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Block wird auf der Seite selbst verschoben, kopiert oder entfernt, und ein Text wird dort angeklickt und geschrieben, wo er steht. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
+		'en_US' => 'Builder shows a page of the site as a row of blocks. A block is moved, copied or removed on the page itself, and a text is clicked and written where it stands; whoever may design opens a block as a tree of components with their settings. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
+		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Block wird auf der Seite selbst verschoben, kopiert oder entfernt, und ein Text wird dort angeklickt und geschrieben, wo er steht; wer gestalten darf, öffnet einen Block als Baum aus Komponenten mit ihren Einstellungen. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -34,6 +34,14 @@ return [
 			'Builder' => [
 				'en_US' => 'The screen of the workbench for the pages: the list, and for a page the page itself with a bar on each block; the right is /_admin/builder/manage.',
 				'de_DE' => 'Der Bildschirm der Werkbank für die Seiten: die Liste, und je Seite die Seite selbst mit einer Leiste an jedem Block; das Recht: /_admin/builder/manage.',
+			],
+			'Advanced' => [
+				'en_US' => 'On a block of the page: the tree of its components, which are put in, moved and taken out where the register allows, and the settings of each by its schema.',
+				'de_DE' => 'An einem Block der Seite: der Baum seiner Komponenten, die eingefügt, verschoben und entfernt werden, wo das Register es erlaubt, und die Einstellungen jeder nach ihrem Schema.',
+			],
+			'/_admin/builder/*' => [
+				'en_US' => 'The door /_admin/builder/manage lets an account design, and a role needs it as well; content/*, design/* and develop/* below it make that blocks and texts, components and frames, or everything.',
+				'de_DE' => 'Die Tür /_admin/builder/manage lässt ein Konto gestalten und gehört zu jeder Rolle; content/*, design/* und develop/* darunter machen daraus Blocks und Texte, Komponenten und Rahmen oder alles.',
 			],
 			'+ Insert block' => [
 				'en_US' => 'Between the blocks, at the end of the page and in the outline: a dialog of the available blocks by category, each drawn in the active theme, put in as a draft until Save.',

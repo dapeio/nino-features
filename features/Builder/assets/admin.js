@@ -6,7 +6,9 @@
  *										is a change of the working state - the tree of the template and the words of its namespace - and nothing is written before Save.
  *
  *										The address is #builder (the list), #builder/<page> (a page: its template without page-) and #builder/@header or #builder/@footer
- *										(a frame of the site).
+ *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components, and #builder/<page>/<block>/@block
+ *										its settings - and of one component #builder/<page>/<block>/<path>/<section>, the path being the position of the component in the
+ *										block; the frames are the same views at #builder/<page>/@header and #builder/<page>/@footer. They are for the account that may design.
  *
  *										A block is put in with "Insert block": between the blocks of the page, at its end and in the outline. The dialog lists what the server offers,
  *										by category, with a small picture of each block drawn by the website in the theme that is active; the block that is chosen is asked for
@@ -17,6 +19,10 @@
  *										is the position the trace of the drawing names. A block is a node on the top level that the register has; free markup and a call
  *										that has no schema are locked, stand where they are and are never copied. Moving a block swaps it with the next block - never past
  *										a locked piece - and the blanks between the nodes stay where they are.
+ *
+ *										The extended view works on the same tree: a component is put in where the register says it may stand (the server is asked at the
+ *										place), moved among its neighbours, taken out - which asks nothing, the undo brings it back - and has its settings by the schema of its
+ *										component. Free markup and calls without a schema are locked pieces there too: they are moved and taken out, never changed.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -95,6 +101,25 @@
 		tiles				: {},
 		category		: '',
 		looking			: null,
+		level				: 1,
+		page				: '',
+		target			: null,
+		at					: [],
+		adv					: null,
+		schemas			: {},
+		findings		: {},
+		links				: [],
+		notation		: {},
+		marked			: '',
+		mark				: null,
+		tree				: null,
+		focusNext		: '',
+		advFocus		: '',
+		strips			: {},
+		built				: false,
+		mode				: 'basic',
+		focusFrom		: '',
+		look				: null,
 	};
 
 	const word = function( key, ...params ) {
@@ -142,6 +167,9 @@
 		const out = [];
 
 		nodes.forEach( function( node ) {
+
+			if( Array.isArray( node.c ) === true )
+				node.c = normalize( node.c );
 
 			if( node.t !== undefined && node.n === undefined && node.f === undefined ) {
 
@@ -313,6 +341,32 @@
 		walk( copy );
 
 		return copy;
+	};
+
+	// The attributes of a node that has none come as an empty list from the server and are an empty map here, so that an attribute can be set on them
+	const fixAttrs = function( nodes ) {
+
+		nodes.forEach( function( node ) {
+
+			if( node.n === undefined )
+				return;
+
+			if( Array.isArray( node.a ) === true || node.a === undefined || node.a === null )
+				node.a = {};
+
+			if( Array.isArray( node.c ) === true )
+				fixAttrs( node.c );
+		} );
+
+		return nodes;
+	};
+
+	// What the screen knows of a component by name - its label, the attribute that is its id and what its source is - from the schemas the server sent
+	const learn = function( schemas ) {
+
+		Object.keys( schemas ).forEach( function( name ) {
+			S.known[name] = { label : schemas[name].label, id : schemas[name].id, source : schemas[name].source };
+		} );
 	};
 
 	const snap = function() {
@@ -579,6 +633,7 @@
 			return false;
 
 		Object.assign( S.known, block.known );
+		Object.assign( S.schemas, block.schemas ?? {} );
 
 		const now = freeId( block.id, idsOf( S.top, new Set() ), true );
 
@@ -809,6 +864,23 @@
 		return action === 'up' ? neighbour( at, -1 ) !== -1 : ( action === 'down' ? neighbour( at, 1 ) !== -1 : true );
 	};
 
+	// The address of the extended view of a block - a block of a page by its id, the block of a frame by the frame -, null where it has none: a frame is
+	// shown on the first page of the site
+	const advancedParts = function( node ) {
+
+		if( S.level < 2 )
+			return null;
+
+		if( S.frame === true ) {
+
+			const page = S.list.pages[0];
+
+			return page === undefined ? null : [ addressOf( page.template ), addressOf( S.template ) ];
+		}
+
+		return idOf( node ) === '' ? null : [ addressOf( S.template ), idOf( node ) ];
+	};
+
 	// The place to put a block in as a row of the outline: one button, named for the block it stands by
 	const insertRow = function( place ) {
 
@@ -876,6 +948,15 @@
 				row.appendChild( bar );
 			}
 
+			if( item.kind === 'block' && advancedParts( item.node ) !== null ) {
+
+				const parts = advancedParts( item.node );
+				const open = Nino.adminUi.button( word('label/advanced'), function() { Nino.admin.builder.go( parts, { focus : 'back' } ) }, { className : 'nino-admin-btn--small builder-act', name : word('label/advanced')+ ': '+ titleOf( item.node ) } );
+
+				open.dataset.action = 'advanced';
+				row.appendChild( open );
+			}
+
 			list.appendChild( row );
 		} );
 
@@ -911,11 +992,11 @@
 	 *
 	 *	@param		{Document}	doc
 	 *
-	 *	@return		{Object}									{ blocks : [ { at, elements } ], texts : [ { element, path, written } ] }
+	 *	@return		{Object}									{ blocks : [ { at, elements } ], texts : [ { element, path, written } ], all : [ { path, elements } ] }
 	 */
 	const traced = function( doc ) {
 
-		const found = { blocks : [], texts : [] };
+		const found = { blocks : [], texts : [], all : [] };
 		const prefix = S.template+ ':';
 		const walker = doc.createTreeWalker( doc.body, 128 );
 		const open = [];
@@ -936,15 +1017,19 @@
 
 				const closed = open.pop();
 
-				if( closed !== undefined && closed.path.indexOf( prefix ) === 0 && /^\d+$/.test( closed.path.slice( prefix.length ) ) === true ) {
+				if( closed !== undefined && closed.path.indexOf( prefix ) === 0 && /^\d+(?:\.\d+)*$/.test( closed.path.slice( prefix.length ) ) === true ) {
 
 					const elements = [];
+					const where = closed.path.slice( prefix.length );
 
 					for( let sibling = closed.start.nextSibling; sibling !== null && sibling !== comment; sibling = sibling.nextSibling )
 						if( sibling.nodeType === 1 )
 							elements.push( sibling );
 
-					found.blocks.push( { at : Number( closed.path.slice( prefix.length ) ), elements : elements } );
+					found.all.push( { path : where, elements : elements } );
+
+					if( /^\d+$/.test( where ) === true )
+						found.blocks.push( { at : Number( where ), elements : elements } );
 				}
 			}
 			else if( data.indexOf('nino:s ') === 0 ) {
@@ -983,10 +1068,11 @@
 	 *	@param		{string}		path					Where the call is in the tree
 	 *	@param		{string}		value
 	 *	@param		{string}		initial
+	 *	@param		{boolean}		[reload]			Whether the page in the frame is drawn again: it is where it does not show what was typed
 	 *
 	 *	@return		{boolean}									Whether it was a change
 	 */
-	const settle = function( entry, path, value, initial ) {
+	const settle = function( entry, path, value, initial, reload ) {
 
 		if( value === initial )
 			return false;
@@ -998,7 +1084,7 @@
 			if( node === null || node.a === undefined || node.a.text === value )
 				return false;
 
-			change( function() { nodeAt( path ).a.text = value }, false );
+			change( function() { nodeAt( path ).a.text = value }, reload === true );
 
 			return true;
 		}
@@ -1006,7 +1092,7 @@
 		// A text that is emptied is drawn as the website would draw it, which the page in the frame is asked for; any other stands there as it was typed
 		change( function() {
 			S.texts[entry.key] = Object.assign( {}, S.texts[entry.key] ?? {}, { [S.locale] : value } );
-		}, value.trim() === '' );
+		}, reload === true || value.trim() === '' );
 
 		return true;
 	};
@@ -1263,6 +1349,23 @@
 				bar.appendChild( lock );
 			}
 
+			const parts = advancedParts( node );
+
+			if( parts !== null ) {
+
+				const more = doc.createElement('button');
+				const name = word('label/advanced')+ ': '+ title;
+
+				more.type = 'button';
+				more.textContent = word('label/advanced');
+				more.title = name;
+				more.setAttribute( 'aria-label', name );
+				more.dataset.action = 'advanced';
+				more.dataset.at = String( block.at );
+				more.addEventListener( 'click', function() { Nino.admin.builder.go( parts, { focus : 'back' } ) } );
+				bar.appendChild( more );
+			}
+
 			const first = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'before' } );
 			const last = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'after' } );
 			const pills = { before : first === undefined ? null : pillOf( first ), after : last === undefined ? null : pillOf( last ) };
@@ -1386,6 +1489,11 @@
 		S.stale = false;
 		S.editing = null;
 
+		if( S.mode === 'advanced' ) {
+			instrumentAdvanced( frame, doc );
+			return;
+		}
+
 		const found = traced( doc );
 		const style = doc.createElement('style');
 
@@ -1491,6 +1599,11 @@
 
 		if( view === null )
 			return;
+
+		if( S.mode === 'advanced' ) {
+			paintAdvanced();
+			return;
+		}
 
 		view.bar.set( { dirty : isDirty(), restorable : S.last > 0 } );
 		view.buttons.undo.disabled = S.undo.length === 0;
@@ -1835,9 +1948,14 @@
 	// What the server answers after a save or a restore, and an open: the page as it stands now
 	const take = function( response ) {
 
-		S.top = normalize( response.tree );
+		S.top = normalize( fixAttrs( response.tree ) );
+		S.level = response.level ?? S.level;
+		S.schemas = response.schemas ?? S.schemas;
+		S.findings = response.findings ?? {};
+		S.links = response.links ?? S.links;
+		learn( response.schemas ?? {} );
 		S.texts = response.texts;
-		S.known = response.known;
+		S.known = Object.assign( {}, S.known, response.known );
 		S.stamp = response.stamp;
 		S.last = response.last ?? 0;
 		S.sources = response.sources;
@@ -1871,11 +1989,21 @@
 	};
 
 	const send = function( token, done ) {
-		api( 'preview', { tree : S.top, texts : S.texts, slots : S.copies, inserted : insertedNow(), token : token }, function( status, response ) {
+		api( 'preview', { tree : S.top, texts : S.texts, slots : S.copies, inserted : insertedNow(), token : token, look : S.mode === 'advanced' ? S.look : null, page : S.page }, function( status, response ) {
 
 			if( status === 200 ) {
 				S.pending = response.sources;
 				S.address = response.address;
+
+				if( S.mode === 'advanced' ) {
+
+					S.findings = response.findings ?? {};
+					S.notation = response.notation ?? {};
+					refreshNotation();
+
+					if( S.adv.view === 'tree' && S.tree !== null )
+						S.tree.update( itemsNow() );
+				}
 			}
 
 			done( status, response );
@@ -1911,7 +2039,7 @@
 						S.force = true;
 						S.view.bar.press();
 					},
-					onReload		: function() { openPage( S.template, function() {} ) },
+					onReload		: function() { openPage( S.target, function() {} ) },
 					onCancel		: function() { S.view.bar.line.dirty() },
 				} );
 				return;
@@ -1965,7 +2093,7 @@
 						S.force = true;
 						restore( opener );
 					},
-					onReload		: function() { openPage( S.template, function() {} ) },
+					onReload		: function() { openPage( S.target, function() {} ) },
 					onCancel		: function() {},
 				} );
 				return;
@@ -2012,7 +2140,7 @@
 	};
 
 	// The widths of the preview, the language of the page and the outline, over the frame
-	const tools = function() {
+	const tools = function( basic ) {
 
 		const box = el( 'div', 'builder-tools' );
 		const caption = el( 'span', 'nino-admin-hint builder-caption', word('word/width') );
@@ -2030,17 +2158,20 @@
 		caption.id = 'builder-width-label';
 		widths.el.classList.add('builder-widths');
 
-		const outlineToggle = Nino.adminUi.button( word('label/outline'), function() {
+		if( basic === true ) {
 
-			const root = S.view.split.el;
-			const open = root.dataset.outline !== 'open';
+			const outlineToggle = Nino.adminUi.button( word('label/outline'), function() {
 
-			root.dataset.outline = open === true ? 'open' : 'closed';
-			outlineToggle.setAttribute( 'aria-expanded', String( open ) );
-		}, { className : 'nino-admin-btn--small builder-outline-toggle', id : 'builder-outline-toggle' } );
+				const root = S.view.split.el;
+				const open = root.dataset.outline !== 'open';
 
-		outlineToggle.setAttribute( 'aria-expanded', 'false' );
-		box.appendChild( outlineToggle );
+				root.dataset.outline = open === true ? 'open' : 'closed';
+				outlineToggle.setAttribute( 'aria-expanded', String( open ) );
+			}, { className : 'nino-admin-btn--small builder-outline-toggle', id : 'builder-outline-toggle' } );
+
+			outlineToggle.setAttribute( 'aria-expanded', 'false' );
+			box.appendChild( outlineToggle );
+		}
 
 		const choices = S.locales.filter( function( entry ) { return entry.active === true || entry.locale === S.locale } );
 
@@ -2077,18 +2208,21 @@
 
 		level.innerHTML = '';
 
-		const back = el( 'a', 'nino-admin-back-link', word('label/back-list') );
+		// The extended view goes back to the page it is of - or the frame -, the page to the list
+		const advanced = S.mode === 'advanced';
+		const home = advanced === true ? [ S.frame === true ? addressOf( S.template ) : S.adv.slug ] : [];
+		const back = el( 'a', 'nino-admin-back-link', advanced === true ? word('label/back-page') : word('label/back-list') );
 
-		back.href = Nino.admin.router.href( 'builder', [] );
+		back.href = Nino.admin.router.href( 'builder', home );
 		back.id = 'builder-back-list';
 		back.addEventListener( 'click', function( event ) {
 			event.preventDefault();
-			Nino.admin.builder.go( [] );
+			Nino.admin.builder.go( home );
 		} );
 
 		const head = el( 'div', 'builder-head' );
-		const title = el( 'h3', 'builder-name', S.name );
-		const toolbox = tools();
+		const title = el( 'h3', 'builder-name', advanced === true ? blockTitle() : S.name );
+		const toolbox = tools( advanced === false );
 		const settings = el( 'div', 'builder-column' );
 		const buttons = {};
 
@@ -2132,8 +2266,9 @@
 		if( typeof wn.ResizeObserver === 'function' )
 			new wn.ResizeObserver( function() { if( S.place !== null ) S.place() } ).observe( split.frame.parentNode );
 
-		split.el.dataset.outline = 'closed';
-		S.view = { level : level, split : split, preview : preview, bar : bar, buttons : buttons, title : title };
+		// The outline of the page stands beside it only where the person opens it; the tree of a block is the column of the extended view
+		split.el.dataset.outline = advanced === true ? 'open' : 'closed';
+		S.view = { level : level, split : split, preview : preview, bar : bar, buttons : buttons, title : title, kind : S.mode };
 
 		split.words( { settings : word('label/blocks'), preview : word('label/preview') } );
 		head.appendChild( title );
@@ -2144,11 +2279,14 @@
 			const row = el( 'div', 'builder-frame-row' );
 			const link = el( 'a', 'builder-frame-link', word('label/edit') );
 
-			link.href = Nino.admin.router.href( 'builder', [ part ] );
+			// The frame opens in the extended view, on this page: its blocks are not what is written on the page
+			const parts = [ addressOf( S.template ), part ];
+
+			link.href = Nino.admin.router.href( 'builder', parts );
 			link.setAttribute( 'aria-label', word('label/edit')+ ': '+ label );
 			link.addEventListener( 'click', function( event ) {
 				event.preventDefault();
-				Nino.admin.builder.go( [ part ] );
+				Nino.admin.builder.go( parts, { focus : 'back' } );
 			} );
 			row.appendChild( el( 'span', 'builder-frame-name', label ) );
 			row.appendChild( link );
@@ -2156,23 +2294,30 @@
 			return row;
 		};
 
-		if( S.frame === true )
+		if( S.frame === true && advanced === false )
 			head.appendChild( el( 'p', 'nino-admin-hint', word('hint/frame') ) );
+
+		// The frames are written for every page: from the design on
+		const rows = S.frame === false && advanced === false && S.level >= 2;
 
 		level.appendChild( Nino.adminUi.contextBar( back ) );
 		level.appendChild( head );
 
-		if( S.frame === false )
+		if( rows === true )
 			level.appendChild( frameRow( '@header', word('word/frame-row-header') ) );
 
 		level.appendChild( split.el );
 
-		if( S.frame === false )
+		if( rows === true )
 			level.appendChild( frameRow( '@footer', word('word/frame-row-footer') ) );
 
 		level.appendChild( bar.el );
 
 		Nino.admin.dirty.register( 'builder', bar.entry( { discard : function() { discard() } } ) );
+
+		if( advanced === true )
+			drawLeft();
+
 		paint();
 		preview.flush();
 		preview.width( S.width );
@@ -2222,15 +2367,19 @@
 	 *
 	 *	@return		{void}
 	 */
-	const openPage = function( template, done ) {
+	const openPage = function( target, done ) {
+
+		const template = target.template;
 
 		if( S.view !== null )
 			S.view.preview.stop();
 
 		S.ready = false;
+		S.built = false;
 		S.template = template;
+		S.page = target.page;
 
-		Nino.admin.builder.call( 'open', { template : template }, function( status, response ) {
+		Nino.admin.builder.call( 'open', { template : template, page : target.page }, function( status, response ) {
 
 			const level = dc.getElementById('builder-page');
 
@@ -2255,10 +2404,132 @@
 			take( response );
 			S.ready = true;
 			S.stale = true;
-			build( level );
-			Nino.adminUi.showLevel( 'builder-page', { focus : false } );
+			S.target = target;
+			show( target );
 			done( true );
 		} );
+	};
+
+	/**
+	 *	What an address names: the template, the page a frame is shown on, and for the extended view the block, the place in it and the section
+	 *
+	 *	@param		{Array}			parts				[ page, block, place, section ]
+	 *
+	 *	@return		{Object|null}
+	 */
+	const targetOf = function( parts ) {
+
+		const template = templateOf( parts[0] ?? '' );
+
+		if( template === '' )
+			return null;
+
+		const head = { mode : 'basic', template : template, page : '', slug : addressOf( template ), block : '', path : '', section : '' };
+
+		if( parts.length < 2 || /^@(?:header|footer)$/.test( parts[0] ) === true )
+			return head;
+
+		const frame = /^@(?:header|footer)$/.test( parts[1] ) === true;
+		const place = parts[2] ?? '';
+
+		if( frame === false && /^[a-z][a-z0-9-]*$/.test( parts[1] ) === false )
+			return head;
+
+		return {
+			mode		: 'advanced',
+			template	: frame === true ? templateOf( parts[1] ) : template,
+			page		: frame === true ? parts[0].replace( /^page-/, '' ) : '',
+			slug		: parts[0],
+			block		: parts[1],
+			path		: place === '@block' || /^root$|^\d+(?:\.\d+)*$/.test( place ) === true ? place : '',
+			section	: place === '@block' ? '' : ( parts[3] ?? '' ),
+		};
+	};
+
+	/**
+	 *	Show what an address names: the page as it is written on, or the extended view of one of its blocks, and in it the tree or one component. A way into the
+	 *	extended view that the account may not take - it is for the design - or a block that is not there lands on the page, with a sentence
+	 *
+	 *	@param		{Object}		target				As targetOf() answers
+	 *
+	 *	@return		{void}
+	 */
+	const show = function( target ) {
+
+		const level = dc.getElementById('builder-page');
+		const was = S.adv === null ? null : S.adv.path;
+		let mode = target.mode;
+		let because = '';
+
+		S.adv = mode === 'advanced' ? { slug : target.slug, block : target.block, path : target.path, section : target.section, view : '', accordion : null } : null;
+
+		if( mode === 'advanced' && S.level < 2 )
+			because = word('msg/no-advanced');
+		else if( mode === 'advanced' && rootAt() === -1 )
+			because = word('msg/no-block');
+
+		if( because !== '' ) {
+			mode = 'basic';
+			S.adv = null;
+		}
+
+		// A step of the browser's history between the levels puts the focus where the person's own step does
+		if( S.focusNext === '' && was !== null && S.adv !== null ) {
+
+			const inside = function( path ) { return path !== '' && path !== '@block' };
+
+			if( inside( S.adv.path ) === true && inside( was ) === false )
+				S.focusNext = 'back';
+			else if( inside( S.adv.path ) === false && inside( was ) === true ) {
+				S.focusNext = 'tree';
+				S.focusFrom = was;
+			}
+		}
+
+		S.mode = mode;
+		S.tree = null;
+		S.mark = null;
+
+		if( S.built === false || S.view === null || S.view.kind !== mode ) {
+
+			if( S.view !== null )
+				S.view.preview.stop();
+
+			build( level );
+			S.built = true;
+		}
+		else if( mode === 'advanced' ) {
+			drawLeft();
+			paint();
+		}
+
+		Nino.adminUi.showLevel( 'builder-page', { focus : false } );
+
+		S.at = mode === 'basic' ? [ addressOf( S.template ) ] : ( S.adv.path === '' || S.adv.path === '@block' ? partsOf( '', S.adv.path === '' ? 'tree' : 'block' ) : partsOf( S.adv.path, S.adv.accordion === null ? S.adv.section : ( S.adv.accordion.get()[0] ?? '' ) ) );
+		Nino.admin.router.set( 'builder', S.at );
+
+		if( because !== '' )
+			told( because );
+
+		// The focus goes where the move says: into a component on its first line, out of it on the entry it was left from
+		const wanted = S.focusNext;
+
+		S.focusNext = '';
+
+		if( wanted === 'back' && mode === 'advanced' ) {
+
+			const link = dc.getElementById('builder-back-tree');
+			const into = link !== null ? link : S.view.title;
+
+			if( into.hasAttribute('tabindex') === false && into.tagName !== 'A' )
+				into.setAttribute( 'tabindex', '-1' );
+
+			into.focus();
+		}
+		else if( wanted === 'tree' && S.tree !== null )
+			S.tree.focus( S.focusFrom );
+
+		S.focusFrom = '';
 	};
 
 	const nameOfPage = function( template ) {
@@ -2271,17 +2542,1237 @@
 		return template === 'frame-header' ? word('word/frame-header') : ( template === 'frame-footer' ? word('word/frame-footer') : template );
 	};
 
+	// --- the extended view: the tree of a block and the settings of a component ----------------------------------------------------
+
+	// The index in the top level of the tree of the block the view is about: the block with its id - a frame has one block, its first - or -1 where it is gone
+	const rootAt = function() {
+
+		if( S.adv === null )
+			return -1;
+
+		return S.top.findIndex( function( node ) {
+			return kindOf( node ) === 'block' && ( S.frame === true || idOf( node ) === S.adv.block );
+		} );
+	};
+
+	// A position in the block - 'root' for the block itself, else the indices in each level, the blanks counted - as the position in the tree of the page
+	const absOf = function( rel ) {
+		return String( rootAt() )+ ( rel === 'root' ? '' : '.'+ rel );
+	};
+
+	const relNode = function( rel ) {
+		return rootAt() === -1 ? null : nodeAt( absOf( rel ) );
+	};
+
+	const parentOf = function( rel ) {
+		return rel.indexOf('.') === -1 ? 'root' : rel.slice( 0, rel.lastIndexOf('.') );
+	};
+
+	const indexOfRel = function( rel ) {
+		return Number( rel.slice( rel.lastIndexOf('.') + 1 ) );
+	};
+
+	const childOf = function( rel, at ) {
+		return rel === 'root' ? String( at ) : rel+ '.'+ at;
+	};
+
+	// Whether a node of a level is a piece of it - a call, a fill or words - and not the blanks that lay it out
+	const isPiece = function( node ) {
+		return node.n !== undefined || node.f !== undefined || ( node.t !== undefined && BLANKS.test( node.t ) === false );
+	};
+
+	// The id a component reads its words under: its own, or the nearest one above it
+	const scopeOf = function( rel ) {
+
+		let node = S.top[rootAt()];
+		let scope = idOf( node );
+
+		if( rel === 'root' )
+			return scope;
+
+		for( const part of rel.split('.') ) {
+
+			node = ( node.c ?? [] )[ Number( part ) ];
+
+			if( node === undefined )
+				return scope;
+
+			if( node.n !== undefined && idOf( node ) !== '' )
+				scope = idOf( node );
+		}
+
+		return scope;
+	};
+
+	// Where a component reads its first word, as the server tells of the page: the kind of the source, its key, the format and whether it is written here
+	const sourceOf = function( rel ) {
+
+		const node = relNode( rel );
+		const schema = node === null ? undefined : S.schemas[node.n];
+
+		if( schema === undefined || schema.source === 'none' )
+			return null;
+
+		const given = node.a ?? {};
+		const format = typeof given.format === 'string' && given.format !== '' ? given.format : ( schema.format !== '' ? schema.format : 'plain' );
+		const written = typeof node.s === 'string' ? node.s : '';
+
+		if( schema.source === 'text' && typeof given.text === 'string' )
+			return { kind : 'fixed', key : '', written : 'text', format : format, editable : true };
+
+		const scope = scopeOf( rel );
+		const key = written.charAt(0) === '~' && written !== '~' && scope !== '' ? '/template/'+ S.template+ '/'+ scope+ '/'+ written.slice( 1 ) : ( written.charAt(0) === '/' && schema.source !== 'link' ? written : '' );
+
+		return { kind : schema.source, key : key, written : written, format : format, editable : schema.source === 'text' && key.indexOf( '/template/'+ S.template+ '/' ) === 0 };
+	};
+
+	// The words of a component for a title: its kind and, where it has a text of its own, the beginning of it
+	const ownText = function( node, rel, most ) {
+
+		const source = node.n !== undefined && S.schemas[node.n] !== undefined && S.schemas[node.n].source === 'text' ? sourceOf( rel ) : null;
+
+		if( source === null )
+			return '';
+
+		return shortened( source.kind === 'fixed' ? ( node.a ?? {} ).text : ( source.key === '' ? '' : textOf( source.key ) ), most );
+	};
+
+	const titleOfRel = function( rel ) {
+
+		const node = relNode( rel );
+
+		if( node === null )
+			return '';
+
+		return node.n === undefined ? word('word/free') : ( S.schemas[node.n] === undefined ? word( 'word/call', node.n ) : kindName( node ) );
+	};
+
+	// The next piece of the level of a component, before it or behind it: its index there, -1 for none
+	// Whether a node of a level is a locked piece: free markup, a fill or a call that has no schema - the pieces that follow one another are one unit
+	const lockedNode = function( node ) {
+		return isPiece( node ) === true && ( node.n === undefined || S.schemas[node.n] === undefined );
+	};
+
+	// The nodes a component or a unit takes in its level: the node itself, or the locked pieces that follow one another with nothing but blanks between
+	const runAt = function( list, at ) {
+
+		if( lockedNode( list[at] ) === false )
+			return [ at, at ];
+
+		let from = at;
+		let to = at;
+
+		for( let before = at - 1; before >= 0; before-- ) {
+
+			if( isPiece( list[before] ) === false )
+				continue;
+
+			if( lockedNode( list[before] ) === false )
+				break;
+
+			from = before;
+		}
+
+		for( let after = at + 1; after < list.length; after++ ) {
+
+			if( isPiece( list[after] ) === false )
+				continue;
+
+			if( lockedNode( list[after] ) === false )
+				break;
+
+			to = after;
+		}
+
+		return [ from, to ];
+	};
+
+	// The next piece of the level of a component, before it or behind it - past the whole unit where it is one -: its index there, -1 for none
+	const siblingAt = function( rel, direction ) {
+
+		const parent = relNode( parentOf( rel ) );
+		const list = parent === null || Array.isArray( parent.c ) === false ? [] : parent.c;
+		const run = runAt( list, indexOfRel( rel ) );
+
+		for( let next = direction < 0 ? run[0] - 1 : run[1] + 1; next >= 0 && next < list.length; next += direction )
+			if( isPiece( list[next] ) === true )
+				return next;
+
+		return -1;
+	};
+
+	// What the register has against a place of the tree, as one sentence
+	const hintOf = function( abs ) {
+
+		const found = S.findings[abs];
+
+		if( found === undefined )
+			return undefined;
+
+		// The words are the ones the schema gives: the label of the attribute and of the component, and of the variant - never the key
+		const node = nodeAt( abs ) ?? {};
+		const schema = node.n === undefined ? undefined : S.schemas[node.n];
+		const attribute = function( name ) { return schema !== undefined && schema.attributes[name] !== undefined ? localized( schema.attributes[name].label ) : name };
+		const component = function( name ) {
+
+			const own = Nino.content.getText( '/_admin/builder/kind/'+ name );
+
+			return own !== '' ? own : ( S.schemas[name] !== undefined ? localized( S.schemas[name].label ) : name );
+		};
+		const say = function( entry ) {
+
+			if( entry[0] === 'outside' || entry[0] === 'foreign' )
+				return word( 'finding/'+ entry[0], attribute( entry[1] ) );
+
+			if( entry[0] === 'variant' )
+				return word( 'finding/variant', schema === undefined ? entry[1] : variantLabel( schema, entry[1] ) );
+
+			return word( 'finding/'+ entry[0], component( entry[1] ) );
+		};
+
+		return { text : found.map( say ).join(' '), state : 'warn' };
+	};
+
+	// The word of a variant: the label the register gives it, else the word of this panel for the standard one, else the variant itself
+	const variantLabel = function( schema, variant ) {
+
+		if( schema.variantLabels !== undefined && schema.variantLabels[variant] !== undefined )
+			return localized( schema.variantLabels[variant] );
+
+		const own = Nino.content.getText( '/_admin/builder/variant/'+ variant );
+
+		return own !== '' ? own : variant;
+	};
+
+	const actionsOf = function( rel, container ) {
+
+		const list = [];
+		const title = titleOfRel( rel );
+
+		if( container === true )
+			list.push( { key : 'add', label : '+', name : word( 'label/add-in', title ) } );
+
+		if( rel !== 'root' ) {
+			list.push( { key : 'up', label : '↑', name : word( 'label/up-comp', title ), disabled : siblingAt( rel, -1 ) === -1 } );
+			list.push( { key : 'down', label : '↓', name : word( 'label/down-comp', title ), disabled : siblingAt( rel, 1 ) === -1 } );
+			list.push( { key : 'remove', label : '×', name : word( 'label/remove-comp', title ), danger : true } );
+		}
+
+		return list;
+	};
+
+	// The entry of the tree for a component or for a piece that is locked, and for everything inside it
+	const itemOf = function( node, rel ) {
+
+		const schema = node.n === undefined ? undefined : S.schemas[node.n];
+		const children = [];
+
+		if( schema !== undefined ) {
+
+			const list = node.c ?? [];
+
+			for( let at = 0; at < list.length; at++ ) {
+
+				if( isPiece( list[at] ) === false )
+					continue;
+
+				// A unit of locked pieces is one entry
+				children.push( itemOf( list[at], childOf( rel, at ) ) );
+				at = runAt( list, at )[1];
+			}
+		}
+
+		return {
+			id			: rel,
+			label		: titleOfRel( rel ),
+			detail	: schema === undefined ? '' : ownText( node, rel, 40 ),
+			children	: children,
+			open		: true,
+			locked	: schema === undefined,
+			hint		: hintOf( absOf( rel ) ),
+			actions	: actionsOf( rel, schema !== undefined && schema.container === true ),
+		};
+	};
+
+	const itemsNow = function() {
+
+		const node = rootAt() === -1 ? undefined : S.top[rootAt()];
+
+		return node === undefined ? [] : [ itemOf( node, 'root' ) ];
+	};
+
+	const countCalls = function( node ) {
+
+		return 1 + ( node.c ?? [] ).reduce( function( sum, inner ) { return sum + ( inner.n === undefined ? 0 : countCalls( inner ) ) }, 0 );
+	};
+
+	// The parts of an address of the extended view: the page, the block, and where in it
+	const partsOf = function( rel, section ) {
+
+		const head = [ S.adv.slug, S.adv.block ];
+
+		if( rel === '' )
+			return head.concat( section === 'block' ? [ '@block' ] : [] );
+
+		return head.concat( [ rel ], section === '' ? [] : [ section ] );
+	};
+
+	const hrefOf = function( parts ) {
+		return Nino.admin.router.href( 'builder', parts );
+	};
+
+	// A line for the bar of the page, where there is one
+	const told = function( text ) {
+
+		if( S.view !== null )
+			S.view.bar.line.idle( text );
+	};
+
+	// The place of a node is where the blanks that lay it out stand: the node goes, with the blanks in front of it where there are, else the ones behind it
+	const takeOut = function( list, from, to ) {
+
+		const blank = function( node ) { return node.t !== undefined && node.n === undefined && BLANKS.test( node.t ) === true };
+
+		if( from > 0 && blank( list[from - 1] ) === true )
+			list.splice( from - 1, to - from + 2 );
+		else if( to + 1 < list.length && blank( list[to + 1] ) === true )
+			list.splice( from, to - from + 2 );
+		else
+			list.splice( from, to - from + 1 );
+	};
+
+	const moveComponent = function( rel, direction ) {
+
+		const here = relNode( rel );
+
+		if( rel === 'root' || here === null || here === undefined )
+			return false;
+
+		const to = siblingAt( rel, direction );
+		const list = relNode( parentOf( rel ) ).c;
+		const mine = runAt( list, indexOfRel( rel ) );
+
+		if( to === -1 )
+			return false;
+
+		const other = runAt( list, to );
+		const first = direction < 0 ? other : mine;
+		const second = direction < 0 ? mine : other;
+		let at = first[0];
+
+		// The two runs change places with the blanks between them where they were: a unit is moved whole, and a call is moved past it whole
+		change( function() {
+			list.splice( first[0], second[1] - first[0] + 1, ...list.slice( second[0], second[1] + 1 ), ...list.slice( first[1] + 1, second[0] ), ...list.slice( first[0], first[1] + 1 ) );
+		} );
+
+		if( direction > 0 )
+			at = first[0] + ( second[1] - second[0] + 1 ) + ( second[0] - first[1] - 1 );
+
+		S.advFocus = childOf( parentOf( rel ), at );
+		S.marked = S.advFocus;
+
+		return true;
+	};
+
+	// A unit of locked pieces is taken out only after the question, as a block is: what is in it is nobody's to write again here
+	const askRemoveUnit = function( rel, opener ) {
+
+		Nino.adminUi.confirm( 'destructive', {
+			title		: word('confirm/unit-title'),
+			message	: word('confirm/unit-message'),
+			yes			: word('label/remove-short'),
+			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+			kind		: 'danger',
+			opener	: opener,
+			onChoose : function( ok ) {
+				if( ok === true )
+					removeComponent( rel );
+			},
+		} );
+	};
+
+	const removeComponent = function( rel ) {
+
+		if( rel === 'root' || relNode( rel ) === null )
+			return false;
+
+		const list = relNode( parentOf( rel ) ).c;
+		const title = titleOfRel( rel );
+		const run = runAt( list, indexOfRel( rel ) );
+
+		// Taking a component out asks nothing: the undo brings it back; a unit of locked pieces goes whole
+		change( function() { takeOut( list, run[0], run[1] ) } );
+		S.advFocus = parentOf( rel );
+		told( word( 'msg/component-removed', title ) );
+
+		return true;
+	};
+
+	// The name of a new source in the scope: the last word of the component's name, then the first number behind it that nothing in the scope reads or has words for
+	const freeName = function( base, scope ) {
+
+		const used = new Set();
+		const prefix = '/template/'+ S.template+ '/'+ scope+ '/';
+		const walk = function( nodes ) {
+
+			nodes.forEach( function( node ) {
+
+				if( node.n === undefined )
+					return;
+
+				if( typeof node.s === 'string' && node.s.charAt(0) === '~' )
+					used.add( node.s.slice( 1 ) );
+
+				if( Array.isArray( node.c ) === true )
+					walk( node.c );
+			} );
+		};
+
+		walk( S.top );
+		Object.keys( S.texts ).concat( S.slots, Object.keys( S.copies ) ).forEach( function( key ) {
+			if( key.indexOf( prefix ) === 0 )
+				used.add( key.slice( prefix.length ) );
+		} );
+
+		for( let count = 1; count < 10000; count++ ) {
+
+			const candidate = count === 1 ? base : base+ '-'+ count;
+
+			if( used.has( candidate ) === false )
+				return candidate;
+		}
+
+		return base;
+	};
+
+	/**
+	 *	Put a component into a container, behind the last call it holds, laid out the way the page is: the blanks come from the server, which writes a template as the
+	 *	kernel does. A component with a text reads it from a key of its own under the nearest id - where there is none, the text is fixed - and has a first text
+	 *
+	 *	@param		{string}		rel						The container
+	 *	@param		{Object}		offer					The entry the server offered: name, node
+	 *	@param		{string}		blank					The blanks that lie a call out at this depth
+	 *
+	 *	@return		{void}
+	 */
+	const addComponent = function( rel, offer, blank ) {
+
+		const container = relNode( rel );
+		const fresh = clone( offer.node );
+		const schema = S.schemas[offer.name];
+		const scope = scopeOf( rel );
+		const close = blank.length > 1 && blank.slice( -1 ) === '\t' ? blank.slice( 0, -1 ) : '\n';
+		let made = '';
+
+		fresh.a = {};
+
+		change( function() {
+
+			if( schema.source !== 'none' && schema.source !== 'link' && scope !== '' ) {
+
+				const name = freeName( offer.name.replace( /^.*-/, '' ), scope );
+
+				fresh.s = '~'+ name;
+
+				if( schema.source === 'text' )
+					S.texts[ '/template/'+ S.template+ '/'+ scope+ '/'+ name ] = { [S.locale] : word('new/text') };
+			}
+			else if( schema.source === 'text' )
+				fresh.a.text = word('new/text');
+
+			if( Array.isArray( container.c ) === false )
+				container.c = [];
+
+			// Behind the last piece the container holds - a unit of locked pieces is never cut by what is put in
+			let last = -1;
+
+			container.c.forEach( function( inner, at ) {
+				if( isPiece( inner ) === true )
+					last = at;
+			} );
+
+			if( last === -1 )
+				container.c = [ { t : blank }, fresh, { t : close } ];
+			else {
+
+				container.c.splice( last + 1, 0, { t : blank }, fresh );
+
+				if( container.c[container.c.length - 1] === fresh )
+					container.c.push( { t : close } );
+			}
+
+			made = childOf( rel, container.c.indexOf( fresh ) );
+		} );
+
+		S.marked = made;
+		S.advFocus = made;
+		told( word( 'msg/component-added', localized( schema.label ) ) );
+	};
+
+	// The place for a component: asked of the server, which says what the register offers there - by group, each as the call it would be - and the dialog lists it
+	const openOffer = function( rel, opener ) {
+
+		api( 'offer', { tree : S.top, at : absOf( rel ) }, function( status, response ) {
+
+			if( status !== 200 ) {
+				S.view.bar.line.error( status, response );
+				return;
+			}
+
+			Object.assign( S.schemas, response.schemas );
+			learn( response.schemas );
+
+			const body = el( 'div', 'builder-offer' );
+			const groups = [];
+			let picked = null;
+
+			response.offers.forEach( function( offer ) {
+
+				let group = groups.find( function( entry ) { return entry.key === offer.group } );
+
+				if( group === undefined ) {
+					group = { key : offer.group, label : offer.groupLabel === null || offer.groupLabel === undefined ? offer.group : localized( offer.groupLabel ), offers : [] };
+					groups.push( group );
+				}
+
+				group.offers.push( offer );
+			} );
+
+			if( groups.length === 0 )
+				body.appendChild( Nino.adminUi.emptyState( word('offer/none') ) );
+
+			groups.forEach( function( group ) {
+
+				const list = el( 'ul', 'builder-offer-list' );
+
+				body.appendChild( el( 'h4', 'builder-offer-group', group.label ) );
+
+				group.offers.forEach( function( offer ) {
+
+					const item = el( 'li', 'builder-offer-item' );
+					const button = el( 'button', 'nino-admin-btn builder-offer-pick', localized( offer.label ) );
+
+					button.type = 'button';
+					button.dataset.name = offer.name;
+
+					if( offer.ok === true )
+						button.addEventListener( 'click', function() {
+
+							picked = offer;
+							button.closest('dialog').close();
+						} );
+					else {
+						button.disabled = true;
+						item.appendChild( button );
+						item.appendChild( el( 'span', 'nino-admin-hint', word( 'offer/why-'+ offer.why ) ) );
+						list.appendChild( item );
+						return;
+					}
+
+					item.appendChild( button );
+					list.appendChild( item );
+				} );
+
+				body.appendChild( list );
+			} );
+
+			Nino.adminUi.choiceDialog( {
+				title			: word( 'offer/title', titleOfRel( rel ) ),
+				message		: word('offer/note'),
+				content		: body,
+				className	: 'nino-admin-dialog--manual builder-offer-dialog',
+				opener		: opener,
+				choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
+				onChoose	: function() {
+
+					if( picked !== null )
+						addComponent( rel, picked, response.blank );
+				},
+			} );
+
+			const first = body.querySelector('button:not(:disabled)');
+
+			if( first !== null )
+				first.focus();
+		} );
+	};
+
+	// --- the settings of a component, by the schema ---
+
+	const ON = [ '1', 'true', 'yes', 'on' ];
+
+	const ensureAttrs = function( node ) {
+
+		if( node.a === undefined || node.a === null || Array.isArray( node.a ) === true )
+			node.a = {};
+
+		return node.a;
+	};
+
+	// Set an attribute of the component at a place - or take it away where the value is none or is the default the register draws without it
+	const setAttr = function( rel, name, value ) {
+
+		change( function() {
+
+			const attrs = ensureAttrs( relNode( rel ) );
+
+			if( value === null )
+				delete attrs[name];
+			else
+				attrs[name] = value;
+		} );
+	};
+
+	const attrWord = function( declared, option ) {
+
+		const labels = declared.optionLabels;
+
+		return labels !== null && labels !== undefined && labels[option] !== undefined ? localized( labels[option] ) : String( option );
+	};
+
+	// The three widths of a responsive choice - everywhere, from a tablet, from a desktop - as the parts of the value "100 m:33"
+	const widthsOf = function( value ) {
+
+		const out = { '' : '', m : '', l : '' };
+
+		String( value ?? '' ).split( /\s+/ ).filter( function( part ) { return part !== '' } ).forEach( function( part ) {
+
+			const colon = part.indexOf(':');
+
+			if( colon === -1 )
+				out[''] = part;
+			else if( out[ part.slice( 0, colon ) ] !== undefined )
+				out[ part.slice( 0, colon ) ] = part.slice( colon + 1 );
+		} );
+
+		return out;
+	};
+
+	const widthsWritten = function( widths, standard ) {
+
+		const parts = [ widths[''] !== '' ? widths[''] : standard ];
+
+		[ 'm', 'l' ].forEach( function( at ) {
+			if( widths[at] !== '' )
+				parts.push( at+ ':'+ widths[at] );
+		} );
+
+		return parts.join(' ');
+	};
+
+	const fieldNote = function( field, declared ) {
+
+		const hint = localized( declared.hint );
+
+		if( hint !== '' )
+			field.appendChild( el( 'span', 'nino-admin-hint builder-field-hint', hint ) );
+
+		return field;
+	};
+
+	// One attribute as the control its type says: a choice as a pick or a strip of steps, a responsive choice as three rows, a bool as a switch, a number, a line, a link
+	const attributeField = function( rel, name, declared ) {
+
+		const node = relNode( rel );
+		const given = ( node.a ?? {} )[name];
+		const label = localized( declared.label );
+		const standard = declared.default;
+		const key = rel+ ':'+ name;
+
+		if( declared.type === 'choice' ) {
+
+			// A choice between off and on is a switch
+			if( declared.responsive !== true && declared.options.length === 2 && declared.options.indexOf('off') !== -1 && declared.options.indexOf('on') !== -1 ) {
+
+				const field = Nino.adminUi.switchField( { key : key, checked : ( given === undefined ? standard : String( given ) ) === 'on', label : label } );
+
+				field.querySelector('input').addEventListener( 'change', function( event ) {
+
+					const now = event.target.checked === true ? 'on' : 'off';
+
+					setAttr( rel, name, now === standard ? null : now );
+				} );
+
+				return fieldNote( field, declared );
+			}
+
+			// A width is a share of the row: the numbers say so
+			const percent = name === 'size' && declared.responsive === true && ( declared.optionLabels === null || declared.optionLabels === undefined ) && declared.options.every( function( option ) { return /^\d+$/.test( option ) } );
+			const options = declared.options.map( function( option ) { return { value : option, label : percent === true ? option+ ' %' : attrWord( declared, option ) } } );
+
+			if( declared.responsive === true ) {
+
+				const widths = widthsOf( given ?? standard );
+				const group = el( 'div', 'builder-widths-set' );
+				const caption = el( 'span', 'builder-field-label', label );
+
+				caption.id = 'builder-widths-'+ rel.replace( /\./g, '-' )+ '-'+ name;
+				group.setAttribute( 'role', 'group' );
+				group.setAttribute( 'aria-labelledby', caption.id );
+				group.appendChild( caption );
+
+				[ [ '', 'rows/all' ], [ 'm', 'rows/tablet' ], [ 'l', 'rows/desktop' ] ].forEach( function( row ) {
+
+					const choices = row[0] === '' ? options : [ { value : '', label : row[0] === 'm' ? word('rows/below-tablet') : word('rows/below-desktop') } ].concat( options );
+
+					group.appendChild( Nino.adminUi.selectField( {
+						key			: key+ ':'+ row[0],
+						label		: word( row[1] ),
+						options	: choices,
+						value		: widths[ row[0] ],
+						className	: 'nino-admin-field builder-width-row',
+						onChange	: function( value ) {
+
+							const next = widthsOf( given ?? standard );
+
+							next[ row[0] ] = value;
+
+							const text = widthsWritten( next, standard );
+
+							setAttr( rel, name, text === standard ? null : text );
+						},
+					} ) );
+				} );
+
+				return fieldNote( group, declared );
+			}
+
+			const current = given === undefined ? standard : String( given );
+
+			// A value that is none of the options stays where it is, and says so
+			const stray = given !== undefined && declared.options.indexOf( String( given ) ) === -1;
+
+			if( stray === true )
+				options.push( { value : String( given ), label : word( 'field/outside', String( given ) ) } );
+
+			const wide = stray === true || options.length > 6 || options.some( function( option ) { return option.label.length > 8 } );
+			const set = function( value ) { setAttr( rel, name, value === standard ? null : value ) };
+
+			if( wide === true )
+				return fieldNote( Nino.adminUi.selectField( { key : key, label : label, options : options, value : current, onChange : set } ), declared );
+
+			const box = el( 'div', 'nino-admin-field builder-steps-field' );
+			const caption = el( 'span', 'builder-field-label', label );
+			const steps = Nino.adminUi.steps( { labelledby : 'builder-steps-'+ rel.replace( /\./g, '-' )+ '-'+ name, steps : options, value : current, standard : standard, onChange : set } );
+
+			// The strip is drawn again with the page of the settings: the focus finds its way back to it by this
+			box.dataset.stepKey = key;
+			S.strips[key] = steps;
+			caption.id = 'builder-steps-'+ rel.replace( /\./g, '-' )+ '-'+ name;
+			box.appendChild( caption );
+			box.appendChild( steps.el );
+
+			return fieldNote( box, declared );
+		}
+
+		if( declared.type === 'bool' ) {
+
+			const on = given === undefined ? standard === true : ( given === true || ON.indexOf( String( given ).toLowerCase() ) !== -1 );
+			const field = Nino.adminUi.switchField( { key : key, checked : on, label : label } );
+
+			field.querySelector('input').addEventListener( 'change', function( event ) {
+
+				const now = event.target.checked === true;
+
+				setAttr( rel, name, now === ( standard === true ) ? null : ( now === true ? true : 'off' ) );
+			} );
+
+			return fieldNote( field, declared );
+		}
+
+		if( declared.type === 'int' ) {
+
+			const field = Nino.adminUi.numberField( { key : key, label : label, value : given === undefined ? standard : Number( given ), min : declared.min ?? undefined, max : declared.max ?? undefined } );
+
+			field.querySelector('input').addEventListener( 'change', function( event ) {
+
+				const value = String( event.target.value ).trim();
+
+				setAttr( rel, name, value === '' || value === String( standard ) ? null : value );
+			} );
+
+			return fieldNote( field, declared );
+		}
+
+		if( declared.type === 'link' )
+			return fieldNote( linkField( rel, name, declared, label, given === undefined ? '' : String( given ) ), declared );
+
+		if( declared.type === 'id' || declared.type === 'image' ) {
+
+			const field = el( 'div', 'nino-admin-field' );
+
+			field.appendChild( el( 'span', 'builder-field-label', label ) );
+			field.appendChild( el( 'code', 'builder-field-value', given === undefined ? '-' : String( given ) ) );
+			field.appendChild( el( 'span', 'nino-admin-hint builder-field-hint', word( 'field/read-'+ declared.type ) ) );
+
+			return field;
+		}
+
+		const line = Nino.adminUi.textField( { key : key, label : label, value : given === undefined ? '' : String( given ) } );
+
+		line.querySelector('input').addEventListener( 'change', function( event ) {
+			setAttr( rel, name, event.target.value === '' ? null : event.target.value );
+		} );
+
+		return fieldNote( line, declared );
+	};
+
+	// A link: where it goes is an address typed, or a page of the site - written page:/path
+	const linkField = function( rel, name, declared, label, value ) {
+
+		const field = el( 'div', 'nino-admin-field builder-link-field' );
+		const page = value.indexOf('page:') === 0 && S.links.some( function( entry ) { return 'page:'+ entry.uri === value } ) === true ? value : '';
+		const choices = [ { value : '', label : word('link/address') } ].concat( S.links.map( function( entry ) { return { value : 'page:'+ entry.uri, label : word( 'link/page', entry.name ) } } ) );
+		const pick = Nino.adminUi.selectField( { key : rel+ ':'+ name+ ':page', label : label, options : choices, value : page, onChange : function( chosen ) { setAttr( rel, name, chosen === '' ? null : chosen ) } } );
+
+		field.appendChild( pick );
+
+		if( page === '' ) {
+
+			const line = Nino.adminUi.textField( { key : rel+ ':'+ name, label : word('link/address-label'), value : value } );
+
+			line.querySelector('input').addEventListener( 'change', function( event ) {
+				setAttr( rel, name, event.target.value === '' ? null : event.target.value );
+			} );
+			field.appendChild( line );
+		}
+
+		return field;
+	};
+
+	// The variant: the schema's and the ones the theme adds - a word of a variant that the theme does not have stays where it is, with the sentence of the register
+	const variantField = function( rel, node, schema ) {
+
+		const given = typeof ( node.a ?? {} ).variant === 'string' ? node.a.variant : '';
+		const labelOf = function( variant ) { return variantLabel( schema, variant ) };
+		const options = [ { value : '', label : word( 'variant/standard', labelOf( schema.standard ) ) } ].concat( schema.variants.map( function( variant ) { return { value : variant, label : labelOf( variant ) } } ) );
+
+		if( given !== '' && schema.variants.indexOf( given ) === -1 )
+			options.push( { value : given, label : word( 'variant/missing', given ) } );
+
+		return Nino.adminUi.selectField( { key : rel+ ':variant', label : word('field/variant'), options : options, value : given, onChange : function( value ) { setAttr( rel, 'variant', value === '' ? null : value ) } } );
+	};
+
+	// The words of a component: a text written in the language of the view - a fixed one for all - and in a sentence where it is read
+	const contentBody = function( rel ) {
+
+		const node = relNode( rel );
+		const source = sourceOf( rel );
+		const body = el( 'div', 'builder-adv-content' );
+
+		if( source === null )
+			return body;
+
+		if( source.kind === 'text' || source.kind === 'fixed' ) {
+
+			const rich = source.kind === 'text' && source.format !== 'plain' && source.format !== 'inline';
+			const value = source.kind === 'fixed' ? node.a.text : textOf( source.key );
+			const field = el( 'label', 'nino-admin-field' );
+			const control = el( rich === true ? 'textarea' : 'input', 'nino-admin-input' );
+
+			field.appendChild( el( 'span', 'builder-field-label', word('field/content') ) );
+			field.appendChild( el( 'span', 'nino-admin-badge builder-field-chip', source.kind === 'fixed' ? word('field/all-languages') : languageName( S.locale ) ) );
+			control.value = value;
+			control.dataset.key = rel+ ':content';
+
+			if( rich === true )
+				control.rows = 5;
+			else
+				control.type = 'text';
+
+			if( source.editable === false ) {
+				control.readOnly = true;
+				control.setAttribute( 'aria-readonly', 'true' );
+			}
+			else
+				control.addEventListener( 'change', function() {
+					settle( { kind : source.kind, key : source.key, format : source.format }, absOf( rel ), control.value, value, true );
+				} );
+
+			field.appendChild( control );
+			body.appendChild( field );
+		}
+
+		// The source in one sentence; changing it is for the dialog of the source
+		const sentence = source.kind === 'fixed' ? word('source/fixed')
+			: ( source.kind === 'image' ? word('source/image')
+			: ( source.kind === 'link' ? word('source/link')
+			: ( source.editable === true ? word('source/own') : ( source.key === '' ? word('source/none') : word('source/other') ) ) ) );
+		const line = el( 'p', 'nino-admin-hint builder-source', sentence );
+
+		// The name of the source stands quietly behind the words
+		if( source.kind !== 'fixed' && source.written !== '' ) {
+			line.appendChild( dc.createTextNode(' ') );
+			line.appendChild( el( 'code', 'builder-source-name', source.written ) );
+		}
+
+		body.appendChild( line );
+
+		return body;
+	};
+
+	const lookBody = function( rel ) {
+
+		const node = relNode( rel );
+		const schema = S.schemas[node.n];
+		const body = el( 'div', 'builder-adv-look' );
+		const names = Object.keys( schema.attributes );
+
+		if( schema.variants.length > 0 )
+			body.appendChild( variantField( rel, node, schema ) );
+
+		names.forEach( function( name ) {
+			body.appendChild( attributeField( rel, name, schema.attributes[name] ) );
+		} );
+
+		if( names.length === 0 && schema.variants.length === 0 )
+			body.appendChild( el( 'p', 'nino-admin-hint', word('field/none') ) );
+
+		return body;
+	};
+
+	// --- the two levels of the left column ---
+
+	const blockTitle = function() {
+
+		if( S.frame === true )
+			return word( 'word/'+ S.template );
+
+		const node = S.top[rootAt()];
+
+		return node === undefined ? '' : titleOf( node );
+	};
+
+	// The notation as the template has it, which the server writes of the draft: the whole block, or the first line of a component
+	const notationBox = function( id, which ) {
+
+		const box = el( 'div', 'builder-notation' );
+		const code = el( 'pre', 'builder-code', S.notation[which] ?? '' );
+
+		code.id = id;
+		code.tabIndex = 0;
+		box.appendChild( el( 'span', 'builder-field-label', which === 'block' ? word('field/notation-block') : word('field/notation') ) );
+		box.appendChild( code );
+
+		return box;
+	};
+
+	const refreshNotation = function() {
+
+		[ [ 'builder-notation-block', 'block' ], [ 'builder-notation-node', 'node' ] ].forEach( function( pair ) {
+
+			const code = dc.getElementById( pair[0] );
+
+			if( code !== null )
+				code.textContent = S.notation[ pair[1] ] ?? '';
+		} );
+	};
+
+	const treeLevel = function( section ) {
+
+		const holder = el( 'div', 'builder-adv-level' );
+		const rootNode = S.top[rootAt()];
+		const treeBox = el( 'div', 'builder-adv-tree' );
+		const settings = el( 'div', 'builder-adv-block' );
+		const idLine = el( 'p', 'builder-adv-id' );
+
+		S.tree = Nino.adminUi.tree( {
+			id				: 'builder-tree',
+			label			: word('adv/tree-label'),
+			items			: itemsNow(),
+			selected	: S.marked === '' ? 'root' : S.marked,
+			onSelect	: function( id ) { Nino.admin.builder.go( partsOf( id, id === 'root' || ( S.schemas[relNode( id ).n].source === 'none' ) ? 'look' : 'content' ), { focus : 'back' } ) },
+			onAction	: function( key, id ) {
+
+				const opener = S.tree.el.querySelector( '[data-key="'+ key+ '"]' );
+
+				if( key === 'add' )
+					openOffer( id, dc.activeElement ?? opener );
+				else if( key === 'remove' && lockedNode( relNode( id ) ) === true )
+					askRemoveUnit( id, dc.activeElement ?? opener );
+				else if( key === 'remove' )
+					removeComponent( id );
+				else
+					moveComponent( id, key === 'up' ? -1 : 1 );
+			},
+			// The entry that has the stop is the one the preview marks; the tree is not drawn again here - a press on a button of another row moves the stop first
+			onFocus		: function( id ) {
+
+				S.marked = id;
+
+				if( S.mark !== null )
+					S.mark( true );
+			},
+		} );
+		treeBox.appendChild( S.tree.el );
+
+		idLine.appendChild( el( 'span', 'builder-field-label', word('field/id') ) );
+		idLine.appendChild( el( 'code', 'builder-field-value', S.frame === true ? ( idOf( rootNode ) === '' ? '-' : idOf( rootNode ) ) : S.adv.block ) );
+		settings.appendChild( idLine );
+		settings.appendChild( el( 'p', 'nino-admin-hint', word( 'adv/block-sentence', countCalls( rootNode ) ) ) );
+		settings.appendChild( notationBox( 'builder-notation-block', 'block' ) );
+
+		const accordion = Nino.adminUi.accordion( {
+			id			: 'builder-acc',
+			level		: 3,
+			open		: section === 'block' ? 'block' : 'tree',
+			sections	: [
+				{ key : 'tree', label : word('adv/tree'), summary : word( 'adv/count', countCalls( rootNode ) ), content : treeBox },
+				{ key : 'block', label : word('adv/settings'), summary : blockTitle(), content : settings },
+			],
+			onToggle	: function( open ) {
+
+				S.adv.section = open[0] === 'block' ? 'block' : '';
+				S.adv.path = S.adv.section === 'block' ? '@block' : '';
+				S.at = partsOf( '', S.adv.section === '' ? 'tree' : 'block' );
+				Nino.admin.router.go( 'builder', S.at );
+			},
+		} );
+
+		holder.appendChild( accordion.el );
+		S.adv.accordion = accordion;
+
+		return holder;
+	};
+
+	const componentLevel = function( rel, section ) {
+
+		const node = relNode( rel );
+		const schema = S.schemas[node.n];
+		const holder = el( 'div', 'builder-adv-level' );
+		const back = el( 'a', 'nino-admin-back-link', word('label/back-tree') );
+		const keys = [ 'look' ];
+
+		back.id = 'builder-back-tree';
+		back.href = hrefOf( partsOf( '', 'tree' ) );
+		back.setAttribute( 'data-keep-draft', '' );
+		back.addEventListener( 'click', function( event ) {
+			event.preventDefault();
+			Nino.admin.builder.go( partsOf( '', 'tree' ), { focus : 'tree', from : rel } );
+		} );
+		holder.appendChild( back );
+		holder.appendChild( el( 'h3', 'builder-name builder-adv-title', titleOfRel( rel ) ) );
+
+		const finding = hintOf( absOf( rel ) );
+
+		if( finding !== undefined )
+			holder.appendChild( Nino.adminUi.notice( finding.text ) );
+
+		if( schema.source !== 'none' )
+			keys.unshift( 'content' );
+
+		const open = keys.indexOf( section ) === -1 ? keys[0] : section;
+		const accordion = Nino.adminUi.accordion( {
+			id			: 'builder-acc',
+			level		: 4,
+			open		: open,
+			sections	: keys.map( function( key ) {
+
+				return key === 'content'
+					? { key : key, label : word('adv/content'), summary : ownText( node, rel, 40 ), content : function() { return contentBody( rel ) } }
+					: { key : key, label : word('adv/settings'), summary : variantSummary( node ), content : function() { return lookBody( rel ) } };
+			} ),
+			onToggle	: function( now ) {
+
+				S.adv.section = now[0] ?? open;
+				S.at = partsOf( rel, S.adv.section );
+				Nino.admin.router.go( 'builder', S.at );
+			},
+		} );
+
+		holder.appendChild( accordion.el );
+		holder.appendChild( notationBox( 'builder-notation-node', 'node' ) );
+		S.adv.accordion = accordion;
+
+		return holder;
+	};
+
+	const variantSummary = function( node ) {
+
+		const count = Object.keys( node.a ?? {} ).filter( function( name ) { return name !== 'id' } ).length;
+
+		return count === 0 ? word('adv/defaults') : word( 'adv/given', count );
+	};
+
+	// The left column of the extended view: the level the address names. The focus goes where the move says: into a component on its way back, out of it on the entry
+	const drawLeft = function( ask ) {
+
+		const view = S.view;
+		const rel = S.adv.path;
+		const held = dc.activeElement !== null && dc.activeElement.dataset !== undefined ? dc.activeElement.dataset.key : undefined;
+		const strip = dc.activeElement !== null && dc.activeElement.closest !== undefined && dc.activeElement.closest('[data-step-key]') !== null ? dc.activeElement.closest('[data-step-key]').dataset.stepKey : undefined;
+		const level = rel === '' || rel === '@block' || relNode( rel ) === null || S.schemas[ relNode( rel ).n ] === undefined ? 'tree' : 'component';
+
+		S.tree = null;
+		S.strips = {};
+		view.split.settings.innerHTML = '';
+		view.split.words( { settings : word( level === 'tree' ? 'adv/tree' : 'adv/settings' ), preview : word('label/preview') } );
+
+		if( level === 'tree' ) {
+
+			// The block itself is the one that is marked, until the focus is on another entry
+			if( S.marked === '' || S.marked === '@block' || relNode( S.marked ) === null )
+				S.marked = 'root';
+
+			S.adv.view = 'tree';
+			view.split.settings.appendChild( treeLevel( rel === '@block' ? 'block' : '' ) );
+			S.look = { block : absOf( 'root' ), node : '' };
+		}
+		else {
+			S.adv.view = 'component';
+			S.marked = rel;
+			view.split.settings.appendChild( componentLevel( rel, S.adv.section ) );
+			S.look = { block : absOf( 'root' ), node : absOf( rel ) };
+		}
+
+		if( held !== undefined ) {
+
+			const again = view.split.settings.querySelector( '[data-key="'+ held+ '"]' );
+
+			if( again !== null )
+				again.focus();
+		}
+		else if( strip !== undefined && S.strips[strip] !== undefined )
+			S.strips[strip].focus();
+
+		// What is written of the block and of the component is what the server writes of the draft: it is asked for when the level changes, and the answer of
+		// each draft brings it again
+		if( ask !== false )
+			api( 'notation', { tree : S.top, look : S.look }, function( status, response ) {
+
+				if( status === 200 && S.mode === 'advanced' ) {
+					S.notation = response.notation;
+					refreshNotation();
+				}
+			} );
+	};
+
+	// What a change does to the left column of the extended view
+	const paintAdvanced = function() {
+
+		const view = S.view;
+
+		view.bar.set( { dirty : isDirty(), restorable : S.last > 0 } );
+		view.buttons.undo.disabled = S.undo.length === 0;
+		view.buttons.redo.disabled = S.redo.length === 0;
+
+		if( rootAt() === -1 ) {
+			Nino.admin.builder.go( [ S.frame === true ? addressOf( S.template ) : S.adv.slug ] );
+			return;
+		}
+
+		const advFocus = S.advFocus;
+
+		S.advFocus = '';
+
+		if( S.adv.view === 'tree' && S.tree !== null ) {
+
+			S.tree.update( itemsNow() );
+
+			if( advFocus !== '' )
+				S.tree.focus( advFocus );
+
+			if( S.adv.accordion !== null )
+				S.adv.accordion.update( 'tree', { summary : word( 'adv/count', countCalls( S.top[rootAt()] ) ) } );
+
+			refreshNotation();
+		}
+		else
+			drawLeft( false );
+
+		if( S.mark !== null )
+			S.mark( false );
+	};
+
+	// The page in the frame of the extended view: the call that is chosen has a box round it, which follows the page where it is laid out again, and a click on a
+	// component of the block chooses it. Nothing is written in the frame here
+	const instrumentAdvanced = function( frame, doc ) {
+
+		const found = traced( doc );
+		const style = doc.createElement('style');
+		const host = doc.createElement('nino-builder-mark');
+		const shadow = host.attachShadow( { mode : 'open' } );
+		const box = doc.createElement('div');
+		const css = doc.createElement('style');
+		const win = frame.contentWindow;
+
+		style.textContent = '[data-nino-pick]{cursor:pointer}';
+		doc.head.appendChild( style );
+		css.textContent = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}.mark{position:absolute;pointer-events:none;box-sizing:border-box;border:2px solid #2f6fed;background:rgba(47,111,237,.1);border-radius:3px}';
+		shadow.appendChild( css );
+		box.className = 'mark';
+		shadow.appendChild( box );
+		host.setAttribute( 'aria-hidden', 'true' );
+		doc.body.appendChild( host );
+
+		S.mark = function( scroll ) {
+
+			const wanted = rootAt() === -1 || S.marked === '' ? null : found.all.find( function( entry ) { return entry.path === absOf( S.marked ) } );
+			const place = wanted === undefined || wanted === null ? null : boxOf( wanted.elements, win );
+
+			box.style.display = place === null ? 'none' : '';
+
+			if( place === null )
+				return;
+
+			box.style.top = place.top+ 'px';
+			box.style.left = place.left+ 'px';
+			box.style.width = place.width+ 'px';
+			box.style.height = place.height+ 'px';
+
+			if( scroll === true )
+				win.scrollTo( { top : Math.max( 0, place.top - win.innerHeight / 3 ) } );
+		};
+
+		// The box follows the component where the page is laid out again: a width of the preview, a picture that arrives
+		if( typeof win.ResizeObserver === 'function' )
+			new win.ResizeObserver( function() { if( S.mark !== null ) S.mark( false ) } ).observe( doc.body );
+
+		win.addEventListener( 'resize', function() { if( S.mark !== null ) S.mark( false ) } );
+		doc.querySelectorAll('a, button, input, select, textarea, summary, [tabindex]').forEach( function( element ) { element.tabIndex = -1 } );
+		doc.addEventListener( 'submit', function( event ) { event.preventDefault() }, true );
+		doc.addEventListener( 'keydown', function( event ) { keys( event, [], doc ) } );
+		doc.addEventListener( 'click', function( event ) {
+
+			if( event.target.closest && event.target.closest('a') !== null )
+				event.preventDefault();
+
+			const root = rootAt();
+			let best = null;
+
+			found.all.forEach( function( entry ) {
+
+				const inside = entry.path === String( root ) || entry.path.indexOf( root+ '.' ) === 0;
+
+				if( inside === true && entry.elements.some( function( element ) { return element.contains( event.target ) } ) === true && ( best === null || entry.path.length > best.path.length ) )
+					best = entry;
+			} );
+
+			if( best === null || S.stale === true )
+				return;
+
+			const rel = best.path === String( root ) ? 'root' : best.path.slice( String( root ).length + 1 );
+			const node = relNode( rel );
+
+			if( node !== null && S.schemas[node.n] !== undefined )
+				Nino.admin.builder.go( partsOf( rel, rel === 'root' || S.schemas[node.n].source === 'none' ? 'look' : 'content' ), { focus : 'back' } );
+		}, true );
+
+		S.mark( true );
+	};
+
 	// --- the list ---------------------------------------------------------------------------------------------------
 
-	const rowOf = function( template, name, hint, chips ) {
+	const rowOf = function( template, name, hint, chips, parts ) {
 
 		const row = el( 'li', 'builder-page-row' );
 		const link = el( 'a', 'builder-page-link' );
+		const at = parts ?? [ addressOf( template ) ];
 
-		link.href = Nino.admin.router.href( 'builder', [ addressOf( template ) ] );
+		link.href = Nino.admin.router.href( 'builder', at );
 		link.addEventListener( 'click', function( event ) {
 			event.preventDefault();
-			Nino.admin.builder.go( [ addressOf( template ) ] );
+			Nino.admin.builder.go( at );
 		} );
 		link.appendChild( el( 'strong', 'builder-page-name', name ) );
 		link.appendChild( el( 'span', 'nino-admin-hint', hint ) );
@@ -2294,6 +3785,7 @@
 	const render = function( data ) {
 
 		S.list = data;
+		S.level = data.level ?? S.level;
 
 		const mount = dc.getElementById('builder-list');
 		const pages = el( 'ul', 'builder-pages' );
@@ -2302,7 +3794,7 @@
 		mount.innerHTML = '';
 
 		data.pages.forEach( function( page ) { pages.appendChild( rowOf( page.template, page.name, page.path, page.locales ) ) } );
-		data.frames.forEach( function( frame ) { frames.appendChild( rowOf( frame.template, word( 'word/frame-'+ frame.key ), word('hint/frame-short'), [] ) ) } );
+		data.frames.forEach( function( frame ) { frames.appendChild( rowOf( frame.template, word( 'word/frame-'+ frame.key ), word('hint/frame-short'), [], data.pages.length > 0 ? [ addressOf( data.pages[0].template ), addressOf( frame.template ) ] : undefined ) ) } );
 
 		mount.appendChild( el( 'h3', 'builder-heading', word('label/pages') ) );
 
@@ -2342,11 +3834,17 @@
 			state : S, normalize : normalize, kindOf : kindOf, neighbour : neighbour, move : move, duplicate : duplicate, remove : remove,
 			undo : undo, redo : redo, isDirty : isDirty, nodeAt : nodeAt, templateOf : templateOf, addressOf : addressOf,
 			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
+			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,
+			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 		},
 
-		go : function( parts ) {
+		go : function( parts, options ) {
 
-			const leaves = S.ready === true && ( parts.length === 0 || templateOf( parts[0] ) !== S.template );
+			const target = targetOf( parts );
+			const leaves = S.ready === true && ( parts.length === 0 || target === null || target.template !== S.template || target.page !== S.page );
+
+			S.focusNext = ( options ?? {} ).focus ?? '';
+			S.focusFrom = ( options ?? {} ).from ?? '';
 
 			Nino.admin.dirty.guard( leaves === true ? [ 'builder' ] : [], function() {
 				Nino.admin.router.go( 'builder', parts );
@@ -2370,19 +3868,20 @@
 				return;
 			}
 
-			const template = templateOf( parts[0] );
+			const target = targetOf( parts );
 
-			if( template === '' ) {
+			if( target === null ) {
 				Nino.admin.builder.go( [] );
 				return;
 			}
 
-			if( template === S.template && S.ready === true ) {
-				Nino.adminUi.showLevel( 'builder-page', { focus : false } );
+			// The page that is open is shown again - at another level of the extended view where the address says so -, and any other is opened
+			if( target.template === S.template && target.page === S.page && S.ready === true ) {
+				show( target );
 				return;
 			}
 
-			openPage( template, function() {} );
+			openPage( target, function() {} );
 		},
 
 		showCurrent : function() {
@@ -2399,10 +3898,11 @@
 				return;
 			}
 
-			const leaving = S.ready === true && ( at.parts.length === 0 || templateOf( at.parts[0] ) !== S.template );
+			const there = targetOf( at.parts );
+			const leaving = S.ready === true && ( at.parts.length === 0 || there === null || there.template !== S.template || there.page !== S.page );
 
 			Nino.admin.router.leave( [ 'builder' ], leaving, proceed, function() {
-				Nino.admin.router.set( 'builder', S.ready === true ? [ addressOf( S.template ) ] : [] );
+				Nino.admin.router.set( 'builder', S.ready === true ? S.at : [] );
 			} );
 		},
 	} );

@@ -220,11 +220,7 @@ namespace Nino\Modules\Builder {
 				if( $schema === null )
 					continue;
 
-				// What the register asks, and the shape it holds an answer to
-				$asked = [ 'name' => $name, 'variants' => $schema['variants'], 'standard' => 'regular' ];
-				$answer = \Nino\Callbacks::doCallbacks( $appData, \Nino\Components::VARIANTS, $asked );
-				$list = is_array( $answer ) === true && is_array( $answer['variants'] ?? null ) === true && array_is_list( $answer['variants'] ) === true ? array_values( array_unique( array_merge( $schema['variants'], $answer['variants'] ) ) ) : $schema['variants'];
-				$standard = is_array( $answer ) === true && is_string( $answer['standard'] ?? null ) === true && in_array( $answer['standard'], $list, true ) === true ? $answer['standard'] : 'regular';
+				[ $list, $standard ] = Tree::variants( $appData, (string) $name );
 
 				foreach( (array) $words as $word )
 					if( in_array( $word, $list, true ) === false )

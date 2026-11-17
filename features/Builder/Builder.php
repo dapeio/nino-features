@@ -33,6 +33,19 @@ namespace Nino\Modules {
 		// The right to work in the panel and through its API; the Editor role does not get it by itself
 		public const string PERM = '/_admin/builder/manage';
 
+		// What a person may do once inside, in three steps: the content (the blocks of a page and the words in them), the design (the components of a block, their
+		// settings and the frames) and the development (the rest, html among it). The scope is the panel's: an account that holds no permission below it - the door
+		// alone - is not described in detail and may design; one that is described holds what it is given, and the permission of a step is any that lies below it
+		public const string SCOPE = '/_admin/builder/';
+		public const string CONTENT = '/_admin/builder/content/edit';
+		public const string DESIGN = '/_admin/builder/design/edit';
+		public const string DEVELOP = '/_admin/builder/develop/edit';
+
+		// The steps as numbers
+		public const int LEVEL_CONTENT = 1;
+		public const int LEVEL_DESIGN = 2;
+		public const int LEVEL_DEVELOP = 3;
+
 		// What the drafts of the previews are called in \Nino\Preview
 		public const string KIND = 'builder';
 
@@ -42,6 +55,25 @@ namespace Nino\Modules {
 
 		public static function adminPanels( array &$appData ): array {
 			return [ \Nino\Modules\Builder\Admin::class ];
+		}
+
+		/**
+		 *	The step of work the signed-in account may do, from the highest it holds down: 3 for the one who may do everything (the blanket of the panel, the whole
+		 *	site), 2 for the one who may design - the door without a description in detail, or the permission of the design -, 1 for the content, 0 for none of them
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	int
+		 */
+		public static function level( array &$appData ): int {
+
+			if( \Nino\Auth::checkPermission( $appData, self::DEVELOP ) === true )
+				return self::LEVEL_DEVELOP;
+
+			if( \Nino\Admin\Admin::scoped( $appData, self::SCOPE, self::DESIGN ) === true )
+				return self::LEVEL_DESIGN;
+
+			return \Nino\Admin\Admin::scoped( $appData, self::SCOPE, self::CONTENT ) === true ? self::LEVEL_CONTENT : 0;
 		}
 
 		/**

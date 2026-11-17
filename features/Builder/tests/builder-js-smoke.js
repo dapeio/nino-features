@@ -55,6 +55,14 @@ const words = {
 	[ 'all', 'intro', 'content', 'trust', 'offer', 'action', 'contact' ].forEach( function( key ) { asked.add( 'insert/cat-'+ key ) } );
 	[ 'basis', 'project' ].forEach( function( key ) { asked.add( 'insert/origin-'+ key ) } );
 	[ 'before', 'after' ].forEach( function( key ) { asked.add( 'label/insert-'+ key ) } );
+	// The words of the extended view that are put together: what the register has against a place and why a component is grey, the three rows of a width, the
+	// two variants that have a word, what a field says of the id and the picture - and the three steps of the roles tab, which the kernel reads
+	[ 'unknown', 'variant', 'outside', 'foreign', 'place', 'once', 'self', 'depth', 'duplicate' ].forEach( function( key ) { asked.add( 'finding/'+ key ) } );
+	[ 'once', 'depth', 'self' ].forEach( function( key ) { asked.add( 'offer/why-'+ key ) } );
+	[ 'all', 'tablet', 'desktop' ].forEach( function( key ) { asked.add( 'rows/'+ key ) } );
+	asked.add('variant/regular');
+	[ 'id', 'image' ].forEach( function( key ) { asked.add( 'field/read-'+ key ) } );
+	[ 'content', 'design', 'develop', 'content-edit', 'design-edit', 'develop-edit' ].forEach( function( key ) { asked.add( 'scope/'+ key ) } );
 	// The failure of a load is the one the shell's panel() asks for by the name of the panel
 	asked.add('error/load');
 	Array.from( asked ).filter( function( key ) { return key.slice( -1 ) === '-' } ).forEach( function( key ) { asked.delete( key ) } );
@@ -300,6 +308,134 @@ check( 'B. a block that was put in is one step of the undo, its copy is a block 
 check( 'B. the dialog asks for as many pictures as the server keeps, and the script does not have a bigger number than the class', ( function() {
 	const php = fs.readFileSync( path.join( featureDir, 'Library/Library.php' ), 'utf8' );
 	return Number( ( /const int TILES = (\d+);/.exec( php ) ?? [] )[1] ) === Number( ( /const TILES\s*= (\d+);/.exec( script ) ?? [] )[1] );
+} )() );
+
+// --- C. the extended view ---------------------------------------------------------------------------------------
+
+const schemas = {
+	'section-wrap' : { label : 'Section', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'alt' ], optionLabels : null, responsive : false } } },
+	'section-col' : { label : 'Column', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [ 'card' ], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '33', '50', '100' ], optionLabels : null, responsive : true }, link : { type : 'bool', label : 'Link', hint : '', default : false } } },
+	'section-title' : { label : 'Title', group : 'section', container : false, source : 'text', format : 'inline', id : '', variants : [], standard : 'regular', attributes : {} },
+	'text' : { label : 'Text', group : 'text', container : false, source : 'text', format : 'blocks', id : '', variants : [], standard : 'regular', attributes : {} },
+	'spacer' : { label : 'Spacer', group : 'text', container : false, source : 'none', format : '', id : '', variants : [], standard : 'regular', attributes : {} },
+};
+
+const extended = function() {
+
+	fresh();
+	S.schemas = schemas;
+	S.known = { 'section-wrap' : { label : 'Section', id : 'id', source : 'none' }, 'section-col' : { label : 'Column', id : 'id', source : 'none' }, 'section-title' : { label : 'Title', id : '', source : 'text' }, text : { label : 'Text', id : '', source : 'text' }, spacer : { label : 'Spacer', id : '', source : 'none' } };
+	S.level = 2;
+	S.findings = {};
+	S.mode = 'advanced';
+	S.adv = { slug : 'home', block : 'hero', path : '', section : '', view : '', accordion : null };
+	S.locale = 'de_DE';
+	S.top = [ { t : '<!-- note -->\n' }, { n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
+		{ n : 'section-wrap', s : '', a : { id : 'hero' }, c : [ { t : '\n\t' }, { n : 'section-col', s : '', a : { id : 'hero-1', size : '100' }, c : [ { t : '\n\t\t' }, { n : 'section-title', s : '~title', a : {}, c : null }, { t : '\n\t\t' }, { n : 'text', s : '~text', a : {}, c : null }, { t : '\n\t\t<p>free</p>\n\t' } ] }, { t : '\n' } ] }, { t : '\n' } ];
+	S.saved = JSON.stringify( [ S.top, S.texts ] );
+};
+
+check( 'C. an address names the page, the block and the place in it - the path, or the settings of the block - and the section; a frame is named by the page it is shown on; what is none is the page', ( function() {
+	const at = function( parts ) { return builder.targetOf( parts ) };
+	const tree = at( [ 'home', 'hero' ] );
+	const component = at( [ 'home', 'hero', '1.1', 'look' ] );
+	const frame = at( [ 'contact', '@header', '1' ] );
+
+	return tree.mode === 'advanced' && tree.template === 'page-home' && tree.block === 'hero' && tree.path === ''
+		&& at( [ 'home', 'hero', '@block' ] ).path === '@block' && component.path === '1.1' && component.section === 'look'
+		&& frame.template === 'frame-header' && frame.page === 'contact' && frame.path === '1' && at( [ '@header' ] ).mode === 'basic' && at( [ '@header' ] ).template === 'frame-header'
+		&& at( [ 'home', 'Not A Block' ] ).mode === 'basic' && at( [ 'home', 'hero', '../x' ] ).path === '' && at( [ 'no_page' ] ) === null;
+} )() );
+
+check( 'C. the tree of a block is its components with their kind and first words, a locked entry for free markup, and the id of an entry is its place in the block', ( function() {
+	extended();
+	S.texts['/template/page-home/hero-1/title'] = { de_DE : 'Hallo Welt' };
+
+	const root = builder.itemsNow()[0];
+	const column = root.children[0];
+
+	return root.id === 'root' && root.label === 'Section' && column.id === '1' && column.children.map( function( item ) { return item.id } ).join() === '1.1,1.3,1.4'
+		&& column.children[0].detail === 'Hallo Welt' && column.children[2].locked === true && column.children[0].locked === false
+		&& root.actions.map( function( action ) { return action.key } ).join() === 'add' && column.actions.map( function( action ) { return action.key } ).join() === 'add,up,down,remove'
+		&& column.children[2].actions.map( function( action ) { return action.key } ).join() === 'up,down,remove';
+} )() );
+
+check( 'C. a component is moved among its neighbours - over free markup too, never off the end - and taken out with the blanks that lay it out, so that no two texts stand side by side, and the undo gives back the tree to the byte', ( function() {
+	extended();
+	const over = builder.moveComponent( '1.3', 1 ) && S.top[3].c[1].c.some( function( node ) { return node.t !== undefined && node.t.indexOf('<p>free</p>') !== -1 } );
+	extended();
+	const begin = JSON.stringify( S.top );
+	const up = builder.moveComponent( '1.3', -1 );
+	const kinds = S.top[3].c[1].c.map( function( node ) { return node.n ?? 'blank' } ).join();
+	const edge = builder.moveComponent( '1.1', -1 ) || builder.moveComponent( 'root', 1 ) || builder.moveComponent( '1.9', 1 );
+	builder.undo();
+	const back = JSON.stringify( S.top ) === begin;
+	const out = builder.removeComponent( '1.1' );
+	const list = S.top[3].c[1].c;
+	const clean = list.map( function( node ) { return node.n ?? node.t } ).join() === '\n\t\t,text,\n\t\t<p>free</p>\n\t';
+	builder.undo();
+
+	return over === true && up === true && kinds === 'blank,text,blank,section-title,blank' && edge === false && back === true && out === true && clean === true && JSON.stringify( S.top ) === begin;
+} )() );
+
+check( 'C. a component that is put in stands behind the last piece the container holds - never inside a unit of locked pieces - with the blanks the server says, and reads a text of its own under the nearest id', ( function() {
+	extended();
+	builder.addComponent( '1', { name : 'section-title', node : { n : 'section-title', s : '', a : {}, c : null } }, '\n\t\t' );
+	let list = S.top[3].c[1].c;
+	const added = list.find( function( node ) { return node.s === '~title-2' } );
+	const afterFree = list.indexOf( added ) > list.findIndex( function( node ) { return node.t !== undefined && node.t.indexOf('<p>free</p>') !== -1 } );
+	const closed = list[list.length - 1].t !== undefined && list[list.length - 1].n === undefined;
+
+	builder.addComponent( '1', { name : 'spacer', node : { n : 'spacer', s : '', a : {}, c : null } }, '\n\t\t' );
+	list = S.top[3].c[1].c;
+
+	return added !== undefined && afterFree === true && closed === true && typeof S.texts['/template/page-home/hero-1/title-2'].de_DE === 'string'
+		&& list.some( function( node ) { return node.n === 'spacer' && node.s === '' } ) === true && list.filter( function( node ) { return node.n !== undefined } ).length === 4;
+} )() );
+
+check( 'C. the locked pieces that follow one another are one entry of the tree, one unit: it is moved past a call and taken out whole, and nothing moves into it', ( function() {
+	extended();
+	S.top[3].c[1].c = [ { t : '\n\t\t' }, { n : 'section-title', s : '~title', a : {}, c : null }, { t : '\n\t\t<b>a</b>' }, { n : 'csrf', s : '', a : {}, c : null }, { t : '\n\t\t<i>b</i>\n\t' } ];
+	const items = builder.itemsNow()[0].children[0].children;
+	const one = items.length === 2 && items[1].locked === true;
+	const moved = builder.moveComponent( '1.2', -1 );
+	const kinds = S.top[3].c[1].c.map( function( node ) { return node.n ?? 'text' } ).join();
+	const gone = builder.removeComponent( '1.1' );
+	const left = S.top[3].c[1].c.map( function( node ) { return node.n ?? 'text' } ).join();
+
+	return one === true && moved === true && kinds === 'text,csrf,text,section-title' && gone === true && left === 'section-title';
+} )() );
+
+check( 'C. an attribute is set where it is not the default and taken away where it is, a responsive width is the parts of "100 m:33", and a bool is a bare word', ( function() {
+	extended();
+	builder.setAttr( '1', 'size', builder.widthsWritten( Object.assign( builder.widthsOf( '100' ), { m : '33' } ), '100' ) );
+	const size = S.top[3].c[1].a.size;
+	builder.setAttr( '1', 'link', true );
+	const link = S.top[3].c[1].a.link;
+	builder.setAttr( '1', 'link', null );
+	const parts = builder.widthsOf( '50 l:25' );
+
+	return size === '100 m:33' && link === true && S.top[3].c[1].a.link === undefined && parts[''] === '50' && parts.l === '25' && parts.m === '' && builder.widthsWritten( builder.widthsOf( '' ), '100' ) === '100'
+		&& builder.widthsWritten( { '' : '', m : '', l : '50' }, '100' ) === '100 l:50';
+} )() );
+
+check( 'C. a text is read from the place the component says: the key under the nearest id, a fixed text for all languages, and a key of the project that is not written here', ( function() {
+	extended();
+	S.top[3].c[1].c[3].a = { text : 'Fest' };
+	S.top[3].c[1].c[1].s = '/project/company/general/name';
+	const at = function( rel ) { return builder.sourceOf( rel ) };
+
+	return at( '1.3' ).kind === 'fixed' && at( '1.3' ).editable === true && at( '1.1' ).key === '/project/company/general/name' && at( '1.1' ).editable === false
+		&& at( '1' ) === null && Object.keys( builder.model === undefined ? {} : {} ).length === 0;
+} )() );
+
+check( 'C. what the register has against a place is a sentence at the entry, and the way into a block that is gone is the page', ( function() {
+	extended();
+	S.findings = { '3.1.1': [ [ 'outside', 'size' ] ] };
+	const hint = builder.hintOf( '3.1.1' );
+	S.top.splice( 3, 1 );
+
+	return hint !== undefined && hint.state === 'warn' && builder.hintOf( '3.1.9' ) === undefined && builder.rootAt() === -1 && builder.itemsNow().length === 0;
 } )() );
 
 done();
