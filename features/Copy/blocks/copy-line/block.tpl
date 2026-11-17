@@ -1,0 +1,8 @@
+[section-wrap id="copy" ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title ~title tag="h2" size="m"]
+			[copy ~line]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

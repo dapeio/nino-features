@@ -1,0 +1,12 @@
+/*	copy - the standard part: the button beside its text, the two states it is in for a moment, and the block that keeps its whitespace	*/
+:root {
+	--copy-radius: var(--page-radius);
+}
+.copy { display: inline-flex; align-items: baseline; gap: var(--page-space-1); max-width: 100%; }
+.copy-text { min-width: 0; }
+.copy-button { flex: 0 0 auto; min-height: 24px; padding: .2em .7em; border: var(--page-line) solid var(--brand-line); border-radius: var(--copy-radius); background: transparent; color: inherit; font: inherit; font-size: var(--page-text-1); line-height: 1.4; cursor: pointer; white-space: nowrap; }
+.copy-button:hover { border-color: currentColor; }
+.copy-button.copy-is-done, .copy-button.copy-is-failed { border-color: var(--brand-accent); }
+.copy--block { display: flex; align-items: flex-start; width: 100%; }
+.copy--block .copy-text { display: block; flex: 1 1 auto; overflow-x: auto; margin: 0; white-space: pre; font-family: ui-monospace, monospace; }
+.copy .copy-button[hidden] { display: none; }

@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Zeile zum Kopieren", "en_US": "A line to copy" },
+	"description": { "de_DE": "Eine Überschrift und eine Zeile mit Kopierknopf, etwa für eine IBAN oder einen Gutscheincode.", "en_US": "A headline and a line with a copy button, for an IBAN or a voucher code." },
+	"category": "content",
+	"rank": 60,
+	"images": {}
+}

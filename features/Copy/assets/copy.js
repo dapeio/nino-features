@@ -29,7 +29,7 @@
 
 ( function() {
 
-	var SELECTOR = '.nino-copy';
+	var SELECTOR = '.copy';
 
 	// How long the button says it worked before it is a copy button again
 	var SAID_FOR = 1600;
@@ -51,7 +51,7 @@
 		if( typeof given === 'string' && given !== '' )
 			return given;
 
-		var text = box.querySelector( '.nino-copy-text' );
+		var text = box.querySelector( '.copy-text' );
 
 		return text === null ? '' : text.textContent;
 	}
@@ -67,7 +67,7 @@
 	 */
 	function say( button, which ) {
 
-		var word = button.querySelector( '.nino-copy-word' );
+		var word = button.querySelector( '.copy-word' );
 		var said = button.getAttribute( 'data-copy-' + which );
 		var back = button.getAttribute( 'data-copy-do' );
 
@@ -75,15 +75,15 @@
 			return;
 
 		word.textContent = said;
-		button.classList.add( which === 'done' ? 'nino-is-done' : 'nino-is-failed' );
+		button.classList.add( which === 'done' ? 'copy-is-done' : 'copy-is-failed' );
 
 		if( button.dataset.copyTimer !== undefined )
 			clearTimeout( parseInt( button.dataset.copyTimer, 10 ) );
 
 		button.dataset.copyTimer = String( setTimeout( function() {
 			word.textContent = back;
-			button.classList.remove( 'nino-is-done' );
-			button.classList.remove( 'nino-is-failed' );
+			button.classList.remove( 'copy-is-done' );
+			button.classList.remove( 'copy-is-failed' );
 			delete button.dataset.copyTimer;
 		}, SAID_FOR ) );
 	}
@@ -125,7 +125,7 @@
 
 		for( var i = 0; i < boxes.length; i++ ) {
 
-			var button = boxes[i].querySelector( '.nino-copy-btn' );
+			var button = boxes[i].querySelector( '.copy-button' );
 
 			if( button === null )
 				continue;

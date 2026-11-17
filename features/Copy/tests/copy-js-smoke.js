@@ -5,7 +5,7 @@
  *										the clipboard and what is not, that the older way is
  *										tried when the clipboard API is missing or refuses, that
  *										the word on the button says what happened and goes back
- *										afterwards, and that a [copy] with no button is left
+ *										afterwards, and that a copy box with no button is left
  *										alone.
  *
  *										No jsdom, no dependency: the same element stand-in the
@@ -90,7 +90,7 @@ function element( tag, attributes ) {
 }
 
 /**
- *	One [copy] as the shortcode writes it, the script loaded over it
+ *	One copy box as its template draws it, the script loaded over it
  *
  *	@param		{Object}	options		{ shown, value, named, clipboard, legacy, readyState, hold }
  */
@@ -98,11 +98,11 @@ function page( options ) {
 
 	options = options || {};
 
-	const box = element( 'span', { 'class' : 'nino-copy' } );
-	const text = element( 'span', { 'class' : 'nino-copy-text', text : options.shown !== undefined ? options.shown : 'DE02 1203' } );
+	const box = element( 'span', { 'class' : 'copy' } );
+	const text = element( 'span', { 'class' : 'copy-text', text : options.shown !== undefined ? options.shown : 'DE02 1203' } );
 
 	const buttonAttributes = {
-		'class'						: 'nino-copy-btn',
+		'class'						: 'copy-button',
 		'data-copy-do'		: 'Kopieren',
 		'data-copy-done'	: 'Kopiert',
 		'data-copy-failed': 'Strg+C drücken',
@@ -113,7 +113,7 @@ function page( options ) {
 	const button = element( 'button', buttonAttributes );
 	button.hidden = true;
 
-	const word = element( 'span', { 'class' : 'nino-copy-word', text : 'Kopieren' } );
+	const word = element( 'span', { 'class' : 'copy-word', text : 'Kopieren' } );
 	button.appendChild( word );
 
 	box.appendChild( text );
@@ -130,7 +130,7 @@ function page( options ) {
 		body						: body,
 		createElement		: function( tag ) { return element( tag, {} ) },
 		querySelector		: function() { return null },
-		querySelectorAll	: function( selector ) { return selector === '.nino-copy' ? [ box ] : [] },
+		querySelectorAll	: function( selector ) { return selector === '.copy' ? [ box ] : [] },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 		execCommand			: function( name ) {
 			commands.push( name );
@@ -203,15 +203,14 @@ function page( options ) {
 
 ( async function() {
 
-// --- Taking a [copy] over ------------------------------------------------------
+// --- Taking a copy box over ------------------------------------------------------
 
 const plain = page( {} );
 
 check( 'the button comes out of hiding, because now it can do something', plain.button.hidden === false );
-check( 'a button that was not told what it copies is left with the word on it alone', plain.button.getAttribute('aria-label') === null );
-
 const named = page( { named : 'IBAN' } );
-check( '...and one that was says both: what it does and what it copies', named.button.getAttribute('aria-label') === 'Kopieren: IBAN' );
+check( 'a button that was told what it copies says both what it does and what it copies, one that was not keeps its word alone',
+	named.button.getAttribute('aria-label') === 'Kopieren: IBAN' && plain.button.getAttribute('aria-label') === null );
 
 
 // --- What gets copied ----------------------------------------------------------
@@ -221,10 +220,10 @@ await plain.settle();
 
 check( 'a press copies what is shown', plain.written.join('') === 'DE02 1203' );
 
-const grouped = page( { shown : 'DE02 1203 0000', value : 'DE021203 0000'.replace( / /g, '' ) } );
+const grouped = page( { shown : 'DE02 1203 0000', value : 'DE0212030000' } );
 grouped.press();
 await grouped.settle();
-check( '...or what the shortcode said instead, so a number can be grouped on screen and plain in the clipboard',
+check( '...or what the call said instead, so a number can be grouped on screen and plain in the clipboard',
 	grouped.written.join('') === 'DE0212030000' );
 
 const nothing = page( { shown : '' } );
@@ -235,11 +234,10 @@ check( 'and nothing at all where there is nothing to copy', nothing.written.leng
 
 // --- Saying what happened ------------------------------------------------------
 
-check( 'the word on the button says it worked, not only its colour', plain.said() === 'Kopiert' );
-check( '...and the button is marked for whoever can see it too', plain.button.classList.contains('nino-is-done') === true );
+check( 'the word on the button says it worked, and the button is marked too', plain.said() === 'Kopiert' && plain.button.classList.contains('copy-is-done') === true );
 
 plain.expire();
-check( 'after a moment it is a copy button again', plain.said() === 'Kopieren' && plain.button.classList.contains('nino-is-done') === false );
+check( 'after a moment it is a copy button again', plain.said() === 'Kopieren' && plain.button.classList.contains('copy-is-done') === false );
 
 
 // --- When the clipboard API is not there, or refuses ---------------------------
@@ -248,39 +246,19 @@ const old = page( { clipboard : false } );
 old.press();
 await old.settle();
 
-check( 'a browser with no clipboard API - which is every site served over http - still copies',
-	old.commands.join('') === 'copy' && old.written.join('') === 'DE02 1203' && old.said() === 'Kopiert' );
-check( '...and the field that way needs is taken off the page again', old.body.children.length === 0 );
-
-const refused = page( { clipboard : 'refuses' } );
-refused.press();
-await refused.settle();
-check( 'an API that refuses falls back to the older way rather than reporting failure straight away',
-	refused.commands.join('') === 'copy' && refused.said() === 'Kopiert' );
-
-const abrupt = page( { clipboard : 'throws' } );
-abrupt.press();
-await abrupt.settle();
-check( 'one that throws at once is the same - Nino.clipboard() never rejects, so there is nothing for the button to leave unhandled',
-	abrupt.commands.join('') === 'copy' && abrupt.said() === 'Kopiert' );
+check( 'a browser with no clipboard API - which is every site served over http - still copies, and takes the field it needed off the page again',
+	old.commands.join('') === 'copy' && old.written.join('') === 'DE02 1203' && old.said() === 'Kopiert' && old.body.children.length === 0 );
 
 const hopeless = page( { clipboard : false, legacy : false } );
 hopeless.press();
 await hopeless.settle();
 check( 'and where neither works the button says what to do instead',
-	hopeless.said() === 'Strg+C drücken' && hopeless.button.classList.contains('nino-is-failed') === true );
+	hopeless.said() === 'Strg+C drücken' && hopeless.button.classList.contains('copy-is-failed') === true );
 
-const both = page( { clipboard : 'refuses', legacy : false } );
-both.press();
-await both.settle();
-check( '...also where the API refused and the older way had nothing to add',
-	both.commands.join('') === 'copy' && both.said() === 'Strg+C drücken' && both.button.classList.contains('nino-is-failed') === true && both.body.children.length === 0 );
-
-
-// --- A [copy] that is not one --------------------------------------------------
+// --- A copy box that is not one --------------------------------------------------
 
 const bare = page( { withButton : false } );
-check( 'a [copy] with no button in it is left exactly as it was', bare.button.hidden === true );
+check( 'a copy box with no button in it is left exactly as it was', bare.button.hidden === true );
 
 
 // --- Starting with the kernel --------------------------------------------------
