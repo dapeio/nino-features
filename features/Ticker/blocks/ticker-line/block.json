@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Laufband mit Ankündigungen", "en_US": "Ticker of announcements" },
+	"description": { "de_DE": "Eine Zeile mit kurzen Ankündigungen, die in der Schleife läuft, hält an, wenn man darauf zeigt, und hat einen Pause-Knopf.", "en_US": "A line of short announcements that runs round and round, pauses when it is pointed at and has a pause button." },
+	"category": "content",
+	"rank": 80,
+	"images": {}
+}

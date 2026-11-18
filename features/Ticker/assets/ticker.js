@@ -1,9 +1,9 @@
 /**
  *	Nino - Ticker
  *	ticker.js		Makes a row run - once, or round and round without a seam. No
- *					build step; it needs Nino.js and Nino.ui.js, which every site
- *					loads: the kernel bundles it into the project's own
- *					/.cache/script.js behind them, from the manifest's assets.
+ *					build step; it needs Nino.js, which every site loads: the
+ *					kernel bundles it into the project's own /.cache/script.js
+ *					behind it, from the manifest's assets.
  *
  *					The seam is the whole problem. A row that simply scrolls runs
  *					out and jumps back, and the jump is what everybody sees. So the
@@ -29,9 +29,10 @@
  *					asks for the endless loop instead (WCAG 2.2.2: anything that
  *					moves for more than five seconds needs a way to pause it - a
  *					loop always, one pass when it is that long; see
- *					data-ticker-toggle).
+ *					data-ticker-toggle="1").
  *
- *					data-ticker-toggle on a row puts a pause button after it, as its
+ *					data-ticker-toggle="1" on a row puts a pause button, named by
+ *					data-ticker-label, after it, as its
  *					next sibling - never inside the track, which is cloned. A press
  *					pauses the animation (touch and keyboard included, unlike
  *					:hover and :focus-within) and the button is taken away again
@@ -45,7 +46,7 @@
 
 ( function() {
 
-	var SELECTOR = '.nino-ticker';
+	var SELECTOR = '.ticker';
 
 	// Pixels per second, where the row does not say. Slow enough to read a
 	// word on the way past
@@ -60,19 +61,8 @@
 	// drag, and every one of them would cost a measurement of every row
 	var SETTLE = 150;
 
-	// What a row says about itself, as Nino.ui.options() reads it off its
-	// data-ticker-* attributes: its speed, whether it loops - only 1, true,
-	// yes and on say so, like every flag of the kernel - and the label of the
-	// pause button it asks for
-	var OPTIONS = {
-		speed	: { type : 'number', fallback : SPEED_DEFAULT },
-		loop	: { type : 'flag', fallback : false },
-		toggle	: { type : 'text', fallback : '' }
-	};
-
-	// The kernel's own button classes carry the look of the pause button;
-	// ticker.css adds the pressed state
-	var BUTTON = 'nino-btn nino-btn--outline nino-btn--small nino-ticker-toggle';
+	// The class of the pause button, whose look is the standard part of the group
+	var BUTTON = 'ticker-toggle';
 
 	// The rows this file is running, each with the box width its copies were
 	// made for
@@ -81,11 +71,83 @@
 	var settling = null;
 
 	/**
+	 *	What a row says about itself, read off its data-ticker-* attributes:
+	 *	its speed in pixels per second (a number above nothing, else the
+	 *	default), whether it loops, whether it carries a pause button and
+	 *	whether it stops under the pointer (only 1, true, yes and on say so;
+	 *	0, false, no and off say not; any other word is no answer and leaves
+	 *	the default) and the label of that button
+	 *
+	 *	@param		{Element}		row
+	 *
+	 *	@return		{Object}
+	 */
+	function options( row ) {
+
+		var flag = function( name, fallback ) {
+
+			var value = ( row.getAttribute( 'data-ticker-' + name ) || '' ).trim().toLowerCase();
+
+			if( [ '1', 'true', 'yes', 'on' ].indexOf( value ) !== -1 )
+				return true;
+
+			return [ '0', 'false', 'no', 'off' ].indexOf( value ) !== -1 ? false : fallback;
+		};
+
+		var speed = parseFloat( row.getAttribute( 'data-ticker-speed' ) );
+
+		return {
+			speed	: isFinite( speed ) === true && speed > 0 ? speed : SPEED_DEFAULT,
+			loop	: flag( 'loop', false ),
+			toggle	: flag( 'toggle', false ),
+			label	: row.getAttribute( 'data-ticker-label' ) || ''
+		};
+	}
+
+	/**
+	 *	Whether the visitor asked for less motion
+	 *
+	 *	@return		{boolean}
+	 */
+	function reducedMotion() {
+		return typeof window.matchMedia === 'function' && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches === true;
+	}
+
+	/**
+	 *	Call back once the element has been in the viewport; at once where the
+	 *	browser has no IntersectionObserver
+	 *
+	 *	@param		{Element}		el
+	 *	@param		{Function}	callback
+	 *
+	 *	@return		void
+	 */
+	function whenVisible( el, callback ) {
+
+		if( typeof window.IntersectionObserver !== 'function' ) {
+			callback();
+			return;
+		}
+
+		var observer = new window.IntersectionObserver( function( entries ) {
+
+			for( var i = 0; i < entries.length; i++ )
+				if( entries[i].isIntersecting === true ) {
+					observer.disconnect();
+					callback();
+					return;
+				}
+		} );
+
+		observer.observe( el );
+	}
+
+	/**
 	 *	The label a row's toggle button carries, or '' where it gets none: no
 	 *	attribute, an empty one, or one that still holds a text fill nobody
 	 *	resolved - a button that says "[[/feature/ticker/pause/label]]" is worse than none
 	 *
-	 *	@param		{string}		text			What data-ticker-toggle holds, as Nino.ui.options() read it
+	 *	@param		{string}		text			What data-ticker-label holds
 	 *
 	 *	@return		{string}
 	 */
@@ -111,7 +173,7 @@
 
 		var row = entry.row;
 
-		if( entry.toggle !== null || entry.done === true || entry.label === '' || row.parentNode === null || Nino.ui.reducedMotion() === true )
+		if( entry.toggle !== null || entry.done === true || entry.label === '' || row.parentNode === null || reducedMotion() === true )
 			return;
 
 		entry.toggle = document.createElement( 'button' );
@@ -127,9 +189,9 @@
 			entry.toggle.setAttribute( 'aria-pressed', on === true ? 'true' : 'false' );
 
 			if( on === true )
-				row.classList.add( 'nino-is-paused' );
+				row.classList.add( 'ticker-is-paused' );
 			else
-				row.classList.remove( 'nino-is-paused' );
+				row.classList.remove( 'ticker-is-paused' );
 		} );
 
 		row.parentNode.insertBefore( entry.toggle, row.nextSibling );
@@ -140,7 +202,7 @@
 	 *	It is marked done, which the stylesheet turns into no animation at all -
 	 *	so a later resize, which sets the duration again, cannot start it over -
 	 *	and the pause button, which has nothing left to pause, is removed
-	 *	rather than hidden: .nino-btn's own display rule beats [hidden]
+	 *	rather than hidden: the stylesheet's own display rule for the button beats [hidden]
 	 *
 	 *	@param		{Object}		entry			One row
 	 *
@@ -149,8 +211,8 @@
 	function finish( entry ) {
 
 		entry.done = true;
-		entry.row.classList.add( 'nino-is-done' );
-		entry.row.classList.remove( 'nino-is-paused' );
+		entry.row.classList.add( 'ticker-is-done' );
+		entry.row.classList.remove( 'ticker-is-paused' );
 
 		if( entry.toggle !== null && entry.toggle.parentNode !== null ) {
 
@@ -194,11 +256,13 @@
 	function run( entry ) {
 
 		var row = entry.row;
-		var track = row.querySelector( '.nino-ticker-track' );
+		var track = row.querySelector( '.ticker-track' );
 
 		// A finished pass stays finished: measuring it again would copy a
-		// row nothing is moving
-		if( track === null || entry.done === true )
+		// row nothing is moving. And a visitor who asked for less motion gets
+		// the row as the page wrote it, to be scrolled by hand: nothing moves
+		// for them, so there is nothing to copy and no copy to hide
+		if( track === null || entry.done === true || reducedMotion() === true )
 			return;
 
 		strip( track );
@@ -258,12 +322,12 @@
 		if( distance <= 0 )
 			return;
 
-		track.style.setProperty( '--nino-ticker-distance', distance + 'px' );
-		track.style.setProperty( '--nino-ticker-duration', ( distance / entry.speed ) + 's' );
+		track.style.setProperty( '--ticker-distance', distance + 'px' );
+		track.style.setProperty( '--ticker-duration', ( distance / entry.speed ) + 's' );
 
 		entry.across = row.clientWidth;
 
-		row.classList.add( 'nino-is-running' );
+		row.classList.add( 'ticker-is-running' );
 
 		// Once, and only now that the row is measured: before that there is
 		// nothing for the button to pause. A single pass is over when the
@@ -315,13 +379,17 @@
 	 *	and may only exist once, and a link or a button in a copy is a stop on
 	 *	the way through the page that reads the same as the one before it.
 	 *	aria-hidden takes a copy out of the screen reader's list but leaves it
-	 *	in the tab order, which is the one thing it cannot do by itself
+	 *	in the tab order, which is the one thing it cannot do by itself: inert
+	 *	takes it out of both and keeps it from the keyboard focus, and the
+	 *	tabindex is for a browser that does not know inert
 	 *
 	 *	@param		{Element}		copy
 	 *
 	 *	@return		void
 	 */
 	function disarm( copy ) {
+
+		copy.setAttribute( 'inert', '' );
 
 		var withId = copy.querySelectorAll( '[id]' );
 
@@ -348,27 +416,27 @@
 
 		for( var i = 0; i < found.length; i++ ) {
 
-			var options = Nino.ui.options( found[i], 'ticker', OPTIONS );
+			var given = options( found[i] );
 
 			// The width it was built for, which nothing has been built for yet
-			var entry = { row : found[i], across : -1, speed : options.speed, loop : options.loop, label : toggleLabel( options.toggle ), done : false, toggle : null, listening : false };
+			var entry = { row : found[i], across : -1, speed : given.speed, loop : given.loop, label : given.toggle === true ? toggleLabel( given.label ) : '', done : false, toggle : null, listening : false };
 
 			rows.push( entry );
 
 			if( entry.loop === true )
-				found[i].classList.add( 'nino-is-looping' );
+				found[i].classList.add( 'ticker-is-looping' );
 
 			/*	Held until it has been seen. The class is on before the row is
 				measured, so the animation the measurement starts begins paused
 				rather than running for the length of the time it takes to
 				scroll there	*/
 			if( typeof window.IntersectionObserver === 'function' )
-				found[i].classList.add( 'nino-is-waiting' );
+				found[i].classList.add( 'ticker-is-waiting' );
 
 			run( entry );
 
-			Nino.ui.whenVisible( found[i], ( function( row ) {
-				return function() { row.classList.remove( 'nino-is-waiting' ) };
+			whenVisible( found[i], ( function( row ) {
+				return function() { row.classList.remove( 'ticker-is-waiting' ) };
 			} )( found[i] ) );
 		}
 

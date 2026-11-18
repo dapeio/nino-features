@@ -1,0 +1,1 @@
+<div class="[[class]]" data-ticker-speed="[[speed]]" data-ticker-direction="[[direction]]" data-ticker-loop="[[loop]]" data-ticker-toggle="[[toggle]]" data-ticker-pause="[[pause]]" data-ticker-label="[[/feature/ticker/pause/label]]"><div class="ticker-track">[[content]]</div></div>

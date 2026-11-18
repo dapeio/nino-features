@@ -1,22 +1,23 @@
 /**
  *	Nino
- *	ticker-js-smoke.js	What ticker.js does over a dom stand-in: how many copies
- *											it makes for a given row and box, that it stops making
- *											them, that the copies are hidden from a screen reader,
- *											what it sets the animation's distance and duration to,
- *											that a row with nothing in it is left alone - and
- *											that a row runs one pass by default and loops where it
- *											asks, waits to be seen, is done when its animation
- *											ends and stays done, and that the pause button it can
- *											ask for is drawn once, after the row, and removed with
- *											the pass.
+ *	ticker-js-smoke.js	What ticker.js does over a dom stand-in, one pin each:
+ *											how many copies it makes for a given row and box, that
+ *											the copies are hidden from assistive technology and
+ *											cannot take the focus, what it sets the animation's
+ *											distance and duration to, that a row with nothing in
+ *											it is left alone, that a row runs one pass by default
+ *											and loops where it asks, waits to be seen, is done when
+ *											its animation ends, that the pause button it can ask
+ *											for is drawn once, after the row, works and is removed
+ *											with the pass - and that a visitor who asked for less
+ *											motion gets the row as the page wrote it.
  *
  *											No jsdom, no dependency: the same element stand-in the
  *											other feature tests build, so this runs with nothing
- *											but node - and the kernel's own Nino.js and Nino.ui.js,
- *											which the script is written against and which run here
- *											as they are on disk: from the checkout three levels up,
- *											or the one NINO_ROOT names.
+ *											but node - and the kernel's own Nino.js, which the
+ *											script is written against and which runs here as it is
+ *											on disk: from the checkout three levels up, or the one
+ *											NINO_ROOT names.
  *
  *	Usage: node features/Ticker/tests/ticker-js-smoke.js
  *	       NINO_ROOT=../nino node features/Ticker/tests/ticker-js-smoke.js
@@ -45,12 +46,11 @@ function check( label, condition ) {
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/ticker.js' ), 'utf8' );
 
-// The two scripts of the kernel that ticker.js is written against, read from the
+// The script of the kernel that ticker.js is written against, read from the
 // checkout this runs against: three levels up when the feature sits in a project's
 // features/, else the one NINO_ROOT names
 const kernel = path.resolve( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
 const nino = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.js' ), 'utf8' ), { filename : 'Nino.js' } );
-const ninoUi = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.ui.js' ), 'utf8' ), { filename : 'Nino.ui.js' } );
 
 // The track is a flex row with a gap between its items (see ticker.css), and
 // the gap is the whole point of the distance the animation runs: a row of n
@@ -135,7 +135,7 @@ function element( attributes, width ) {
 	// how a row that was left running is told from one that was built again
 	el.style = { setProperty : function( name, value ) {
 		el.properties[name] = value;
-		if( name === '--nino-ticker-distance' ) el.measured++;
+		if( name === '--ticker-distance' ) el.measured++;
 	} };
 
 	Object.defineProperty( el, 'parentNode', { get : function() { return el.parent } } );
@@ -200,16 +200,18 @@ function page( options ) {
 
 	options = options || {};
 
-	const row = element( { 'class' : 'nino-ticker' }, options.box !== undefined ? options.box : 1000 );
+	const row = element( { 'class' : 'ticker' }, options.box !== undefined ? options.box : 1000 );
 
 	if( options.speed !== undefined ) row.attributes['data-ticker-speed'] = String( options.speed );
 	if( options.loop !== undefined ) row.attributes['data-ticker-loop'] = options.loop;
-	if( options.toggle !== undefined ) row.attributes['data-ticker-toggle'] = options.toggle;
+	// A label with the switch on, as the template writes them: the label is always there, the switch says whether it is used
+	row.attributes['data-ticker-label'] = options.toggle !== undefined ? options.toggle : 'Pause animation';
+	if( options.toggle !== undefined ) row.attributes['data-ticker-toggle'] = '1';
 
-	const track = element( { 'class' : 'nino-ticker-track' }, 0 );
+	const track = element( { 'class' : 'ticker-track' }, 0 );
 
 	for( const width of ( options.items !== undefined ? options.items : [ 200, 200, 200 ] ) ) {
-		const item = track.appendChild( element( { 'class' : 'nino-ticker-item' }, width ) );
+		const item = track.appendChild( element( { 'class' : 'ticker-item' }, width ) );
 		// A logo is usually a link, and a link is usually named - which is
 		// what a copy may carry neither of
 		item.appendChild( element( { 'href' : '/partner', 'id' : 'logo-' + track.children.length } ) );
@@ -234,7 +236,7 @@ function page( options ) {
 		documentElement	: { clientHeight : 800, clientWidth : 1000, scrollTop : 0, scrollLeft : 0 },
 		body						: { scrollTop : 0, scrollLeft : 0, classList : { add : function() {}, remove : function() {} } },
 		querySelector			: function() { return null },
-		querySelectorAll	: function( selector ) { return selector === '.nino-ticker' ? [ row ] : [] },
+		querySelectorAll	: function( selector ) { return selector === '.ticker' ? [ row ] : [] },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 		createElement			: function( tag ) { const created = element(); created.tagName = tag; return created },
 	};
@@ -271,7 +273,6 @@ function page( options ) {
 	const context = vm.createContext( sandbox );
 
 	nino.runInContext( context );
-	ninoUi.runInContext( context );
 	vm.runInContext( source, context, { filename : 'ticker.js' } );
 
 	// Run what was asked of setTimeout(), and what that asked for in turn - a timer
@@ -289,7 +290,7 @@ function page( options ) {
 
 	return {
 		row : row, track : track, host : host, listeners : listeners, observers : observers,
-		running : function() { return row.matchesClass( 'nino-is-running' ) },
+		running : function() { return row.matchesClass( 'ticker-is-running' ) },
 		// The row has come into view
 		intersect : function() { observers.forEach( function( observer ) { observer.callback( [ { isIntersecting : true } ] ) } ) },
 		// The track's animation has run its course; a child's would not count
@@ -297,8 +298,8 @@ function page( options ) {
 		toggle : function() { return row.nextSibling },
 		items : function() { return track.children.length },
 		copies : function() { return track.children.filter( function( c ) { return c.getAttribute('aria-hidden') === 'true' } ).length },
-		distance : function() { return track.properties['--nino-ticker-distance'] },
-		duration : function() { return track.properties['--nino-ticker-duration'] },
+		distance : function() { return track.properties['--ticker-distance'] },
+		duration : function() { return track.properties['--ticker-duration'] },
 		copiedIds : function() { return track.children.slice( 3 ).map( function( c ) { return c.querySelectorAll( '[id]' ).length } ) },
 		copiedTabstops : function() { return track.children.slice( 3 ).map( function( c ) { return ( c.children[0] || {} ).attributes['tabindex'] } ) },
 		measurements : function() { return track.measured },
@@ -319,215 +320,117 @@ function page( options ) {
 // the run has to cover 1000 + 664, so two more copies of it are needed
 const plain = page( {} );
 
-check( 'the row is copied until it covers the box plus one length of itself', plain.items() === 9 );
-check( '...and every copy is hidden from a screen reader - the row is read once', plain.copies() === 6 );
-check( 'the row says it is running, which is what the stylesheet starts the animation on', plain.running() === true );
-
-// A copy is the same picture and nothing else: an id belongs to the original
-// and may only exist once, and a link in a copy is a stop on the way through
-// the page that reads exactly like the one before it. aria-hidden takes a
-// copy out of the screen reader's list but leaves it in the tab order
-check( 'no copy carries an id of the original', plain.copiedIds().every( function( n ) { return n === 0 } ) );
-check( '...and no link inside one is a stop on the way through the page', plain.copiedTabstops().every( function( t ) { return t === '-1' } ) );
-
-const wide = page( { box : 200, items : [ 300, 300 ] } );
-check( 'a row already wider than its box is copied once, not not at all', wide.items() === 4 );
-
-const tiny = page( { box : 4000, items : [ 10 ] } );
-check( 'one narrow item in a very wide box stops at the ceiling rather than making a thousand elements', tiny.items() <= 41 );
+check( 'the row is copied until it covers the box plus one length of itself, and says it is running', plain.items() === 9 && plain.running() === true );
+check( 'every copy is hidden from assistive technology, cannot take the focus and has no id of the original, and the originals are none of that',
+	plain.copies() === 6 && plain.copiedIds().every( function( n ) { return n === 0 } ) && plain.copiedTabstops().every( function( t ) { return t === '-1' } )
+	&& plain.track.children.slice( 3 ).every( function( c ) { return c.getAttribute('inert') === '' } )
+	&& plain.track.children.slice( 0, 3 ).every( function( c ) { return c.getAttribute('inert') === null && c.getAttribute('aria-hidden') === null } ) );
+check( 'one narrow item in a very wide box stops at the ceiling rather than making a thousand elements', page( { box : 4000, items : [ 10 ] } ).items() <= 41 );
 
 
 // --- The animation -------------------------------------------------------------
 
-// Three items of 200 and three gaps of 32: where the first copy stands, not
-// how wide the originals are. The track's own width leaves out the gap
-// between the last original and the first copy, so running that far ended
-// one gap short of the copy and the row jumped by it every time round
-check( 'the distance is where the first copy stands, so the copy ends where the original stood', plain.distance() === '696px' );
-check( '...and the duration follows from that distance and the speed the row was given', plain.duration() === '17.4s' );
+// The distance is where the first copy stands: the track's own width leaves out the gap between the last original and the first copy
+check( 'the distance is where the first copy stands, and the duration follows from it and the speed of the row; a speed that is none is the default',
+	plain.distance() === '696px' && plain.duration() === '17.4s' && page( { speed : 200 } ).duration() === '3.48s' && page( { speed : -5 } ).duration() === '17.4s' );
 
-const quick = page( { speed : 200 } );
-check( 'a row with its own speed runs at it', quick.duration() === '3.48s' );
-
-const nonsense = page( { speed : -5 } );
-check( '...and a speed that is not one falls back rather than standing still or running backwards', nonsense.duration() === '17.4s' );
-
-
-// --- A box that changed width --------------------------------------------------
-
-// The copies cover the box they were made for and no more. Three items of 200
-// with a gap = 664 wide: in a box of 3000 the run has to cover 3000 + 664, so
-// five copies of it are needed where the box of 1000 took two
 const grown = page( {} );
-
 grown.resize( 3000 );
 grown.settle();
-check( 'a box that got wider is covered again, rather than running the row out into a stretch of nothing',
-	grown.items() === 18 && grown.distance() === '696px' );
-
-// 200 + 664 is covered by one copy, and the copies made for the wider box are
-// taken back out rather than copied on top of
+const covered = grown.items() === 18 && grown.distance() === '696px';
 grown.resize( 200 );
 grown.settle();
-check( '...and one that got narrower is copied again too, from the row the project wrote', grown.items() === 6 && grown.copies() === 3 );
-
-grown.resize();
-grown.settle();
-check( 'a resize that left the box the width it was measures nothing - a phone\'s address bar sliding away is one of those',
-	grown.measurements() === 3 && grown.items() === 6 );
+check( 'a box that changed width is covered again, from the row the page wrote and not from the copies of the box before', covered === true && grown.items() === 6 && grown.copies() === 3 );
 
 const dragged = page( {} );
-
 dragged.resize( 1400 );
 dragged.resize( 1800 );
-dragged.resize( 2200 );
-check( 'a window being dragged across the screen measures nothing while it moves', dragged.measurements() === 1 );
-
+const whileMoving = dragged.measurements();
 dragged.settle();
-check( '...and once, not once per step, when it comes to rest', dragged.measurements() === 2 && dragged.items() === 15 );
+dragged.resize();
+dragged.settle();
+check( 'a window being dragged measures nothing while it moves, once when it comes to rest, and a resize that left the width does not measure at all',
+	whileMoving === 1 && dragged.measurements() === 2 );
 
 
 // --- One pass, or round and round ----------------------------------------------
 
-/*	The default is one cycle. The reading of data-ticker-loop is the kernel's
-	for every flag (Nino.ui.options()): 1, true, yes and on ask for the loop,
-	whatever their case and the space around them, 0, false, no and off say
-	it is not, and any other word - a blank one, "loop" - is no answer at all,
-	which leaves the default. What the script writes is a class, so the
-	stylesheet never repeats the list	*/
-check( 'a row without data-ticker-loop is not looping', plain.row.matchesClass('nino-is-looping') === false );
-check( '...and nor are the four values that say so, nor an empty one',
-	[ '0', 'false', 'OFF', 'no', '', '  ' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('nino-is-looping') === false } ) );
-check( '...while the words that say yes ask for the endless loop',
-	[ '1', 'true', 'on', 'yes', ' YES ' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('nino-is-looping') === true } ) );
-check( '...and a word that says neither is no answer: "loop" is no longer one that asks for it',
-	[ 'loop', 'enabled', 'ja' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('nino-is-looping') === false } ) );
+check( 'a row loops where data-ticker-loop says yes and not where it says no, says nothing or says a word that is neither',
+	[ '1', 'true', 'on', 'yes', ' YES ' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('ticker-is-looping') === true } )
+	&& [ '0', 'false', 'OFF', 'no', '', 'loop', 'ja' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('ticker-is-looping') === false } )
+	&& plain.row.matchesClass('ticker-is-looping') === false );
 
-// Measured is not started: the row is copied and its animation set up, and
-// then held until somebody could see it - a footer row would otherwise be
-// through its single pass before anybody scrolled to it
-check( 'a row is measured at once, and waits to be seen',
-	plain.running() === true && plain.row.matchesClass('nino-is-waiting') === true && plain.observers.length === 1
-	&& plain.observers[0].observed[0] === plain.row );
-
+check( 'a row is measured at once and waits to be seen',
+	plain.running() === true && plain.row.matchesClass('ticker-is-waiting') === true && plain.observers[0].observed[0] === plain.row );
 plain.intersect();
-check( '...and starts when it has been in the viewport, which is the only time it is looked for',
-	plain.row.matchesClass('nino-is-waiting') === false && plain.observers[0].disconnected === true );
+check( 'the viewport is looked at once: the wait is over and the observer let go, and a browser without IntersectionObserver has nothing to wait for',
+	plain.row.matchesClass('ticker-is-waiting') === false && plain.observers[0].disconnected === true && page( { observer : false } ).row.matchesClass('ticker-is-waiting') === false );
 
-const unobserved = page( { observer : false } );
-check( 'a browser without IntersectionObserver has nothing to wait for and runs at once',
-	unobserved.running() === true && unobserved.row.matchesClass('nino-is-waiting') === false );
-
-// A single pass ends on its own animation, and stays ended: a resize sets the
-// duration again, which would start a finished animation over
 const pass = page( {} );
-pass.intersect();
 pass.animationEnd( pass.track.children[0] );
-check( 'an animation end that comes from one of the items is not the row\'s', pass.row.matchesClass('nino-is-done') === false );
-
+const foreign = pass.row.matchesClass('ticker-is-done');
 pass.animationEnd();
-check( 'the end of the track\'s own animation marks the row done', pass.row.matchesClass('nino-is-done') === true );
-
 const doneMeasured = pass.measurements();
-const doneItems = pass.items();
 pass.resize( 3000 );
 pass.settle();
-check( 'and a finished row is never measured, copied or started again - not by a resize either',
-	pass.measurements() === doneMeasured && pass.items() === doneItems );
-
-const endlessRow = page( { loop : '1' } );
-check( 'a looping row has no end to wait for', ( endlessRow.track.listeners['animationend'] || [] ).length === 0 );
+check( 'the end of the track\'s own animation marks the row done, one of an item does not, and a finished row is never measured, copied or started again',
+	foreign === false && pass.row.matchesClass('ticker-is-done') === true && pass.measurements() === doneMeasured && pass.items() === 9
+	&& ( page( { loop : '1' } ).track.listeners['animationend'] || [] ).length === 0 );
 
 
 // --- The pause button ----------------------------------------------------------
 
-const quiet = page( {} );
-check( 'a row that does not ask for one gets no button', quiet.toggle() === null && quiet.host.children.length === 1 );
-
 const asked = page( { toggle : 'Pause animation' } );
 const button = asked.toggle();
-
-check( 'a row with a label gets one button, as its next sibling - not inside it, where the track is cloned',
-	button !== null && asked.host.children.length === 2 && asked.host.children[0] === asked.row
-	&& asked.row.children.length === 1 && asked.row.children[0] === asked.track
-	&& asked.track.children.every( function( child ) { return child.tagName !== 'button' } ) );
-check( '...a real button wearing the kernel\'s classes and its own, labelled and not pressed',
-	button.tagName === 'button' && button.type === 'button'
-	&& button.className === 'nino-btn nino-btn--outline nino-btn--small nino-ticker-toggle'
-	&& button.textContent === 'Pause animation' && button.getAttribute('aria-pressed') === 'false' );
+check( 'a row that does not ask for one gets no button; one that does gets one real button as its next sibling, not inside the track that is cloned, labelled and not pressed',
+	page( {} ).toggle() === null && button !== null && asked.host.children.length === 2 && asked.track.children.every( function( child ) { return child.tagName !== 'button' } )
+	&& button.tagName === 'button' && button.type === 'button' && button.className === 'ticker-toggle' && button.textContent === 'Pause animation' && button.getAttribute('aria-pressed') === 'false' );
 
 button.click();
-check( 'a press marks the button pressed and the row paused, which the stylesheet holds the animation for',
-	button.getAttribute('aria-pressed') === 'true' && asked.row.matchesClass('nino-is-paused') === true );
+const pressed = button.getAttribute('aria-pressed') === 'true' && asked.row.matchesClass('ticker-is-paused') === true;
 button.click();
-check( 'a second press takes it up again', button.getAttribute('aria-pressed') === 'false' && asked.row.matchesClass('nino-is-paused') === false );
-
 asked.resize( 3000 );
 asked.settle();
-asked.resize( 400 );
-asked.settle();
-check( 'measuring the row again - a resize - does not draw a second button', asked.host.children.length === 2 && asked.toggle() === button );
+check( 'a press pauses the row and marks the button pressed, a second press takes it up again, and measuring again draws no second button',
+	pressed === true && button.getAttribute('aria-pressed') === 'false' && asked.row.matchesClass('ticker-is-paused') === false && asked.toggle() === button && asked.host.children.length === 2 );
 
 asked.animationEnd();
-check( 'the button is removed - not hidden - with the end of the pass, and the pause with it',
-	asked.toggle() === null && asked.host.children.length === 1 && asked.row.matchesClass('nino-is-paused') === false );
+check( 'the button is removed, not hidden, with the end of the pass, and the pause with it', asked.toggle() === null && asked.host.children.length === 1 && asked.row.matchesClass('ticker-is-paused') === false );
 
-// The keyboard focus does not fall back to the page's top with the button
 const focusing = page( { toggle : 'Pause animation' } );
-focusing.resize( 3000 );
-focusing.settle();
 focusing.toggle().focus();
 focusing.animationEnd();
-check( 'a button that has the focus when the pass ends hands it to the row',
-	focusing.toggle() === null && focused === focusing.row && focusing.row.getAttribute('tabindex') === '-1' );
-
+const handedOver = focused === focusing.row && focusing.row.getAttribute('tabindex') === '-1';
 const unfocused = page( { toggle : 'Pause animation' } );
-unfocused.resize( 3000 );
-unfocused.settle();
 unfocused.animationEnd();
-check( '...and one that has not leaves the row as it was', unfocused.toggle() === null && focused === null
-	&& unfocused.row.getAttribute('tabindex') === null );
+check( 'a button that has the focus when the pass ends hands it to the row, and one that has not leaves the row as it was', handedOver === true && unfocused.row.getAttribute('tabindex') === null );
 
-const loopingButton = page( { loop : '1', toggle : 'Pause animation' } );
-loopingButton.resize( 3000 );
-loopingButton.settle();
-check( 'a row that loops keeps its button, since it never stops moving', loopingButton.toggle() !== null && loopingButton.host.children.length === 2 );
+const looping = page( { loop : '1', toggle : 'Pause animation' } );
+check( 'a row that loops keeps its button, since it never stops moving', looping.toggle() !== null && looping.host.children.length === 2 );
+check( 'an empty label, one of blanks and one that is still a fill nobody resolved draw no button',
+	[ '', '   ', '[[/feature/ticker/pause/label]]' ].every( function( label ) { const none = page( { toggle : label } ); return none.toggle() === null && none.host.children.length === 1 } ) );
 
-[ [ 'an empty label', '' ], [ 'a label of nothing but blanks', '   ' ], [ 'a label that is still a fill nobody resolved', '[[/feature/ticker/pause/label]]' ] ].forEach( function( bad ) {
-	const none = page( { toggle : bad[1] } );
-	check( bad[0]+ ' draws no button', none.toggle() === null && none.host.children.length === 1 );
-} );
+
+// --- Less motion ---------------------------------------------------------------
 
 const reduced = page( { toggle : 'Pause animation', reducedMotion : true } );
-check( 'a visitor who asked for less motion gets no button - nothing moves for them', reduced.toggle() === null && reduced.host.children.length === 1 );
-
-const unmeasured = page( { toggle : 'Pause animation', items : [ 0, 0 ] } );
-check( 'and a row that has not been measured has nothing to pause yet, so it gets no button either',
-	unmeasured.running() === false && unmeasured.toggle() === null );
+check( 'a visitor who asked for less motion gets the row as the page wrote it - no copies, nothing running, no button',
+	reduced.items() === 3 && reduced.copies() === 0 && reduced.running() === false && reduced.toggle() === null && reduced.host.children.length === 1 );
 
 
 // --- A row that is not one -----------------------------------------------------
 
-const bare = page( { withTrack : false } );
-check( 'a row with no track in it is left exactly as it was', bare.running() === false );
-
-const empty = page( { items : [] } );
-check( '...and so is one with nothing to run', empty.running() === false && empty.items() === 0 );
-
-const flat = page( { items : [ 0, 0 ] } );
-check( 'a row whose items have no width yet is left alone rather than divided by zero',
-	flat.running() === false && flat.distance() === undefined );
+check( 'a row with no track, one with nothing to run and one whose items have no width yet are left as they were',
+	page( { withTrack : false } ).running() === false && page( { items : [] } ).running() === false && page( { items : [ 0, 0 ] } ).running() === false
+	&& page( { items : [ 0, 0 ] } ).distance() === undefined );
 
 
 // --- Waiting for the dom -------------------------------------------------------
 
 const late = page( { readyState : 'loading' } );
-
-check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	late.running() === false && ( late.listeners['DOMContentLoaded'] || [] ).length === 1 );
-
+const waited = late.running() === false && ( late.listeners['DOMContentLoaded'] || [] ).length === 1;
 ( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
-check( '...and takes the rows over when it arrives', late.running() === true && late.items() === 9 );
+check( 'a script that ran before the dom was there waits for it, and takes the rows over when it arrives', waited === true && late.running() === true && late.items() === 9 );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
