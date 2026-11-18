@@ -1,0 +1,7 @@
+/*	progress - the standard part: a strip across the top of the window and the part of it that is filled, in the accent of the brand	*/
+:root {
+	--progress-height: .2rem;
+}
+.progress { position: fixed; top: 0; left: 0; right: 0; z-index: 9990; height: var(--progress-height); pointer-events: none; }
+.progress:not(.progress-is-ready) { display: none; }
+.progress::before { content: ''; display: block; width: var(--progress-value, 0%); height: 100%; background-color: var(--brand-accent); transition: width var(--page-motion) linear; }

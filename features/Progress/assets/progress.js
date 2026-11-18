@@ -25,7 +25,7 @@
 
 ( function() {
 
-	var SELECTOR = '.nino-progress';
+	var SELECTOR = '.progress';
 
 	var bars = [];
 
@@ -84,7 +84,7 @@
 
 			var value = share( bars[i] );
 
-			bars[i].style.setProperty( '--nino-progress', ( value * 100 ) + '%' );
+			bars[i].style.setProperty( '--progress-value', ( value * 100 ) + '%' );
 
 			// Only where the bar has a name. A progressbar with no name is
 			// announced as a number nobody asked for, which is worse than a
@@ -131,7 +131,7 @@
 			else
 				found[i].setAttribute( 'aria-hidden', 'true' );
 
-			found[i].classList.add( 'nino-is-ready' );
+			found[i].classList.add( 'progress-is-ready' );
 			bars.push( found[i] );
 		}
 

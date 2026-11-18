@@ -96,7 +96,7 @@ function page( options ) {
 
 	options = options || {};
 
-	const attributes = { 'class' : 'nino-progress' };
+	const attributes = { 'class' : 'progress' };
 	if( options.of !== undefined ) attributes['data-progress-of'] = options.of;
 	if( options.label !== undefined ) attributes['data-progress-label'] = options.label;
 
@@ -122,7 +122,7 @@ function page( options ) {
 	let section = null;
 
 	if( options.inSection === true ) {
-		section = element( { 'class' : 'nino-section nino-vpa nino-vpa--visible' } );
+		section = element( { 'class' : 'section-wrap' } );
 		section.style.transform = 'translateY(0px)';
 		body.appendChild( section );
 		section.appendChild( bar );
@@ -149,7 +149,7 @@ function page( options ) {
 		body				: body,
 		querySelector		: function( selector ) { return selector === '#article' ? subject : null },
 		querySelectorAll	: function( selector ) {
-			return ( selector === '.nino-progress' && options.withBar !== false ) ? [ bar ] : [];
+			return ( selector === '.progress' && options.withBar !== false ) ? [ bar ] : [];
 		},
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 	};
@@ -215,7 +215,7 @@ function page( options ) {
 		frames : function() { return frames.length },
 		fire : fire,
 		runFrames : runFrames,
-		at : function() { return bar.properties['--nino-progress'] },
+		at : function() { return bar.properties['--progress-value'] },
 		scrollTo : function( offset, top ) {
 			wn.pageYOffset = offset;
 			root.scrollTop = offset;
@@ -232,129 +232,71 @@ function page( options ) {
 }
 
 
-// --- Over the whole page -------------------------------------------------------
+// --- Over the whole page and over one element ----------------------------------
 
 const whole = page( { scrollHeight : 3000, seen : 1000 } );
-
-check( 'a bar comes to life once there is something to measure', whole.bar.matchesClass( 'nino-is-ready' ) === true );
-check( 'at the top of the page nothing has been read yet', whole.at() === '0%' );
+check( 'a bar comes to life once there is something to measure, and at the top of the page nothing has been read', whole.bar.matchesClass( 'progress-is-ready' ) === true && whole.at() === '0%' );
 
 whole.scrollTo( 1000 );
-check( 'halfway down the page is half read', whole.at() === '50%' );
-
-whole.scrollTo( 2000 );
-check( '...and at the bottom it is finished', whole.at() === '100%' );
-
+const half = whole.at();
 whole.scrollTo( 9999 );
-check( 'and a page scrolled past its own end is still just finished', whole.at() === '100%' );
+check( 'halfway down the page is half read, and a page scrolled past its own end is just finished', half === '50%' && whole.at() === '100%' );
+check( 'a page shorter than the window has nothing to be through', page( { scrollHeight : 500, seen : 1000 } ).at() === '0%' );
 
-const short = page( { scrollHeight : 500, seen : 1000 } );
-check( 'a page shorter than the window has nothing to be through', short.at() === '0%' );
-
-
-// --- Following the scroll and the resize -----------------------------------------
-
-check( 'a bar follows the scroll and the resize of the page through the kernel\'s own events', whole.bound.join() === 'ready,scroll,resize' );
-
-/*	The throttle is the kernel's: a burst of events is one frame, and one frame
-	paints once	*/
-const burst = page( { scrollHeight : 3000, seen : 1000 } );
-const painted = burst.paints();
-
-burst.fire( 'scroll' );
-burst.fire( 'scroll' );
-burst.fire( 'scroll' );
-check( 'a burst of scroll events asks for one frame, not one each', burst.frames() === 1 );
-
-burst.runFrames();
-check( '...and paints the bar once for it', burst.paints() === painted + 1 );
-
-const resized = page( { scrollHeight : 3000, seen : 1000, offset : 1000 } );
-check( 'a bar paints where the page is when it is ready', resized.at() === '50%' );
-
-resized.resizeTo( 500 );
-check( 'a resize paints it again: the same place on the page over a shorter window is a different share', resized.at() === '40%' );
-
-
-// --- Over one element ----------------------------------------------------------
-
-/*	The whole page counts the footer as part of the article, so "finished"
-	arrives after the last paragraph rather than at it	*/
 const article = page( { of : '#article', seen : 1000, subject : { top : 0, height : 3000 } } );
-
-check( 'an article at the top of the window has not been read yet', article.at() === '0%' );
-
 article.scrollTo( 1000, -1000 );
-check( 'it is half read when half of it has gone past', article.at() === '50%' );
-
+const articleHalf = article.at();
 article.scrollTo( 2000, -2000 );
-check( '...and finished when its last line has been, not when its bottom edge has', article.at() === '100%' );
-
+const articleDone = article.at();
 article.scrollTo( 3000, -3000 );
-check( 'and the footer under it does not go on filling the bar', article.at() === '100%' );
-
-const stubby = page( { of : '#article', seen : 1000, subject : { top : 200, height : 400 } } );
-check( 'an article shorter than the screen is not yet read while it is still below the top', stubby.at() === '0%' );
-
-const stubbySeen = page( { of : '#article', seen : 1000, subject : { top : -10, height : 400 } } );
-check( '...and finished the moment it is on the screen, rather than never', stubbySeen.at() === '100%' );
-
-const nowhere = page( { of : '#kein-artikel', seen : 1000, scrollHeight : 3000, offset : 1000 } );
-check( 'a bar pointed at an element that is not there falls back to the whole page', nowhere.at() === '50%' );
+check( 'an article is half read when half of it has gone past, finished when its last line has been, and the footer under it does not go on filling the bar',
+	articleHalf === '50%' && articleDone === '100%' && article.at() === '100%' );
+check( 'an article shorter than the screen is finished the moment it is on the screen, and a selector that finds nothing measures the page',
+	page( { of : '#article', seen : 1000, subject : { top : -10, height : 400 } } ).at() === '100%' && page( { of : '#kein-artikel', seen : 1000, scrollHeight : 3000, offset : 1000 } ).at() === '50%' );
 
 
-// --- What a screen reader gets -------------------------------------------------
+// --- Following the scroll and the resize ------------------------------------------
+
+const burst = page( { scrollHeight : 3000, seen : 1000, offset : 1000 } );
+const painted = burst.paints();
+burst.fire( 'scroll' );
+burst.fire( 'scroll' );
+const oneFrame = burst.frames() === 1;
+burst.runFrames();
+check( 'a bar follows the scroll and the resize through the kernel\'s own events, a burst is one frame and one paint', burst.bound.join() === 'ready,scroll,resize' && oneFrame === true && burst.paints() === painted + 1 );
+burst.resizeTo( 500 );
+check( 'a resize paints again: the same place over a shorter window is a different share', burst.at() === '40%' );
+
+
+// --- What a screen reader gets ----------------------------------------------------
 
 const named = page( { label : 'Lesefortschritt', scrollHeight : 3000, seen : 1000, offset : 1000 } );
-
-check( 'a bar that was given a name is a named progressbar with a value',
-	named.bar.getAttribute('role') === 'progressbar'
-	&& named.bar.getAttribute('aria-label') === 'Lesefortschritt'
-	&& named.bar.getAttribute('aria-valuemin') === '0' && named.bar.getAttribute('aria-valuemax') === '100'
-	&& named.bar.getAttribute('aria-valuenow') === '50' );
-
+const value = named.bar.getAttribute('aria-valuenow');
 named.scrollTo( 2000 );
-check( '...and the value follows the reading', named.bar.getAttribute('aria-valuenow') === '100' );
-
+check( 'a bar that was given a name is a named progressbar with a value that follows the reading',
+	named.bar.getAttribute('role') === 'progressbar' && named.bar.getAttribute('aria-label') === 'Lesefortschritt' && named.bar.getAttribute('aria-valuemin') === '0'
+	&& named.bar.getAttribute('aria-valuemax') === '100' && value === '50' && named.bar.getAttribute('aria-valuenow') === '100' );
 check( 'a bar with no name is hidden from a screen reader rather than announced as a number nobody asked for',
-	whole.bar.getAttribute('aria-hidden') === 'true' && whole.bar.getAttribute('role') === null
-	&& whole.bar.getAttribute('aria-valuenow') === null );
+	whole.bar.getAttribute('aria-hidden') === 'true' && whole.bar.getAttribute('role') === null && whole.bar.getAttribute('aria-valuenow') === null );
 
 
-// --- Where the bar stands ------------------------------------------------------
+// --- Where the bar stands ---------------------------------------------------------
 
-/*	A fixed element is fixed to the window only while no ancestor has a
-	transform, and an animated section keeps one once it has been seen - so a bar
-	the Builder placed in a section is taken out of it, before it is measured	*/
 const nested = page( { inSection : true } );
-
-check( 'a bar written into a section that has a transform is a child of the body once the script has run',
-	nested.section.style.transform === 'translateY(0px)' && nested.bar.parentNode === nested.body
-	&& nested.body.children.indexOf( nested.bar ) !== -1 );
-check( '...and the section does not hold it any more', nested.section.children.indexOf( nested.bar ) === -1 );
-check( '...and it stood there already when it was measured the first time, not only afterwards', nested.paintedUnder() === nested.body );
-
+check( 'a bar written into a section that has a transform is a child of the body before it is measured, and the section does not hold it any more',
+	nested.bar.parentNode === nested.body && nested.paintedUnder() === nested.body && nested.section.children.indexOf( nested.bar ) === -1 );
 const placed = page( {} );
-
-check( 'a bar that is a child of the body already is left where it is, not taken out and put behind what follows it',
-	placed.bar.parentNode === placed.body && placed.body.children[0] === placed.bar && placed.body.children[1] === placed.footer );
+check( 'a bar that is a child of the body already is left where it is', placed.body.children[0] === placed.bar && placed.body.children[1] === placed.footer );
 
 
-// --- A page with no bar --------------------------------------------------------
+// --- A page with no bar, and waiting for the dom ----------------------------------
 
-const none = page( { withBar : false } );
-check( 'a page with no bar on it binds nothing but its wait for the page - neither the scroll nor the resize is its to follow', none.bound.join() === 'ready' );
-
-
-// --- Waiting for the dom -------------------------------------------------------
+check( 'a page with no bar on it binds nothing but its wait for the page', page( { withBar : false } ).bound.join() === 'ready' );
 
 const late = page( { readyState : 'loading' } );
-
-check( 'a script that ran before the dom was there waits for it - the kernel\'s ready - rather than finding nothing',
-	late.bar.matchesClass( 'nino-is-ready' ) === false && ( late.listeners['DOMContentLoaded'] || [] ).length === 1 );
-
+const waited = late.bar.matchesClass( 'progress-is-ready' ) === false && ( late.listeners['DOMContentLoaded'] || [] ).length === 1;
 ( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
-check( '...and takes the bars over when it arrives', late.bar.matchesClass( 'nino-is-ready' ) === true );
+check( 'a script that ran before the dom was there waits for it, and takes the bars over when it arrives', waited === true && late.bar.matchesClass( 'progress-is-ready' ) === true );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

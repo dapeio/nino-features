@@ -1,0 +1,1 @@
+<div class="[[class]]" data-progress-of="[[of]]" data-progress-label="[[label]]"></div>
