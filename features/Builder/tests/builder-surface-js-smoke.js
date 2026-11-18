@@ -1108,7 +1108,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return tried.every( function( pair ) { return pair[0] === undefined && pair[1] === 1 } ) && good === true;
 	} )() );
-	check( 'I. a sort the list cannot show is a finding at the row of the loop in the tree as it is in the lightbox, one it can show is none - and a field the type gives no label is told by its name as code, one with a label by the label', ( function() {
+	check( 'I. a sort the list cannot show is a finding at the row of the loop in the tree as it is in the lightbox, one it can show is none - and a field the type gives no label is told by its plain name, with no mark round it, one with a label by the label', ( function() {
 		const strange = ofLoop( 3, '-nothing,title' );
 		const fine = ofLoop( 3, '-date,title' );
 
@@ -1118,7 +1118,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const row = function( x ) { return x.model.itemsNow()[0].children[0].children[0] };
 		const sentence = fine.model.sortSentence( '/team', 'title,-price' );
 
-		return row( strange ).finding !== undefined && row( fine ).finding === undefined && sentence.indexOf('Name') !== -1 && sentence.indexOf('`price`') !== -1 && sentence.indexOf('price') === sentence.indexOf('`price`') + 1;
+		return row( strange ).finding !== undefined && row( fine ).finding === undefined && sentence.indexOf('Name') !== -1 && sentence.indexOf('price') !== -1 && sentence.indexOf('`') === -1;
 	} )() );
 	check( 'I. a filter holds the loop and is none: it has its type icon and neither the loop icon nor the pattern, the list in it has both - and the account that may only write the content reads the type and the sort and has no field to change either', ( function() {
 		const x = ofLoop( 3, '' );
@@ -1134,6 +1134,167 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		box.close();
 
 		return filter.loop === undefined && filter.icon === 'sliders-horizontal' && typeof inner.loop === 'object' && inner.icon === 'list' && readOnly === true && box.heads.length === 1;
+	} )() );
+}
+
+// --- J. the variants of a block -----------------------------------------------------------------------------------------
+
+{
+	const labelled = function( de, en ) { return { de_DE : de, en_US : en } };
+	const items = [ [ 'image-left', labelled( 'Bild links', 'Picture left' ) ], [ 'image-right', labelled( 'Bild rechts', 'Picture right' ) ], [ 'plain', labelled( 'Schlicht', 'Plain' ) ] ];
+	const ofVariants = function( level, current ) {
+
+		const w = opened( { page : pageAnswer( { level : level } ) } );
+		const S = w.panel.model.state;
+
+		S.variants = [ { at : 2, key : 'split-image-text', current : current, items : items } ];
+
+		return { w : w, S : S, model : w.panel.model };
+	};
+
+	check( 'J. the choice of a variant is there for a block that the server told has variants and for the account that designs - and for no other block, no account that only writes the content, and not in a frame', ( function() {
+		const design = ofVariants( 2, 'image-left' );
+		const develop = ofVariants( 3, 'image-left' );
+		const content = ofVariants( 1, 'image-left' );
+		const framed = ofVariants( 3, 'image-left' );
+
+		framed.S.frame = true;
+		design.S.variants.push( { at : 1, key : 'x', current : null, items : items } );
+
+		return design.model.variantOfBlock( 2 ) !== undefined && develop.model.variantOfBlock( 2 ) !== undefined && design.model.variantOfBlock( 4 ) === undefined && design.model.variantOfBlock( 1 ) === undefined && content.model.variantOfBlock( 2 ) === undefined && framed.model.variantOfBlock( 2 ) === undefined;
+	} )() );
+	const radios = function( field ) { return findAll( field, function( el ) { return el.attributes !== undefined && el.attributes['role'] === 'radio' } ) };
+	const checked = function( field ) { return radios( field ).filter( function( el ) { return el.attributes['aria-checked'] === 'true' } ).map( textOf ) };
+	const rest = function( x ) { while( x.w.timers.length > 0 ) x.w.timers.shift()() };
+
+	check( 'J. the variant that holds is the one that is shown, in the words of the block - in the lightbox of its root as in the outline - and one that holds none is shown as "own", no step that is chosen and nothing that can be chosen as it', ( function() {
+		const x = ofVariants( 3, 'image-right' );
+		const field = x.model.blockVariantField( 2 );
+		x.S.adv = null;
+
+		const outline = x.model.outlineItems();
+		const row = outline.find( function( entry ) { return entry.id === x.model.keyAt( 2 ) } );
+		const foreign = ofVariants( 3, null );
+		const strange = foreign.model.blockVariantField( 2 );
+		const alone = foreign.model.outlineItems().find( function( entry ) { return entry.id === foreign.model.keyAt( 2 ) } );
+		const many = ofVariants( 3, null );
+
+		many.S.variants[0].items = items.concat( [ [ 'a', labelled( 'A', 'A' ) ], [ 'b', labelled( 'B', 'B' ) ], [ 'c', labelled( 'C', 'C' ) ] ] );
+
+		const pick = findAll( many.model.blockVariantField( 2 ), function( el ) { return el.tagName === 'OPTION' } );
+
+		return radios( field ).length === 3 && checked( field ).join() === 'Picture right' && row !== undefined && /Picture right|Bild rechts/.test( row.detail ) === true
+			&& radios( strange ).length === 3 && checked( strange ).length === 0 && textOf( strange ).indexOf( W('variant/own-note') ) !== -1 && radios( strange ).every( function( el ) { return textOf( el ) !== W('variant/own') } ) && alone.detail === ''
+			&& pick.length === 7 && pick[0].value === '' && pick[0].disabled === true && textOf( pick[0] ) === W('variant/own') && pick.slice( 1 ).every( function( option ) { return option.value !== '' } );
+	} )() );
+	check( 'J. a variant that is chosen is asked of the server by the place and the name only, and the answer is the block in the draft in ONE step that undoes - a refusal changes nothing and says so, and "own" is no name that is asked for', ( function() {
+		const x = ofVariants( 3, 'image-left' );
+		const before = JSON.stringify( x.S.top );
+		const steps = x.S.undo.length;
+
+		x.w.requests.length = 0;
+		x.model.chooseVariant( 2, '' );
+		const none = x.w.requests.length === 0;
+		x.model.chooseVariant( 2, 'image-right' );
+
+		const asked = x.w.requests.filter( function( request ) { return request.action === 'builder/variant' } );
+		const keys = asked.length === 1 ? Object.keys( asked[0].payload ).sort().join() : '';
+		const node = JSON.parse( JSON.stringify( x.S.top[2] ) );
+
+		node.a.reverse = 'on';
+		x.w.reply( 200, { node : node, variant : 'image-right' } );
+
+		const done = x.S.undo.length === steps + 1 && x.S.top[2].a.reverse === 'on';
+
+		x.model.undo();
+
+		const back = JSON.stringify( x.S.top ) === before;
+
+		x.w.requests.length = 0;
+		x.model.chooseVariant( 2, 'image-right' );
+		x.w.reply( 403, { error : 'x', code : 'builder_variant' } );
+
+		return none === true && asked.length === 1 && /^at,inserted,locale,name,pictures,slots,template,texts,tree$/.test( keys ) && asked[0].payload.at === '2' && asked[0].payload.name === 'image-right' && done === true && back === true && x.S.undo.length === steps && JSON.stringify( x.S.top ) === before;
+	} )() );
+	check( 'J. the answer to a choice is for the block that was asked about: a block that was moved, taken out or brought back while it came gets nothing written - the answer is dropped and said so - and while a choice is asked for no other can be made', ( function() {
+		const x = ofVariants( 3, 'image-left' );
+		const before = JSON.stringify( x.S.top );
+		const steps = x.S.undo.length;
+
+		x.w.requests.length = 0;
+		x.model.chooseVariant( 2, 'image-right' );
+		x.model.chooseVariant( 2, 'image-left' );
+
+		const once = x.w.requests.filter( function( request ) { return request.action === 'builder/variant' } ).length === 1;
+		const locked = x.S.variantBusy === true;
+		const moved = x.S.top[2];
+
+		// The block is changed by hand while the answer comes: a block of the draft that is not the one that was sent
+		x.S.top[2] = JSON.parse( JSON.stringify( x.S.top[4] ) );
+
+		const node = JSON.parse( JSON.stringify( moved ) );
+
+		node.a.reverse = 'on';
+		x.w.reply( 200, { node : node, variant : 'image-right' } );
+
+		const dropped = x.S.top[2].a.reverse === undefined && x.S.undo.length === steps && x.S.variantBusy === false;
+
+		x.S.top[2] = moved;
+		x.w.requests.length = 0;
+		x.model.chooseVariant( 2, 'image-right' );
+
+		return once === true && locked === true && dropped === true && x.w.requests.filter( function( request ) { return request.action === 'builder/variant' } ).length === 1 && x.S.top.length === JSON.parse( before ).length;
+	} )() );
+	check( 'J. the strip of the lightbox chooses with every arrow key and asks the server once it has rested - going past a variant is no request and no step - and the field is the choice of the page that was drawn last: a change by hand makes it "own", and the way back is a step', ( function() {
+		const x = ofVariants( 3, 'image-left' );
+
+		x.w.requests.length = 0;
+		x.S.box = null;
+		x.model.openProperties( 2, 'root', element('button'), function() {} );
+
+		const box = x.w.dialogs[x.w.dialogs.length - 1];
+		const field = findAll( box, function( el ) { return el.dataset !== undefined && el.dataset.blockVariant !== undefined } )[0];
+		const buttons = radios( field );
+
+		const waiting = x.w.timers.length;
+
+		fire( buttons[1], 'click' );
+		fire( buttons[2], 'click' );
+
+		const quiet = x.w.requests.filter( function( request ) { return request.action === 'builder/variant' } ).length === 0 && x.w.timers.length === waiting + 2;
+
+		rest( x );
+
+		const asked = x.w.requests.filter( function( request ) { return request.action === 'builder/variant' } );
+		const last = asked.length === 1 && asked[0].payload.name === 'plain';
+
+		x.w.requests.length = 0;
+		x.S.variantBusy = false;
+		x.S.variants = [ { at : 2, key : 'split-image-text', current : null, items : items } ];
+		x.model.pageDrawn( { blocks : [], all : [] } );
+
+		const now = findAll( box, function( el ) { return el.dataset !== undefined && el.dataset.blockVariant !== undefined } )[0];
+
+		return quiet === true && last === true && now !== undefined && now !== field && checked( now ).length === 0 && textOf( now ).indexOf( W('variant/own-note') ) !== -1;
+	} )() );
+	check( 'J. Escape leaves a text that is written as a click beside it does: what was typed stays, the step of Undo takes it back - the script ends the writing with what stands there and takes none back', ( function() {
+		const keys = script.slice( script.indexOf( "editing.keys = function" ), script.indexOf( "editing.blur = function" ) );
+
+		return /event\.key === 'Escape'[\s\S]{0,260}endEdit\( true \)/.test( keys ) === true && keys.indexOf( 'endEdit( false )' ) === -1;
+	} )() );
+	check( 'J. the tile of the dialog says how many variants the block has - none where it has none - in the same tile, once', ( function() {
+		const w = opened();
+		const tile = function( count ) { return w.panel.model.tileOf( { key : 'k', name : 'K', description : 'K', origin : { label : 'x' }, own : false, variants : count, hint : null, off : null }, function() {}, function() {} ) };
+
+		return textOf( tile( 3 ) ).indexOf( W( 'variant/many', 3 ) ) !== -1 && textOf( tile( 1 ) ).indexOf( W('variant/one') ) !== -1 && textOf( tile( 0 ) ).indexOf( 'variants' ) === -1 && findAll( tile( 3 ), function( el ) { return String( el.className ).indexOf('builder-tile-variants') !== -1 } ).length === 1;
+	} )() );
+	check( 'J. a loop is told by the title of its type where the page has one - also for the account that only writes the content, which is not told the types - and by the path where there is none', ( function() {
+		const x = ofVariants( 1, null );
+
+		x.S.types = [];
+		x.S.typeTitles = { '/team' : 'Our team' };
+
+		return x.model.typeTitle( '/team' ) === 'Our team' && x.model.typeTitle( '/shop' ) === '/shop';
 	} )() );
 }
 

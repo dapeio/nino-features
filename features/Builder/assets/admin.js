@@ -124,6 +124,13 @@
 		adv					: null,
 		schemas			: {},
 		findings		: {},
+		variants		: [],
+		variantBusy	: false,
+		variantWant	: null,
+		variantFocus	: false,
+		pickers		: [],
+		typeTitles	: {},
+		pendingVariants	: [],
 		links				: [],
 		notation		: {},
 		marked			: '',
@@ -899,6 +906,81 @@
 		} );
 	};
 
+	// The choice of variants a block of the page has, as the server told it with the page that is drawn: the catalogue block it is, the variant it has - null where it
+	// is its own - and the names. None where the account does not design, in a frame, or where the place is no block - the one rule for every place the choice is shown
+	const variantOfBlock = function( at ) {
+
+		if( S.level < 2 || S.frame === true || S.top[at] === undefined || kindOf( S.top[at] ) !== 'block' )
+			return undefined;
+
+		return S.variants.find( function( entry ) { return entry.at === at } );
+	};
+
+	// A control that chooses a variant: it cannot be used while a choice is asked of the server - the block of the draft is that block until the answer comes
+	const pickerLock = function( set, keep ) {
+
+		// The one of the lightbox is kept when the bars are drawn again, and is replaced by the next of its kind
+		if( keep === true ) {
+			set.keep = true;
+			S.pickers = S.pickers.filter( function( other ) { return other.keep !== true } );
+		}
+
+		set( S.variantBusy );
+		S.pickers.push( set );
+	};
+
+	// A variant is chosen: the server says what the block is with it - which block it is and which variants it has are its to tell - and the block of the draft is that, in one
+	// step to undo. The answer is for the block that was asked about: where the draft has another block at the place - it was moved, taken out or brought back while the
+	// answer came - it is dropped and nothing is written. The place of the choice keeps the focus when the page is drawn
+	const chooseVariant = function( at, name, from ) {
+
+		if( S.variantBusy === true || name === '' || variantOfBlock( at ) === undefined )
+			return;
+
+		const sent = JSON.stringify( S.top[at] );
+
+		S.variantBusy = true;
+		S.pickers.forEach( function( set ) { set( true ) } );
+
+		api( 'variant', { tree : S.top, at : String( at ), name : name, texts : S.texts, slots : S.copies, pictures : picturesNow(), inserted : insertedNow() }, function( status, response ) {
+
+			S.variantBusy = false;
+			S.pickers.forEach( function( set ) { set( false ) } );
+
+			if( status !== 200 ) {
+				S.variantFocus = false;
+				S.view.bar.line.error( status, response );
+				paint();
+				return;
+			}
+
+			if( S.top[at] === undefined || JSON.stringify( S.top[at] ) !== sent ) {
+				S.variantFocus = false;
+				S.view.bar.line.fail( word('msg/variant-stale') );
+				return;
+			}
+
+			S.variantFocus = from === 'box';
+			S.refocus = from === 'box' ? null : { at : at, action : 'variant', from : from ?? 'frame' };
+			change( function() { S.top[at] = fixAttrs( [ response.node ] )[0] } );
+		} );
+	};
+
+	// A strip of steps chooses with every arrow key: what it says is asked of the server once it has rested, so that going past a variant is no request and no step to undo
+	const queueVariant = function( at, name, from ) {
+
+		const id = ( S.variantWant === null ? 0 : S.variantWant.id ) + 1;
+
+		S.variantWant = { id : id, at : at, name : name };
+		wn.setTimeout( function() {
+
+			if( S.variantWant !== null && S.variantWant.id === id ) {
+				S.variantWant = null;
+				chooseVariant( at, name, from );
+			}
+		}, VARIANT_REST );
+	};
+
 	const act = function( at, action, opener, from ) {
 
 		if( action === 'up' )
@@ -1109,7 +1191,10 @@
 			if( item.kind === 'block' && advancedParts( item.node ) !== null )
 				actions.push( { key : 'advanced', icon : ACTION_ICONS.advanced, name : word('label/advanced')+ ': '+ title } );
 
-			return { id : row.key, label : row.label, detail : row.detail, icon : row.icon, locked : row.locked, actions : actions };
+			const held = item.kind === 'block' && S.frame === false ? variantOfBlock( item.at ) : undefined;
+			const named = held === undefined || held.current === null ? undefined : held.items.find( function( entry ) { return entry[0] === held.current } );
+
+			return { id : row.key, label : row.label, detail : named === undefined ? row.detail : localized( named[1] ), icon : row.icon, locked : row.locked, actions : actions };
 		} );
 	};
 
@@ -1355,6 +1440,13 @@
 		+ 'button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:24px;min-height:24px;margin:0;padding:0 4px;border:1px solid transparent;border-radius:var(--b-radius);background:transparent;color:inherit;font:600 12px/1 system-ui,sans-serif;cursor:pointer}'
 		+ 'button:hover{background:var(--b-soft)}button:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}button:disabled{opacity:.5;cursor:default}'
 		+ 'button.danger{color:var(--b-red)}button.danger:hover{background:var(--b-redsoft)}'
+		+ 'span.variant{position:relative;display:inline-flex}'
+		+ 'button.variant-trigger{max-width:170px;border-color:var(--b-line);background:var(--b-ground)}'
+		+ 'button.variant-trigger[aria-expanded=true]{background:var(--b-soft)}'
+		+ '.variant-menu{display:none;position:absolute;top:calc(100% + 2px);right:0;z-index:1;flex-direction:column;gap:1px;min-width:100%;width:max-content;max-width:calc(100vw - 32px);padding:2px;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);box-shadow:var(--b-shadow)}'
+		+ '.variant-menu[data-open]{display:flex}'
+		+ '.variant-menu button{justify-content:flex-start;width:100%;white-space:nowrap}'
+		+ '.variant-menu button[aria-checked=true]{background:var(--b-soft);font-weight:600}'
 		+ 'svg{flex:none;width:14px;height:14px}'
 		+ '.frame{position:absolute;display:none;pointer-events:none;box-sizing:border-box;border:2px solid var(--b-blue);border-radius:3px}'
 		+ '.frame[data-on]{display:block}'
@@ -1521,7 +1613,7 @@
 
 	/**
 	 *	Write a text where it stands: the element of the frame is made editable and what is typed is the new text of the key in the language of the view. Enter,
-	 *	Tab and Escape end it (Enter in a text of lines or blocks is a line), and Escape takes it back
+	 *	Tab and Escape end it (Enter in a text of lines or blocks is a line) and what was typed stays - the step of Undo takes it back
 	 *
 	 *	@param		{Object}		text					{ element, path, written }
 	 *	@param		{Object}		entry					The source of the page this text is
@@ -1541,9 +1633,11 @@
 
 		editing.keys = function( event ) {
 
+			// Escape leaves the text as a click beside it does: what was typed stays, and the step of Undo takes it back
 			if( event.key === 'Escape' ) {
 				event.preventDefault();
-				endEdit( false );
+				endEdit( true );
+				target.focus();
 				return;
 			}
 
@@ -1871,6 +1965,7 @@
 
 		style.textContent = BAR_CSS;
 		shadow.appendChild( style );
+		S.pickers = S.pickers.filter( function( set ) { return set.keep === true } );
 		Object.keys( tone ).forEach( function( name ) { host.style.setProperty( '--b-'+ name, tone[name] ) } );
 		host.setAttribute( 'role', 'region' );
 		host.setAttribute( 'aria-label', word('label/bars') );
@@ -1960,6 +2055,105 @@
 				lock.className = 'name';
 				lock.textContent = word('word/locked');
 				bar.appendChild( lock );
+			}
+
+			const held = variantOfBlock( block.at );
+
+			// The choice of a variant: a button with the name of the one that holds and a menu of the others - a choice is made when it is confirmed, never by an arrow key
+			if( held !== undefined ) {
+
+				const box = doc.createElement('span');
+				const trigger = doc.createElement('button');
+				const menu = doc.createElement('div');
+				const here = held.items.find( function( item ) { return item[0] === held.current } );
+				const shown = here === undefined ? word('variant/own') : localized( here[1] );
+				const entries = [];
+
+				box.className = 'variant';
+				trigger.type = 'button';
+				trigger.className = 'variant-trigger';
+				trigger.dataset.action = 'variant';
+				trigger.dataset.at = String( block.at );
+				trigger.title = word('label/variant')+ ': '+ shown;
+				trigger.setAttribute( 'aria-label', word('label/variant')+ ': '+ title+ ': '+ shown );
+				trigger.setAttribute( 'aria-haspopup', 'menu' );
+				trigger.setAttribute( 'aria-expanded', 'false' );
+				trigger.appendChild( doc.createTextNode( shown ) );
+				trigger.appendChild( glyph( 'chevron-down' ) );
+				menu.className = 'variant-menu';
+				menu.setAttribute( 'role', 'menu' );
+				menu.setAttribute( 'aria-label', word('label/variant')+ ': '+ title );
+
+				const close = function( back ) {
+
+					menu.removeAttribute('data-open');
+					trigger.setAttribute( 'aria-expanded', 'false' );
+
+					if( back === true )
+						trigger.focus();
+				};
+				const open = function() {
+
+					menu.setAttribute( 'data-open', '' );
+					trigger.setAttribute( 'aria-expanded', 'true' );
+					( entries.find( function( entry ) { return entry.getAttribute('aria-checked') === 'true' } ) ?? entries[0] ).focus();
+				};
+
+				held.items.forEach( function( item, at ) {
+
+					const entry = doc.createElement('button');
+
+					entry.type = 'button';
+					entry.setAttribute( 'role', 'menuitemradio' );
+					entry.setAttribute( 'aria-checked', item[0] === held.current ? 'true' : 'false' );
+					entry.dataset.variant = item[0];
+					entry.textContent = localized( item[1] );
+					entry.tabIndex = -1;
+					entry.addEventListener( 'click', function() {
+
+						close( true );
+
+						if( item[0] !== held.current ) {
+							selectBlock( block.key, false );
+							chooseVariant( block.at, item[0] );
+						}
+					} );
+					entry.addEventListener( 'keydown', function( event ) {
+
+						const to = { ArrowDown : at + 1, ArrowUp : at - 1, Home : 0, End : entries.length - 1 }[event.key];
+
+						if( event.key === 'Escape' || event.key === 'Tab' ) {
+							event.preventDefault();
+							event.stopPropagation();
+							close( event.key === 'Escape' );
+						}
+						else if( to !== undefined ) {
+							event.preventDefault();
+							event.stopPropagation();
+							entries[( to + entries.length ) % entries.length].focus();
+						}
+					} );
+					entries.push( entry );
+					menu.appendChild( entry );
+				} );
+
+				trigger.addEventListener( 'click', function() { menu.hasAttribute('data-open') === true ? close( false ) : open() } );
+				trigger.addEventListener( 'keydown', function( event ) {
+
+					if( event.key === 'ArrowDown' || event.key === 'ArrowUp' ) {
+						event.preventDefault();
+						open();
+					}
+				} );
+				box.addEventListener( 'focusout', function( event ) {
+
+					if( event.relatedTarget === null || box.contains( event.relatedTarget ) === false )
+						close( false );
+				} );
+				pickerLock( function( off ) { trigger.disabled = off } );
+				box.appendChild( trigger );
+				box.appendChild( menu );
+				bar.appendChild( box );
 			}
 
 			const parts = advancedParts( node );
@@ -2533,6 +2727,36 @@
 				groups[at][0].mark( true );
 			} );
 
+			// What a screen reader is told of a stop: it is in a group named for its block, and one sentence - the same for every stop - says what the keys do
+			const keys = doc.createElement('span');
+
+			keys.id = 'nino-builder-keys';
+			keys.hidden = true;
+			keys.textContent = word('hint/keys');
+			doc.body.appendChild( keys );
+
+			S.found.blocks.forEach( function( block ) {
+
+				const node = S.top[block.at];
+
+				if( node === undefined || kindOf( node ) !== 'block' )
+					return;
+
+				block.elements.forEach( function( element ) {
+
+					if( element.hasAttribute('role') === false ) {
+						element.setAttribute( 'role', 'group' );
+						element.setAttribute( 'aria-label', word( 'label/block-group', titleOf( node ) ) );
+					}
+				} );
+			} );
+
+			members.forEach( function( member ) {
+
+				if( member.element.nodeType === 1 && member.owns( member.element ) === true && member.element.tagName !== 'BUTTON' )
+					member.element.setAttribute( 'aria-describedby', keys.id );
+			} );
+
 			const memberOf = function( target ) { return members.find( function( member ) { return member.owns( target ) } ) };
 
 			page.addEventListener( 'focusin', function( event ) {
@@ -2659,7 +2883,7 @@
 
 			const wanted = S.refocus;
 
-			const target = shadow.querySelector( 'button[data-at="'+ wanted.at+ '"][data-action="'+ wanted.action+ '"]:not(:disabled)' ) ?? shadow.querySelector( 'button[data-at="'+ wanted.at+ '"]:not(:disabled)' );
+			const target = shadow.querySelector( '[data-at="'+ wanted.at+ '"][data-action="'+ wanted.action+ '"]:not(:disabled)' ) ?? shadow.querySelector( 'button[data-at="'+ wanted.at+ '"]:not(:disabled)' );
 
 			// The way back from the extended view waits for the drawing that has the block: the page that is loaded first need not be that one
 			S.refocus = target === null && wanted.action === 'advanced' ? wanted : null;
@@ -2696,6 +2920,9 @@
 
 		if( S.box !== null && S.box.recount !== null )
 			S.box.recount();
+
+		if( S.box !== null && S.box.variantField !== undefined && S.box.variantField !== null )
+			refreshVariant();
 	};
 
 	/**
@@ -2717,6 +2944,7 @@
 			return;
 
 		S.sources = S.pending;
+		S.variants = S.pendingVariants;
 		S.stale = false;
 		S.editing = null;
 
@@ -2998,6 +3226,15 @@
 			text.appendChild( about );
 		text.appendChild( chips );
 
+		if( entry.variants > 0 ) {
+
+			const count = el( 'span', 'nino-admin-hint builder-tile-variants', entry.variants === 1 ? word('variant/one') : word( 'variant/many', entry.variants ) );
+
+			count.id = 'builder-tile-'+ entry.key+ '-variants';
+			described.push( count.id );
+			text.appendChild( count );
+		}
+
 		if( note !== '' ) {
 
 			const line = el( 'span', 'nino-admin-hint builder-tile-note', note );
@@ -3275,6 +3512,8 @@
 		S.level = response.level ?? S.level;
 		S.schemas = response.schemas ?? S.schemas;
 		S.findings = response.findings ?? {};
+		S.pendingVariants = response.variants ?? [];
+		S.typeTitles = response.titles ?? S.typeTitles;
 		S.links = response.links ?? S.links;
 		learn( response.schemas ?? {} );
 		S.texts = response.texts;
@@ -3321,6 +3560,7 @@
 				S.pending = response.sources;
 				S.address = response.address;
 				S.findings = response.findings ?? {};
+				S.pendingVariants = response.variants ?? [];
 
 				if( S.mode === 'advanced' && S.tree !== null )
 					S.tree.update( itemsNow() );
@@ -4316,6 +4556,9 @@
 	// --- the sort of a loop, in words -------------------------------------------------------------------------------------
 
 	// The most steps a sort has: the first orders, and where two are equal the next decides
+	// How long a strip of variants rests before its choice is asked for, in milliseconds
+	const VARIANT_REST = 450;
+
 	const SORT_STEPS = 3;
 
 	// What a field is for the words of its direction: a date is newest and oldest, a number smallest and largest, anything else a text from A to Z
@@ -4362,7 +4605,7 @@
 		if( typeof label === 'string' && label !== '' )
 			return label;
 
-		return [ 'id', 'uri', 'slug' ].indexOf( name ) !== -1 ? word( 'source/field-'+ name ) : '`'+ name+ '`';
+		return [ 'id', 'uri', 'slug' ].indexOf( name ) !== -1 ? word( 'source/field-'+ name ) : name;
 	};
 
 	// The direction of a step in words that fit the field: "A to Z" for a text, "newest first" for a date, "smallest first" for a number
@@ -6199,8 +6442,88 @@
 		return line;
 	};
 
+	// The variants of the block, as a choice in the lightbox of its root: a strip of steps for two to five - where an arrow key is a choice that is asked of the server once it has
+	// rested - and a pick for more. One that is none of them is said to be its own and is no step that can be chosen. The field is drawn again with every page that is drawn
+	const blockVariantField = function( at ) {
+
+		const held = variantOfBlock( at );
+		const label = word('variant/of-block');
+		const help = { hint : word('variant/help') };
+		let field;
+
+		if( held.items.length >= 2 && held.items.length <= 5 ) {
+
+			const caption = el( 'span', 'builder-field-label', label );
+			const steps = Nino.adminUi.steps( { labelledby : 'builder-block-variant', steps : held.items.map( function( item ) { return { value : item[0], label : localized( item[1] ) } } ), value : held.current ?? '', onChange : function( value ) { queueVariant( at, value, 'box' ) } } );
+
+			field = el( 'div', 'nino-admin-field builder-steps-field' );
+			caption.id = 'builder-block-variant';
+			field.appendChild( caption );
+			field.appendChild( steps.el );
+
+			if( held.current === null )
+				field.appendChild( el( 'p', 'nino-admin-hint', word('variant/own-note') ) );
+
+			withHelp( field, caption, steps.el, help, label );
+			pickerLock( function( off ) { steps.disable( off ) }, true );
+			field.focusControl = function() { steps.focus() };
+		}
+		else {
+
+			const options = ( held.current === null ? [ { value : '', label : word('variant/own') } ] : [] ).concat( held.items.map( function( item ) { return { value : item[0], label : localized( item[1] ) } } ) );
+
+			field = Nino.adminUi.selectField( { key : 'root:block-variant', label : label, options : options, value : held.current ?? '', help : help.hint, onChange : function( value ) {
+
+				if( value !== '' )
+					chooseVariant( at, value, 'box' );
+			} } );
+
+			const select = field.querySelector('select');
+
+			Array.from( field.querySelectorAll('option') ).forEach( function( option ) {
+
+				if( option.value === '' )
+					option.disabled = true;
+			} );
+			pickerLock( function( off ) { select.disabled = off }, true );
+			field.focusControl = function() { select.focus() };
+		}
+
+		field.dataset.blockVariant = '';
+
+		if( S.box !== null )
+			S.box.variantField = field;
+
+		return field;
+	};
+
+	// The field of the lightbox is the choice as the page that was drawn last has it: after a change by hand it says "own" and the way back is a step that can be chosen
+	const refreshVariant = function() {
+
+		const old = S.box.variantField;
+
+		if( old === null || old === undefined || old.isConnected === false )
+			return;
+
+		const held = S.box.rel === 'root' ? variantOfBlock( rootAt() ) : undefined;
+		const fresh = held === undefined ? null : blockVariantField( rootAt() );
+
+		if( fresh === null ) {
+			old.remove();
+			S.box.variantField = null;
+			return;
+		}
+
+		old.replaceWith( fresh );
+
+		if( S.variantFocus === true ) {
+			S.variantFocus = false;
+			fresh.focusControl();
+		}
+	};
+
 	// The variant: the schema's and the ones the theme adds - a word of a variant that the theme does not have stays where it is, with the sentence of the register
-	const variantField = function( rel, node, schema ) {
+	const variantField = function( rel, node, schema, beside ) {
 
 		const given = typeof ( node.a ?? {} ).variant === 'string' ? node.a.variant : '';
 		const labelOf = function( variant ) { return variantLabel( schema, variant ) };
@@ -6209,14 +6532,14 @@
 		if( given !== '' && schema.variants.indexOf( given ) === -1 )
 			options.push( { value : given, label : word( 'variant/missing', given ) } );
 
-		return Nino.adminUi.selectField( { key : rel+ ':variant', label : word('field/variant'), options : options, value : given, onChange : function( value ) { setAttr( rel, 'variant', value === '' ? null : value ) } } );
+		return Nino.adminUi.selectField( { key : rel+ ':variant', label : schema.attributes.variant !== undefined ? localized( schema.attributes.variant.label ) : word( beside === true ? 'field/variant-component' : 'field/variant' ), options : options, value : given, onChange : function( value ) { setAttr( rel, 'variant', value === '' ? null : value ) } } );
 	};
 
 	// --- the properties of a component: the lightbox ----------------------------------------------------------------------------------
 
 	// The title the project gives a type of elements, else what the loop names
 	const typeTitle = function( given ) {
-		return ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : given.indexOf('/_') === 0 ? word('type/example') : given } ).title;
+		return ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : S.typeTitles[given] ?? ( given.indexOf('/_') === 0 ? word('type/example') : given ) } ).title;
 	};
 
 	// The types of elements of the project are asked for once, where a loop shows one by its title; what comes is told to the caller
@@ -6668,8 +6991,12 @@
 		const schema = S.schemas[node.n];
 		const rows = [];
 
+		// The variant of the block: the first thing of the look of a block that has some - the same choice as the bar of the block has
+		if( rel === 'root' && S.frame === false && variantOfBlock( rootAt() ) !== undefined )
+			rows.push( blockVariantField( rootAt() ) );
+
 		if( schema.variants.length > 0 )
-			rows.push( variantField( rel, node, schema ) );
+			rows.push( variantField( rel, node, schema, rows.length > 0 ) );
 
 		Object.keys( schema.attributes ).forEach( function( name ) {
 
@@ -7497,7 +7824,7 @@
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, openExtended : openExtended, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			selectBlock : selectBlock, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		go : function( parts, options ) {

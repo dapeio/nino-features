@@ -223,6 +223,17 @@ foreach( $tries as $name => $change ) {
 check( 'a source that is none is refused as a save and as a draft, with 403, and nothing is written: a key of the wrong form, a name with capitals, a field outside a loop, a page of the site that is none, a script as an address, a text the site has not', array_values( array_unique( $refused ) ) === [ 403 ] && sourceSnapshot( $site ) === $snapshot );
 
 [ , $loop ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-loop' ] );
+
+// a picture of another place is a slot the site has: a slot that is none is refused like a text that is none, and one the site has is not
+$pictures = [];
+
+foreach( [ 'a slot of another page that is none' => '/template/page-home/hero/nothing', 'a slot of a page that is none' => '/template/page-zweite/a/picture' ] as $label => $slot )
+	$pictures[$label] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-loop', 'tree' => sourceEdit( $loop['tree'], sourceAt( $loop['tree'], 'image', '~picture' ), static fn( array $node ): array => sourceWith( $node, $slot ) ), 'texts' => [], 'base' => $loop['stamp'] ] );
+
+$has = sourceCall( $site, 'builder/preview', [ 'template' => 'page-loop', 'tree' => sourceEdit( $loop['tree'], sourceAt( $loop['tree'], 'image', '~picture' ), static fn( array $node ): array => sourceWith( $node, '/template/page-home/hero/background' ) ), 'texts' => [], 'base' => $loop['stamp'] ] );
+
+check( 'a picture of another place that the site has not is refused with the code of the source - 403 - and the slot of another page that it has is not refused for that', array_column( $pictures, 0 ) === [ 403, 403 ] && ( $pictures['a slot of another page that is none'][1]['code'] ?? '' ) === 'builder_refused_source' && ( $has[1]['code'] ?? '' ) !== 'builder_refused_source' );
+
 $field = sourceAt( $loop['tree'], 'section-title', '.title' );
 $put = static fn( string $written ): int => sourceCall( $site, 'builder/preview', [ 'template' => 'page-loop', 'tree' => sourceEdit( $loop['tree'], $field, static fn( array $node ): array => sourceWith( $node, $written ) ), 'texts' => [], 'base' => $loop['stamp'] ] )[0];
 
@@ -1075,5 +1086,254 @@ for( $round = 1; $round <= $rounds; $round++ ) {
 }
 
 check( 'two pages made at the same moment under one address, '. $rounds. ' rounds with two processes: in each round one is made whole and the other is refused', array_filter( $whole, static fn( bool $ok ): bool => $ok === false ) === [] && count( $whole ) === $rounds );
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nH. The variants of a block\n";
+
+// A page with three blocks of the catalogue that have variants - as the dialog puts them in: the template of the block, whatever its first line is
+$basis = $root. '/_nino/Nino/Modules/Basis/blocks';
+$blockTpl = static function( string $path ) use ( &$site ): string {
+
+	// The block as it is put into a page: its root laid out the way the kernel writes a template, each call on a line of its own
+	foreach( Tree::read( $site, (string) file_get_contents( $path. '/block.tpl' ) ) as $node )
+		if( isset( $node['n'] ) === true )
+			return rtrim( \Nino\Markup::write( \Nino\Markup::layout( [ $node ], 0 ), \Nino\Components::containers( $site ) ) );
+
+	return '';
+};
+\Nino\Filesystem::putFileContent( $site, '/templates/page-variants.tpl', "<!-- nino:template-name Variants -->\n[template /templates/html-header]\n". $blockTpl( $basis. '/split-image-text' ). "\n". $blockTpl( $basis. '/hero-full' ). "\n". $blockTpl( NINO_FEATURES_DIR. '/Collections/blocks/list-over-elements' ). "\n[template /templates/html-footer]\n" );
+$site['/nino/html/images']['/template/page-variants/split/picture'] = [ 'label' => 'Picture', 'width' => 1200, 'height' => 900, 'filename' => null ];
+$site['/nino/html/images']['/template/page-variants/hero/background'] = [ 'label' => 'Background', 'width' => 1920, 'height' => 1080, 'filename' => null ];
+
+ninoUser( $site, 'variants-design@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
+[ $status, $variantsOpen ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-variants' ] );
+$vTree = $variantsOpen['tree'] ?? [];
+$atOf = static function( array $tree, string $id ): string {
+	foreach( $tree as $at => $node )
+		if( ( $node['a']['id'] ?? '' ) === $id )
+			return (string) $at;
+	return '';
+};
+$splitAt = $atOf( $vTree, 'split' );
+$heroAt = $atOf( $vTree, 'hero' );
+$listAt = $atOf( $vTree, 'list' );
+$told = [];
+
+foreach( $variantsOpen['variants'] ?? [] as $entry )
+	$told[$entry['key']] = [ (string) $entry['at'], $entry['current'], array_column( $entry['items'], 0 ) ];
+
+check( 'the open answer of the one who designs tells which blocks of the page have variants - by their place, the block of the catalogue they are, the variant they have now and the names in the order of the block, one block once - and no other block',
+	$status === 200 && $splitAt !== '' && $heroAt !== '' && $listAt !== '' && ( $told['split-image-text'] ?? null ) === [ $splitAt, 'image-left', [ 'image-left', 'image-right' ] ] && ( $told['hero-full'][1] ?? '' ) === 'image-full' && ( $told['hero-full'][2] ?? [] )[0] === 'image-full'
+	&& ( $told['list-over-elements'] ?? null ) === [ $listAt, 'plain', [ 'plain', 'offset', 'tinted' ] ] && count( $variantsOpen['variants'] ) === 3 && isset( $variantsOpen['variants'][0]['items'][0][1]['de_DE'], $variantsOpen['variants'][0]['items'][0][1]['en_US'] ) === true );
+
+$setVariant = static function( array $tree, string $at, string $name, array $more = [] ) use ( &$site ): array {
+	return sourceCall( $site, 'builder/variant', [ 'template' => 'page-variants', 'tree' => $tree, 'at' => $at, 'name' => $name ] + $more );
+};
+$flat = static function( array $nodes ) use ( &$flat ): array {
+
+	$out = [];
+
+	foreach( $nodes as $node ) {
+		$out[] = isset( $node['n'] ) === true ? [ $node['n'], $node['s'] ?? '', $node['a'] ?? [], is_array( $node['c'] ?? null ) === true ? $flat( $node['c'] ) : null ] : [ 't', $node['t'] ?? '' ];
+	}
+
+	return $out;
+};
+$before = sourceSnapshot( $site );
+[ $setStatus, $set ] = $setVariant( $vTree, $splitAt, 'image-right' );
+$row = $set['node']['c'][1]['a'] ?? [];
+$treeRight = $vTree;
+$treeRight[(int) $splitAt] = $set['node'] ?? [];
+$withoutReverse = $set['node'] ?? [];
+unset( $withoutReverse['c'][1]['a']['reverse'] );
+[ , $backSet ] = $setVariant( $treeRight, $splitAt, 'image-left' );
+[ , $previewRight ] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-variants', 'tree' => $treeRight, 'texts' => [] ] );
+$rightNow = array_column( array_filter( $previewRight['variants'] ?? [], static fn( array $entry ): bool => $entry['key'] === 'split-image-text' ), 'current' );
+
+check( 'a variant is set by the server from the block it finds in the tree: the row of the picture gets reverse - and nothing else of the page changes, the texts, the sources and the children stay to the letter - the draft that comes of it is told as the variant, and the first variant gives back the tree it began with; nothing is written',
+	$setStatus === 200 && ( $row['reverse'] ?? '' ) === 'on' && $flat( [ $withoutReverse ] ) === $flat( [ $vTree[(int) $splitAt] ] ) && ( $set['variant'] ?? '' ) === 'image-right' && $rightNow === [ 'image-right' ] && ( $backSet['node'] ?? null ) === $vTree[(int) $splitAt] && sourceSnapshot( $site ) === $before );
+
+// the draft that comes of a variant is held to the rule of the step: a tree that holds markup the one who designs may not write is refused with the markup's own code, whatever the variant
+$withMarkup = $vTree;
+$withMarkup[(int) $listAt]['c'][] = [ 'n' => 'html', 's' => '', 'a' => [], 'c' => [ [ 't' => '<b>x</b>' ] ] ];
+[ $markupStatus, $markupBody ] = $setVariant( $withMarkup, $splitAt, 'image-right' );
+
+check( 'a variant that is asked for in a draft that holds markup the step may not write is refused by the rule of the draft - 403, the code of the markup - and gives no tree', $markupStatus === 403 && ( $markupBody['code'] ?? '' ) === 'builder_refused_html' && isset( $markupBody['node'] ) === false );
+
+// every variant of every block of the page that has some can be set and is known again - the choice is the same as a person makes by hand
+$all = [];
+
+foreach( $variantsOpen['variants'] ?? [] as $entry )
+	foreach( $entry['items'] as [ $name ] ) {
+		[ $one, $made ] = $setVariant( $vTree, (string) $entry['at'], $name );
+		$made = $made['node'] ?? [];
+		$copy = $vTree;
+		$copy[(int) $entry['at']] = $made;
+		[ , $answer ] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-variants', 'tree' => $copy, 'texts' => [] ] );
+		$now = array_values( array_filter( $answer['variants'] ?? [], static fn( array $other ): bool => $other['at'] === $entry['at'] ) );
+		$all[$entry['key']. ' '. $name] = $one === 200 && ( $now[0]['current'] ?? null ) === $name && ( $made['a']['id'] ?? '' ) === ( $vTree[(int) $entry['at']]['a']['id'] ?? '' );
+	}
+
+check( 'each variant of each block of the page - the picture at either side, the hero in three, the list on three grounds - is set and is the variant that is told for the draft afterwards: '. count( $all ). ' of them', count( $all ) === 8 && array_filter( $all, static fn( bool $ok ): bool => $ok === false ) === [] );
+
+// what a request names is the place of the block and the name of the variant, and nothing else: another block, another set or a key of the catalogue it brings is not read
+[ $other ] = $setVariant( $vTree, $splitAt, 'image-right', [ 'key' => 'hero-full', 'block' => [ 'alternatives' => [ 'image-right' => [ 'set' => [ 'root' => [ 'ground' => 'dark' ] ] ] ] ], 'set' => [ 'root' => [ 'ground' => 'dark' ] ], 'origin' => 'hero-full' ] );
+[ , $same ] = $setVariant( $vTree, $splitAt, 'image-right', [ 'key' => 'hero-full', 'set' => [ 'root' => [ 'ground' => 'dark' ] ] ] );
+
+check( 'a request that brings the key of a block, a set of attributes or a block of its own is answered as one that does not: the block and its variants are the catalogue\'s, told from the tree', $other === 200 && ( $same['node'] ?? null ) === ( $set['node'] ?? 0 ) );
+
+$tries = [
+	'a name no block has'							=> [ $splitAt, 'upside-down' ],
+	'a variant of another block'		=> [ $splitAt, 'image-compact' ],
+	'no name'												=> [ $splitAt, '' ],
+	'a name that is no word'				=> [ $splitAt, 'image-right"] [html]' ],
+	'a block that has no variants'	=> [ (string) array_key_first( array_filter( $vTree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'template' ) ), 'image-right' ],
+	'a place that is none'					=> [ '99', 'image-right' ],
+	'a place that is no number'			=> [ 'root', 'image-right' ],
+	'a place with a sign'						=> [ '-1', 'image-right' ],
+];
+$answers = [];
+
+foreach( $tries as $label => [ $place, $name ] )
+	$answers[$label] = $setVariant( $vTree, $place, $name )[0];
+
+check( 'a name no block has, the variant of another block, no name, a name that is no word, a block that has no variants and a place that is none are refused - 403 for the name and the block, 400 for the place - and nothing is written',
+	array_values( $answers ) === [ 403, 403, 403, 403, 403, 400, 400, 400 ] && sourceSnapshot( $site ) === $before );
+
+// a block that was rebuilt is none whose variants are told: a row put in, a call taken out and a component of another name each end the choice - at the server, whatever the screen shows
+$rebuilt = [
+	'a row put in'					=> static function( array $node ): array { $node['c'][] = [ 'n' => 'section-row', 's' => '', 'a' => [], 'c' => [] ]; return $node; },
+	'the row taken out'			=> static function( array $node ): array { $node['c'] = [ $node['c'][0] ]; return $node; },
+	'another component'			=> static function( array $node ): array { $node['c'][1]['n'] = 'section-wrap'; return $node; },
+	'a source changed'			=> static function( array $node ): array {
+
+		$walk = static function( array $list ) use ( &$walk ): array {
+
+			foreach( $list as $at => $inner )
+				if( isset( $inner['n'] ) === true ) {
+
+					if( $inner['n'] === 'section-title' ) {
+						$list[$at]['s'] = '~other';
+						return $list;
+					}
+
+					if( is_array( $inner['c'] ?? null ) === true && ( $changed = $walk( $inner['c'] ) ) !== $inner['c'] ) {
+						$list[$at]['c'] = $changed;
+						return $list;
+					}
+				}
+
+			return $list;
+		};
+		$node['c'] = $walk( $node['c'] );
+
+		return $node;
+	},
+	'a column taken out'		=> static function( array $node ): array {
+
+		$cols = array_keys( array_filter( $node['c'][1]['c'], static fn( array $inner ): bool => ( $inner['n'] ?? '' ) === 'section-col' ) );
+		unset( $node['c'][1]['c'][end( $cols )], $node['c'][1]['c'][end( $cols ) - 1] );
+		$node['c'][1]['c'] = array_values( $node['c'][1]['c'] );
+
+		return $node;
+	},
+];
+$refused = [];
+
+foreach( $rebuilt as $label => $make ) {
+	$tree = $vTree;
+	$tree[(int) $splitAt] = $make( $tree[(int) $splitAt] );
+	$refused[$label] = [ $setVariant( $tree, $splitAt, 'image-right' )[0], array_column( sourceCall( $site, 'builder/preview', [ 'template' => 'page-variants', 'tree' => $tree, 'texts' => [] ] )[1]['variants'] ?? [], 'key' ) ];
+}
+
+check( 'a block that was rebuilt - a row put in, a call taken out, a component of another name, a source changed, a column taken out - has no choice of variants and cannot be set: 403, and the preview does not list it',
+	array_column( $refused, 0 ) === [ 403, 403, 403, 403, 403 ] && array_filter( $refused, static fn( array $pair ): bool => in_array( 'split-image-text', $pair[1], true ) === true ) === [] && sourceSnapshot( $site ) === $before );
+
+// a change by hand that is none of the variants is its own: the block keeps its choice - the names are told - and says so with null, until a variant is set, which takes the change back
+$handmade = $vTree;
+$handmade[(int) $splitAt]['c'][1]['a']['reverse'] = 'off m:on';
+[ , $handAnswer ] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-variants', 'tree' => $handmade, 'texts' => [] ] );
+$hand = array_values( array_filter( $handAnswer['variants'] ?? [], static fn( array $entry ): bool => $entry['key'] === 'split-image-text' ) );
+[ $handStatus, $handSet ] = $setVariant( $handmade, $splitAt, 'image-left' );
+
+$ground = $vTree;
+$ground[(int) $splitAt]['a']['ground'] = 'dark';
+[ , $groundAnswer ] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-variants', 'tree' => $ground, 'texts' => [] ] );
+$kept = array_values( array_filter( $groundAnswer['variants'] ?? [], static fn( array $entry ): bool => $entry['key'] === 'split-image-text' ) );
+
+check( 'a block that was changed by hand into none of its variants is told with no variant, its choices are still told, and a variant that is set takes the change back to the template - and a look that no variant names, the ground of the section, keeps the choice and the variant it has',
+	count( $kept ) === 1 && $kept[0]['current'] === 'image-left' && count( $hand ) === 1 && $hand[0]['current'] === null && array_column( $hand[0]['items'], 0 ) === [ 'image-left', 'image-right' ] && $handStatus === 200 && ( $handSet['node'] ?? null ) === $vTree[(int) $splitAt] );
+
+// the rights: the content step has no choice of variants, in no answer, and every action that sets one is a 403 for it
+ninoUser( $site, 'variants-content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+$before = sourceSnapshot( $site );
+[ , $contentOpen ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-variants' ] );
+[ , $contentPreview ] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-variants', 'tree' => $vTree, 'texts' => [] ] );
+[ $contentStatus, $contentBody ] = $setVariant( $vTree, $splitAt, 'image-right' );
+
+check( 'the one who may only write the content is told of no variants - not in the open answer, not in a preview - and is refused by the action that sets one: 403, the level, and nothing is written',
+	isset( $contentOpen['variants'] ) === false && isset( $contentPreview['variants'] ) === false && $contentStatus === 403 && ( $contentBody['code'] ?? '' ) === 'builder_level' && sourceSnapshot( $site ) === $before );
+
+// the title of a type of elements that a loop of the page shows is told to every step, and no other title: the one who only writes the content reads "Services" where the loop says /services
+\Nino\Elements::insertElementType( $site, '/unused-type', [ 'title' => [ 'type' => 'string' ] ] );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-typed.tpl', "<!-- nino:template-name Typed -->\n[template /templates/html-header]\n[section-wrap id=\"typed\"]\n\t[section-row]\n\t\t[section-col]\n\t\t\t[collection /services]\n\t\t\t\t[section-title .title]\n\t\t\t[/collection]\n\t\t[/section-col]\n\t[/section-row]\n[/section-wrap]\n[template /templates/html-footer]\n" );
+$summary = array_column( \Nino\Modules\Elements\Types::summaries( $site ), 'title', 'uri' );
+[ , $typedContent ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-typed' ] );
+[ , $plainContent ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+
+check( 'the answer of an opened page tells the one who may only write the content the title of the type its loop shows - and the title of no type the page does not show',
+	( $typedContent['titles'] ?? null ) === [ '/services' => (string) $summary['services'] ] && $summary['services'] !== '' && ( $plainContent['titles'] ?? null ) === [] );
+
+ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+
+// the tile of the dialog is one for each block and says how many variants it has
+[ , $listed ] = sourceCall( $site, 'builder/blocks' );
+$tiles = array_column( $listed['blocks'] ?? [], 'variants', 'key' );
+$keys = array_column( $listed['blocks'] ?? [], 'key' );
+
+check( 'the dialog lists one tile for each block - a block with variants is not listed once for each - and the tile has the number of its variants, none where it has none',
+	count( $keys ) === count( array_unique( $keys ) ) && ( $tiles['split-image-text'] ?? -1 ) === 2 && ( $tiles['hero-full'] ?? -1 ) === 3 && ( $tiles['list-over-elements'] ?? -1 ) === 3 && ( $tiles['hero-simple'] ?? $tiles[array_key_first( array_diff_key( $tiles, [ 'split-image-text' => 1, 'hero-full' => 1, 'list-over-elements' => 1 ] ) ) ?? ''] ?? 0 ) === 0 );
+
+// a block that is put in is the template, and the template is the first variant
+$firsts = [];
+
+foreach( [ 'hero-full', 'split-image-text', 'list-over-elements' ] as $key ) {
+
+	$catalogue = \Nino\Blocks::get( $site, $key );
+	$put = \Nino\Modules\Builder\Library::block( $site, $key );
+	$firsts[$key] = $catalogue !== null && $put !== null && \Nino\Blocks::variantOf( $catalogue, $put['tree'] ) === array_key_first( $catalogue['alternatives'] );
+}
+
+check( 'a block that is put in has the first of its variants: the template as the dialog puts it in is the variant that comes first in the file, for each block that has some', array_values( $firsts ) === [ true, true, true ] );
+
+// the blocks of the catalogue that name variants: valid, with labels in both languages, only attributes the register writes as classes, and a first variant that is the template as it is
+$catalogue = [ 'Forms/blocks/contact-form', 'Collections/blocks/list-over-elements' ];
+$registryNow = \Nino\Components::components( $site );
+$sound = [];
+
+foreach( $catalogue as $dir ) {
+
+	$json = json_decode( (string) file_get_contents( NINO_FEATURES_DIR. '/'. $dir. '/block.json' ), true );
+	$tpl = (string) file_get_contents( NINO_FEATURES_DIR. '/'. $dir. '/block.tpl' );
+	$variants = is_array( $json['variants'] ?? null ) === true ? $json['variants'] : [];
+	$ok = count( $variants ) >= 2 && count( $variants ) <= \Nino\Blocks::MAX_VARIANTS && ( reset( $variants )['set'] ?? null ) === [];
+
+	foreach( $variants as $name => $variant ) {
+
+		$ok = $ok && is_string( $name ) && preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) === 1 && ( $variant['label']['de_DE'] ?? '' ) !== '' && ( $variant['label']['en_US'] ?? '' ) !== '';
+
+		foreach( $variant['set'] ?? [] as $place => $attributes ) {
+
+			$component = $place === 'root' ? 'section-wrap' : 'section-row';
+
+			foreach( $attributes as $attribute => $value )
+				$ok = $ok && in_array( $value, (array) ( $registryNow[$component]['attributes'][$attribute]['options'] ?? [] ), true ) === true && ( $registryNow[$component]['attributes'][$attribute]['class'] ?? true ) !== false && str_contains( $tpl, '['. $component ) === true;
+		}
+	}
+
+	$sound[$dir] = $ok;
+}
+
+check( 'the blocks of the catalogue that name variants - the contact form and the list over elements - have two or three, the first of them the template as it is, labels in both languages, and set only the looks that the register takes as classes', array_values( $sound ) === [ true, true ] );
 
 ninoDone( $site );

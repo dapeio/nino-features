@@ -3,5 +3,15 @@
 	"description": { "de_DE": "Überschrift und Text links, das erste Formular rechts; das Formular der Kontaktseite.", "en_US": "A headline and a text at the left, the first form at the right; the form of a contact page." },
 	"category": "contact",
 	"rank": 70,
-	"images": {}
+	"images": {},
+	"variants": {
+		"form-right": {
+			"label": { "de_DE": "Formular rechts", "en_US": "Form at the right" },
+			"set": {}
+		},
+		"form-left": {
+			"label": { "de_DE": "Formular links", "en_US": "Form at the left" },
+			"set": { "1": { "reverse": "on" } }
+		}
+	}
 }

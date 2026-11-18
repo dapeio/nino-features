@@ -19,7 +19,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, own, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
+		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, own, variants, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
 		 */
 		public static function all( array &$appData ): array {
 
@@ -44,6 +44,7 @@ namespace Nino\Modules\Builder {
 					'category'		=> $block['category'],
 					'origin'			=> self::_origin( $features, (string) $block['origin'], $block['label'] ?? null ),
 					'own'					=> (string) $block['origin'] === 'project',
+					'variants'		=> count( (array) ( $block['alternatives'] ?? [] ) ),
 					'hint'				=> $missing === [] ? self::hint( $appData, $block, ( $features['themes']['active'] ?? false ) === true ) : null,
 					'off'					=> $missing === [] ? null : $missing,
 				];
@@ -128,6 +129,92 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $offers;
+		}
+
+		/**
+		 *	Which block of the catalogue a block of a page is, for a block that has variants: the first block that \Nino\Blocks offers for a page that has variants, whose places the
+		 *	tree has and whose calls it is - the rule of the Tree for a block that was put in, with the attributes left out. It is told from the tree and from nothing a request names;
+		 *	a block with a call put in, taken out or named another, or another source, is none
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$node					The root of a block of the page
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array|null								[ 'key', 'block' (as \Nino\Blocks::get() answers it), 'current' (the name of the variant, null where it is its own), 'items' => [ [ name, label ] ] ] - null where no block of the catalogue with variants is it
+		 */
+		public static function origin( array &$appData, array $node, array $registry ): ?array {
+
+			if( ( $node['n'] ?? '' ) !== self::PAGE || isset( $node['a'] ) === false )
+				return null;
+
+			foreach( \Nino\Blocks::all( $appData ) as $key => $listed ) {
+
+				if( ( $listed['alternatives'] ?? [] ) === [] || ( $listed['wrap'] ?? '' ) !== self::PAGE )
+					continue;
+
+				$block = \Nino\Blocks::get( $appData, (string) $key );
+				$own = self::block( $appData, (string) $key );
+
+				if( $block === null || $own === null || \Nino\Blocks::variantsFit( $block, [ $node ] ) === false )
+					continue;
+
+				// The block is the block of the catalogue when its calls are the calls of the template with the same sources - what the attributes say, a look a person gave it
+				// among them, is no part of that: it is what the variants are about
+				if( Tree::likeBlock( self::_shape( $node, $registry ), self::_shape( $own['tree'][0], $registry ), $registry ) === false )
+					continue;
+
+				$items = [];
+
+				foreach( $block['alternatives'] as $name => $variant )
+					$items[] = [ (string) $name, $variant['label'] ];
+
+				return [ 'key' => (string) $key, 'block' => $block, 'current' => \Nino\Blocks::variantOf( $block, [ $node ] ), 'items' => $items ];
+			}
+
+			return null;
+		}
+
+		/**
+		 *	The blocks of a page that have a choice of variants, for the screen of the one who designs: where the block stands, which catalogue block it is, which variant it has
+		 *	and the names of the variants with their labels, in the order of the block
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes				The tree of the page
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array											[ [ at, key, current, items => [ [ name, label ] ] ] ]
+		 */
+		public static function variants( array &$appData, array $nodes, array $registry ): array {
+
+			$out = [];
+
+			foreach( $nodes as $at => $node )
+				if( isset( $node['n'] ) === true && ( $origin = self::origin( $appData, $node, $registry ) ) !== null )
+					$out[] = [ 'at' => (int) $at, 'key' => $origin['key'], 'current' => $origin['current'], 'items' => $origin['items'] ];
+
+			return $out;
+		}
+
+		/**
+		 *	A block as the calls it is made of: every call with its source and nothing of its attributes but the id, which the rule for a block that was put in holds to its own form
+		 *
+		 *	@param		array			$node
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array
+		 */
+		private static function _shape( array $node, array $registry ): array {
+
+			$name = isset( $registry[$node['n'] ?? ''] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
+
+			$node['a'] = $name !== '' && isset( $node['a'][$name] ) === true ? [ $name => $node['a'][$name] ] : [];
+
+			if( is_array( $node['c'] ?? null ) === true )
+				foreach( $node['c'] as $at => $inner )
+					if( isset( $inner['n'] ) === true )
+						$node['c'][$at] = self::_shape( $inner, $registry );
+
+			return $node;
 		}
 
 		/**

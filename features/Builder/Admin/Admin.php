@@ -41,6 +41,7 @@ namespace Nino\Modules\Builder {
 				'builder/block'		=> [ self::class, 'apiBlock' ],
 				'builder/tile'		=> [ self::class, 'apiTile' ],
 				'builder/offer'		=> [ self::class, 'apiOffer' ],
+				'builder/variant'	=> [ self::class, 'apiVariant' ],
 				'builder/notation'	=> [ self::class, 'apiNotation' ],
 				'builder/keys'		=> [ self::class, 'apiKeys' ],
 				'builder/upload'	=> [ self::class, 'apiUpload' ],
@@ -334,7 +335,7 @@ namespace Nino\Modules\Builder {
 				'address'		=> self::_address( $appData, $template, $locale, \Nino\Admin\Admin::postString( $data, 'page' ) ),
 				'findings'	=> $prepared['findings'],
 				'notation'	=> $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? self::_notation( $appData, $prepared['tree'], $data['look'] ?? null ) : [],
-			] );
+			] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'variants' => Library::variants( $appData, $prepared['tree'], \Nino\Components::components( $appData ) ) ] : [] ) );
 		}
 
 		public static function apiSave( array &$appData, array &$request ): void {
@@ -655,6 +656,62 @@ namespace Nino\Modules\Builder {
 			$laid = \Nino\Markup::layout( [ $call, $call ], count( $route ) );
 
 			\Nino\Http::ok( $request, [ 'offers' => $entries, 'blank' => (string) ( $laid[1]['t'] ?? "\n" ), 'schemas' => Tree::schemas( $appData, [], $registry, $names ), 'container' => $route[count( $route ) - 1] ] );
+		}
+
+		/**
+		 *	The variant of a block of the page: the one who designs names the place of the block in the draft and the name of a variant, and the answer is the block with that variant
+		 *	set. The block of the catalogue and the variant it has are told from the tree and from the catalogue - the request names neither - and what is set is what
+		 *	\Nino\Blocks::setVariant() makes of a block that was checked: nothing else of the draft is touched, and the draft that comes of it is held to the rule of a draft
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiVariant( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
+
+			if( $level === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			[ $template, $state ] = $opened;
+			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
+			$at = \Nino\Admin\Admin::postString( $data, 'at' );
+			$name = \Nino\Admin\Admin::postString( $data, 'name' );
+			$registry = \Nino\Components::components( $appData );
+
+			if( $canonical === null || preg_match( '/^(?:0|[1-9]\d{0,5})$/D', $at ) !== 1 || isset( $canonical[1][(int) $at]['n'] ) === false ) {
+				self::_fail( $request, [ 400, 'there is no block there', 'builder_place', [], 'at' ] );
+				return;
+			}
+
+			$node = $canonical[1][(int) $at];
+			$origin = Library::origin( $appData, $node, $registry );
+
+			if( $origin === null || array_key_exists( $name, array_column( $origin['items'], 1, 0 ) ) === false ) {
+				self::_fail( $request, [ 403, 'the block has no such variant', 'builder_variant', [], 'name' ] );
+				return;
+			}
+
+			$tree = $canonical[1];
+			$tree[(int) $at] = \Nino\Blocks::setVariant( $origin['block'], [ $node ], $name )[0];
+
+			// The draft that comes of it is a draft like any other: held to the rule of the step, and nothing of it is written here
+			$prepared = Store::prepare( $appData, $template, $state, $tree, $data['texts'] ?? [], $data['slots'] ?? [], $data['inserted'] ?? [], $level, $data['pictures'] ?? [] );
+
+			if( isset( $prepared['failure'] ) === true ) {
+				self::_fail( $request, $prepared['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'node' => $tree[(int) $at], 'variant' => \Nino\Blocks::variantOf( $origin['block'], [ $tree[(int) $at] ] ) ] );
 		}
 
 		public static function apiKeys( array &$appData, array &$request ): void {
@@ -1115,7 +1172,7 @@ namespace Nino\Modules\Builder {
 			$registry = \Nino\Components::components( $appData );
 
 			return [ 'last' => self::_last( $appData, $template ), 'unback' => $state === null ? '' : self::_unbacked( $appData, $template, $state, $nodes, $level ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => Tree::known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ), 'images' => Pictures::shown( $appData, $state['slots'] ?? [] ) ]
-				+ [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'findings' => Tree::findings( $appData, $nodes ) ] : [] );
+				+ [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'findings' => Tree::findings( $appData, $nodes ), 'variants' => Library::variants( $appData, $nodes, $registry ) ] : [] );
 		}
 
 		/**
@@ -1135,7 +1192,7 @@ namespace Nino\Modules\Builder {
 			// What the lightbox of a component is drawn from - its kind, what it reads and what it offers - is the register's and is told to every step: it shows the account that may write the
 			// content the source to read and the content to write. The findings and the pages a link may go to are for the design
 			if( $level < \Nino\Modules\Builder::LEVEL_DESIGN )
-				return [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ];
+				return [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ), 'titles' => self::_titles( $appData, $nodes ) ];
 
 			$links = [];
 
@@ -1143,7 +1200,45 @@ namespace Nino\Modules\Builder {
 				if( preg_match( '#^/(?:[A-Za-z0-9._~-]+(?:/[A-Za-z0-9._~-]+)*)?$#D', (string) $page['uri'] ) === 1 )
 					$links[] = [ 'uri' => (string) $page['uri'], 'name' => (string) ( $page['names'][$locale] ?? '' ) !== '' ? (string) $page['names'][$locale] : (string) $page['uri'] ];
 
-			return [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ), 'findings' => Tree::findings( $appData, $nodes ), 'links' => $links ];
+			return [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ), 'findings' => Tree::findings( $appData, $nodes ), 'links' => $links, 'variants' => Library::variants( $appData, $nodes, $registry ), 'titles' => self::_titles( $appData, $nodes ) ];
+		}
+
+		/**
+		 *	The titles of the types of elements the loops of a page show - only those, for every step: a person who may write the content reads "Team" where the loop says /team
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$nodes
+		 *
+		 *	@return 	array											'/type' => title
+		 */
+		private static function _titles( array &$appData, array $nodes ): array {
+
+			$used = [];
+			$walk = static function( array $list ) use ( &$walk, &$used ): void {
+
+				foreach( $list as $node )
+					if( isset( $node['n'] ) === true ) {
+
+						if( is_string( $node['s'] ?? null ) === true && preg_match( '/^\/[a-z][a-z0-9_-]{0,63}$/D', $node['s'] ) === 1 )
+							$used[$node['s']] = true;
+
+						if( is_array( $node['c'] ?? null ) === true )
+							$walk( $node['c'] );
+					}
+			};
+
+			$walk( $nodes );
+
+			if( $used === [] )
+				return [];
+
+			$titles = [];
+
+			foreach( \Nino\Modules\Elements\Types::summaries( $appData ) as $type )
+				if( isset( $used['/'. $type['uri']] ) === true && (string) $type['title'] !== '' )
+					$titles['/'. $type['uri']] = (string) $type['title'];
+
+			return $titles;
 		}
 
 		/**

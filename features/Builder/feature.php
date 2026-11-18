@@ -47,6 +47,10 @@ return [
 				'en_US' => 'The door /_admin/builder/manage is needed by every role; content/*, design/* and develop/* below it make that blocks and texts, components and frames, or also the markup of html.',
 				'de_DE' => 'Die Tür /_admin/builder/manage braucht jede Rolle; content/*, design/* und develop/* darunter machen daraus Blocks und Texte, Komponenten und Rahmen oder auch das Markup von html.',
 			],
+			'Variant' => [
+				'en_US' => 'A block of the catalogue with variants has a choice of them in its bar and in its look, for whoever designs; a variant sets looks and keeps the texts and pictures.',
+				'de_DE' => 'Ein Block des Katalogs mit Varianten hat in Leiste und Aussehen eine Auswahl, für alle, die gestalten; eine Variante setzt Aussehen und lässt Texte und Bilder stehen.',
+			],
 			'Source' => [
 				'en_US' => 'Where the text, the address or the picture of a component comes from: a text that is there or a new one, a fixed text, a page, an address, a picture slot or a field of the element of a loop.',
 				'de_DE' => 'Woher Text, Adresse oder Bild einer Komponente kommen: ein Text, der da ist, oder ein neuer, ein fester Text, eine Seite, eine Adresse, ein Bildplatz oder ein Feld des Elements einer Schleife.',

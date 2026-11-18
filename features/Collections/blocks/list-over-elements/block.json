@@ -9,5 +9,19 @@
 	},
 	"category": "content",
 	"rank": 40,
-	"images": {}
+	"images": {},
+	"variants": {
+		"plain": {
+			"label": { "de_DE": "Standard", "en_US": "Default" },
+			"set": {}
+		},
+		"offset": {
+			"label": { "de_DE": "Abgesetzt", "en_US": "Offset" },
+			"set": { "root": { "ground": "alt" } }
+		},
+		"tinted": {
+			"label": { "de_DE": "Getönt", "en_US": "Tinted" },
+			"set": { "root": { "ground": "tint" } }
+		}
+	}
 }

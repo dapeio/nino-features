@@ -286,7 +286,7 @@ check( 'the manifest is the one of a feature that is written for the kernel of N
 check( 'the right is /_admin/builder/manage, and the manual of the feature names the panel', \Nino\Modules\Builder::PERM === '/_admin/builder/manage' && str_contains( $manifest['manual']['panel']['Builder']['en_US'], '/_admin/builder/manage' ) === true );
 
 $words = [ 'de_DE' => require $feature. '/text/de_DE.php', 'en_US' => require $feature. '/text/en_US.php' ];
-$codes = [ 'unknown', 'gone', 'unreadable', 'tree', 'block', 'level', 'place', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_html', 'refused_check', 'refused_link', 'refused_value', 'refused_image', 'refused_variant', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing', 'refused_source', 'picture', 'picture_gone',
+$codes = [ 'unknown', 'gone', 'unreadable', 'tree', 'block', 'level', 'place', 'refused_free', 'refused_block', 'refused_ids', 'refused_copy', 'refused_id', 'refused_html', 'refused_check', 'refused_link', 'refused_value', 'refused_image', 'refused_variant', 'fixed', 'texts', 'key', 'locale', 'text', 'preview', 'changed', 'write', 'nothing', 'refused_source', 'variant', 'picture', 'picture_gone',
 	'own_block', 'own_key', 'own_name', 'own_category', 'own_id', 'own_locked', 'own_html', 'own_foreign', 'own_address', 'own_picture', 'own_empty', 'own_long', 'own_taken', 'own_invalid', 'own_write',
 	'page_missing_name', 'page_invalid_uri', 'page_invalid_http_uri', 'page_missing_http_uri', 'page_reserved_http_uri', 'page_duplicate_uri', 'page_duplicate_http_uri', 'page_reserved_uri', 'page_http_uri_taken', 'page_invalid_template', 'page_reserved_template', 'page_template_exists' ];
 
@@ -966,6 +966,7 @@ $every = [
 	'builder/duplicate'	=> [ 'from' => 'page-home', 'names' => [ 'de_DE' => 'Kopie', 'en_US' => 'Copy' ], 'addresses' => [ 'de_DE' => '/kopie', 'en_US' => '/copy' ], 'navs' => [] ],
 	'builder/uses'		=> [ 'template' => 'page-home' ],
 	'builder/remove'	=> [ 'template' => 'page-home' ],
+	'builder/variant'	=> [ 'template' => 'page-home', 'tree' => $tree, 'at' => '1', 'name' => 'image-right' ],
 ];
 
 ninoUser( $site, 'editor@example.com', [ '/_admin/elements/manage', '/_admin/text/manage' ] );
@@ -2093,7 +2094,7 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 	[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
 	[ , $saved ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $open['tree'], 'texts' => [ '/template/page-home/hero/title' => [ 'de_DE' => 'Antwort '. $step ] ], 'base' => $open['stamp'] ] );
 	[ , $restored ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-home', 'base' => $saved['stamp'] ] );
-	$told = static fn( array $body ): string => implode( ',', array_filter( [ isset( $body['schemas'] ) ? 'schemas' : '', isset( $body['findings'] ) ? 'findings' : '', isset( $body['links'] ) ? 'links' : '' ] ) );
+	$told = static fn( array $body ): string => implode( ',', array_filter( [ isset( $body['schemas'] ) ? 'schemas' : '', isset( $body['findings'] ) ? 'findings' : '', isset( $body['links'] ) ? 'links' : '', isset( $body['variants'] ) ? 'variants' : '' ] ) );
 	$answers[$step] = [ $told( $open ), $told( $saved ), $told( $restored ) ];
 
 	if( $step === 'content' ) {
@@ -2109,8 +2110,8 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 	}
 }
 
-check( 'the answers tell the content step the schemas and no finding or link - in open, save and restore - and the design all three; the words of the company are told for reading, a mailbox is not; a word it may write mixed with a change it may not is a 403 and nothing is written; a text that two templates read says on how many - and not for one that a longer key only begins with, or that one reads - and the keys of the page itself are none of the shared words',
-	$answers['content'] === [ [ 'schemas', 'schemas', 'schemas' ] ] [0] && $answers['design'] === [ 'schemas,findings,links', 'schemas,findings', 'schemas,findings' ] && ( $shared['/project/company/general/name'] ?? '' ) === 'Beispiel GmbH' && ( $used['/project/company/general/name'] ?? 0 ) === 2 && array_key_exists( '/project/mail/box/owner', $used ) === false && array_key_exists( '/project/company/general/hours', $used ) === false && isset( $shared['/project/company/general/hours'] ) === true && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/template/page-home/' ) ) === [] && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/project/mail/' ) ) === [] && $answers['mixed'] === [ 403, true ] );
+check( 'the answers tell the content step the schemas and no finding, link or variant - in open, save and restore - and the design all four; the words of the company are told for reading, a mailbox is not; a word it may write mixed with a change it may not is a 403 and nothing is written; a text that two templates read says on how many - and not for one that a longer key only begins with, or that one reads - and the keys of the page itself are none of the shared words',
+	$answers['content'] === [ [ 'schemas', 'schemas', 'schemas' ] ] [0] && $answers['design'] === [ 'schemas,findings,links,variants', 'schemas,findings,variants', 'schemas,findings,variants' ] && ( $shared['/project/company/general/name'] ?? '' ) === 'Beispiel GmbH' && ( $used['/project/company/general/name'] ?? 0 ) === 2 && array_key_exists( '/project/mail/box/owner', $used ) === false && array_key_exists( '/project/company/general/hours', $used ) === false && isset( $shared['/project/company/general/hours'] ) === true && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/template/page-home/' ) ) === [] && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/project/mail/' ) ) === [] && $answers['mixed'] === [ 403, true ] );
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
 \Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', $contactWas );
 
