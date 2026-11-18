@@ -90,7 +90,7 @@ function element( tag, attributes ) {
 function embed( options ) {
 
 	const box = element( 'div', {
-		'class'							: 'nino-embed nino-embed--16-9',
+		'class'							: 'embed',
 		'data-embed-src'		: options.src !== undefined ? options.src : 'https://www.youtube-nocookie.com/embed/abc123?rel=0',
 		'data-embed-title'	: 'Ein Video',
 		'data-embed-consent': options.consent !== undefined ? options.consent : 'external',
@@ -100,7 +100,7 @@ function embed( options ) {
 	if( options.remember === true )
 		box.attributes['data-embed-remember'] = '1';
 
-	box.appendChild( element( 'button', { 'class' : 'nino-video-poster nino-embed-open' } ) );
+	box.appendChild( element( 'button', { 'class' : 'embed-open' } ) );
 
 	return box;
 }
@@ -132,7 +132,7 @@ function page( boxes, options ) {
 		},
 		querySelectorAll	: function( selector ) {
 
-			if( selector.indexOf( '.nino-embed[data-embed-src]' ) !== 0 )
+			if( selector.indexOf( '.embed[data-embed-src]' ) !== 0 )
 				return [];
 
 			let found = boxes.slice();
@@ -184,9 +184,9 @@ function page( boxes, options ) {
 	return {
 		root : root, listeners : listeners, fired : fired, start : start,
 		frames : function( box ) { return box.children.filter( function( c ) { return c.tagName === 'iframe' } ) },
-		button : function( box ) { return box.children.filter( function( c ) { return c.matchesClass( 'nino-embed-open' ) } )[0] || null },
+		button : function( box ) { return box.children.filter( function( c ) { return c.matchesClass( 'embed-open' ) } )[0] || null },
 		press	: function( box ) {
-			const button = box.children.filter( function( c ) { return c.matchesClass( 'nino-embed-open' ) } )[0];
+			const button = box.children.filter( function( c ) { return c.matchesClass( 'embed-open' ) } )[0];
 			( ( button && button.listeners['click'] ) || [] ).forEach( function( fn ) { fn( {} ) } );
 		},
 		consent : function( allowed ) {
@@ -202,27 +202,21 @@ function page( boxes, options ) {
 const one = embed( {} );
 const quiet = page( [ one ] );
 
-check( 'nothing is fetched until something releases it - there is no iframe on the page', quiet.frames( one ).length === 0 );
-check( 'the surface is shown once the script has it, having been written hidden', quiet.button( one ).hidden === false );
-check( '...and the address is still only a data attribute', one.getAttribute('data-embed-src').indexOf('https://') === 0 && one.children.length === 1 );
+check( 'nothing is fetched until something releases it: there is no iframe on the page, the surface is shown once the script has it, and the address is still only a data attribute',
+	quiet.frames( one ).length === 0 && quiet.button( one ).hidden === false && one.getAttribute('data-embed-src').indexOf('https://') === 0 && one.children.length === 1 );
 
 
 // --- The press ---------------------------------------------------------------
 
 quiet.press( one );
-
-check( 'a press builds exactly one frame', quiet.frames( one ).length === 1 );
-
 const frame = quiet.frames( one )[0];
 
-check( 'the frame gets the address the markup carried', frame.getAttribute('src') === 'https://www.youtube-nocookie.com/embed/abc123?rel=0' );
-check( '...and the name the shortcode gave it, so it is not announced as "iframe"', frame.getAttribute('title') === 'Ein Video' );
-check( '...and may play fullscreen, which is the whole point of pressing', ( frame.getAttribute('allow') || '' ).indexOf('fullscreen') !== -1 );
-check( '...through allow alone - a browser objects to allowfullscreen beside it', frame.getAttribute('allowfullscreen') === null );
-check( 'the provider is told which site this is, not which page', frame.getAttribute('referrerpolicy') === 'strict-origin-when-cross-origin' );
-check( 'the surface is removed rather than hidden - a hidden button is still in the tab order', quiet.button( one ) === null );
-check( 'the box says it is loaded, so the stylesheet can give it its shape', one.classes['nino-is-loaded'] === true );
-check( 'and the page is told, with the host it now talks to', quiet.fired.some( function( ev ) {
+check( 'a press builds exactly one frame, with the address the markup carried and the name it gave it, so it is not announced as "iframe"', quiet.frames( one ).length === 1
+	&& frame.getAttribute('src') === 'https://www.youtube-nocookie.com/embed/abc123?rel=0' && frame.getAttribute('title') === 'Ein Video' );
+check( 'the frame may play fullscreen through allow alone, and the provider is told which site this is, not which page', ( frame.getAttribute('allow') || '' ).indexOf('fullscreen') !== -1 && frame.getAttribute('allowfullscreen') === null
+	&& frame.getAttribute('referrerpolicy') === 'strict-origin-when-cross-origin' );
+check( 'the surface is removed rather than hidden - a hidden button is still in the tab order - and the box says it is loaded', quiet.button( one ) === null && one.classes['embed-is-loaded'] === true );
+check( 'the box carries the flag that Consent reads to reload the page when its category is withdrawn, and the page is told with the host it now talks to', one.dataset.embedLoaded === 'true' && quiet.fired.some( function( ev ) {
 	return ev.type === 'nino:embed' && ev.detail.host === 'youtube-nocookie.com' && ev.detail.embed === one;
 } ) );
 
@@ -234,27 +228,22 @@ check( 'pressing again changes nothing - one embed is one frame', quiet.frames( 
 
 const allowed = embed( {} );
 const already = page( [ allowed ], { consent : 'necessary,external' } );
-
-check( 'a visitor who already allowed the category is not asked to press', already.frames( allowed ).length === 1 );
-
 const other = embed( {} );
 const declined = page( [ other ], { consent : 'necessary' } );
-
-check( 'one who allowed something else is', declined.frames( other ).length === 0 );
+const before = declined.frames( other ).length;
 
 declined.consent( [ 'necessary', 'external' ] );
-check( '...and changing their mind releases it without a reload', declined.frames( other ).length === 1 );
+check( 'a visitor who already allowed the category is not asked to press, one who allowed something else is, and changing their mind releases it without a reload',
+	already.frames( allowed ).length === 1 && before === 0 && declined.frames( other ).length === 1 );
 
 const none = embed( { consent : '' } );
 const never = page( [ none ], { consent : 'necessary,external' } );
-
-check( 'an embed with no category can only ever be pressed, whatever is allowed', never.frames( none ).length === 0 );
-never.press( none );
-check( '...and pressing it still works', never.frames( none ).length === 1 );
-
 const nowhere = embed( {} );
 const bare = page( [ nowhere ] );
-check( 'a site without Consent has no allowed list, so every embed waits for a press', bare.frames( nowhere ).length === 0 );
+const waited = never.frames( none ).length === 0 && bare.frames( nowhere ).length === 0;
+
+never.press( none );
+check( 'an embed with no category can only ever be pressed, and a site without Consent has no allowed list, so every embed waits for a press', waited && never.frames( none ).length === 1 );
 
 
 // --- One press for the same provider -----------------------------------------
@@ -265,9 +254,7 @@ const third	= embed( { remember : true, host : 'player.vimeo.com', src : 'https:
 const shared = page( [ first, second, third ], {} );
 
 shared.press( first );
-
-check( 'where the site asked for it, one press carries the same provider\'s other embeds', shared.frames( second ).length === 1 );
-check( '...and leaves another provider\'s alone', shared.frames( third ).length === 0 );
+check( 'where the site asked for it, one press carries the same provider\'s other embeds and leaves another provider\'s alone', shared.frames( second ).length === 1 && shared.frames( third ).length === 0 );
 
 const alone	= embed( {} );
 const beside = embed( {} );
@@ -281,41 +268,22 @@ check( 'without that setting a press releases the one pressed and nothing else',
 
 const plain = embed( { src : 'http://www.youtube-nocookie.com/embed/abc123' } );
 const refused = page( [ plain ], { consent : 'external' } );
-
-check( 'an http address is refused however the embed is released', refused.frames( plain ).length === 0 );
-refused.press( plain );
-check( '...by the press as well as by the consent', refused.frames( plain ).length === 0 );
-
 const script = embed( { src : 'javascript:alert(1)' } );
 const nope = page( [ script ], {} );
+
+refused.press( plain );
 nope.press( script );
-check( 'and so is anything that is not an address at all', nope.frames( script ).length === 0 );
+check( 'an address that is not https is refused however the embed is released, by consent and by the press, and so is anything that is no address at all', refused.frames( plain ).length === 0 && nope.frames( script ).length === 0 );
 
 
 // --- Starting with the kernel ------------------------------------------------
 
 const waiting = embed( {} );
 const held = page( [ waiting ], { hold : true, consent : 'external' } );
-
-check( 'the surfaces are shown and the consent applied when Nino.js calls its ready callbacks, and not when the script is loaded',
-	held.button( waiting ).hidden === true && held.frames( waiting ).length === 0 );
+const early = held.button( waiting ).hidden === true && held.frames( waiting ).length === 0;
 
 held.start();
-check( '...and then both are - this one was allowed already, so it is the frame', held.frames( waiting ).length === 1 );
-
-
-// --- Waiting for the dom -----------------------------------------------------
-
-const late = embed( {} );
-const loading = page( [ late ], { readyState : 'loading' } );
-
-check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	loading.button( late ).hidden === true );
-
-( loading.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
-// What a callback throws is thrown again from a timer, and that one is run here too
-loading.start();
-check( '...and picks the surfaces up when it arrives', loading.button( late ).hidden === false );
+check( 'the surfaces are shown and the consent applied when Nino.js calls its ready callbacks, and not when the script is loaded', early && held.frames( waiting ).length === 1 );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

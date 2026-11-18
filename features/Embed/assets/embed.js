@@ -11,7 +11,7 @@
  *							display:none or with visibility:hidden loads exactly like a
  *							visible one, so a page that writes the frame and hides it has
  *							already given the visitor's address to the provider. What the
- *							shortcode writes therefore carries the address in
+ *							component writes therefore carries the address in
  *							data-embed-src, and the iframe below is built from it - so
  *							there is no request to suppress in the first place.
  *
@@ -32,7 +32,7 @@
 
 ( function() {
 
-	var SELECTOR = '.nino-embed[data-embed-src]';
+	var SELECTOR = '.embed[data-embed-src]';
 
 	/**
 	 *	What a frame is allowed to do. Deliberately short: a video needs to
@@ -108,12 +108,12 @@
 		frame.setAttribute( 'referrerpolicy', 'strict-origin-when-cross-origin' );
 		frame.setAttribute( 'loading', 'eager' );
 
-		var button = embed.querySelector( '.nino-embed-open' );
+		var button = embed.querySelector( '.embed-open' );
 		if( button !== null )
 			button.parentNode.removeChild( button );
 
 		embed.appendChild( frame );
-		embed.classList.add( 'nino-is-loaded' );
+		embed.classList.add( 'embed-is-loaded' );
 
 		/*	A page may want to know - a tracker that should only run once a
 			video is there, a layout that has to measure again. The name is the
@@ -186,7 +186,7 @@
 
 		for( var i = 0; i < embeds.length; i++ ) {
 
-			var button = embeds[i].querySelector( '.nino-embed-open' );
+			var button = embeds[i].querySelector( '.embed-open' );
 
 			if( button === null )
 				continue;

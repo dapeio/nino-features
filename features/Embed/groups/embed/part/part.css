@@ -1,0 +1,26 @@
+/*	embed - the standard part: the surface a visitor presses, in the ground and the ink of the page and with the host it will talk to named on it, and the box the frame drops into once they have	*/
+:root {
+	--embed-radius: var(--page-radius);
+	--embed-ratio: 16 / 9;
+}
+.embed { position: relative; width: 100%; }
+.embed--ratio-4-3 { --embed-ratio: 4 / 3; }
+.embed--ratio-1-1 { --embed-ratio: 1 / 1; }
+.embed--ratio-21-9 { --embed-ratio: 21 / 9; }
+.embed-open { position: relative; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; aspect-ratio: var(--embed-ratio); margin: 0; padding: 0; overflow: hidden; border: var(--page-line) solid var(--brand-line); border-radius: var(--embed-radius); background: color-mix( in srgb, var(--brand-ink) 8%, var(--brand-ground) ); color: var(--brand-ink); font: inherit; text-align: center; cursor: pointer; }
+.embed-open[hidden] { display: none; }
+.embed-open:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.embed-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.embed-caption { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: var(--page-space-1); max-width: 32rem; padding: var(--page-space-2); border-radius: var(--embed-radius); }
+.embed-poster ~ .embed-caption { background: color-mix( in srgb, var(--brand-ink) 80%, transparent ); color: var(--brand-ground); }
+.embed-play { flex: 0 0 auto; width: 3.5rem; height: 3.5rem; margin-bottom: var(--page-space-1); }
+.embed-label { font-weight: var(--page-weight-title); line-height: 1.3; }
+.embed-note { font-size: var(--page-text-1); line-height: 1.4; color: var(--brand-ink-quiet); }
+.embed-poster ~ .embed-caption .embed-note { color: inherit; }
+.embed-is-loaded { overflow: hidden; aspect-ratio: var(--embed-ratio); border-radius: var(--embed-radius); }
+.embed-is-loaded iframe { display: block; width: 100%; height: 100%; border: 0; }
+.embed-fallback { margin: 0; font-size: var(--page-text-1); }
+@media (prefers-reduced-motion: no-preference) {
+	.embed-play { transition: transform var(--page-motion) ease; }
+	.embed-open:hover .embed-play, .embed-open:focus-visible .embed-play { transform: scale(1.08); }
+}

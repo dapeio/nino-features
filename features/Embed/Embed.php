@@ -40,16 +40,13 @@ namespace Nino\Modules {
 	 *										YouTube still lives on a YouTube server, so showing one
 	 *										would make the request this feature exists to prevent,
 	 *										one image earlier. A project that wants a picture on the
-	 *										surface names one of its own with poster="..." and it is
-	 *										served from the project's own images.
+	 *										surface names a picture slot of its own with poster and
+	 *										it is served from the project's own images.
 	 *
-	 *										embed.css/embed.js reach the browser the way the kernel
-	 *										ships its own Nino.css/Nino.js (see
-	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): the
-	 *										manifest's assets add them to the SAME site-wide
-	 *										bundles the base install's html-header.tpl/
-	 *										html-footer.tpl already load on every page, not a
-	 *										bundle of this feature's own.
+	 *										embed.js reaches the browser in the site's script
+	 *										bundle through the manifest's assets; the look of the
+	 *										surface and of the box is the standard part of the
+	 *										group embed.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -57,10 +54,11 @@ namespace Nino\Modules {
 	 */
 	class Embed {
 
-		// Where this feature's own templates are, as \Nino\Filesystem resolves
-		// them: /features is the installed features directory, wherever
-		// NINO_FEATURES_DIR put it
-		public const string TEMPLATES = '/features/Embed/templates';
+		// The markup the renderer writes besides the template of the component: the picture on the surface, one line, the
+		// tokens in double brackets. It is the project's own picture and never one of the provider's
+		public static array $html = [
+			'poster' => '<img class="embed-poster" src="[[src]]" alt="" loading="lazy" decoding="async">',
+		];
 
 		/*	The two providers worth knowing by name, because their embed address
 			is not the address anybody has in their clipboard - what a person
@@ -104,10 +102,7 @@ namespace Nino\Modules {
 		public const string RATIO_DEFAULT = '16-9';
 
 		/**
-		 *	Register the shortcode where the Components module does not own it -
-		 *	the manifest declares [embed] as a component, which that module renders
-		 *	through doShortcode() - and hook the output phase, where the hosts of
-		 *	the page's embeds join the policy
+		 *	Hook the output phase, where the hosts of the page's embeds join the policy
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -115,27 +110,30 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Feature::shortcode( $appData, 'embed', [ self::class, 'doShortcode' ] );
-
 			// The policy is widened where the finished response is in hand, and by
-			// the hosts doShortcode() recorded - see callbackOutput()
+			// the hosts componentEmbed() recorded - see callbackOutput()
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
 		}
 
 		/**
-		 *	[embed youtube="..."], [embed vimeo="..."], [embed url="https://..."]
+		 *	The renderer of the component embed, [embed youtube="..."], [embed vimeo="..."], [embed url="https://..."]
 		 *
 		 *	Renders nothing at all where no address can be made of what was
-		 *	written: an [embed] with a typo is a shortcode that cannot mean
+		 *	written: an [embed] with a typo is a call that cannot mean
 		 *	anything, and a box with no frame behind it is worse on a page than
-		 *	no box - it is a thing to press that never does anything.
+		 *	no box - it is a thing to press that never does anything. The
+		 *	register has made the attributes ready, so each arrives escaped:
+		 *	the address is decoded to be read and escaped again where it is
+		 *	written, and the title, which is text, is written as it came.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					Shortcode attributes (see feature.php's manual)
+		 *	@param		array			$args					The attributes of the call
+		 *	@param		string		$content			Nothing: the component holds nothing
+		 *	@param		array			$context			Where the call stands
 		 *
 		 *	@return 	string								The surface, or '' where the address is not one
 		 */
-		public static function doShortcode( array &$appData, array $args ): string {
+		public static function componentEmbed( array &$appData, array $args, string $content, array $context ): string {
 
 			$src = self::source( $args );
 
@@ -143,46 +141,28 @@ namespace Nino\Modules {
 				return '';
 
 			// What the policy has to name, collected here and not read back out of
-			// the body: a shortcode is written by the project, whereas the body is
+			// the body: a call is written by the project, whereas the body is
 			// every text, element and template the page was made of
 			$appData['./embed/frames'][ \Nino\Feature::origin( $src ) ] = true;
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-
-			$ratio = (string) ( $args['ratio'] ?? '' );
-			$ratio = in_array( $ratio, self::RATIOS, true ) === true ? $ratio : self::RATIO_DEFAULT;
+			$host = \Nino\Components::escape( self::host( $src ) );
 
 			/*	The title is the accessible name of the frame that will be there,
 				and the words on the surface before it is. A frame with no name is
-				"iframe" to a screen reader, so there is a fallback fill rather than
+				"iframe" to a screen reader, so there is a fallback word rather than
 				an empty string - but a project that writes one says what this
-				particular video is, which no fill can	*/
-			$title = trim( (string) ( $args['title'] ?? '' ) );
+				particular video is, which no word can	*/
+			$title = $args['title'];
 
-			// Rendered, then escaped: a title is editor text that may be a
-			// textfill, and what comes out of the fill engine is still text
-			$title = $title === '' ? '' : $safe( \Nino\Html::renderHtml( $appData, $title ) );
-
-			$category = self::category( $appData );
-
-			// The poster last of the three built pieces, and the whole block last
-			// of all: str_replace() works through its arrays in order, so a token
-			// after built markup would be looked for inside it as well
-			return str_replace(
-				[ '[[classes]]', '[[ratio]]', '[[src]]', '[[host]]', '[[consent]]', '[[remember]]', '[[title]]', '[[label]]', '[[poster]]' ],
-				[
-					\Nino\Feature::classes( $args ),
-					$ratio,
-					$safe( $src ),
-					$safe( self::host( $src ) ),
-					$safe( $category ),
-					( self::remembers( $appData ) === true ? ' data-embed-remember="1"' : '' ),
-					( $title === '' ? '[[/feature/embed/frame/title]]' : $title ),
-					( $title === '' ? '[[/feature/embed/placeholder/button]]' : $title ),
-					self::_poster( $appData, (string) ( $args['poster'] ?? '' ) ),
-				],
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'embed' )
-			);
+			return \Nino\Components::fill( $appData, 'embed', $args, $content, [
+				'[[src]]'				=> \Nino\Components::escape( $src ),
+				'[[host]]'			=> $host,
+				'[[consent]]'		=> \Nino\Components::escape( self::category( $appData ) ),
+				'[[remember]]'	=> self::remembers( $appData ) === true ? ' data-embed-remember="1"' : '',
+				'[[frameTitle]]'	=> $title === '' ? self::_word( $appData, 'frame/title' ) : $title,
+				'[[label]]'			=> $title === '' ? self::_word( $appData, 'placeholder/button' ) : $title,
+				'[[poster]]'		=> self::_poster( $appData, $args['poster'] ),
+			] );
 		}
 
 		/**
@@ -193,7 +173,7 @@ namespace Nino\Modules {
 		 *
 		 *	It stands on /nino/http/output and not on /nino/http/response: the
 		 *	hosts are known once the body is rendered, and every response hook
-		 *	runs before that. The hosts are the ones doShortcode() recorded, so a
+		 *	runs before that. The hosts are the ones componentEmbed() recorded, so a
 		 *	page with no [embed] keeps its policy byte for byte; the directive is
 		 *	extended where it exists, built from child-src or default-src where
 		 *	it does not, and 'none' is left as the project decided it - see
@@ -224,16 +204,16 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The embed address one set of shortcode attributes names, or '' where
+		 *	The embed address one set of attributes names, or '' where
 		 *	they name none. A provider id is checked against that provider's own
 		 *	shape rather than pasted in: what goes into the markup here ends up
 		 *	in an iframe's src once it is released
 		 *
 		 *	youtube="" and vimeo="" take the id or the address copied from the
 		 *	browser (see video()); one that is neither is logged, since the
-		 *	shortcode then renders nothing and the page says why nowhere else.
+		 *	call then renders nothing and the page says why nowhere else.
 		 *
-		 *	@param		array			$args					Shortcode attributes
+		 *	@param		array			$args					The attributes of the call
 		 *
 		 *	@return 	string								An https url, or ''
 		 */
@@ -258,7 +238,8 @@ namespace Nino\Modules {
 				return self::_playerSrc( $provider, $video );
 			}
 
-			$url = trim( (string) ( $args['url'] ?? '' ) );
+			// The register hands an attribute over escaped: an address is read as it was typed
+			$url = trim( html_entity_decode( (string) ( $args['url'] ?? '' ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
 
 			if( $url === '' )
 				return '';
@@ -476,29 +457,36 @@ namespace Nino\Modules {
 		/**
 		 *	The picture on the surface, or nothing - which is a surface with the
 		 *	play mark and the two sentences on the page's own ground, and is
-		 *	what most embeds get
+		 *	what most embeds get. It is a picture slot of the project, read back
+		 *	from the escaped reference the register wrote: a name that is no slot
+		 *	is none
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$poster				A filename below the project's images
+		 *	@param		string		$reference		The attribute, escaped
 		 *
 		 *	@return 	string
 		 */
-		private static function _poster( array &$appData, string $poster ): string {
+		private static function _poster( array &$appData, string $reference ): string {
 
-			$poster = trim( $poster );
+			$picture = \Nino\Images::picture( $appData, html_entity_decode( $reference, ENT_QUOTES | ENT_HTML5, 'UTF-8' ), null );
 
-			/*	\Nino\Images only ever hands out names below its own directory, but
-				this one comes out of a template somebody wrote, and a name that
-				climbs out of that directory would be a picture from wherever it
-				climbed to	*/
-			if( $poster === '' || str_contains( $poster, '..' ) === true || str_starts_with( $poster, '/' ) === true )
-				return '';
+			return $picture === null ? '' : str_replace( '[[src]]', \Nino\Components::escape( $picture['url'] ), self::$html['poster'] );
+		}
 
-			return str_replace(
-				'[[src]]',
-				htmlspecialchars( \Nino\Images::getUrl( $appData, $poster ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'embed-poster' )
-			);
+		/**
+		 *	A word of the surface as it is written into html: the text of the key in the language of the page, escaped.
+		 *	A key nobody has a text for is the key
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					The part and the name below /feature/embed/
+		 *
+		 *	@return 	string
+		 */
+		private static function _word( array &$appData, string $name ): string {
+
+			$key = '/feature/embed/'. $name;
+
+			return \Nino\Components::escape( \Nino\Html::resolveTextfill( $appData, $key ) ?? '[['. $key. ']]' );
 		}
 	}
 

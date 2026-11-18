@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Video zum Anklicken", "en_US": "A video to press" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und ein Video, das erst nach einem Klick geladen wird.", "en_US": "A headline, a sentence and a video that loads only after a press." },
+	"category": "content",
+	"rank": 66,
+	"images": {}
+}
