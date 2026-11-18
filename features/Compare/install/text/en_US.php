@@ -6,8 +6,8 @@ declare(strict_types=1);
 // lacks is added); editors keep them current in the Text panel from then on.
 return [
 
-	// What the two sides are called where the shortcode did not say. A
-	// project that writes before-label="Rohbau" says something these cannot
+	// What the two sides are called where the call did not say. A
+	// project that writes beforeLabel="Rohbau" says something these cannot
 	'[[/feature/compare/side/before]]'	=> 'Before',
 	'[[/feature/compare/side/after]]'	=> 'After',
 

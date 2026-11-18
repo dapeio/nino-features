@@ -7,8 +7,8 @@ declare(strict_types=1);
 // Redakteure sie im Panel Texte.
 return [
 
-	// Wie die beiden Seiten heißen, wenn der Shortcode nichts gesagt hat. Wer
-	// before-label="Rohbau" schreibt, sagt etwas, das diese nicht sagen können
+	// Wie die beiden Seiten heißen, wenn der Aufruf nichts gesagt hat. Wer
+	// beforeLabel="Rohbau" schreibt, sagt etwas, das diese nicht sagen können
 	'[[/feature/compare/side/before]]'	=> 'Vorher',
 	'[[/feature/compare/side/after]]'	=> 'Nachher',
 

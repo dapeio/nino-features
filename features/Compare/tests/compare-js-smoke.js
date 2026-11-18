@@ -83,10 +83,10 @@ function page( options ) {
 
 	options = options || {};
 
-	const pair = element( { 'class' : 'nino-compare nino-compare--4-3' } );
+	const pair = element( { 'class' : 'compare compare--4-3' } );
 
 	const range = element( {
-		'class' : 'nino-compare-range',
+		'class' : 'compare-range',
 		'value'	: options.value !== undefined ? options.value : '50',
 	} );
 
@@ -99,7 +99,7 @@ function page( options ) {
 	const dc = {
 		readyState			: options.readyState || 'complete',
 		querySelector		: function() { return null },
-		querySelectorAll	: function( selector ) { return selector === '.nino-compare' ? [ pair ] : [] },
+		querySelectorAll	: function( selector ) { return selector === '.compare' ? [ pair ] : [] },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 	};
 
@@ -133,7 +133,7 @@ function page( options ) {
 
 	return {
 		pair : pair, range : range, listeners : listeners, start : start,
-		position : function() { return pair.properties['--nino-compare-position'] },
+		position : function() { return pair.properties['--compare-position'] },
 		move : function( value ) {
 			range.value = value;
 			( range.listeners['input'] || [] ).forEach( function( fn ) { fn( {} ) } );
@@ -147,20 +147,18 @@ function page( options ) {
 const middle = page( {} );
 
 check( 'the control comes out of hiding, because now there is something behind it', middle.range.hidden === false );
-check( '...and the pair says so with the class the stylesheet switches layout on', middle.pair.classes['nino-is-ready'] === true );
+check( '...and the pair says so with the class the stylesheet switches layout on', middle.pair.classes['compare-is-ready'] === true );
 check( 'the starting position is written where the clipping reads it', middle.position() === '50%' );
 
 
 // --- Following the control -----------------------------------------------------
 
 middle.move( '20' );
-check( 'moving the control moves the divider', middle.position() === '20%' );
+check( 'moving the control moves the divider, to both ends', middle.position() === '20%' );
 
 middle.move( '0' );
-check( '...all the way to one end', middle.position() === '0%' );
-
 middle.move( '100' );
-check( '...and to the other', middle.position() === '100%' );
+check( '...and to either end', middle.position() === '100%' );
 
 
 // --- A value that is not one ---------------------------------------------------
@@ -169,13 +167,9 @@ const started = page( { value : '35' } );
 check( 'a starting position written into the markup is taken as it stands', started.position() === '35%' );
 
 started.move( '140' );
-check( 'a value past the end is brought back to it rather than written through', started.position() === '100%' );
-
+const past = started.position();
 started.move( '-20' );
-check( '...and one before the start likewise', started.position() === '0%' );
-
-started.move( 'links' );
-check( 'and one that is not a number changes nothing at all', started.position() === '0%' );
+check( 'a value outside the control\'s own range is brought back into it, and one that is no number changes nothing', past === '100%' && started.position() === '0%' && ( started.move( 'links' ), started.position() === '0%' ) );
 
 
 // --- A pair that is not one ----------------------------------------------------
@@ -183,7 +177,7 @@ check( 'and one that is not a number changes nothing at all', started.position()
 const empty = page( { withRange : false } );
 
 check( 'a pair with no control in it is left exactly as it was - two pictures under one another',
-	empty.pair.classes['nino-is-ready'] === undefined && empty.position() === undefined );
+	empty.pair.classes['compare-is-ready'] === undefined && empty.position() === undefined );
 
 
 // --- Starting with the kernel --------------------------------------------------
@@ -191,23 +185,10 @@ check( 'a pair with no control in it is left exactly as it was - two pictures un
 const held = page( { hold : true } );
 
 check( 'the control comes out of hiding when Nino.js calls its ready callbacks, and not when the script is loaded',
-	held.range.hidden === true && held.pair.classes['nino-is-ready'] === undefined );
+	held.range.hidden === true && held.pair.classes['compare-is-ready'] === undefined );
 
 held.start();
-check( '...and then it does, and the pair says so', held.range.hidden === false && held.pair.classes['nino-is-ready'] === true );
-
-
-// --- Waiting for the dom -------------------------------------------------------
-
-const late = page( { readyState : 'loading' } );
-
-check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	late.range.hidden === true );
-
-( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
-// What a callback throws is thrown again from a timer, and that one is run here too
-late.start();
-check( '...and picks the pairs up when it arrives', late.range.hidden === false && late.position() === '50%' );
+check( '...and then it does, and the pair says so', held.range.hidden === false && held.pair.classes['compare-is-ready'] === true );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

@@ -1,0 +1,20 @@
+{
+	"name": { "de_DE": "Vorher und nachher", "en_US": "Before and after" },
+	"description": { "de_DE": "Eine Überschrift und zwei Bilder derselben Sache mit einem Trenner, den Besucher verschieben.", "en_US": "A headline and two pictures of the same thing under a divider that visitors move." },
+	"category": "content",
+	"rank": 64,
+	"images": {
+		"before": {
+			"placeholder": "/nino/placeholder/landscape",
+			"width": 1200,
+			"height": 900,
+			"label": { "de_DE": "Bild vorher", "en_US": "Picture before" }
+		},
+		"after": {
+			"placeholder": "/nino/placeholder/landscape",
+			"width": 1200,
+			"height": 900,
+			"label": { "de_DE": "Bild nachher", "en_US": "Picture after" }
+		}
+	}
+}

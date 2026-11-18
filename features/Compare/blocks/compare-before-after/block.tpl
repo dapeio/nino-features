@@ -1,0 +1,8 @@
+[section-wrap id="compare" ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title ~title tag="h2" size="m"]
+			[compare before="~before" after="~after" alt="~alt"]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

@@ -1,6 +1,6 @@
 /**
  *	Nino - Before/After
- *	compare.js		Turns the two captioned pictures the shortcode wrote into the
+ *	compare.js		Turns the two captioned pictures the component writes into the
  *					two stacked under one divider, and keeps the divider where the
  *					range control says it is. It needs Nino.js, which every site
  *					loads (Nino.events.bindCallback() starts it), and no build step:
@@ -11,7 +11,7 @@
  *					<input type="range">: the browser already drags it with a
  *					mouse, with a finger and with the arrow keys, announces it, and
  *					gives it a value. All that is left is to read that value into
- *					a custom property - the clipping is compare.css's, so a drag
+ *					a custom property - the clipping is the standard part's, so a drag
  *					is a paint rather than a call into JavaScript on every frame.
  *
  *	@package						Dape/Nino
@@ -22,7 +22,7 @@
 
 ( function() {
 
-	var SELECTOR = '.nino-compare';
+	var SELECTOR = '.compare';
 
 	/**
 	 *	Write one pair's divider position onto the element the stylesheet
@@ -42,7 +42,7 @@
 
 		number = Math.max( 0, Math.min( 100, number ) );
 
-		pair.style.setProperty( '--nino-compare-position', number + '%' );
+		pair.style.setProperty( '--compare-position', number + '%' );
 	}
 
 	/**
@@ -55,7 +55,7 @@
 	 */
 	function ready( pair ) {
 
-		var range = pair.querySelector( '.nino-compare-range' );
+		var range = pair.querySelector( '.compare-range' );
 
 		if( range === null )
 			return;
@@ -68,7 +68,7 @@
 		/*	The second picture is aria-hidden and its caption is inside the
 			clipped box: to a screen reader the pair is one picture with a
 			description, which is what it is. The control names itself	*/
-		pair.classList.add( 'nino-is-ready' );
+		pair.classList.add( 'compare-is-ready' );
 	}
 
 	/**

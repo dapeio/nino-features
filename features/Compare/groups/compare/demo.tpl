@@ -1,0 +1,8 @@
+[section-wrap ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title tag="h2" size="m" text="Before and after"]
+			[compare before="/nino/placeholder/landscape" after="/nino/placeholder/landscape" alt="The same room, before and after" start="40"]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

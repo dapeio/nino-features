@@ -1,0 +1,31 @@
+/*	compare - the standard part: two captioned pictures under one another, and, once the script has taken the pair over, the two laid over each other under a divider that a range control moves	*/
+:root {
+	--compare-radius: var(--page-radius);
+	--compare-ratio: 4 / 3;
+}
+.compare { margin: 0; width: 100%; }
+.compare--ratio-16-9 { --compare-ratio: 16 / 9; }
+.compare--ratio-1-1 { --compare-ratio: 1 / 1; }
+.compare--ratio-3-2 { --compare-ratio: 3 / 2; }
+.compare-frame { display: grid; gap: var(--page-space-2); }
+.compare-image { display: block; width: 100%; height: auto; border-radius: var(--compare-radius); }
+.compare-side { display: block; font-size: var(--page-text-1); color: var(--brand-ink-quiet); }
+.compare-divider { display: none; }
+.compare-caption { margin-top: var(--page-space-1); font-size: var(--page-text-1); color: var(--brand-ink-quiet); }
+.compare-caption:empty { display: none; }
+.compare.compare-is-ready { position: relative; }
+.compare.compare-is-ready .compare-frame { display: block; position: relative; overflow: hidden; border-radius: var(--compare-radius); aspect-ratio: var(--compare-ratio); }
+.compare.compare-is-ready .compare-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+.compare.compare-is-ready .compare-clip { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--compare-position, 50%)); }
+.compare.compare-is-ready .compare-side { position: absolute; top: var(--page-space-2); z-index: 2; padding: .25em .7em; border-radius: var(--compare-radius); background: color-mix( in srgb, var(--brand-ink) 80%, transparent ); color: var(--brand-ground); pointer-events: none; }
+.compare.compare-is-ready .compare-side--before { left: var(--page-space-2); }
+.compare.compare-is-ready .compare-side--after { right: var(--page-space-2); }
+.compare.compare-is-ready .compare-divider { display: block; position: absolute; top: 0; bottom: 0; left: var(--compare-position, 50%); z-index: 3; width: 2px; margin-left: -1px; background: var(--brand-ground); box-shadow: 0 0 6px color-mix( in srgb, var(--brand-ink) 50%, transparent ); pointer-events: none; }
+.compare.compare-is-ready .compare-range { position: absolute; top: 0; left: 0; z-index: 4; width: 100%; height: auto; aspect-ratio: var(--compare-ratio); margin: 0; appearance: none; background: transparent; cursor: ew-resize; }
+.compare .compare-range[hidden] { display: none; }
+.compare .compare-range:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.compare .compare-range::-webkit-slider-thumb { appearance: none; width: 2.2rem; height: 2.2rem; border: 2px solid var(--brand-on-accent); border-radius: 50%; background: var(--brand-accent); box-shadow: 0 0 6px color-mix( in srgb, var(--brand-ink) 50%, transparent ); cursor: ew-resize; }
+.compare .compare-range::-moz-range-thumb { width: 2.2rem; height: 2.2rem; border: 2px solid var(--brand-on-accent); border-radius: 50%; background: var(--brand-accent); box-shadow: 0 0 6px color-mix( in srgb, var(--brand-ink) 50%, transparent ); cursor: ew-resize; }
+.compare .compare-range::-moz-range-track { background: transparent; }
+.compare .compare-range:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+.compare .compare-range:focus-visible::-moz-range-thumb { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
