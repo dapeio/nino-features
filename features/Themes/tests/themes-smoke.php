@@ -1951,7 +1951,7 @@ foreach( [ 'footer', 'header', 'section', 'button', 'image', 'text' ] as $group 
 		if( $knob['extra'] === false )
 			$groupMiddle[$key] = [ $flat( $knob['ladder'][2] ), $standards[$knob['token']] ?? null ];
 
-check( 'the middle step of each of the '. count( $groupMiddle ). ' knobs of the six groups, those the part turns among them, is what the standard part sets in :root, read from its file - the ladder is the part\'s, the middle is the standard\'s', count( $groupMiddle ) === 16
+check( 'the middle step of each of the '. count( $groupMiddle ). ' knobs of the six groups, those the part turns among them, is what the standard part sets in :root, read from its file - the ladder is the part\'s, the middle is the standard\'s', count( $groupMiddle ) === 17
 	&& array_filter( $groupMiddle, static fn( array $pair ): bool => $pair[0] !== $pair[1] ) === [] && $planned['section']['knobs']['section-wrap.space']['ladder'] !== \Nino\Components::groups( $site )['section']['knobs']['section-wrap.space']['ladder']
 	&& $planned['section']['knobs']['section-col.pad']['ladder'] !== \Nino\Components::groups( $site )['section']['knobs']['section-col.pad']['ladder'] );
 $rule = $planned['section']['knobs']['section-title.x-rule'];
@@ -2029,7 +2029,7 @@ foreach( $schemas as $component => $schema )
 		}
 	}
 
-check( 'the probe page of the suite names every value but the default of each of the thirteen attributes that have a fixed step - '. $kinds. ' attributes of the components they belong to - so that the browser can measure each of them in each variant', $kinds === 20 && $missing === [], $missing );
+check( 'the probe page of the suite names every value but the default of each of the thirteen attributes that have a fixed step - '. $kinds. ' attributes of the components they belong to - so that the browser can measure each of them in each variant', $kinds === 21 && $missing === [], $missing );
 check( 'and names each variant of the theme, one of each for the header and the footer, the band for every section that is one', substr_count( $probe, 'variant="bar"' ) === 1 && substr_count( $probe, 'variant="dark"' ) === 1 && preg_match_all( '/\[section-wrap [^\]]*variant="band"/', $probe ) === substr_count( $probe, '[section-wrap' ) );
 
 // drawn: with the feature off the page has no variant, with Nino on it has all three, and a page that names none is drawn the same either way
