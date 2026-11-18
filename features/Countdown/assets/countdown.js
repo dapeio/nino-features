@@ -9,7 +9,7 @@
  *					The arithmetic is here rather than on the server because a
  *					page cached for an hour would otherwise be an hour wrong. The
  *					moment itself is the server's: an ISO-8601 string with its own
- *					offset in it - the one the shortcode's tz= named, else the
+ *					offset in it - the one the call's tz named, else the
  *					one the Countdown setting's zone has, else the php process's -
  *					so a reader in another timezone counts down to the same
  *					instant rather than the same wall clock.
@@ -28,7 +28,7 @@
 
 ( function() {
 
-	var SELECTOR = '.nino-countdown[data-countdown-to]';
+	var SELECTOR = '.countdown[data-countdown-to]';
 
 	// Seconds in each part, largest first - the order they are drawn in, and
 	// the order they have to be taken off the remainder in
@@ -66,8 +66,8 @@
 	 */
 	function paint( part, value ) {
 
-		var number = part.querySelector( '.nino-countdown-value' );
-		var name	 = part.querySelector( '.nino-countdown-name' );
+		var number = part.querySelector( '.countdown-value' );
+		var name	 = part.querySelector( '.countdown-name' );
 
 		if( number !== null )
 			number.textContent = String( value );
@@ -108,7 +108,7 @@
 			return false;
 		}
 
-		var parts = countdown.querySelectorAll( '.nino-countdown-part' );
+		var parts = countdown.querySelectorAll( '.countdown-part' );
 
 		for( var i = 0; i < parts.length; i++ ) {
 
@@ -132,7 +132,7 @@
 	}
 
 	/**
-	 *	The moment has passed: the counter goes, and what the shortcode was
+	 *	The moment has passed: the counter goes, and what the call was
 	 *	given for afterwards stands in its place. Where it was given nothing,
 	 *	the date the markup already carried is put back - a countdown that has
 	 *	run out is still a date
@@ -146,13 +146,13 @@
 		// The guard is the class, not data-countdown-done: that attribute is
 		// where the sentence for afterwards is kept, and a flag written into
 		// it would destroy the sentence one line before it is read
-		if( countdown.classList.contains( 'nino-is-done' ) === true )
+		if( countdown.classList.contains( 'countdown-is-done' ) === true )
 			return;
 
-		countdown.classList.add( 'nino-is-done' );
+		countdown.classList.add( 'countdown-is-done' );
 
-		var parts = countdown.querySelector( '.nino-countdown-parts' );
-		var date	= countdown.querySelector( '.nino-countdown-date' );
+		var parts = countdown.querySelector( '.countdown-parts' );
+		var date	= countdown.querySelector( '.countdown-date' );
 		var said	= countdown.getAttribute( 'data-countdown-done' );
 
 		if( parts !== null )
@@ -213,8 +213,8 @@
 			if( target( countdowns[i] ) === null )
 				continue;
 
-			var parts = countdowns[i].querySelector( '.nino-countdown-parts' );
-			var date	= countdowns[i].querySelector( '.nino-countdown-date' );
+			var parts = countdowns[i].querySelector( '.countdown-parts' );
+			var date	= countdowns[i].querySelector( '.countdown-date' );
 
 			if( parts === null )
 				continue;

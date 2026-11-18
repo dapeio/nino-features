@@ -22,7 +22,7 @@ namespace Nino\Modules {
 	 *										the browser's, because a page that is cached for an
 	 *										hour would otherwise be an hour wrong.
 	 *
-	 *										Which offset that is, is the shortcode's to say first:
+	 *										Which offset that is, is the call's to say first:
 	 *										`tz` names the timezone the wall-clock moment in `to`
 	 *										is read in. Where it says nothing the setting
 	 *										`timezone` does - its default, 'server', is the
@@ -36,7 +36,8 @@ namespace Nino\Modules {
 	 *										Without JavaScript what stands there is the date, in a
 	 *										<time datetime="..."> - written out for a reader and
 	 *										machine-readable for everything else. That is the
-	 *										markup; countdown.js puts the counter in front of it
+	 *										markup (components/countdown/template.tpl);
+	 *										countdown.js puts the counter in front of it
 	 *										and takes it out again when the moment passes. A
 	 *										countdown that cannot count is still a date, which is
 	 *										the fact it was carrying all along.
@@ -54,7 +55,7 @@ namespace Nino\Modules {
 	 *
 	 *										The names of months and days in the readable date are
 	 *										the project's words, not PHP's English ones: the
-	 *										letters F, M, l and D of `format` are put in as the
+	 *										letters F, M, l and D of `dateFormat` are put in as the
 	 *										text keys /feature/countdown/month/<name>,
 	 *										/month-short/<name>, /day/<name> and /day-short/<name>
 	 *										in the language of the page - and where no language
@@ -68,11 +69,9 @@ namespace Nino\Modules {
 	 *										Templates"), so the two words are put where the fill
 	 *										engine resolves them and the script only chooses.
 	 *
-	 *										countdown.css/countdown.js reach the browser the way
-	 *										the kernel ships its own Nino.css/Nino.js: the
-	 *										manifest's assets add them to the SAME site-wide
-	 *										bundles the base install's html-header.tpl/
-	 *										html-footer.tpl already load on every page.
+	 *										countdown.js reaches the browser in the site's script
+	 *										bundle through the manifest's assets; the look is the
+	 *										standard part of the group countdown.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -83,18 +82,13 @@ namespace Nino\Modules {
 		// The feature's key, which is what Features::setting() is asked by
 		public const string KEY = 'countdown';
 
-		// Where this feature's own templates are, as \Nino\Filesystem resolves
-		// them: /features is the installed features directory, wherever
-		// NINO_FEATURES_DIR put it
-		public const string TEMPLATES = '/features/Countdown/templates';
-
 		// The parts a countdown can be split into, largest first - which is
 		// also the order they are drawn in, and the only order they may be
-		// drawn in: "3 Minuten 2 Tage" is not a duration anybody reads
+		// drawn in: "3 Minuten 2 Tage" is not a duration anybody reads. The
+		// names are those of the attributes that switch a part on or off
 		public const array UNITS = [ 'days', 'hours', 'minutes', 'seconds' ];
-		public const array UNITS_DEFAULT = [ 'days', 'hours', 'minutes', 'seconds' ];
 
-		// How the date under the counter is written where the shortcode does
+		// How the date under the counter is written where the call does
 		// not say. Unambiguous in every language, which a numeric day/month
 		// pair is not
 		public const string FORMAT_DEFAULT = 'Y-m-d H:i';
@@ -113,79 +107,69 @@ namespace Nino\Modules {
 			'D' => [ 'day-short', 'l' ],
 		];
 
-		/**
-		 *	Register the shortcode where the Components module does not own it:
-		 *	the manifest declares [countdown] as a component, which that module
-		 *	renders through doShortcode()
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		public static function init( array &$appData ): void {
-
-			\Nino\Feature::shortcode( $appData, 'countdown', [ self::class, 'doShortcode' ] );
-		}
+		// The markup the renderer writes besides the template of the component: one part of the counter, the tokens in
+		// double brackets. A static asset cannot read a text fill, so both forms of the name of a part stand on it
+		public static array $html = [
+			'part' => '<span class="countdown-part" data-countdown-unit="[[unit]]" data-countdown-one="[[one]]" data-countdown-many="[[many]]"><span class="countdown-value">&mdash;</span><span class="countdown-name">[[many]]</span></span>',
+		];
 
 		/**
-		 *	[countdown to="2026-12-24 18:00"]
+		 *	The renderer of the component countdown, [countdown to="2026-12-24 18:00"]
 		 *
 		 *	Renders nothing where the moment is not one: a counter with no
 		 *	moment behind it counts nothing, and a date that could not be read
-		 *	is better said out loud in the log than shown as a wrong one.
+		 *	is better said out loud in the log than shown as a wrong one. The
+		 *	register has made the attributes ready, so each arrives escaped:
+		 *	what is parsed is decoded first, and what is written is escaped
+		 *	again where this makes it.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					Shortcode attributes (see feature.php's manual)
+		 *	@param		array			$args					The attributes of the call
+		 *	@param		string		$content			Nothing: the component holds nothing
+		 *	@param		array			$context			Where the call stands
 		 *
 		 *	@return 	string								The counter, or '' where "to" is not a moment
 		 */
-		public static function doShortcode( array &$appData, array $args ): string {
+		public static function componentCountdown( array &$appData, array $args, string $content, array $context ): string {
 
-			$moment = self::moment( (string) ( $args['to'] ?? '' ), self::zone( $appData, $args ) );
+			$moment = self::moment( html_entity_decode( $args['to'], ENT_QUOTES | ENT_HTML5, 'UTF-8' ), self::zone( $appData, $args ) );
 
 			if( $moment === null )
 				return '';
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-
-			$format = trim( (string) ( $args['format'] ?? '' ) );
+			$format = trim( html_entity_decode( $args['dateFormat'], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
 			$format = $format === '' ? self::FORMAT_DEFAULT : $format;
 
-			/*	The sentence for afterwards is editor text that may be a textfill,
-				so it is rendered first and escaped after; where the shortcode says
-				nothing, the fill the install unit wrote is left for the kernel	*/
-			$done = trim( (string) ( $args['done'] ?? '' ) );
-			$done = $done === ''
-				? '[[/feature/countdown/end/message]]'
-				: $safe( \Nino\Html::renderHtml( $appData, $done ) );
-
+			// The sentence for afterwards is the call's, which the register has made text; where the call says nothing it is the word of the project
 			$parts = '';
 
 			foreach( self::units( $args ) as $unit )
 				$parts .= self::_part( $appData, $unit );
 
-			/*	The date is made of words an editor wrote, so a bracket in it opens
-				nothing: it is written as &#91;, the way Components::escape() does,
-				before the next rendering pass can read it as a fill or a shortcode	*/
-			$date = str_replace( '[', '&#91;', $safe( self::date( $appData, $moment, $format ) ) );
-
-			// The parts last - they are built markup, and str_replace() works
-			// through its arrays in order
-			return str_replace(
-				[ '[[classes]]', '[[iso]]', '[[done]]', '[[date]]', '[[parts]]' ],
-				[
-					\Nino\Feature::classes( $args ),
-					$safe( $moment->format( \DateTimeInterface::ATOM ) ),
-					$done,
-					$date,
-					$parts,
-				],
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'countdown' )
-			);
+			return \Nino\Components::fill( $appData, 'countdown', $args, $content, [
+				'[[iso]]'		=> \Nino\Components::escape( $moment->format( \DateTimeInterface::ATOM ) ),
+				'[[done]]'	=> $args['done'] === '' ? self::_word( $appData, '/feature/countdown/end/message' ) : $args['done'],
+				'[[date]]'	=> \Nino\Components::escape( self::date( $appData, $moment, $format ) ),
+				'[[parts]]'	=> $parts,
+			] );
 		}
 
 		/**
-		 *	The timezone a countdown is read in: the one the shortcode names,
+		 *	The timezones a call can name, for the choice `tz`: the empty word first, which takes the setting's, then every
+		 *	timezone PHP knows
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$attribute		The attribute that asks
+		 *
+		 *	@return 	array									value => label
+		 */
+		public static function zones( array &$appData, string $attribute ): array {
+
+			return [ '' => [ 'en_US' => 'As the setting says', 'de_DE' => 'Wie in den Einstellungen' ] ] + array_combine( \DateTimeZone::listIdentifiers(), \DateTimeZone::listIdentifiers() );
+		}
+
+		/**
+		 *	The timezone a countdown is read in: the one the call names,
 		 *	else the setting's, else - '' - the php process's.
 		 *
 		 *	A setting still on 'server' answers '', which is what every
@@ -194,7 +178,7 @@ namespace Nino\Modules {
 		 *	answers the default for it.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					Shortcode attributes
+		 *	@param		array			$args					The attributes of the call
 		 *
 		 *	@return 	string								A timezone name, '' for the process default
 		 */
@@ -220,7 +204,7 @@ namespace Nino\Modules {
 		 *
 		 *	A wall-clock time is only half a moment: "18:00" is a different
 		 *	instant in Berlin than it is in London. $zone is the other half, and
-		 *	it comes from zone(): the shortcode's tz, else the setting. Nino
+		 *	it comes from zone(): the call's tz, else the setting. Nino
 		 *	declares no timezone of its own (\Nino\AppData::DEFAULTS has no such
 		 *	key) and sets none, so without $zone this reads what was written in
 		 *	whatever timezone the php process runs in - UTC on an installation
@@ -252,7 +236,7 @@ namespace Nino\Modules {
 					$timezone = new \DateTimeZone( $zone );
 				}
 				catch( \Exception ) {
-					trigger_error( 'Nino: [countdown tz="'. $zone. '"] is not a timezone this can read.', E_USER_WARNING );
+					trigger_error( 'Nino: [countdown tz="'. self::_said( $zone ). '"] is not a timezone this can read.', E_USER_WARNING );
 					return null;
 				}
 			}
@@ -291,7 +275,7 @@ namespace Nino\Modules {
 			}
 
 			if( $moment === null )
-				trigger_error( 'Nino: [countdown to="'. $to. '"] is not a moment this can read.', E_USER_WARNING );
+				trigger_error( 'Nino: [countdown to="'. self::_said( $to ). '"] is not a moment this can read.', E_USER_WARNING );
 
 			return $moment;
 		}
@@ -352,23 +336,17 @@ namespace Nino\Modules {
 
 		/**
 		 *	Which parts are drawn, always largest first whatever order they
-		 *	were written in: "3 Minuten 2 Tage" is not a duration anybody reads
+		 *	were switched on in: "3 Minuten 2 Tage" is not a duration anybody reads
 		 *
-		 *	@param		array			$args					Shortcode attributes
+		 *	@param		array			$args					The attributes of the call: days, hours, minutes and seconds, each '1' or '0'
 		 *
-		 *	@return 	array									A non-empty subset of UNITS, in UNITS' order
+		 *	@return 	array									A non-empty subset of UNITS, in UNITS' order: all four where none is switched on
 		 */
 		public static function units( array $args ): array {
 
-			$given = trim( (string) ( $args['units'] ?? '' ) );
+			$units = array_values( array_filter( self::UNITS, static fn( string $unit ): bool => ( $args[$unit] ?? '1' ) === '1' ) );
 
-			if( $given === '' )
-				return self::UNITS_DEFAULT;
-
-			$wanted = array_map( 'trim', explode( ',', strtolower( $given ) ) );
-			$units	= array_values( array_filter( self::UNITS, static fn( string $unit ): bool => in_array( $unit, $wanted, true ) ) );
-
-			return $units === [] ? self::UNITS_DEFAULT : $units;
+			return $units === [] ? self::UNITS : $units;
 		}
 
 		/**
@@ -384,13 +362,37 @@ namespace Nino\Modules {
 		private static function _part( array &$appData, string $unit ): string {
 
 			// The key is the singular's - unit-day - with both forms below it
-			$part = '[[/feature/countdown/unit-'. rtrim( $unit, 's' ). '/';
+			$part = '/feature/countdown/unit-'. rtrim( $unit, 's' ). '/';
 
-			return str_replace(
-				[ '[[unit]]', '[[one]]', '[[many]]' ],
-				[ $unit, $part. 'one]]', $part. 'many]]' ],
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'countdown-part' )
-			);
+			return strtr( self::$html['part'], [
+				'[[unit]]'	=> $unit,
+				'[[one]]'		=> self::_word( $appData, $part. 'one' ),
+				'[[many]]'	=> self::_word( $appData, $part. 'many' ),
+			] );
+		}
+
+		/**
+		 *	A word of the counter as it is written into html: the text of the key in the language of the page, escaped;
+		 *	where no language has it, the key stands there, as it does everywhere else
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key
+		 *
+		 *	@return 	string
+		 */
+		private static function _word( array &$appData, string $key ): string {
+			return \Nino\Components::escape( \Nino\Html::resolveTextfill( $appData, $key ) ?? '[['. $key. ']]' );
+		}
+
+		/**
+		 *	What somebody wrote, cut and cleaned to go into a line of the log: it is whatever was pasted
+		 *
+		 *	@param		string		$written
+		 *
+		 *	@return 	string
+		 */
+		private static function _said( string $written ): string {
+			return (string) preg_replace( '/[\x00-\x1F\x7F]+/', ' ', mb_strcut( $written, 0, 200, 'UTF-8' ) );
 		}
 	}
 

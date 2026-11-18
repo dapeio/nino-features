@@ -1,0 +1,24 @@
+/*	countdown - the standard part: the parts of the time that is left in a row, each a number over its name, in the type of the text around it, and the two looks that paint them, tiles and big	*/
+:root {
+	--countdown-size: 1em;
+	--countdown-gap: var(--page-space-2);
+	--countdown-radius: var(--page-radius);
+	--countdown-scale: 1;
+	--countdown-separator: "";
+}
+.countdown-parts { display: flex; flex-wrap: wrap; gap: var(--countdown-gap); align-items: baseline; }
+.countdown-parts[hidden], .countdown-date[hidden] { display: none; }
+.countdown-part { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 3.5ch; }
+.countdown-value { font-size: calc( var(--countdown-size) * var(--countdown-scale) ); font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; line-height: 1.1; }
+.countdown-name { font-size: var(--page-text-1); color: var(--brand-ink-quiet); }
+.countdown--variant-tiles { --countdown-scale: 1.5; }
+.countdown--variant-tiles .countdown-part { padding: var(--page-space-1) var(--page-space-2); border-radius: var(--countdown-radius); background: color-mix( in srgb, var(--brand-ink) 10%, var(--brand-ground) ); color: var(--brand-ink); }
+.countdown--variant-big { --countdown-scale: 2.5; }
+.countdown--variant-big .countdown-value { font-family: var(--brand-font-title); font-weight: var(--page-weight-title); }
+.countdown--variant-big .countdown-name { letter-spacing: .08em; text-transform: uppercase; }
+.countdown--separator-colon { --countdown-separator: ":"; }
+.countdown--separator-dot { --countdown-separator: "\00b7"; }
+.countdown--separator-colon .countdown-part:not(:last-child)::after, .countdown--separator-dot .countdown-part:not(:last-child)::after { content: var(--countdown-separator); position: absolute; inset-inline-start: 100%; width: var(--countdown-gap); font-size: calc( var(--countdown-size) * var(--countdown-scale) ); line-height: 1.1; text-align: center; color: var(--brand-ink-quiet); pointer-events: none; }
+@supports (content: "" / "") {
+	.countdown--separator-colon .countdown-part:not(:last-child)::after, .countdown--separator-dot .countdown-part:not(:last-child)::after { content: var(--countdown-separator) / ""; }
+}

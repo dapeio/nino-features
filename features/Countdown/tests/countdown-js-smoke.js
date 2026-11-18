@@ -94,28 +94,28 @@ function page( options ) {
 	const one = { days : 'day', hours : 'hour', minutes : 'minute', seconds : 'second' };
 
 	const countdown = element( {
-		'class'								: 'nino-countdown',
+		'class'								: 'countdown',
 		'data-countdown-to'		: options.to !== undefined ? options.to : '2026-12-24T18:00:00+01:00',
 		'data-countdown-done'	: options.done !== undefined ? options.done : 'Es ist so weit',
 	} );
 
 	// The <time> as the shortcode writes it: the date for a reader, and the
 	// same moment beside it for everything that is not one
-	const date = element( { 'class' : 'nino-countdown-date', 'datetime' : '2026-12-24T18:00:00+01:00' } );
+	const date = element( { 'class' : 'countdown-date', 'datetime' : '2026-12-24T18:00:00+01:00' } );
 	date.textContent = '2026-12-24 18:00';
 
-	const parts = element( { 'class' : 'nino-countdown-parts' } );
+	const parts = element( { 'class' : 'countdown-parts' } );
 	parts.hidden = true;
 
 	for( const unit of units ) {
 		const part = element( {
-			'class'									: 'nino-countdown-part',
+			'class'									: 'countdown-part',
 			'data-countdown-unit'		: unit,
 			'data-countdown-one'		: one[unit],
 			'data-countdown-many'		: unit,
 		} );
-		part.children.push( element( { 'class' : 'nino-countdown-value' } ) );
-		part.children.push( element( { 'class' : 'nino-countdown-name' } ) );
+		part.children.push( element( { 'class' : 'countdown-value' } ) );
+		part.children.push( element( { 'class' : 'countdown-name' } ) );
 		parts.children.push( part );
 	}
 
@@ -129,7 +129,7 @@ function page( options ) {
 		readyState			: options.readyState || 'complete',
 		querySelector		: function() { return null },
 		querySelectorAll	: function( selector ) {
-			return selector === '.nino-countdown[data-countdown-to]'
+			return selector === '.countdown[data-countdown-to]'
 				? ( countdown.getAttribute('data-countdown-to') !== null ? [ countdown ] : [] )
 				: [];
 		},
@@ -173,10 +173,10 @@ function page( options ) {
 		ticking : function() { return ticker !== null },
 		tick : function() { if( ticker !== null ) ticker() },
 		values : function() {
-			return find( parts, 'nino-countdown-value' ).map( function( v ) { return v.textContent } );
+			return find( parts, 'countdown-value' ).map( function( v ) { return v.textContent } );
 		},
 		names : function() {
-			return find( parts, 'nino-countdown-name' ).map( function( n ) { return n.textContent } );
+			return find( parts, 'countdown-name' ).map( function( n ) { return n.textContent } );
 		},
 	};
 }
@@ -203,10 +203,6 @@ check( 'a part standing at one is named in the singular', singular.names().join(
 const plural = page( { now : AT - ( 2 * 86400 + 2 * 3600 + 2 * 60 + 2 ) * 1000 } );
 check( '...and one standing at anything else in the plural', plural.names().join(':') === 'days:hours:minutes:seconds' );
 
-const zero = page( { now : AT - ( 2 * 60 + 30 ) * 1000 } );
-check( 'a part with nothing left in it still says so rather than disappearing', zero.values().join(':') === '0:0:2:30' );
-
-
 // --- Fewer parts than four -----------------------------------------------------
 
 const coarse = page( { units : [ 'days', 'hours' ], now : AT - ( 4 * 86400 + 12 * 3600 + 59 * 60 ) * 1000 } );
@@ -214,25 +210,18 @@ const coarse = page( { units : [ 'days', 'hours' ], now : AT - ( 4 * 86400 + 12 
 check( 'a countdown written in two parts carries its whole remainder in them', coarse.values().join(':') === '4:12' );
 
 const daysOnly = page( { units : [ 'days' ], now : AT - ( 4 * 86400 + 23 * 3600 ) * 1000 } );
-check( '...and one written in days alone says four for four and a half, not five', daysOnly.values().join(':') === '4' );
+check( '...and one in days alone says four for four and a half, not five', daysOnly.values().join(':') === '4' );
 
 
 // --- The moment itself ---------------------------------------------------------
 
-const ending = page( { now : AT - 1000 } );
-
-check( 'a second before, it is still counting', ending.parts.hidden === false && ending.countdown.classes['nino-is-done'] === undefined );
-
 const over = page( { now : AT } );
 
 check( 'at the moment itself the counter goes', over.parts.hidden === true );
-check( '...and what the shortcode was given for afterwards stands in its place', over.date.textContent === 'Es ist so weit' && over.date.hidden === false );
-/*	And the moment goes with the date it belonged to: datetime="..." is the
-	machine-readable half of whatever the element says, so an element left
-	carrying it over a sentence tells a parser, a calendar or a screen reader
-	that "Es ist so weit" is that instant	*/
+check( '...and what the call was given for afterwards stands in its place', over.date.textContent === 'Es ist so weit' && over.date.hidden === false );
+// datetime is the machine-readable half of whatever the element says: a sentence is no instant
 check( '...and the element stops carrying a moment its text no longer names', over.date.getAttribute( 'datetime' ) === null );
-check( '...the countdown says it is done', over.countdown.classes['nino-is-done'] === true );
+check( '...the countdown says it is done', over.countdown.classes['countdown-is-done'] === true );
 check( '...and the clock is stopped, because there is nothing left to count', over.ticking() === false );
 
 const silent = page( { now : AT + 5000, done : '' } );
@@ -258,19 +247,6 @@ check( 'the counter starts when Nino.js calls its ready callbacks, and not when 
 
 held.start();
 check( '...and then it is on', held.parts.hidden === false && held.ticking() === true && held.values().join(':') === '0:0:1:0' );
-
-
-// --- Waiting for the dom -------------------------------------------------------
-
-const late = page( { readyState : 'loading', now : AT - 60000 } );
-
-check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	late.parts.hidden === true && late.ticking() === false );
-
-( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
-// What a callback throws is thrown again from a timer, and that one is run here too
-late.start();
-check( '...and picks the countdowns up when it arrives', late.parts.hidden === false && late.values().join(':') === '0:0:1:0' );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

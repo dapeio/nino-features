@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Countdown zum Start", "en_US": "Countdown to a launch" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und der Zähler bis zu einem Datum, in großen Ziffern.", "en_US": "A headline, a sentence and the counter down to a date, in big digits." },
+	"category": "content",
+	"rank": 62,
+	"images": {}
+}

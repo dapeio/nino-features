@@ -65,7 +65,7 @@ return [
 	'[[/feature/countdown/day-short/saturday]]'	=> 'Sat',
 	'[[/feature/countdown/day-short/sunday]]'	=> 'Sun',
 
-	// What stands there once the moment has passed, where the shortcode did
+	// What stands there once the moment has passed, where the call did
 	// not say. A project that writes done="Der Verkauf läuft" says something
 	// this cannot
 	'[[/feature/countdown/end/message]]'	=> 'The time has come',

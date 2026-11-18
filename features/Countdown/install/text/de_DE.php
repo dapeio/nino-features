@@ -66,7 +66,7 @@ return [
 	'[[/feature/countdown/day-short/saturday]]'	=> 'Sa',
 	'[[/feature/countdown/day-short/sunday]]'	=> 'So',
 
-	// Was dort steht, wenn der Moment vorbei ist, sofern der Shortcode nichts
+	// Was dort steht, wenn der Moment vorbei ist, sofern der Aufruf nichts
 	// gesagt hat. Wer done="Der Verkauf läuft" schreibt, sagt etwas, das
 	// dieser Satz nicht sagen kann
 	'[[/feature/countdown/end/message]]'	=> 'Es ist so weit',
