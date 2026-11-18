@@ -392,7 +392,7 @@ namespace Nino\Modules\Mailer {
 		private static function _line( mixed $stream ): string|false {
 
 			// A stream that is no socket (a test's stand-in) cannot be waited on: it is read as it is
-			if( str_contains( (string) ( stream_get_meta_data( $stream )['stream_type'] ?? '' ), 'socket' ) === false ) {
+			if( str_contains( stream_get_meta_data( $stream )['stream_type'], 'socket' ) === false ) {
 
 				$line = fgets( $stream, 2048 );
 
@@ -416,7 +416,7 @@ namespace Nino\Modules\Mailer {
 					return false;
 
 				// What a TLS stream has decrypted already is not seen by select: ask the stream first
-				$pending = stream_get_meta_data( $stream )['unread_bytes'] ?? 0;
+				$pending = stream_get_meta_data( $stream )['unread_bytes'];
 
 				if( $pending < 1 ) {
 
