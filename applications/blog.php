@@ -5,9 +5,9 @@ return [
 	'name'				=> [ 'en_US' => 'Blog', 'de_DE' => 'Blog' ],
 	'description'	=> [
 		'en_US' => 'The website, and posts that readers find by search, with a table of contents and a reading progress bar.',
-		'de_DE' => 'Die Webseite, dazu Beiträge, die Leserinnen und Leser über die Suche finden, mit Inhaltsverzeichnis und Lesefortschritt.',
+		'de_DE' => 'Die Website, dazu Beiträge, die Leserinnen und Leser über die Suche finden, mit Inhaltsverzeichnis und Lesefortschritt.',
 	],
-	'features'		=> [ 'builder', 'design', 'consent', 'forms', 'modeswitch', 'seo', 'posts', 'search', 'toc', 'progress' ],
+	'features'		=> [ 'themes', 'builder', 'consent', 'modeswitch', 'seo', 'collections', 'posts', 'search', 'toc', 'progress' ],
 	'next'				=> '/_admin/#builder',
 	'start'				=> 'starter',
 	'menu'				=> null,
