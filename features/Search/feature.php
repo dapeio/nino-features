@@ -27,6 +27,10 @@ return [
 				'en_US' => 'Inside a list a component reads the fields of the hit as its source: any field of the type, .uri, .slug and .score, the match value, which a field of the type called score replaces.',
 				'de_DE' => 'Innerhalb einer Liste liest eine Komponente die Felder des Treffers als Quelle: jedes Feld des Typs, .uri, .slug und .score, den Treffer-Wert, den ein Feld des Typs namens score ersetzt.',
 			],
+			'[section-title .title href=".url"]' => [
+				'en_US' => 'The list asks /search/hit for each hit it draws and reads .url, a path of this site that a feature answers, and .link for a block, which reads /_placeholder; a hit with none has no link.',
+				'de_DE' => 'Die Liste fragt /search/hit für jeden gezeichneten Treffer und liest .url, einen Pfad dieser Website, den ein Feature antwortet, und .link für einen Block; ein Treffer ohne hat keinen Link.',
+			],
 		],
 		'routes' => [
 			'GET /.search?q=…&type=/products&limit=20&offset=0' => [
@@ -46,8 +50,8 @@ return [
 				'de_DE' => 'Frischt den Index des Typs auf, wenn eines seiner Elemente gespeichert wird.',
 			],
 			'/search/hit' => [
-				'en_US' => 'Fired for every hit of the json endpoint, then as /search/hit/<type> for one type; a feature shapes the fields of a hit or answers false to drop it.',
-				'de_DE' => 'Wird für jeden Treffer des JSON-Endpoints gefeuert, danach als /search/hit/<type> für einen Typ; ein Feature formt die Felder des Treffers oder antwortet false und lässt ihn weg.',
+				'en_US' => 'Fired for every hit of the json endpoint and of the list, then as /search/hit/<type>; a feature adds url, the endpoint also takes its other fields or false to drop the hit, the list only the url.',
+				'de_DE' => 'Wird für jeden Treffer des JSON-Endpoints und der Liste gefeuert, danach als /search/hit/<type>; ein Feature setzt url, der Endpoint nimmt auch andere Felder oder false, die Liste nur die url.',
 			],
 			'/search/hits' => [
 				'en_US' => 'Fired with the whole ranked list before it is counted or paged; a feature answers it without the hits a visitor may not find, and the components, the count and the endpoint read what is left.',

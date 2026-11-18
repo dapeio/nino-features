@@ -220,22 +220,7 @@ namespace Nino\Modules {
 				if( is_array( $element ) === false )
 					continue;
 
-				$fields = [];
-				foreach( array_unique( array_values( $configured[ $found['type'] ] ) ) as $name )
-					if( array_key_exists( $name, $element ) === true )
-						$fields[$name] = $element[$name];
-
-				$hit = [
-					'uri'				=> $found['uri'],
-					'type'			=> $found['type'],
-					'score'			=> round( (float) $found['score'], 3 ),
-					'coverage'	=> round( (float) $found['coverage'], 3 ),
-					'fields'		=> $fields,
-					'element'		=> $element,
-				];
-
-				$hit = \Nino\Callbacks::doCallbacks( $appData, self::HIT, $hit );
-				$hit = \Nino\Callbacks::doCallbacks( $appData, self::HIT. $found['type'], $hit );
+				$hit = self::_hit( $appData, $found, $element, $configured );
 
 				// Whatever a callback made of it: a hit is an array, and the
 				// Element stays where it is
@@ -256,6 +241,60 @@ namespace Nino\Modules {
 				'limit'		=> $limit,
 				'hits'		=> $hits,
 			];
+		}
+
+		/**
+		 *	One hit as the callbacks of HIT are handed it, and what they made of it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$found				One entry of getHits()
+		 *	@param		array			$element			The element as the page of the language shows it
+		 *	@param		array			$configured		The types and their fields, see _configuredTypes()
+		 *
+		 *	@return 	mixed										The hit, or what the callbacks answered: false to drop it
+		 */
+		private static function _hit( array &$appData, array $found, array $element, array $configured ): mixed {
+
+			$fields = [];
+			foreach( array_unique( array_values( $configured[ $found['type'] ] ?? [] ) ) as $name )
+				if( array_key_exists( $name, $element ) === true )
+					$fields[$name] = $element[$name];
+
+			$hit = [
+				'uri'				=> $found['uri'],
+				'type'			=> $found['type'],
+				'score'			=> round( (float) $found['score'], 3 ),
+				'coverage'	=> round( (float) $found['coverage'], 3 ),
+				'fields'		=> $fields,
+				'element'		=> $element,
+			];
+
+			$hit = \Nino\Callbacks::doCallbacks( $appData, self::HIT, $hit );
+
+			return \Nino\Callbacks::doCallbacks( $appData, self::HIT. $found['type'], $hit );
+		}
+
+		/**
+		 *	The address a feature gave a hit of the list, and only that
+		 *
+		 *	The callbacks of HIT are handed the hit the way the json endpoint hands it, but a list on a page takes
+		 *	nothing from the answer except `url`: it is the text of another feature, and it is a link only where it
+		 *	is a path of this site. Anything else - a host, a scheme, a protocol-relative address, whitespace, a
+		 *	control character, a value that is no string - is no address
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$found				One entry of getHits()
+		 *	@param		array			$element			The element as the page of the language shows it
+		 *	@param		array			$configured		The types and their fields, see _configuredTypes()
+		 *
+		 *	@return 	string										The path, or '' where the hit has none
+		 */
+		private static function _address( array &$appData, array $found, array $element, array $configured ): string {
+
+			$answered = self::_hit( $appData, $found, $element, $configured );
+			$url = is_array( $answered ) === true ? ( $answered['url'] ?? null ) : null;
+
+			return is_string( $url ) === true && \Nino\Http::isSitePath( $url ) === true ? $url : '';
 		}
 
 		/**
@@ -428,9 +467,23 @@ namespace Nino\Modules {
 			if( $query === '' || $types === [] || isset( $appData[self::DRAWING] ) === true )
 				return '';
 
-			$elements = self::getElements( $appData, $types, $query, min( max( 1, (int) $args['limit'] ), self::RESULTS_MAX ) );
+			$locale = \Nino\Locales::getCurrentLocale( $appData );
+			$configured = self::_configuredTypes( $appData );
+			$found = self::getHits( $appData, $types, $query, min( max( 1, (int) $args['limit'] ), self::RESULTS_MAX ) );
+			$hits = [];
 
-			if( $elements === [] )
+			foreach( $found as $hit ) {
+
+				// ...as the page of the language shows it, which is what the index holds (see _createIndex())
+				$element = \Nino\Elements::getElementWithFallback( $appData, $hit['uri'], $locale );
+
+				if( is_array( $element ) === false )
+					continue;
+
+				$hits[] = [ $hit, $element + [ '.score' => $hit['score'], '.type' => $hit['type'] ] ];
+			}
+
+			if( $hits === [] )
 				return self::_empty( $appData, $args );
 
 			$nodes = self::_unid( $appData, (array) $context['children'] );
@@ -443,7 +496,7 @@ namespace Nino\Modules {
 
 			try {
 
-				foreach( $elements as $index => $element ) {
+				foreach( $hits as $index => [ $hit, $element ] ) {
 
 					$type = (string) $element['.type'];
 
@@ -458,11 +511,22 @@ namespace Nino\Modules {
 					if( isset( $scored[$type] ) === true )
 						$element['score'] = (string) round( (float) $element['.score'], 3 );
 
-					$round['element'] = [ 'uri' => $type, 'id' => $index, 'element' => $element, 'model' => $models[$type] ];
-					$round['fills'] = array_map( 'strval', \Nino\Modules\Elements::fills( $element, $models[$type], $index ) ) + ( is_array( $context['fills'] ?? null ) === true ? $context['fills'] : [] );
+					/*	The address is asked once for each hit that is drawn, and it is the one field a feature adds: .url, and .link
+						under the name of the example element, which is the only field of that kind a block may read. A hit with
+						no address has neither, and a field of the type with one of those names is left as the type has it */
+					$model = $models[$type];
+					$address = self::_address( $appData, $hit, $element, $configured );
+
+					if( $address !== '' ) {
+						$element['url'] = $element['link'] = $address;
+						$model['url'] = $model['link'] = [ 'type' => 'string' ];
+					}
+
+					$round['element'] = [ 'uri' => $type, 'id' => $index, 'element' => $element, 'model' => $model ];
+					$round['fills'] = array_map( 'strval', \Nino\Modules\Elements::fills( $element, $model, $index ) ) + ( is_array( $context['fills'] ?? null ) === true ? $context['fills'] : [] );
 
 					$drawn = \Nino\Components::render( $appData, $nodes, $round );
-					$lang = self::_lang( $element, $models[$type] );
+					$lang = self::_lang( $element, $model );
 
 					$html .= $lang === '' ? $drawn : strtr( self::$html['hit'], [ '[[lang]]' => $lang, '[[content]]' => $drawn ] );
 				}

@@ -5,7 +5,7 @@
 			[search-form]
 			[search-count]
 			[search-results /_placeholder empty="~empty"]
-				[section-title .title tag="h2" size="s"]
+				[section-title .title tag="h2" size="s" href=".link"]
 				[text .text]
 			[/search-results]
 		[/section-col]

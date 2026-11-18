@@ -217,6 +217,82 @@ $lang = new \ReflectionMethod( \Nino\Modules\Search::class, '_lang' );
 $langAttribute = (string) $lang->invoke( null, [ 'title' => 'x', '.langs' => [ 'title' => '"><x onfocus=1>' ] ], [ 'title' => [ 'type' => 'string', 'locale' => true ] ] );
 check( 'the tag of the language a hit is in is written escaped, whatever it holds', $langAttribute !== '' && preg_match( '/[<>]/', $langAttribute ) === 0 && substr_count( $langAttribute, '"' ) === 2 );
 
+// The address of a hit: the list asks the hook of the json endpoint once for each hit it draws and takes the address from the answer, and nothing else
+$visit( [ 'q' => 'orbit' ] );
+$asked = new \ArrayObject();
+$answers = [ '/articles/orbit-title' => '/read/orbit-title', '/articles/orbit-summary' => 'https://evil.example/x', '/articles/hostile' => '/read/"><script>alert(1)</script> [csrf]' ];
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ) use ( $asked, $answers ): array {
+	$asked[] = $hit['uri'];
+	$hit['url'] = $answers[ $hit['uri'] ] ?? '';
+	return $hit;
+} );
+$linked = '[search-results][section-title .title tag="h3" href=".link"][text .url][/search-results]';
+$page = $draw( $linked );
+check( 'a hit that has an address is a link on its title and says it as .url, the one that has none is a title and no link, and no link is empty',
+	str_contains( $page, '<a href="/read/orbit-title"' ) === true && preg_match( '~<h3 class="section-title">Remote station</h3>~', $page ) === 1 && str_contains( $page, 'href=""' ) === false && str_contains( $page, '<a href="https' ) === false );
+check( 'the hook is asked once for each hit that is drawn and once for no other: a list of one asks for one', count( $asked ) === 3 && count( array_unique( (array) $asked ) ) === 3
+	&& ( static function() use ( $draw, $asked ): bool { $asked->exchangeArray( [] ); $draw( '[search-results limit="1"][text .url][/search-results]' ); return count( $asked ) === 1; } )() );
+check( 'an address that is not a path of this site is dropped, and is no field of the hit: a host, a protocol-relative address, a script, a space, a control character, a list',
+	( static function() use ( &$appData, $draw ): bool {
+		foreach( [ 'https://evil.example/x', '//evil.example/x', '/\\evil.example', 'javascript:alert(1)', '/a b', "/a\nb", '/js:x', 'relative/path', '' ] as $bad ) {
+			$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+			\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ) use ( $bad ): array { $hit['url'] = $bad; return $hit; } );
+			$one = $draw( '[search-results limit="1"][section-title .title href=".link"][text .url][text .link][/search-results]' );
+			if( str_contains( $one, '<a ' ) === true || str_contains( $one, 'class="text"' ) === true && preg_match( '~<div class="text">[^<]+</div>~', $one ) === 1 )
+				return false;
+		}
+		$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+		\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ): array { $hit['url'] = [ '/x' ]; return $hit; } );
+		return str_contains( $draw( '[search-results limit="1"][section-title .title href=".link"][/search-results]' ), '<a ' ) === false;
+	} )() );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ): array { $hit['url'] = '/read/"><script>alert(1)</script>[csrf][[/project/company/general/name]]'; return $hit; } );
+$written = $draw( '[search-results limit="1"][section-title .title href=".link"][text .url][/search-results]' );
+check( 'an address that is a path stays text where it is written: a quote, a tag, a call and a fill are what they are, as the link and as the text',
+	str_contains( $written, '<script' ) === false && str_contains( $written, '[csrf]' ) === true && str_contains( $written, '&quot;' ) === true && preg_match( '~<a [^>]*href="/read/&quot;~', $written ) === 1 && str_contains( $written, '[[/project' ) === true );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ): array {
+	$hit['url'] = '/read/one';
+	$hit['fields'] = [ 'title' => 'Taken over' ];
+	$hit['element']['title'] = 'Taken over';
+	$hit['element']['summary'] = 'Taken over';
+	$hit['uri'] = '/articles/alpha';
+	$hit['title'] = 'Taken over';
+	$hit['score'] = 99.0;
+	return $hit;
+} );
+$kept = $draw( '[search-results][text .uri][text .title][text .score][/search-results]' );
+$taken = $draw( '[search-results][text .uri][text .title][text .score][text .url][/search-results]' );
+check( 'the hook can give a hit its address and nothing else: its title, its name and its score are the ones of the index, whatever the answer holds',
+	str_contains( $taken, 'Taken over' ) === false && str_contains( $taken, '/articles/alpha' ) === false && str_contains( $taken, '99' ) === false && substr_count( $taken, '/read/one' ) === 3 && str_contains( $kept, '/articles/orbit-title' ) === true );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static fn( array &$appData, array $hit ): bool => false );
+check( 'a hook that answers false does not drop the hit from the list: it has no address, and that is all', substr_count( $draw( '[search-results][section-title .title href=".link"][/search-results]' ), 'class="section-title"' ) === 3
+	&& str_contains( $draw( '[search-results][section-title .title href=".link"][/search-results]' ), '<a ' ) === false );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+$asked->exchangeArray( [] );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ) use ( $asked ): array { $asked[] = $hit['uri']; $hit['url'] = '/read'. $hit['uri']; return $hit; } );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HITS, static fn( array &$appData, array $hits ): array => array_values( array_filter( $hits, static fn( array $hit ): bool => $hit['uri'] !== '/articles/orbit-title' ) ) );
+$left = $draw( '[search-results][text .url][/search-results]' );
+check( 'a hit that the list hook took out is never asked and never drawn', in_array( '/articles/orbit-title', (array) $asked, true ) === false && count( $asked ) === 2 && str_contains( $left, 'orbit-title' ) === false );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+$appData['./nino/callbacks'][\Nino\Modules\Search::HITS] = [];
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ): array { $hit['url'] = '/read/by-type'; return $hit; } );
+\Nino\Elements::insertElementType( $appData, '/links', [ 'title' => $text, 'url' => [ 'type' => 'string' ] ] );
+\Nino\Elements::insertElement( $appData, '/links/one', [ 'title' => 'Orbit link', 'url' => 'own-value' ], 'de_DE' );
+$appData['/nino/elements/index']['/links'] = [ 0 => 'title' ];
+\Nino\Modules\Search::createIndexes( $appData, '/links' );
+$given = $draw( '[search-results /links][text .url][/search-results]' );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+check( 'a hit with no address leaves a field of the type called url as the type has it, and a hit with one has the address in its place', $draw( '[search-results /links][text .url][/search-results]' ) === '<div class="text">own-value</div>' && $given === '<div class="text">/read/by-type</div>' );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array $hit ): array { $hit['url'] = '/read/by-type'; return $hit; } );
+check( 'the address is the field .url and, for a block that reads the example element, .link: both are the same path', preg_match( '~^<div class="text">/read/by-type</div><div class="text">/read/by-type</div>$~', $draw( '[search-results /articles limit="1"][text .url][text .link][/search-results]' ) ) === 1 );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT] = [];
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT. '/articles', static function( array &$appData, array $hit ): array { $hit['url'] = '/read/of-the-type'; return $hit; } );
+check( 'the callback of one type reaches the list as it reaches the endpoint', str_contains( $draw( '[search-results /articles][text .url][/search-results]' ), '/read/of-the-type' ) === true );
+$appData['./nino/callbacks'][\Nino\Modules\Search::HIT. '/articles'] = [];
+\Nino\Modules\Search::forget( $appData );
+
 // The block and the demo
 $block = \Nino\Blocks::get( $appData, 'search-page' );
 check( 'the block is valid, names the feature and misses nothing; the demo of the group draws the field',
@@ -466,6 +542,34 @@ preg_match_all( "~'(/_admin/(?!common/)[a-z/_-]+)'~", $script, $read );
 $own = array_map( static fn( string $key ): string => trim( $key, '[]' ), array_keys( $panelWords['en_US'] ) );
 check( 'every word the script reads is one the panel brings in both languages', array_diff( array_unique( $read[1] ), $own ) === [] );
 check( 'every sentence for a code of the panel is there in both languages', array_filter( [ 'search_type', 'search_notype', 'search_fields', 'search_priority', 'search_field', 'search_text' ], static fn( string $code ): bool => in_array( '/_admin/error/'. $code, $own, true ) === false ) === [] );
+
+// Against the real Posts: a post that is found is a link on its title in the block of the page, a post that is hidden is not found
+$real = ninoSandbox( 'search-posts' );
+$real['./nino/filesystem/path'] = $root;
+\Nino\Features::activate( $real, 'basis' );
+\Nino\Features::activate( $real, 'search' );
+\Nino\Features::activate( $real, 'posts' );
+\Nino\Filesystem::putFileContent( $real, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [ 'blog' => [ 'type' => '/posts', 'path' => 'blog' ] ] ] );
+$real['/nino/elements/index'] = [ 'posts' => [ 0 => 'title' ], '/pages' => [ 0 => 'title' ] ];
+\Nino\Elements::insertElementType( $real, '/pages', [ 'title' => [ 'type' => 'string', 'locale' => true ] ] );
+\Nino\Elements::insertElement( $real, '/posts/lantern-now', [ 'title' => 'Lantern now', 'date' => date( 'Y-m-d', time() - 86400 * 30 ) ], 'de_DE' );
+\Nino\Elements::insertElement( $real, '/posts/lantern-soon', [ 'title' => 'Lantern soon', 'date' => date( 'Y-m-d', time() + 86400 * 30 ) ], 'de_DE' );
+\Nino\Elements::insertElement( $real, '/pages/lantern-page', [ 'title' => 'Lantern page' ], 'de_DE' );
+unset( $real['./nino/elements/cache'] );
+$real['/nino/modules'] = (array) ( \Nino\Filesystem::getFileContent( $real, '/config.php', [] )['/nino/modules'] ?? [] );
+\Nino\Html::init( $real );
+\Nino\Features::registerComponents( $real );
+\Nino\Modules::callModules( $real, 'init' );
+\Nino\Features::registerParts( $real );
+\Nino\Modules\Search::createIndexes( $real );
+\Nino\Modules\Search::forget( $real );
+$real['./nino/http/requests'] = [];
+ninoVisit( $real, '/search?q=lantern' );
+$blockPage = trim( \Nino\Html::renderSource( $real, (string) file_get_contents( $dir. '/blocks/search-page/block.tpl' ), [ 'template' => 'page-search' ] + \Nino\Html::context( $real ) ) );
+check( 'with the real Posts the block draws a post that is found as a link to its page, a post that is hidden is not drawn, and a type that has no address is a title and no link',
+	preg_match( '~<a href="/blog/lantern-now">Lantern now</a>~', $blockPage ) === 1 && str_contains( $blockPage, 'Lantern soon' ) === false && str_contains( $blockPage, 'lantern-soon' ) === false
+	&& preg_match( '~<h2 class="section-title[^"]*">Lantern page</h2>~', $blockPage ) === 1 && str_contains( $blockPage, 'href=""' ) === false );
+$ignored = ninoWarnings();
 
 // Nothing of the old components API, the old shortcodes or the old stylesheet vocabulary is left in the folder
 $oldWorld = [];
