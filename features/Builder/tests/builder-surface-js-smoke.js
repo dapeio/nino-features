@@ -767,6 +767,25 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return placed === true && spots[0].left + 26 + 2 === 350 && spots[1].top >= 2 && spots[2].left + 26 <= 1000 && loop.top + 26 === 300 && loop.left + 26 + 2 === 350;
 	} )() );
+	check( 'G. the pencil covers no word: where a word is under the corner inside the box - a title that is as wide as its words - it stands flush against the box, at its right edge, above its right corner or at its left edge, wherever it is in the window; and the zone round it keeps the component for the pointer on the way to it', ( function() {
+		const box = { top : 100, left : 300, width : 200, height : 40 };
+		const words = [ { top : 105, left : 305, width : 190, height : 30 } ];
+		const meets = function( spot, texts ) { return texts.some( function( text ) { return spot.left < text.left + text.width && spot.left + 26 > text.left && spot.top < text.top + text.height && spot.top + 26 > text.top } ) };
+		const right = model.penSpot( box, 26, view, false, words );
+		const edge = model.penSpot( { top : 100, left : 800, width : 190, height : 40 }, 26, view, false, [ { top : 105, left : 805, width : 180, height : 30 } ] );
+		const none = model.penSpot( box, 26, view, false, [] );
+		const zone = model.penZone( right, box, 26, view );
+
+		return right.side === 'right' && meets( right, words ) === false && right.left === 500 && edge.side !== 'inside' && edge.side !== 'right' && meets( edge, [ { top : 105, left : 805, width : 180, height : 30 } ] ) === false
+			&& none.side === 'inside' && model.penZone( none, box, 26, view ) === null && model.inZone( zone, 510, 140 ) === true && model.inZone( zone, 515, 100 ) === true && model.inZone( zone, 700, 100 ) === false;
+	} )() );
+	check( 'G. a loop is a stop of the Tab key of its own - it has no element to stand next to - with a pencil in front of its first repetition, and only where it has repetitions and a pencil for the account', ( function() {
+		const element = { id : 'a' };
+		const entries = [ { path : '1.5', elements : [ element ], loop : true }, { path : '1.7', elements : [], loop : true }, { path : '1.9', elements : [ element ], loop : false }, { path : '1.11', elements : [ element ], loop : true } ];
+		const stops = model.loopStopsOf( entries, function( entry ) { return entry.path !== '1.11' } );
+
+		return stops.length === 1 && stops[0].path === '1.5';
+	} )() );
 	check( 'G. what the pointer is over decides the component of the pencil - except over the pencil itself, which is no part of the page: the pointer on it leaves the component as it is', ( function() {
 		const before = { entry : 'a' };
 		let asked = 0;
@@ -785,6 +804,22 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return stops.length === 1 && stops[0] === column && model.carrierOf( found, entries[1] ) === text && model.carrierOf( found, entries[2] ) === picture && model.carrierOf( found, entries[3] ) === null
 			&& model.seatOf( text ) === 'after' && model.seatOf( picture ) === 'after' && model.seatOf( column ) === 'inside' && model.stopsOf( found, entries, function() { return false } ).length === 0;
+	} )() );
+	check( 'G. a pencil never stands in a link or a button - it stands after it - an empty loop has a stop with a pencil of its own at the element that holds it, and the arrow keys lead from one component of a block to the next and stop at its ends', ( function() {
+		const has = function( names, holding ) { return { hasAttribute : function( name ) { return names.indexOf( name ) !== -1 }, closest : function() { return holding ?? null } } };
+		const link = has( [] );
+		const inLink = has( [], link );
+		const textInLink = has( [ 'data-nino-text' ], link );
+		const plain = has( [] );
+		const entries = [ { path : '1.1', elements : [ inLink ], loop : false }, { path : '1.2', elements : [ plain ], loop : false } ];
+		const stops = model.stopsOf( { texts : [] }, entries, function() { return true } );
+		const hold = {};
+		const empty = model.loopStopsOf( [ { path : '1.7', elements : [], holder : hold, loop : true }, { path : '1.9', elements : [], loop : true } ], function() { return true } );
+		const walk = [ 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End', 'x' ].map( function( key ) { return model.roveTo( 3, 1, key ) } );
+
+		return model.seatAfter( inLink ) === link && model.seatAfter( textInLink ) === link && model.seatAfter( plain ) === null && model.seatOf( inLink ) === 'after'
+			&& stops.length === 2 && empty.length === 1 && empty[0].path === '1.7' && model.shownOf( empty[0] )[0] === hold
+			&& walk.join() === '2,2,0,0,0,2,-1' && model.roveTo( 3, 2, 'ArrowRight' ) === -1 && model.roveTo( 3, 0, 'ArrowLeft' ) === -1 && model.roveTo( 0, 0, 'Home' ) === -1;
 	} )() );
 }
 
@@ -912,6 +947,193 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		next.close();
 
 		return x.S.box === null && landed === true && ( notation === undefined || textOf( notation ) === '' );
+	} )() );
+}
+
+
+
+// --- I. the source of a loop and its sort in words --------------------------------------------------------------------
+
+{
+	const text = { type : 'string', label : 'x', hint : '', default : '', options : null, optionLabels : null, responsive : false };
+	const loopSchema = schema( 'List', 'list', 'none', { loop : true, attributes : { sort : Object.assign( {}, text, { label : 'Sort' } ), limit : { type : 'int', label : 'At most', hint : '', default : 0, min : 0, max : 1000 }, offset : { type : 'int', label : 'Skip', hint : '', default : 0 }, query : Object.assign( {}, text, { label : 'Query' } ) } } );
+	const schemas = {
+		'section-title' : schema( 'Title', 'heading', 'text' ),
+		'collection-list' : loopSchema,
+		'collection-filter' : schema( 'Filter', 'sliders-horizontal', 'none', { loop : false, container : true, attributes : { by : Object.assign( {}, text, { label : 'Field' } ) } } ),
+	};
+	const tree = ( sort ) => [
+		{ n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
+		{ n : 'section-wrap', s : '', a : { id : 'team' }, c : [ { t : '\n' }, { n : 'collection-filter', s : '', a : { by : '.title' }, c : [ { t : '\n' }, { n : 'collection-list', s : '/team', a : { sort : sort }, c : [ { t : '\n' }, { n : 'section-title', s : '.title', a : {}, c : null }, { t : '\n' } ] }, { t : '\n' } ] }, { t : '\n' } ] }, { t : '\n' },
+		{ n : 'template', s : '/templates/html-footer', a : {}, c : null }, { t : '\n' },
+	];
+	const ofLoop = function( level, sort ) {
+
+		const w = opened( { page : pageAnswer( { tree : tree( sort ), level : level, schemas : Object.assign( {}, pageAnswer().schemas, schemas ) } ) } );
+		const S = w.panel.model.state;
+
+		S.fieldInfo['/team'] = { types : { title : 'string', date : 'date', price : 'double' }, labels : { title : 'Name' } };
+		S.types = [ { type : '/team', title : 'Team' } ];
+
+		return { w : w, S : S, model : w.panel.model };
+	};
+	const open = function( x ) {
+
+		x.S.box = null;
+		x.model.openProperties( 2, '1.1', element('button'), function() {} );
+
+		const dialog = x.w.dialogs[x.w.dialogs.length - 1];
+		const heads = findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && el.attributes['aria-controls'] !== undefined && el.className.indexOf('nino-admin-help-button') === -1 } );
+		const keys = function() { return findAll( dialog, function( el ) { return el.dataset !== undefined && el.dataset.key !== undefined } ).map( function( el ) { return el.dataset.key } ) };
+		const field = function( key ) { return findAll( dialog, function( el ) { return el.dataset !== undefined && el.dataset.key === key } )[0] };
+
+		return { dialog : dialog, heads : heads, keys : keys, field : field, close : function() { fire( dialog, 'close' ) } };
+	};
+
+	check( 'I. the source of a loop is its first section, open, and holds its type, its sort, how many at most, from which on and the query, and what it shows now; none of them is in the look or in the advanced part', ( function() {
+		const x = ofLoop( 3, '-date,title' );
+		const box = open( x );
+		const first = textOf( box.heads[0] );
+		const opened = box.heads.map( function( head ) { return head.attributes['aria-expanded'] } ).join();
+		const inSource = box.keys();
+		const names = [ '1.1:limit', '1.1:offset', '1.1:query', '1.1:sort:0:field', '1.1:sort:1:field', '1.1:sort:add', '1.1:source:' ];
+
+		box.heads.slice( 1 ).forEach( function( head ) { fire( head, 'click' ) } );
+
+		const everywhere = box.keys();
+		const once = names.every( function( key ) { return inSource.indexOf( key ) !== -1 && everywhere.filter( function( other ) { return other === key } ).length === 1 } );
+
+		box.close();
+
+		return first.indexOf( W('box/source') ) === 0 && opened.indexOf('true') === 0 && once === true;
+	} )() );
+	check( 'I. the sort is a list of steps that is the attribute in both directions: a step is a field and a direction, a change writes the attribute in its form, a step is added and taken away, at most three - and a value the list cannot show stays as it is written until a new one is made', ( function() {
+		const x = ofLoop( 3, '-date,title' );
+		const node = function() { return x.S.top[2].c[1].c[1] };
+		const box = open( x );
+		const direction = box.field('1.1:sort:0:direction');
+		const shown = direction.value === 'desc' && box.field('1.1:sort:0:field').value === 'date' && box.field('1.1:sort:1:direction').value === 'asc';
+
+		direction.value = 'asc';
+		fire( direction, 'change' );
+		const written = node().a.sort === 'date,title';
+
+		// A step that is added is a row with no field: nothing is written until a field is chosen
+		fire( box.field('1.1:sort:add'), 'click' );
+		const pending = node().a.sort === 'date,title' && box.field('1.1:sort:new:field') !== undefined && box.field('1.1:sort:new:field').value === '' && box.field('1.1:sort:add').disabled === true;
+		const chosen = box.field('1.1:sort:new:field');
+
+		chosen.value = 'price';
+		fire( chosen, 'change' );
+		const added = pending === true && node().a.sort === 'date,title,price' && box.field('1.1:sort:add') === undefined && box.field('1.1:sort:new:field') === undefined;
+		const against = box.field('1.1:sort:1:direction');
+
+		against.value = 'desc';
+		fire( against, 'change' );
+		const reversed = node().a.sort === 'date,-title,price';
+
+		box.field('1.1:sort:1:direction').value = 'asc';
+		fire( box.field('1.1:sort:1:direction'), 'change' );
+		fire( findAll( box.dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-label'] === W( 'sort/remove', 1 ) } )[0], 'click' );
+		const removed = node().a.sort === 'title,price';
+		box.close();
+
+		const strange = ofLoop( 3, '-nothing,title' );
+		const other = open( strange );
+		const kept = strange.S.top[2].c[1].c[1].a.sort === '-nothing,title' && other.field('1.1:sort:0:field') === undefined && other.field('1.1:sort:reset') !== undefined;
+
+		fire( other.field('1.1:sort:reset'), 'click' );
+		const reset = strange.S.top[2].c[1].c[1].a.sort === undefined;
+		other.close();
+
+		return shown === true && written === true && added === true && reversed === true && removed === true && kept === true && reset === true;
+	} )() );
+	check( 'I. the words of a direction follow the type of the field - text, date, number - and the loop in the tree is told by its type, its sort in those words and the number of its elements', ( function() {
+		const x = ofLoop( 3, '-date,title' );
+		const words = [ 'title', 'date', 'price' ].map( function( name ) { return [ x.model.directionWord( '/team', name, false ), x.model.directionWord( '/team', name, true ) ].join('|') } );
+		const kinds = [ 'title', 'date', 'price' ].map( function( name ) { return W( 'sort/asc-'+ x.model.sortKind( x.S.fieldInfo['/team'].types[name] ) )+ '|'+ W( 'sort/desc-'+ x.model.sortKind( x.S.fieldInfo['/team'].types[name] ) ) } );
+		x.S.adv = { slug : 'home', block : 'team' };
+		const loop = x.model.itemsNow()[0].children[0].children[0];
+
+		return new Set( words ).size === 3 && words.join() === kinds.join() && loop.loop.detail.indexOf( W( 'sort/by', '' ).trim() ) !== -1 && loop.loop.detail.indexOf('Name') !== -1 && loop.loop.detail.indexOf( W( 'sort/desc-date' ) ) !== -1;
+	} )() );
+	check( 'I. a loop is counted as the repetition of one: a table draws its first component once more in its head, which is no element, and a loop in a loop is drawn for each element of the outer one - the number is of one', ( function() {
+		const x = ofLoop( 3, '' );
+		const list = function() { return x.S.top[2].c[1].c[1] };
+
+		x.S.adv = { slug : 'home', block : 'team' };
+
+		const times = function( rel, count ) { return Array.from( { length : count }, function() { return { path : x.model.absOf( rel ), elements : [] } } ) };
+
+		x.S.found = { blocks : [], all : times( '1.1.1', 4 ) };
+		const plain = x.model.loopElements( list(), '1.1' );
+		x.S.schemas['collection-list'].preview = 'table';
+		const table = x.model.loopElements( list(), '1.1' );
+		x.S.schemas['collection-list'].preview = '';
+		x.S.schemas['collection-filter'].loop = true;
+		x.S.found = { blocks : [], all : times( '1.1', 3 ).concat( times( '1.1.1', 12 ) ) };
+		const nested = x.model.loopElements( list(), '1.1' );
+
+		x.S.schemas['collection-filter'].loop = false;
+
+		return plain === 4 && table === 3 && nested === 4;
+	} )() );
+	check( 'I. the number a loop shows follows every page that is drawn - in the lightbox that is open and in the tree - whichever view drew the page - the draw of the basic view and the one of the extended view both call it', ( function() {
+		const x = ofLoop( 3, '' );
+		let told = 0;
+		let updated = 0;
+
+		x.S.box = { recount : function() { told++ } };
+		x.S.tree = { update : function() { updated++ } };
+		x.S.mode = 'basic';
+		x.model.pageDrawn( { blocks : [], all : [] } );
+		x.S.mode = 'advanced';
+		x.model.pageDrawn( { blocks : [], all : [] } );
+
+		return told === 2 && updated === 1 && ( script.match( /pageDrawn\(/g ) ?? [] ).length === 2;
+	} )() );
+	check( 'I. a number the setting does not take is told at its field and stays out of the draft - a minus where the least is nought, a word, a value above the most - and a good one is written and the sentence is gone', ( function() {
+		const x = ofLoop( 3, '' );
+		const node = function() { return x.S.top[2].c[1].c[1] };
+		const box = open( x );
+		const input = findAll( box.dialog, function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1.1:limit' } )[0];
+		const errors = function() { return findAll( box.dialog, function( el ) { return el.className === 'nino-admin-field-error' } ).length };
+		const tried = [ '-5', 'abc', '2.5', '5000' ].map( function( value ) { input.value = value; fire( input, 'change' ); return [ node().a.limit, errors() ] } );
+
+		input.value = '7';
+		fire( input, 'change' );
+		const good = node().a.limit === '7' && errors() === 0;
+
+		box.close();
+
+		return tried.every( function( pair ) { return pair[0] === undefined && pair[1] === 1 } ) && good === true;
+	} )() );
+	check( 'I. a sort the list cannot show is a finding at the row of the loop in the tree as it is in the lightbox, one it can show is none - and a field the type gives no label is told by its name as code, one with a label by the label', ( function() {
+		const strange = ofLoop( 3, '-nothing,title' );
+		const fine = ofLoop( 3, '-date,title' );
+
+		strange.S.adv = { slug : 'home', block : 'team' };
+		fine.S.adv = { slug : 'home', block : 'team' };
+
+		const row = function( x ) { return x.model.itemsNow()[0].children[0].children[0] };
+		const sentence = fine.model.sortSentence( '/team', 'title,-price' );
+
+		return row( strange ).finding !== undefined && row( fine ).finding === undefined && sentence.indexOf('Name') !== -1 && sentence.indexOf('`price`') !== -1 && sentence.indexOf('price') === sentence.indexOf('`price`') + 1;
+	} )() );
+	check( 'I. a filter holds the loop and is none: it has its type icon and neither the loop icon nor the pattern, the list in it has both - and the account that may only write the content reads the type and the sort and has no field to change either', ( function() {
+		const x = ofLoop( 3, '' );
+
+		x.S.adv = { slug : 'home', block : 'team' };
+
+		const filter = x.model.itemsNow()[0].children[0];
+		const inner = filter.children[0];
+		const poor = ofLoop( 1, '-date' );
+		const box = open( poor );
+		const readOnly = [ '1.1:sort:0:field', '1.1:sort:add', '1.1:limit', '1.1:query', '1.1:source:' ].every( function( key ) { return box.field( key ) === undefined } );
+
+		box.close();
+
+		return filter.loop === undefined && filter.icon === 'sliders-horizontal' && typeof inner.loop === 'object' && inner.icon === 'list' && readOnly === true && box.heads.length === 1;
 	} )() );
 }
 

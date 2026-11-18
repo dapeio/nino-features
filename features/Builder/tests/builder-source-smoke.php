@@ -206,6 +206,8 @@ $tries = [
 	'a script in entities'		=> static fn( array $node ): array => sourceWith( $node, null, [ 'href' => 'java&#115;cript:alert(1)' ] ),
 	'a page the site has not'	=> static fn( array $node ): array => sourceWith( $node, null, [ 'href' => 'page:/nope' ] ),
 	'a page that climbs'			=> static fn( array $node ): array => sourceWith( $node, null, [ 'href' => 'page:/contact/../home' ] ),
+	'a text of the project that is none'	=> static fn( array $node ): array => sourceWith( $node, '/project/no/such/text' ),
+	'a text of a page that is none'	=> static fn( array $node ): array => sourceWith( $node, '/template/page-zweite/a/x' ),
 ];
 $refused = [];
 
@@ -218,7 +220,7 @@ foreach( $tries as $name => $change ) {
 		$refused[$name. ' '. $action] = sourceCall( $site, $action, [ 'template' => 'page-home', 'tree' => $put, 'texts' => [], 'base' => $open['stamp'] ] )[0];
 }
 
-check( 'a source that is none is refused as a save and as a draft, with 403, and nothing is written: a key of the wrong form, a name with capitals, a field outside a loop, a page of the site that is none, a script as an address', array_values( array_unique( $refused ) ) === [ 403 ] && sourceSnapshot( $site ) === $snapshot );
+check( 'a source that is none is refused as a save and as a draft, with 403, and nothing is written: a key of the wrong form, a name with capitals, a field outside a loop, a page of the site that is none, a script as an address, a text the site has not', array_values( array_unique( $refused ) ) === [ 403 ] && sourceSnapshot( $site ) === $snapshot );
 
 [ , $loop ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-loop' ] );
 $field = sourceAt( $loop['tree'], 'section-title', '.title' );
@@ -240,6 +242,32 @@ check( 'the search of a source in a language the request does not name, or the s
 [ , $types ] = sourceCall( $site, 'builder/keys', [ 'kind' => 'types' ] );
 
 check( 'a loop shows a type of elements the project has: its types are listed with their titles - the example type of the kernel is none of them - a type it has is taken and a type it has not is refused', $shows( '/services' ) === 200 && $shows( '/nope' ) === 403 && $shows( '/../x' ) === 403 && array_column( $types['types'], 'type' ) === [ '/services' ] );
+
+// the one who designs chooses every source without the development, and a source that is chosen gives no right to write markup in the same request; the one who may only write the
+// content chooses none, whatever the source: the type of a loop, the field of an element and a text are refused for it - and nothing is written
+$choose = static fn( array $tree, string $type, array $more = [] ): array => sourceEdit( sourceEdit( $tree, $collection, static fn( array $node ): array => sourceWith( $node, $type ) ), $field, static fn( array $node ): array => sourceWith( $node, '.title' ) ) + $more;
+$ask = static function( array $tree ) use ( &$site, &$loop ): int {
+	return sourceCall( $site, 'builder/preview', [ 'template' => 'page-loop', 'tree' => $tree, 'texts' => [], 'base' => $loop['stamp'] ] )[0];
+};
+$withMarkup = static function( array $tree ) use ( $collection ): array {
+	$tree[(int) explode( '.', $collection )[0]]['c'][] = [ 'n' => 'html', 's' => '', 'a' => [], 'c' => [ [ 't' => '<b>x</b>' ] ] ];
+	return $tree;
+};
+$designs = [ $ask( $choose( $loop['tree'], '/services' ) ), $ask( $withMarkup( $choose( $loop['tree'], '/services' ) ) ) ];
+
+ninoUser( $site, 'content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+$beforeContent = sourceSnapshot( $site );
+$content = [ $ask( $choose( $loop['tree'], '/services' ) ), $ask( sourceEdit( $loop['tree'], $field, static fn( array $node ): array => sourceWith( $node, '.date' ) ) ), $ask( sourceEdit( $loop['tree'], $field, static fn( array $node ): array => sourceWith( $node, '~other' ) ) ) ];
+$registryNow = \Nino\Components::components( $site );
+$flags = array_map( static fn( array $schema ): bool => $schema['loop'], \Nino\Modules\Builder\Tree::schemas( $site, [], $registryNow, [ 'collection', 'collection-list', 'collection-table', 'collection-filter' ] ) );
+
+check( 'the design chooses the type of a loop and a field of its elements without the development - and a request that chooses a source and writes markup is a 403 - while the content step is refused each source, and nothing is written for it',
+	$designs === [ 200, 403 ] && $content === [ 403, 403, 403 ] && sourceSnapshot( $site ) === $beforeContent );
+check( 'a loop is a component that holds nodes and says which elements by its sort, its window and its query: the collection, the list and the table are loops and the filter, which holds one, is none',
+	$flags === [ 'collection' => true, 'collection-list' => true, 'collection-table' => true, 'collection-filter' => false ] );
+
+ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+$snapshot = sourceSnapshot( $site );
 
 $text = [ '/template/page-contact/hero/title' => [ 'de_DE' => 'Fremd' ], '/project/company/general/name' => [ 'de_DE' => 'Gekapert' ] ];
 $status = [ sourceCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [ '/project/company/general/name' => [ 'de_DE' => 'Gekapert' ] ], 'base' => $open['stamp'] ] )[0], sourceCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [ '/template/page-contact/hero/title' => [ 'de_DE' => 'Fremd' ] ], 'base' => $open['stamp'] ] )[0] ];

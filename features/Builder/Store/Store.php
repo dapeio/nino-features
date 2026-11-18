@@ -167,6 +167,22 @@ namespace Nino\Modules\Builder {
 				if( $entry['kind'] === 'link' && $entry['key'] !== '' )
 					$before[$entry['key']] = true;
 
+			// A text or a picture of another place that a call reads is one the site has: a source that is chosen is a source that is there - as a type of elements is - and no
+			// key typed into a request, whose words would be none
+			$stood = [];
+
+			foreach( \Nino\Modules\Builder\Tree::sources( $old, $registry, $template ) as $entry )
+				$stood[$entry['kind']. "\0". $entry['key']] = true;
+
+			foreach( $sources as $entry )
+				if( in_array( $entry['kind'], [ 'text', 'image' ], true ) === true && $entry['key'] !== '' && \Nino\Modules\Builder\Tree::own( $entry['key'], $template ) === false && isset( $stood[$entry['kind']. "\0". $entry['key']] ) === false ) {
+
+					$there = $entry['kind'] === 'image' ? \Nino\Images::getSlot( $appData, $entry['key'] ) !== false : isset( \Nino\Text::values( $appData, dirname( $entry['key'], 2 ) )[$entry['key']] ) === true;
+
+					if( $there === false )
+						return [ 'failure' => [ 403, 'the source is none the site has', 'builder_refused_source', [], 'tree' ] ];
+				}
+
 			foreach( $sources as $entry ) {
 
 				if( $entry['kind'] !== 'link' || $entry['key'] === '' || \Nino\Modules\Builder\Tree::own( $entry['key'], $template ) === false )

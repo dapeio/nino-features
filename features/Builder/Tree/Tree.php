@@ -397,7 +397,8 @@ namespace Nino\Modules\Builder {
 				'group'				=> (string) ( $schema['group'] ?? '' ),
 				'icon'				=> (string) ( $schema['icon'] ?? '' ),
 				'container'		=> isset( $schema['offers'] ) === true && $name !== 'html',
-				'loop'				=> ( $schema['children'] ?? '' ) === 'nodes',
+				'loop'				=> self::_loops( $schema ),
+				'preview'			=> (string) ( $schema['preview'] ?? '' ),
 				'source'			=> (string) ( $schema['source'] ?? 'none' ),
 				'format'			=> (string) ( $schema['format'] ?? '' ),
 				'id'					=> self::idAttribute( $schema ),
@@ -406,6 +407,22 @@ namespace Nino\Modules\Builder {
 				'variantLabels'	=> $variantLabels,
 				'standard'		=> $standard,
 			];
+		}
+
+		/**
+		 *	Whether a component is a loop over elements: it holds nodes that it draws for each element, and it says which elements and how many - the sort, the window and the
+		 *	query of a loop - as its attributes. A container that holds nodes and draws no element of its own (`through`) is not one of itself: a filter holds the loop that
+		 *	is, and has neither of those attributes
+		 *
+		 *	@param		array			$schema				The schema the register has
+		 *
+		 *	@return 	bool
+		 */
+		private static function _loops( array $schema ): bool {
+
+			$attributes = is_array( $schema['attributes'] ?? null ) === true ? $schema['attributes'] : [];
+
+			return ( $schema['children'] ?? '' ) === 'nodes' && isset( $attributes['sort'] ) === true && isset( $attributes['limit'] ) === true && isset( $attributes['offset'] ) === true && isset( $attributes['query'] ) === true;
 		}
 
 		/**

@@ -188,7 +188,8 @@ namespace Nino\Modules\Builder {
 				'frame'			=> Store::named( $template )['frame'],
 				'tree'			=> $nodes,
 				'sources'		=> $sources,
-				'shared'		=> self::_shared( $appData, $sources, $template, $locale ),
+				'shared'		=> $shared = self::_shared( $appData, $sources, $template, $locale ),
+				'uses'			=> self::_uses( $appData, array_keys( $shared ), $locale ),
 				'texts'			=> $state['texts'],
 				'known'			=> Tree::known( $nodes, $registry ),
 				'slots'			=> array_keys( $state['slots'] ),
@@ -236,6 +237,44 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $out;
+		}
+
+		/**
+		 *	On how many templates of the site - the pages and the two frames - each of some keys is written: what the screen says of a text that more than one page reads. A key
+		 *	of another place is always written with its slash in front, so that the count is a search for it in the files, which reads no markup and costs a file each
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$keys					The keys of the texts of another place
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array											key => the number of templates, for the keys that are on two or more
+		 */
+		private static function _uses( array &$appData, array $keys, string $locale ): array {
+
+			if( $keys === [] )
+				return [];
+
+			$templates = [ 'frame-header', 'frame-footer' ];
+
+			foreach( Pages::all( $appData, $locale ) as $page )
+				$templates[] = (string) $page['template'];
+
+			$count = array_fill_keys( $keys, 0 );
+
+			foreach( array_unique( $templates ) as $template ) {
+
+				$source = Store::named( $template ) === null ? null : \Nino\Filesystem::getFileContent( $appData, '/templates/'. $template. '.tpl', null );
+
+				if( is_string( $source ) === false )
+					continue;
+
+				// The whole key: one that goes on - `/x/y/z/text` in `/x/y/z/textlong` - is another key
+				foreach( $keys as $key )
+					if( preg_match( '#(?<![a-z0-9_/-])'. preg_quote( $key, '#' ). '(?![a-z0-9_/-])#', $source ) === 1 )
+						$count[$key]++;
+			}
+
+			return array_filter( $count, static fn( int $number ): bool => $number > 1 );
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {

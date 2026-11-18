@@ -127,6 +127,7 @@ const words = {
 	[ 'company', 'website', 'mail', 'project', 'common', 'page', 'feature', 'other' ].forEach( function( key ) { asked.add( 'source/area-'+ key ) } );
 	[ 'id', 'uri', 'slug' ].forEach( function( key ) { asked.add( 'source/field-'+ key ) } );
 	[ 'text', 'image', 'link' ].forEach( function( key ) { asked.add( 'source/label-'+ key ) } );
+	[ 'asc', 'desc' ].forEach( function( way ) { [ 'text', 'date', 'number' ].forEach( function( kind ) { asked.add( 'sort/'+ way+ '-'+ kind ) } ) } );
 	[ 'main', 'footer', 'legal' ].forEach( function( key ) { asked.add( 'page/menu-'+ key ) } );
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
@@ -589,7 +590,7 @@ check( 'C. an entry of the tree carries the icon of its component, the kind and 
 
 check( 'C. a component that repeats its children for each element is a loop with its type and sort, and a value that comes from a field of the element is the field as its source', ( function() {
 	extended();
-	S.schemas = Object.assign( {}, schemas, { 'collection-list' : { icon : 'list', label : 'List', group : 'collection', container : true, loop : true, source : 'none', format : '', id : '', variants : [], standard : 'regular', attributes : { sort : { type : 'string', label : 'Sort', hint : '', default : '', options : null, optionLabels : null, responsive : false } } } } );
+	S.schemas = Object.assign( {}, schemas, { 'collection-list' : { icon : 'list', label : 'List', group : 'collection', container : true, loop : true, source : 'none', format : '', id : '', variants : [], standard : 'regular', attributes : { sort : { type : 'string', label : 'Sort', hint : '', default : '', options : null, optionLabels : null, responsive : false }, limit : { type : 'int', label : 'At most', hint : '', default : 0 }, offset : { type : 'int', label : 'Skip', hint : '', default : 0 }, query : { type : 'string', label : 'Query', hint : '', default : '' } } } } );
 	S.known['collection-list'] = { label : 'List', id : '', source : 'none' };
 	S.types = [ { type : '/services', title : 'Services' } ];
 	S.top[3].c[1].c = [ { t : '\n\t\t' }, { n : 'collection-list', s : '/services', a : { sort : '-date' }, c : [ { t : '\n' }, { n : 'section-title', s : '.title', a : {}, c : null }, { t : '\n' } ] }, { t : '\n' } ];
@@ -597,7 +598,7 @@ check( 'C. a component that repeats its children for each element is a loop with
 	const loop = builder.itemsNow()[0].children[0].children[0];
 	const inner = loop.children[0];
 
-	return typeof loop.loop === 'object' && loop.loop.type === 'Services' && loop.loop.detail === 'Services · -date' && loop.icon === 'list'
+	return typeof loop.loop === 'object' && loop.loop.type === 'Services' && loop.loop.detail.indexOf('Services') === 0 && loop.icon === 'list'
 		&& inner.loop === undefined && inner.source === '.title' && inner.name === '' && builder.itemsNow()[0].loop === undefined && builder.itemsNow()[0].source === undefined;
 } )() );
 

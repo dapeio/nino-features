@@ -156,6 +156,8 @@
 		penFocus		: null,
 		penHost			: null,
 		fields			: {},
+		fieldInfo		: {},
+		uses			: {},
 		shared			: {},
 	};
 
@@ -1367,6 +1369,7 @@
 		+ 'button.pen{position:fixed;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:24px;min-height:24px;margin:0;padding:0;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-blue);box-shadow:var(--b-shadow);cursor:pointer;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
 		+ 'button.pen[data-on],button.pen:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
 		+ 'button.pen:hover{background:var(--b-soft)}button.pen:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}'
+		+ 'button.pen.loop{visibility:visible;pointer-events:none}button.pen.loop:focus-visible{opacity:1;pointer-events:auto}'
 		+ 'svg{flex:none;width:14px;height:14px}'
 		+ '@media (prefers-reduced-motion:reduce){button.pen{transition:none}}';
 
@@ -1408,7 +1411,7 @@
 						if( sibling.nodeType === 1 )
 							elements.push( sibling );
 
-					found.all.push( { path : where, elements : elements } );
+					found.all.push( { path : where, elements : elements, holder : closed.start.parentNode } );
 
 					if( /^\d+$/.test( where ) === true )
 						found.blocks.push( { at : Number( where ), elements : elements } );
@@ -1717,19 +1720,54 @@
 		return overOwn === true ? before : pick();
 	};
 
-	// Where the pencil stands for a box: in its top corner on the right, inside it, and for a loop - which has no box of its own - above the repetitions, touching them. The
-	// box and the window are in the coordinates of the page, the answer is in those of the window
-	const penSpot = function( box, size, view, loop ) {
+	// Where the pencil stands for the box of a component, in the coordinates of the window - the box and the window in those of the page: inside, in the top corner on the right,
+	// where no word of the component is under it; else flush against the box, at its right edge, above its right corner, or at its left edge. A loop has no box of its own, and its
+	// pencil touches the top of the repetitions. `texts` are the boxes of the words in the component, `side` says where it stands
+	const penSpot = function( box, size, view, loop, texts ) {
 
-		const right = Math.min( box.left + box.width, view.left + view.width );
-		let top = loop === true ? box.top - size : box.top + 2;
+		const right = box.left + box.width;
+		const bottom = box.top + box.height;
+		const first = Math.min( Math.max( box.top + 2, view.top + 2 ), Math.max( box.top, bottom - size ) );
+		const inside = { side : 'inside', top : first, left : Math.max( box.left, Math.min( right, view.left + view.width ) - size - 2 ) };
+		const sides = [
+			{ side : 'right', top : Math.min( Math.max( box.top, view.top + 2 ), Math.max( box.top, bottom - size ) ), left : right },
+			{ side : 'above', top : box.top - size, left : inside.left },
+			{ side : 'left', top : Math.min( Math.max( box.top, view.top + 2 ), Math.max( box.top, bottom - size ) ), left : box.left - size },
+		];
+		const covers = function( spot ) {
 
-		if( loop === true && top < view.top )
-			top = box.top + 2;
+			// Inside a box the pencil keeps two pixels from a word; flush against it, it only must not touch one
+			const margin = spot.side === 'inside' ? 2 : 0;
 
-		top = Math.min( Math.max( top, loop === true ? top : view.top + 2 ), Math.max( box.top, box.top + box.height - size ) );
+			return ( texts ?? [] ).some( function( text ) { return spot.left < text.left + text.width + margin && spot.left + size > text.left - margin && spot.top < text.top + text.height + margin && spot.top + size > text.top - margin } );
+		};
+		const fits = function( spot ) { return spot.left >= view.left && spot.left + size <= view.left + view.width && spot.top >= view.top };
+		const found = ( loop === true ? [ sides[1] ] : [ inside ].concat( sides ) ).find( function( spot ) { return fits( spot ) === true && covers( spot ) === false } ) ?? inside;
 
-		return { top : top - view.top, left : Math.max( box.left, right - size - 2 ) - view.left };
+		return { side : found.side, top : found.top - view.top, left : found.left - view.left };
+	};
+
+	// The place round a pencil that is not inside its component, which still counts for the component: the strip along the edge it stands at, from the top of the box to its
+	// foot, and the pencil itself - so that the way from the component to the pencil is never lost. In the coordinates of the window
+	const penZone = function( spot, box, size, view ) {
+
+		const top = box.top - view.top;
+		const bottom = top + box.height;
+
+		if( spot.side === 'right' )
+			return { left : spot.left, right : spot.left + size + 6, top : Math.min( top, spot.top ), bottom : Math.max( bottom, spot.top + size ) };
+
+		if( spot.side === 'left' )
+			return { left : spot.left - 6, right : spot.left + size, top : Math.min( top, spot.top ), bottom : Math.max( bottom, spot.top + size ) };
+
+		if( spot.side === 'above' )
+			return { left : spot.left, right : spot.left + size, top : spot.top - 6, bottom : top };
+
+		return null;
+	};
+
+	const inZone = function( zone, x, y ) {
+		return zone !== null && x >= zone.left && x <= zone.right && y >= zone.top && y <= zone.bottom;
 	};
 
 	// The element of a component that the Tab key stops at: the text that is written where it stands, the picture that is exchanged, else its first element - which is given
@@ -1749,10 +1787,26 @@
 		return image ?? entry.elements[0];
 	};
 
-	// Where the one pencil stands in the page for the Tab key: after a text or a picture, which hold nothing else, and as the first thing in a component that holds others - so
-	// that the pencil is the next stop after the component, and the components inside come after it
+	// The element the one pencil stands behind for the Tab key, null where it stands inside the carrier: after a text or a picture, which hold nothing else - and after the link or
+	// the button that holds the carrier, as a pencil in a link would be a part of it, taken by its click and read with it
+	const seatAfter = function( carrier ) {
+
+		const holding = carrier.closest === undefined ? null : carrier.closest('a, button');
+
+		if( holding !== null )
+			return holding;
+
+		return carrier.hasAttribute('data-nino-text') === true || carrier.hasAttribute('data-nino-image') === true ? carrier : null;
+	};
+
+	// Where the one pencil stands in the page: after the element of seatAfter, else as the first thing in a component that holds others - so that the components inside come after it
 	const seatOf = function( carrier ) {
-		return carrier.hasAttribute('data-nino-text') === true || carrier.hasAttribute('data-nino-image') === true ? 'after' : 'inside';
+		return seatAfter( carrier ) !== null ? 'after' : 'inside';
+	};
+
+	// Whether the carrier is a stop of the Tab key already: a text that is written and a picture that is exchanged are
+	const isStop = function( carrier ) {
+		return carrier.hasAttribute('data-nino-text') === true || carrier.hasAttribute('data-nino-image') === true;
 	};
 
 	// The elements that are given a stop of the Tab key: of every component that has a pencil, the one it stands next to - those that are stops already (a text, a picture) are none
@@ -1764,11 +1818,34 @@
 
 			const carrier = carrierOf( found, entry );
 
-			if( carrier !== null && hasPen( entry ) === true && seatOf( carrier ) === 'inside' && out.indexOf( carrier ) === -1 )
+			if( carrier !== null && hasPen( entry ) === true && isStop( carrier ) === false && out.indexOf( carrier ) === -1 )
 				out.push( carrier );
 		} );
 
 		return out;
+	};
+
+	// The loops that have a stop of the Tab key of their own, with a pencil: a loop that has repetitions has the pencil in front of the first, one that has none - an empty
+	// source - at the end of the element that holds it
+	const loopStopsOf = function( entries, hasPen ) {
+		return entries.filter( function( entry ) { return entry.loop === true && ( entry.elements.length > 0 || entry.holder !== undefined && entry.holder !== null ) && hasPen( entry ) === true } );
+	};
+
+	// The elements a loop is drawn at: its repetitions, or the element that holds it where it shows none
+	const shownOf = function( entry ) {
+		return entry.elements.length > 0 ? entry.elements : ( entry.holder === undefined || entry.holder === null ? [] : [ entry.holder ] );
+	};
+
+	// The Tab key stops once in a block: at the one component of it that was on last, and the arrows go from one component of the block to the next. The member that an arrow
+	// key at a member of a list of members of a block leads to, -1 where it leads nowhere
+	const roveTo = function( count, at, key ) {
+
+		if( count === 0 )
+			return -1;
+
+		const to = { ArrowRight : at + 1, ArrowDown : at + 1, ArrowLeft : at - 1, ArrowUp : at - 1, Home : 0, End : count - 1 }[key];
+
+		return to === undefined || to < 0 || to >= count ? -1 : to;
 	};
 
 	/**
@@ -1946,6 +2023,7 @@
 		} );
 
 		// The pencil: one button, put at the corner of the component the pointer or the focus is on
+		const loopPens = [];
 		const pen = tool( 'pencil', '', word('hint/write'), 'pen' );
 		const penHost = doc.createElement('nino-builder-pen');
 		const penShadow = penHost.attachShadow( { mode : 'open' } );
@@ -1965,7 +2043,7 @@
 		penShadow.appendChild( pen );
 
 		// A thing of the page that is in one of the two shadows: the bars or the pencil
-		const ownOf = function( node ) { return shadow.contains( node ) === true || penShadow.contains( node ) === true };
+		const ownOf = function( node ) { return shadow.contains( node ) === true || penShadow.contains( node ) === true || loopPens.some( function( held ) { return held.shadow.contains( node ) === true } ) };
 
 		// The page is laid out at a width and scaled into the pane where the person chose a width the pane has not: a bar is scaled back, so that it is as large
 		// as the workbench's own controls
@@ -1999,6 +2077,40 @@
 			} );
 		};
 
+		// The boxes of the words that stand in some elements, in the coordinates of the page: what the pencil does not stand on
+		const wordsOf = function( elements, win ) {
+
+			const out = [];
+
+			elements.forEach( function( element ) {
+
+				const walker = doc.createTreeWalker( element, 4 );
+				let node = walker.nextNode();
+
+				while( node !== null && out.length < 400 ) {
+
+					if( node.data.trim() !== '' ) {
+
+						const range = doc.createRange();
+
+						range.selectNodeContents( node );
+						Array.from( range.getClientRects() ).forEach( function( rect ) {
+							if( rect.width > 0 && rect.height > 0 )
+								out.push( { top : rect.top + win.scrollY, left : rect.left + win.scrollX, width : rect.width, height : rect.height } );
+						} );
+					}
+
+					node = walker.nextNode();
+				}
+			} );
+
+			return out;
+		};
+
+		// The component the pencil was put next to in the page last: where the component is another one, it is put next to that - never inside a link or a button, which it
+		// would be taken by
+		let anchored = '';
+
 		const placePen = function() {
 
 			const box = aimed === null || S.editing !== null ? null : boxOf( aimed.entry.elements, win );
@@ -2008,16 +2120,25 @@
 				return;
 			}
 
+			if( anchored !== aimed.entry.path && penShadow.activeElement !== pen ) {
+				anchored = aimed.entry.path;
+				anchorPen();
+			}
+
 			const back = scaleBack();
 			const size = 26 * back;
+			const view = { top : win.scrollY, left : win.scrollX, width : win.innerWidth };
+
 			pen.title = aimed.pen.name;
 			pen.setAttribute( 'aria-label', aimed.pen.name );
 			pen.dataset.key = aimed.key;
 			pen.style.transformOrigin = '0 0';
 			pen.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
 
-			// In the top corner on the right, INSIDE the box of the component: the way from the component to its pencil never leaves it
-			const spot = penSpot( box, size, { top : win.scrollY, left : win.scrollX, width : win.innerWidth }, aimed.entry.loop === true );
+			// Inside the box of the component where no word is under it, else flush against the box; the zone round it counts for the component
+			const spot = penSpot( box, size, view, aimed.entry.loop === true, wordsOf( aimed.entry.elements, win ) );
+
+			aimed.zone = penZone( spot, box, size, view );
 
 			pen.style.top = spot.top+ 'px';
 			pen.style.left = spot.left+ 'px';
@@ -2036,6 +2157,7 @@
 
 			const list = S.found.all.filter( function( entry ) { return entry.elements.length > 0 } );
 			const loops = {};
+			const empty = [];
 
 			list.forEach( function( entry ) {
 
@@ -2051,8 +2173,18 @@
 				}
 			} );
 
+			// A loop that shows nothing has none to be seen from: the element that holds it is where its pencil stands
+			S.found.all.forEach( function( entry ) {
+
+				const call = entry.elements.length === 0 && entry.path.split('.').length > 1 && entry.holder !== null && entry.holder !== undefined && entry.holder !== doc.body ? nodeAt( entry.path ) : null;
+
+				if( call !== null && call.n !== undefined && isLoopCall( call ) === true && loops[entry.path] === undefined )
+					empty.push( { path : entry.path, elements : [], holder : entry.holder, loop : true } );
+			} );
+
 			return list.map( function( entry ) { return { path : entry.path, elements : entry.elements, loop : false } } )
-				.concat( Object.keys( loops ).map( function( path ) { return { path : path, elements : loops[path], loop : true } } ) );
+				.concat( Object.keys( loops ).map( function( path ) { return { path : path, elements : loops[path], loop : true } } ) )
+				.concat( empty );
 		};
 
 		// The component the pencil is for: the innermost one that holds the element and has something to open for the account - a card of a loop and the field in it have theirs,
@@ -2082,8 +2214,24 @@
 
 		const aim = function( target ) {
 
+			held = false;
 			aimed = pickAim( target );
 			placePen();
+		};
+
+		// What the pointer is over - and, where it is in the zone round the pencil of the component it was on, still that component: the pencil stands outside of its box, where it
+		// would cover a word, and the way to it must not give it up
+		let held = false;
+		const pickPointed = function( event ) {
+
+			if( aimed !== null && aimed.zone !== undefined && inZone( aimed.zone, event.clientX, event.clientY ) === true ) {
+				held = true;
+				return aimed;
+			}
+
+			held = false;
+
+			return pickAim( event.target );
 		};
 
 		// The pencil stands in the page next to its component for the Tab key: after a text or a picture, which hold nothing else, and as the first thing in a component that
@@ -2095,11 +2243,21 @@
 
 			const carrier = carrierOf( S.found, aimed.entry );
 
-			if( carrier === null )
-				return;
+			anchored = aimed.entry.path;
 
-			if( seatOf( carrier ) === 'after' )
-				carrier.after( penHost );
+			// A loop has no element of its own: the pencil rests at the end of the page, where no link holds it
+			if( carrier === null ) {
+
+				if( penHost.parentNode !== doc.body )
+					doc.body.appendChild( penHost );
+
+				return;
+			}
+
+			const behind = seatAfter( carrier );
+
+			if( behind !== null )
+				behind.after( penHost );
 			else
 				carrier.insertBefore( penHost, carrier.firstChild );
 		};
@@ -2113,6 +2271,13 @@
 
 			if( open === null )
 				return;
+
+			const own = loopPens.find( function( held ) { return held.entry.path === path } );
+
+			if( own !== undefined ) {
+				own.button.focus();
+				return;
+			}
 
 			aimed = { entry : entry, pen : open, key : keyAt( Number( entry.path.split('.')[0] ) ) };
 			anchorPen();
@@ -2213,6 +2378,22 @@
 				} );
 			} );
 
+			loopPens.forEach( function( held ) {
+
+				const box = boxOf( shownOf( held.entry ), win );
+
+				if( box === null )
+					return;
+
+				const size = 26 * back;
+				const spot = penSpot( box, size, { top : win.scrollY, left : win.scrollX, width : win.innerWidth }, true, [] );
+
+				held.button.style.transformOrigin = '0 0';
+				held.button.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
+				held.button.style.top = spot.top+ 'px';
+				held.button.style.left = spot.left+ 'px';
+			} );
+
 			placePen();
 		};
 
@@ -2234,7 +2415,7 @@
 			if( ownOf( origin ) === false )
 				S.overBar = '';
 
-			aimed = pointerAim( aimed, ownOf( origin ), function() { return pickAim( event.target ) } );
+			aimed = pointerAim( aimed, ownOf( origin ), function() { return pickPointed( event ) } );
 			placePen();
 		} );
 		doc.documentElement.addEventListener( 'pointerleave', function( event ) {
@@ -2279,6 +2460,12 @@
 				S.hot = key;
 				paintBars();
 			}
+
+			// The pointer has left the zone round the pencil inside one element of the page: what it is over decides again
+			if( held === true && ownOf( origin ) === false && aimed !== null && inZone( aimed.zone ?? null, event.clientX, event.clientY ) === false ) {
+				aimed = pickPointed( event );
+				placePen();
+			}
 		} );
 		doc.addEventListener( 'focusout', function( event ) {
 
@@ -2286,7 +2473,7 @@
 			paintBars();
 			tell( null );
 
-			if( event.relatedTarget === null || ( event.relatedTarget !== host && event.relatedTarget !== penHost && ownOf( event.relatedTarget ) === false ) )
+			if( event.relatedTarget === null || ( event.relatedTarget !== host && event.relatedTarget !== penHost && loopPens.some( function( held ) { return held.host === event.relatedTarget } ) === false && ownOf( event.relatedTarget ) === false ) )
 				aim( null );
 		} );
 
@@ -2294,11 +2481,154 @@
 		doc.body.appendChild( host );
 		doc.body.appendChild( penHost );
 
+		// The Tab key stops once in a block, at the component that was on last; the arrow keys go from one component of the block to the next, Enter and Space open what the
+		// component has - the lightbox, or the cursor in a text that is written - and the pencil stands for the mouse and the finger, and after the component for Tab once the
+		// arrows were used. Where the focus came by Tab the pencil is no stop: the next Tab goes on to the next block
+		const roving = function( page, seat, pencil, loops ) {
+
+			const members = [];
+			const current = {};
+			let arrowed = false;
+
+			aims().filter( function( entry ) { return entry.loop === false } ).forEach( function( entry ) {
+
+				const node = nodeAt( entry.path );
+				const open = node === null ? null : penOf( entry.path, node );
+				const carrier = carrierOf( S.found, entry );
+
+				if( carrier === null || ( open === null && isStop( carrier ) === false ) || members.some( function( member ) { return member.element === carrier } ) === true )
+					return;
+
+				members.push( {
+					at : Number( entry.path.split('.')[0] ), element : carrier, order : carrier,
+					owns : function( target ) { return target === carrier },
+					focus : function() { carrier.focus() },
+					mark : function( on ) { carrier.tabIndex = on === true ? 0 : -1 },
+					open : open,
+				} );
+			} );
+
+			loops.forEach( function( held ) {
+				members.push( {
+					at : Number( held.entry.path.split('.')[0] ), element : held.button, order : held.host,
+					owns : function( target ) { return target === held.host },
+					focus : function() { held.button.focus() },
+					mark : function( on ) { held.button.tabIndex = on === true ? 0 : -1 },
+					open : null,
+				} );
+			} );
+
+			members.sort( function( one, other ) { return ( one.order.compareDocumentPosition( other.order ) & 4 ) !== 0 ? -1 : 1 } );
+
+			const groups = {};
+
+			members.forEach( function( member ) {
+
+				( groups[member.at] = groups[member.at] ?? [] ).push( member );
+				member.mark( false );
+			} );
+
+			Object.keys( groups ).forEach( function( at ) {
+				current[at] = groups[at][0];
+				groups[at][0].mark( true );
+			} );
+
+			const memberOf = function( target ) { return members.find( function( member ) { return member.owns( target ) } ) };
+
+			page.addEventListener( 'focusin', function( event ) {
+
+				const member = memberOf( event.target );
+
+				if( member !== undefined && current[member.at] !== member ) {
+					current[member.at].mark( false );
+					current[member.at] = member;
+					member.mark( true );
+				}
+
+				// The pencil of a component is a stop after it where the arrows brought the focus there
+				if( member !== undefined )
+					pencil.tabIndex = arrowed === true ? 0 : -1;
+
+				arrowed = false;
+			} );
+
+			page.addEventListener( 'keydown', function( event ) {
+
+				const member = memberOf( event.target );
+
+				if( member === undefined || S.editing !== null || S.stale === true || event.defaultPrevented === true || event.altKey === true || event.ctrlKey === true || event.metaKey === true )
+					return;
+
+				if( event.key === 'Enter' || event.key === ' ' ) {
+
+					if( member.open === null && member.element.hasAttribute('data-nino-text') === false )
+						return;
+
+					if( member.element.hasAttribute('data-nino-image') === true || ( event.key === 'Enter' && member.element.hasAttribute('data-nino-text') === true ) )
+						return;
+
+					event.preventDefault();
+
+					const text = S.found.texts.find( function( candidate ) { return candidate.element === member.element } );
+					const entry = text === undefined ? null : entryOf( text );
+
+					if( member.element.hasAttribute('data-nino-text') === true && entry !== null )
+						beginEdit( text, entry );
+					else if( member.open !== null )
+						member.open.open( member.element );
+
+					return;
+				}
+
+				const group = groups[member.at];
+				const to = roveTo( group.length, group.indexOf( member ), event.key );
+
+				if( to === -1 )
+					return;
+
+				event.preventDefault();
+				arrowed = true;
+				group[to].focus();
+			} );
+		};
+
 		// Every component that has a pencil is a stop of the Tab key, in the order of the page
 		stopsOf( S.found, aims(), function( entry ) { const node = nodeAt( entry.path ); return node !== null && penOf( entry.path, node ) !== null } ).forEach( function( carrier ) {
-			carrier.tabIndex = 0;
+			carrier.tabIndex = -1;
 			carrier.setAttribute( 'data-nino-carrier', '' );
 		} );
+
+		// A loop has no element of its own to stop at: its pencil is a stop of its own, in front of the first repetition, which shows where the loop stands when the keyboard is on it
+		loopStopsOf( aims(), function( entry ) { const node = nodeAt( entry.path ); return node !== null && penOf( entry.path, node ) !== null } ).forEach( function( entry ) {
+
+			const open = penOf( entry.path, nodeAt( entry.path ) );
+
+			const loopHost = doc.createElement('nino-builder-pen');
+			const loopShadow = loopHost.attachShadow( { mode : 'open' } );
+			const loopStyle = doc.createElement('style');
+			const button = tool( 'pencil', '', open.name, 'pen loop' );
+
+			loopStyle.textContent = PEN_CSS;
+			loopShadow.appendChild( loopStyle );
+			Object.keys( tone ).forEach( function( name ) { loopHost.style.setProperty( '--b-'+ name, tone[name] ) } );
+			button.dataset.key = keyAt( Number( entry.path.split('.')[0] ) );
+			button.addEventListener( 'click', function() { open.open( button ) } );
+			button.addEventListener( 'focus', function() {
+				shownOf( entry )[0].scrollIntoView( { block : 'nearest' } );
+				place();
+			} );
+			button.tabIndex = -1;
+			loopShadow.appendChild( button );
+
+			if( entry.elements.length > 0 )
+				( entry.elements[0].closest('a, button') ?? entry.elements[0] ).before( loopHost );
+			else
+				entry.holder.appendChild( loopHost );
+
+			loopPens.push( { entry : entry, button : button, shadow : loopShadow, host : loopHost } );
+		} );
+
+		roving( doc, penHost, pen, loopPens );
 		S.paintBars = paintBars;
 		place();
 		paintBars();
@@ -2356,6 +2686,18 @@
 		( host.shadowRoot.querySelector( 'button[data-image="'+ back+ '"]' ) ?? Array.from( doc.querySelectorAll('[data-nino-image]') ).find( function( element ) { return element.getAttribute('data-nino-image') === back } ) )?.focus();
 	};
 
+	// What the page in the frame shows is what the loops are counted from: the tree of the extended view and the lightbox that is open are told again, whichever view drew it
+	const pageDrawn = function( found ) {
+
+		S.found = found;
+
+		if( S.mode === 'advanced' && S.tree !== null )
+			S.tree.update( itemsNow() );
+
+		if( S.box !== null && S.box.recount !== null )
+			S.box.recount();
+	};
+
 	/**
 	 *	What a page that was loaded in the frame becomes: its texts can be written and its blocks have their bars. Only a page that is the draft of the last
 	 *	answer is touched - the page as it was before the first answer, or one the person navigated to, has no trace and is left as it is
@@ -2388,7 +2730,8 @@
 
 		// What the page shows is the one it is drawn for: the blocks have the keys of the views that show them, and nothing is on until the pointer or the focus comes
 		found.blocks.forEach( function( block ) { block.key = keyAt( block.at ) } );
-		S.found = found;
+		pageDrawn( found );
+
 		S.hot = '';
 		S.focus = '';
 		S.overBar = '';
@@ -2928,6 +3271,7 @@
 
 		S.top = normalize( fixAttrs( response.tree ) );
 		S.shared = response.shared ?? S.shared;
+		S.uses = response.uses ?? S.uses;
 		S.level = response.level ?? S.level;
 		S.schemas = response.schemas ?? S.schemas;
 		S.findings = response.findings ?? {};
@@ -3964,16 +4308,99 @@
 	const loopNote = function( node, schema, rel ) {
 
 		const type = typeof node.s === 'string' && node.s.charAt(0) === '/' ? typeTitle( node.s ) : '';
-		const sort = schema.attributes.sort !== undefined && typeof ( node.a ?? {} ).sort === 'string' ? node.a.sort : '';
+		const sort = schema.attributes.sort !== undefined && typeof ( node.a ?? {} ).sort === 'string' && node.a.sort !== '' ? word( 'sort/by', sortSentence( typeof node.s === 'string' ? node.s : '', node.a.sort ) ) : '';
 
 		return [ type, sort, loopCount( node, rel ) ].filter( function( part ) { return part !== '' } ).join(' · ');
+	};
+
+	// --- the sort of a loop, in words -------------------------------------------------------------------------------------
+
+	// The most steps a sort has: the first orders, and where two are equal the next decides
+	const SORT_STEPS = 3;
+
+	// What a field is for the words of its direction: a date is newest and oldest, a number smallest and largest, anything else a text from A to Z
+	const sortKind = function( type ) {
+		return type === 'date' || type === 'datetime' ? 'date' : ( type === 'integer' || type === 'double' ? 'number' : 'text' );
+	};
+
+	// The sort attribute as steps - `-date,title` is the field date reversed and then title - and whether the list can show it: a field the type does not have, the word
+	// random, an empty step or more steps than the list takes are shown as they are written
+	const sortSteps = function( value, names ) {
+
+		const steps = [];
+		let exact = true;
+
+		String( value ?? '' ).split(',').forEach( function( part ) {
+
+			const word = part.trim();
+
+			if( word === '' )
+				return;
+
+			const reverse = word.charAt(0) === '-';
+			const field = reverse === true ? word.slice( 1 ) : word;
+
+			if( names.indexOf( field ) === -1 )
+				exact = false;
+
+			steps.push( { field : field, reverse : reverse } );
+		} );
+
+		return { steps : steps, exact : exact === true && steps.length <= SORT_STEPS && String( value ?? '' ).trim().split(',').every( function( part ) { return part.trim() !== '' } ) };
+	};
+
+	const sortWritten = function( steps ) {
+		return steps.map( function( step ) { return ( step.reverse === true ? '-' : '' )+ step.field } ).join(',');
+	};
+
+	// The name of a field the way the project gives it: the label of the model, the word for the three the elements all have, else the name
+	const fieldWord = function( type, name ) {
+
+		const info = S.fieldInfo[type];
+		const label = info === undefined ? undefined : info.labels[name];
+
+		if( typeof label === 'string' && label !== '' )
+			return label;
+
+		return [ 'id', 'uri', 'slug' ].indexOf( name ) !== -1 ? word( 'source/field-'+ name ) : '`'+ name+ '`';
+	};
+
+	// The direction of a step in words that fit the field: "A to Z" for a text, "newest first" for a date, "smallest first" for a number
+	const directionWord = function( type, name, reverse ) {
+
+		const info = S.fieldInfo[type];
+
+		return word( 'sort/'+ ( reverse === true ? 'desc' : 'asc' )+ '-'+ sortKind( info === undefined ? '' : info.types[name] ) );
+	};
+
+	// The sort of a loop in a sentence: where it is the order the elements were made in, and else its steps - a step that runs against the grain is told how
+	const sortSentence = function( type, value ) {
+
+		if( String( value ?? '' ).trim() === '' )
+			return word('sort/none');
+
+		const info = S.fieldInfo[type];
+		const read = sortSteps( value, info === undefined ? [] : Object.keys( info.types ) );
+
+		if( read.exact !== true )
+			return String( value );
+
+		return read.steps.map( function( step ) { return fieldWord( type, step.field )+ ( step.reverse === true || sortKind( info.types[step.field] ) === 'date' ? ' ('+ directionWord( type, step.field, step.reverse )+ ')' : '' ) } ).join(', ');
 	};
 
 	// How many elements a loop shows, counted from the page in the frame: the first component inside it is drawn once for each element. None where there is no page to count in
 	const loopCount = function( node, rel ) {
 
+		const count = loopElements( node, rel );
+
+		return count === null || count === 0 ? '' : ( count === 1 ? word('adv/element') : word( 'adv/elements', count ) );
+	};
+
+	// How often the first component inside a loop is on the page, null where there is nothing to count in
+	const drawnOf = function( node, rel ) {
+
 		if( S.found === null )
-			return '';
+			return null;
 
 		const list = node.c ?? [];
 
@@ -3981,12 +4408,54 @@
 			if( isPiece( list[at] ) === true && list[at].n !== undefined && S.schemas[list[at].n] !== undefined ) {
 
 				const abs = absOf( childOf( rel, at ) );
-				const count = S.found.all.filter( function( entry ) { return entry.path === abs } ).length;
 
-				return count === 0 ? '' : ( count === 1 ? word('adv/element') : word( 'adv/elements', count ) );
+				return S.found.all.filter( function( entry ) { return entry.path === abs } ).length;
 			}
 
-		return '';
+		return null;
+	};
+
+	// The number of elements a loop shows: one repetition of it. A table draws its first component once more in its head, which is no element; a loop inside another loop is
+	// drawn once for each element of the outer one, and the number told is of one of them
+	const loopElements = function( node, rel ) {
+
+		let count = drawnOf( node, rel );
+
+		if( count === null )
+			return null;
+
+		const schema = S.schemas[node.n];
+
+		if( schema !== undefined && schema.preview === 'table' && count > 0 )
+			count--;
+
+		for( let up = parentOf( rel ), seen = rel; seen !== 'root' && up !== undefined; seen = up, up = parentOf( up ) ) {
+
+			const outer = relNode( up );
+
+			if( outer !== null && outer.n !== undefined && S.schemas[outer.n] !== undefined && S.schemas[outer.n].loop === true ) {
+
+				const times = drawnOf( outer, up );
+
+				if( times !== null && times > 1 )
+					count = Math.round( count / times );
+
+				break;
+			}
+		}
+
+		return count;
+	};
+
+	// The finding of a loop whose sort the list cannot show - a field the type has not, the word random, too many steps: the row of the tree says it as the lightbox does
+	const unsortable = function( node, schema ) {
+
+		if( schema === undefined || schema.loop !== true || S.level < 2 || typeof node.s !== 'string' || S.fieldInfo[node.s] === undefined )
+			return undefined;
+
+		const given = typeof ( node.a ?? {} ).sort === 'string' ? node.a.sort : '';
+
+		return given.trim() === '' || sortSteps( given, Object.keys( S.fieldInfo[node.s].types ) ).exact === true ? undefined : word( 'sort/unknown', given );
 	};
 
 	// The entry of the tree for a component or for a piece that is locked, and for everything inside it
@@ -4017,7 +4486,7 @@
 			children	: children,
 			open		: true,
 			locked	: schema === undefined,
-			finding	: hintOf( absOf( rel ) ),
+			finding	: hintOf( absOf( rel ) ) ?? unsortable( node, schema ),
 			actions	: actionsOf( rel, schema !== undefined && schema.container === true, schema !== undefined ),
 		};
 
@@ -5692,9 +6161,28 @@
 
 			const field = Nino.adminUi.numberField( { key : key, label : label, value : given === undefined ? standard : Number( given ), min : declared.min ?? undefined, max : declared.max ?? undefined, help : help } );
 
+			let told = null;
+
 			field.querySelector('input').addEventListener( 'change', function( event ) {
 
 				const value = String( event.target.value ).trim();
+				const least = typeof declared.min === 'number' ? declared.min : null;
+				const most = typeof declared.max === 'number' ? declared.max : null;
+
+				if( told !== null ) {
+					told.remove();
+					told = null;
+					Nino.adminUi.clearFieldErrors( event.target );
+				}
+
+				// A value the setting does not take is told at the field and stays out of the draft - the page keeps showing what the draft draws
+				if( value !== '' && ( /^-?\d{1,9}$/.test( value ) === false || ( least !== null && Number( value ) < least ) || ( most !== null && Number( value ) > most ) ) ) {
+
+					const text = least !== null && most !== null ? word( 'field/range-both', least, most ) : ( least !== null ? word( 'field/range-min', least ) : ( most !== null ? word( 'field/range-max', most ) : word('field/whole') ) );
+
+					told = Nino.adminUi.fieldError( field, event.target, 'builder-number-error-'+ key.replace( /[^a-z0-9]/gi, '-' ), text );
+					return;
+				}
 
 				setAttr( rel, name, value === '' || value === String( standard ) ? null : value );
 			} );
@@ -5795,6 +6283,10 @@
 						change( function() { relNode( rel ).s = picked } );
 
 					redrawBox();
+
+					// The fields of the new type are what the sort is made of: they are asked for, and the lightbox is drawn again with them
+					if( picked !== '' && S.level >= 2 )
+						askFields( redrawBox );
 				},
 			} );
 
@@ -5827,7 +6319,7 @@
 		};
 
 		if( schema.loop === true && schema.source === 'none' )
-			out.push( { form : 'type', kind : 'type', attr : '', label : word('box/collection'), written : typeof node.s === 'string' ? node.s : '', where : 'collection' } );
+			out.push( { form : 'type', kind : 'type', attr : '', label : word('loop/type'), written : typeof node.s === 'string' ? node.s : '', where : 'collection' } );
 
 		const source = schema.source === 'none' ? null : sourceOf( rel );
 
@@ -5932,9 +6424,16 @@
 		row.appendChild( name );
 		value.appendChild( el( 'p', 'builder-box-sentence', sentenceOf( rel, read ) ) );
 
-		// A text of another place is not changed here: where it is changed stands behind the (?)
-		if( read.where === 'shared' && read.kind === 'text' )
+		// A text of another place is not changed here: where it is changed stands behind the (?), and where more pages read it that is said
+		if( read.where === 'shared' && read.kind === 'text' ) {
+
+			const key = keyOf( rel, read.written );
+
 			name.appendChild( Nino.adminUi.fieldHelp( word('word/not-here'), { field : value, name : read.label } ) );
+
+			if( S.uses[key] !== undefined )
+				value.appendChild( el( 'p', 'builder-box-sentence', word( 'source/used', S.uses[key] ) ) );
+		}
 
 		if( S.level >= 2 )
 			value.appendChild( changeButton( rel, read ) );
@@ -5999,7 +6498,148 @@
 	};
 
 	const sourceRows = function( rel, reads ) {
-		return reads.filter( function( read ) { return read.where !== 'own' } ).map( function( read ) { return sentenceRow( rel, read ) } );
+
+		const rows = [];
+
+		reads.filter( function( read ) { return read.where !== 'own' } ).forEach( function( read ) {
+
+			if( read.form === 'type' )
+				loopRows( rel, read ).forEach( function( row ) { rows.push( row ) } );
+			else
+				rows.push( sentenceRow( rel, read ) );
+		} );
+
+		return rows;
+	};
+
+	// The names of the attributes that make a call a loop: what it shows is its source, and stands in the source of the lightbox and nowhere else
+	const LOOP_ATTRIBUTES = [ 'sort', 'limit', 'offset', 'query' ];
+
+	// The rows of the source of a loop: its type, its sort in words, how many it shows at most, from which on, the query - and, quietly, how many elements it shows now. The one
+	// who may only write the content reads the type and the sort
+	const loopRows = function( rel, read ) {
+
+		const node = relNode( rel );
+		const schema = S.schemas[node.n];
+		const type = typeof node.s === 'string' ? node.s : '';
+		const rows = [ sentenceRow( rel, read ) ];
+
+		if( schema.attributes.sort !== undefined )
+			rows.push( sortRow( rel, node, schema, type ) );
+
+		if( S.level >= 2 )
+			[ 'limit', 'offset', 'query' ].forEach( function( name ) {
+				if( schema.attributes[name] !== undefined )
+					rows.push( attributeField( rel, name, schema.attributes[name] ) );
+			} );
+
+		const count = loopElements( node, rel );
+
+		if( count !== null ) {
+
+			const row = el( 'div', 'nino-admin-field builder-box-row' );
+			const value = el( 'div', 'builder-box-value' );
+
+			row.appendChild( el( 'span', '', word('loop/shows') ) );
+			const shown = el( 'p', 'builder-box-sentence', count === 1 ? word('adv/element') : word( 'adv/elements', count ) );
+
+			shown.dataset.count = 'loop';
+			value.appendChild( shown );
+			row.appendChild( value );
+			rows.push( row );
+		}
+
+		return rows;
+	};
+
+	// The sort of a loop as a list of steps - the field and the direction in words that fit it, each step to be taken away, and a step to be added - for the one who designs;
+	// a value the list cannot show stays as it is written, with the finding and the way to begin a list of one's own
+	const sortRow = function( rel, node, schema, type ) {
+
+		const row = el( 'div', 'nino-admin-field builder-box-row' );
+		const value = el( 'div', 'builder-box-value' );
+		const label = localized( schema.attributes.sort.label );
+		const name = el( 'span', '', label );
+		const given = typeof ( node.a ?? {} ).sort === 'string' ? node.a.sort : '';
+		const info = S.fieldInfo[type];
+
+		row.appendChild( name );
+		name.appendChild( Nino.adminUi.fieldHelp( word('sort/help'), { field : value, name : label } ) );
+		row.appendChild( value );
+
+		// Without the fields of the type - the step below the design does not have them, or they are on their way - the sort is the sentence of what is written
+		if( S.level < 2 || info === undefined ) {
+			value.appendChild( el( 'p', 'builder-box-sentence', sortSentence( type, given ) ) );
+			return row;
+		}
+
+		const names = Object.keys( info.types );
+		const read = sortSteps( given, names );
+		const write = function( steps ) { box.pending = false; setAttr( rel, 'sort', steps.length === 0 ? null : sortWritten( steps ) ); redrawBox() };
+		const box = S.box !== null && S.box.rel === rel ? S.box : { pending : false };
+
+		if( read.exact === false ) {
+
+			value.appendChild( el( 'p', 'builder-box-sentence', given ) );
+			value.appendChild( Nino.adminUi.notice( word( 'sort/unknown', given ) ) );
+
+			const reset = Nino.adminUi.button( word('sort/reset'), function() { write( [] ) }, { className : 'nino-admin-btn--small' } );
+
+			reset.dataset.key = rel+ ':sort:reset';
+			value.appendChild( reset );
+
+			return row;
+		}
+
+		if( read.steps.length === 0 )
+			value.appendChild( el( 'p', 'builder-box-sentence', word('sort/none') ) );
+
+		read.steps.forEach( function( step, at ) {
+
+			const line = el( 'div', 'builder-sort-step' );
+			const fields = names.map( function( field ) { return { value : field, label : fieldWord( type, field ) } } );
+			const kind = sortKind( info.types[step.field] );
+			const directions = [ { value : 'asc', label : word( 'sort/asc-'+ kind ) }, { value : 'desc', label : word( 'sort/desc-'+ kind ) } ];
+			const change = function( field, reverse ) {
+
+				const next = read.steps.map( function( held ) { return { field : held.field, reverse : held.reverse } } );
+
+				next[at] = { field : field, reverse : reverse };
+				write( next );
+			};
+
+			line.appendChild( Nino.adminUi.selectField( { key : rel+ ':sort:'+ at+ ':field', label : word( 'sort/field', at + 1 ), options : fields, value : step.field, onChange : function( field ) { change( field, false ) } } ) );
+			line.appendChild( Nino.adminUi.selectField( { key : rel+ ':sort:'+ at+ ':direction', label : word( 'sort/direction', at + 1 ), options : directions, value : step.reverse === true ? 'desc' : 'asc', onChange : function( direction ) { change( step.field, direction === 'desc' ) } } ) );
+			line.appendChild( Nino.adminUi.iconButton( 'trash-2', word( 'sort/remove', at + 1 ), function() { write( read.steps.filter( function( held, index ) { return index !== at } ) ) }, { danger : true } ) );
+			value.appendChild( line );
+		} );
+
+		if( read.steps.length < SORT_STEPS ) {
+
+			const free = names.filter( function( field ) { return read.steps.every( function( step ) { return step.field !== field } ) } ).sort( function( one, other ) { return ( [ 'id', 'uri', 'slug' ].indexOf( one ) === -1 ? 0 : 1 ) - ( [ 'id', 'uri', 'slug' ].indexOf( other ) === -1 ? 0 : 1 ) } );
+
+			// A step that is added is a row with no field yet: the page is written when a field is chosen, and nothing before
+			if( box.pending === true && free.length > 0 ) {
+
+				const line = el( 'div', 'builder-sort-step' );
+				const options = [ { value : '', label : word('sort/choose') } ].concat( free.map( function( field ) { return { value : field, label : fieldWord( type, field ) } } ) );
+
+				line.appendChild( Nino.adminUi.selectField( { key : rel+ ':sort:new:field', label : word( 'sort/field', read.steps.length + 1 ), options : options, value : '', onChange : function( field ) {
+					if( field !== '' )
+						write( read.steps.concat( [ { field : field, reverse : false } ] ) );
+				} } ) );
+				line.appendChild( Nino.adminUi.iconButton( 'trash-2', word( 'sort/remove', read.steps.length + 1 ), function() { box.pending = false; redrawBox() }, { danger : true } ) );
+				value.appendChild( line );
+			}
+
+			const add = Nino.adminUi.button( word('sort/add'), function() { box.pending = true; redrawBox() }, { className : 'nino-admin-btn--small' } );
+
+			add.dataset.key = rel+ ':sort:add';
+			add.disabled = free.length === 0 || box.pending === true;
+			value.appendChild( add );
+		}
+
+		return row;
 	};
 
 	const contentRows = function( rel, plan ) {
@@ -6033,7 +6673,7 @@
 
 		Object.keys( schema.attributes ).forEach( function( name ) {
 
-			if( [ 'text', 'link', 'image', 'id' ].indexOf( schema.attributes[name].type ) === -1 )
+			if( [ 'text', 'link', 'image', 'id' ].indexOf( schema.attributes[name].type ) === -1 && ( schema.loop !== true || LOOP_ATTRIBUTES.indexOf( name ) === -1 ) )
 				rows.push( attributeField( rel, name, schema.attributes[name] ) );
 		} );
 
@@ -6171,7 +6811,7 @@
 		if( S.box !== null || root === undefined || kindOf( root ) !== 'block' || idOf( root ) === '' )
 			return false;
 
-		const box = { block : idOf( root ), rel : rel, open : '', code : null, asked : 0, then : '', draw : null, close : null, gone : false };
+		const box = { block : idOf( root ), rel : rel, open : '', code : null, asked : 0, then : '', draw : null, close : null, gone : false, recount : null };
 
 		S.box = box;
 
@@ -6264,11 +6904,23 @@
 				accordion.head( box.open ).focus();
 		};
 
+		// The number of elements a loop shows is the page's: it is told again when the page in the frame was drawn again, and nothing else of the lightbox is
+		box.recount = function() {
+
+			const shown = holder.querySelector('[data-count="loop"]');
+			const count = shown === null || relNode( rel ) === null ? null : loopElements( relNode( rel ), rel );
+
+			if( count !== null )
+				shown.textContent = count === 1 ? word('adv/element') : word( 'adv/elements', count );
+		};
+
 		box.draw();
 
 		// The types of elements are the design's to read: a loop is told by the path of its type to the step below
-		if( S.level >= 2 )
+		if( S.level >= 2 ) {
 			askTypes( redrawBox );
+			askFields( redrawBox );
+		}
 
 		const first = accordion.body( box.open ).querySelector('input, textarea, select, button');
 		const name = titleOfRel( rel );
@@ -6343,7 +6995,7 @@
 		return into;
 	};
 
-	const askFields = function() {
+	const askFields = function( then ) {
 
 		if( rootAt() === -1 )
 			return;
@@ -6358,8 +7010,11 @@
 
 				if( status === 200 ) {
 					S.fields[type] = Object.keys( response.fields );
+					S.fieldInfo[type] = { types : response.fields, labels : response.labels ?? {} };
 
-					if( S.tree !== null )
+					if( typeof then === 'function' )
+						then();
+					else if( S.tree !== null )
 						S.tree.update( itemsNow() );
 				}
 				else
@@ -6509,11 +7164,7 @@
 
 		const style = doc.createElement('style');
 
-		S.found = traced( doc );
-
-		// The loops are told by the number of their elements, which the page shows
-		if( S.tree !== null )
-			S.tree.update( itemsNow() );
+		pageDrawn( traced( doc ) );
 
 		style.textContent = '[data-nino-pick]{cursor:pointer}';
 		doc.head.appendChild( style );
@@ -6846,7 +7497,7 @@
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, openExtended : openExtended, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			selectBlock : selectBlock, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, penSpot : penSpot, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			selectBlock : selectBlock, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		go : function( parts, options ) {

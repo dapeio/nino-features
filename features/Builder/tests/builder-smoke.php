@@ -2081,8 +2081,10 @@ check( 'the lightbox gives the content step no way to write a look, an id, a fix
 
 // what the lightbox is told by the answers of the server: the content step gets the schemas and the shared words, never the findings or the pages a link may go to - in the answer
 // of a save and of a restore as in the one of open - and a request that mixes a word it may write with a change it may not is refused whole, nothing written
-\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', str_replace( '[template /templates/html-footer]', "[text /project/company/general/name]\n[text /project/mail/box/owner]\n[template /templates/html-footer]", (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) ) );
-\Nino\Text::put( $site, [ '/project/company/general/name' => [ 'de_DE' => 'Beispiel GmbH' ], '/project/mail/box/owner' => [ 'de_DE' => 'secret@example.com' ] ] );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', str_replace( '[template /templates/html-footer]', "[text /project/company/general/name]\n[text /project/company/general/hours]\n[text /project/mail/box/owner]\n[template /templates/html-footer]", (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) ) );
+\Nino\Text::put( $site, [ '/project/company/general/name' => [ 'de_DE' => 'Beispiel GmbH' ], '/project/company/general/hours' => [ 'de_DE' => 'Mo bis Fr' ], '/project/company/general/hoursplus' => [ 'de_DE' => 'Mo bis Sa' ], '/project/mail/box/owner' => [ 'de_DE' => 'secret@example.com' ] ] );
+$contactWas = (string) file_get_contents( builderFile( $site, 'page-contact' ) );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', $contactWas. "\n[text /project/company/general/name]\n[text /project/company/general/hoursplus]\n" );
 $answers = [];
 
 foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' ], 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ] ] as $step => $perms ) {
@@ -2096,6 +2098,7 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 
 	if( $step === 'content' ) {
 		$shared = $open['shared'] ?? [];
+		$used = $open['uses'] ?? [];
 		$mixed = builderEdit( $open['tree'], builderFind( $open['tree'], static fn( array $node ): bool => ( $node['a']['id'] ?? '' ) === 'start-1' ) ?? '', static function( array $node ): array {
 			$node['a']['variant'] = 'plain';
 			return $node;
@@ -2106,9 +2109,10 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 	}
 }
 
-check( 'the answers tell the content step the schemas and no finding or link - in open, save and restore - and the design all three; the words of the company are told for reading, a mailbox is not; a word it may write mixed with a change it may not is a 403 and nothing is written',
-	$answers['content'] === [ [ 'schemas', 'schemas', 'schemas' ] ] [0] && $answers['design'] === [ 'schemas,findings,links', 'schemas,findings', 'schemas,findings' ] && ( $shared['/project/company/general/name'] ?? '' ) === 'Beispiel GmbH' && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/project/mail/' ) ) === [] && $answers['mixed'] === [ 403, true ] );
+check( 'the answers tell the content step the schemas and no finding or link - in open, save and restore - and the design all three; the words of the company are told for reading, a mailbox is not; a word it may write mixed with a change it may not is a 403 and nothing is written; a text that two templates read says on how many - and not for one that a longer key only begins with, or that one reads - and the keys of the page itself are none of the shared words',
+	$answers['content'] === [ [ 'schemas', 'schemas', 'schemas' ] ] [0] && $answers['design'] === [ 'schemas,findings,links', 'schemas,findings', 'schemas,findings' ] && ( $shared['/project/company/general/name'] ?? '' ) === 'Beispiel GmbH' && ( $used['/project/company/general/name'] ?? 0 ) === 2 && array_key_exists( '/project/mail/box/owner', $used ) === false && array_key_exists( '/project/company/general/hours', $used ) === false && isset( $shared['/project/company/general/hours'] ) === true && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/template/page-home/' ) ) === [] && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/project/mail/' ) ) === [] && $answers['mixed'] === [ 403, true ] );
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', $contactWas );
 
 // The script of the panel has three suites of its own - the model, the list and the view that makes a page, and the surface of a page that is worked on - which run where node is
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';

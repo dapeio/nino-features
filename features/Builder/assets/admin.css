@@ -323,6 +323,20 @@
 	margin: 0;
 }
 
+/* A step of the sort of a loop: the field, the direction, and the button that takes it away */
+.builder-lightbox .builder-sort-step {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+	align-items: end;
+	gap: var(--nino-admin-space-3);
+	width: 100%;
+}
+
+.builder-lightbox .builder-sort-step > .nino-admin-field {
+	display: block;
+	margin: 0;
+}
+
 /* The notation of the component or of the block, as a block of text that is read and copied */
 .builder-lightbox .builder-code {
 	margin: 0;
