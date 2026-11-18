@@ -324,7 +324,7 @@
 			mount.innerHTML = '';
 			mount.appendChild( card !== null ? card : Nino.adminUi.emptyState(
 				Nino.content.getText('/_admin/greeting/empty'),
-				Nino.adminUi.button( Nino.content.getText('/_admin/features/tab/settings'), function() { wn.location.hash = '#greeting-settings' } )
+				Nino.adminUi.button( Nino.content.getText('/_admin/common/split/settings'), function() { wn.location.hash = '#greeting-settings' } )
 			) );
 		},
 	} );

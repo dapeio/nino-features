@@ -69,6 +69,9 @@ namespace Nino\Modules {
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Forms/templates';
 
+		// The mark of a field that has to be filled, behind its label: a sign for the eye, which the required attribute says to everybody else
+		private const string STAR = ' <span class="form-star" aria-hidden="true">[[mark]]</span>';
+
 		// Where this feature's own words are, and the word of the first option of
 		// options(): the form [form] draws where it is told none
 		public const string TEXT = '/features/Forms/text';
@@ -365,7 +368,7 @@ namespace Nino\Modules {
 
 			$fieldId	= $formId. '-'. $field['name'];
 			$required	= $field['required'] === true ? ' required' : '';
-			$star			= $field['required'] === true ? ' <span class="form-star" aria-hidden="true">*</span>' : '';
+			$star			= $field['required'] === true ? strtr( self::STAR, [ '[[mark]]' => '*' ] ) : '';
 			$label		= self::_words( $appData, $field['label'] );
 			$id				= \Nino\Components::escape( $fieldId );
 			$name			= \Nino\Components::escape( $field['name'] );

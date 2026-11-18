@@ -11,6 +11,9 @@ namespace Nino\Modules {
 	// The markup of the container is the template's. The typing itself is run in the browser (assets/typewriter.js)
 	class Typewriter {
 
+		// One line of the text, as the script finds it: a span of its own in the element the component draws
+		private const string LINE = '<span class="typewriter-line">[[line]]</span>';
+
 		/**
 		 *	[typewriter ~lines tag="h2" speed="45" hold="1600" loop]
 		 *
@@ -31,7 +34,7 @@ namespace Nino\Modules {
 				$line = trim( $line );
 
 				if( $line !== '' )
-					$lines .= '<span class="typewriter-line">'. \Nino\Components::escape( $line ). '</span>';
+					$lines .= strtr( self::LINE, [ '[[line]]' => \Nino\Components::escape( $line ) ] );
 			}
 
 			if( $lines === '' )

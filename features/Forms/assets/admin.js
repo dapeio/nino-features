@@ -453,7 +453,7 @@
 		], { label : w('tab/protection') } ) );
 
 		// What is set where, and the way there: a link, since the settings are another tab of the panel
-		const settings = el( 'a', 'nino-admin-linkbutton', t('/_admin/features/tab/settings') );
+		const settings = el( 'a', 'nino-admin-linkbutton', t('/_admin/common/split/settings') );
 
 		settings.href = '#forms-settings';
 

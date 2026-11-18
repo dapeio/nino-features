@@ -13,11 +13,9 @@ declare(strict_types=1);
  *									A feature that asks for a newer Nino than the one it runs on
  *									claims nothing about it. bin/check.sh and the CI copy only
  *									what this names into the checkout, so the tests, PHPStan and
- *									ESLint see what that Nino can run, and the tests that go over
- *									every feature (tests/build-smoke.php, tests/keys-smoke.php)
- *									ask the same question. bin/catalogue.php does not: it
- *									describes every feature of this repository, whatever it runs
- *									on.
+ *									ESLint see what that Nino can run. bin/catalogue.php does
+ *									not: it describes every feature of this repository, whatever
+ *									it runs on.
  *
  *									A manifest the kernel cannot read is not skipped: it is named
  *									like the others, so the step that validates every manifest

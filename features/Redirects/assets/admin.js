@@ -346,7 +346,7 @@
 
 		// Remembering is off, so nothing new comes in: a state that stays until the setting is turned on, with the way to it
 		if( S.recording === false )
-			pane.appendChild( Nino.adminUi.notice( t('/_admin/redirects/hint/off'), { href : '#redirects-settings', label : t('/_admin/features/tab/settings') } ) );
+			pane.appendChild( Nino.adminUi.notice( t('/_admin/redirects/hint/off'), { href : '#redirects-settings', label : t('/_admin/common/split/settings') } ) );
 
 		pane.appendChild( mount );
 

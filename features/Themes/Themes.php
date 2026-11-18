@@ -69,6 +69,9 @@ namespace Nino\Modules {
 		// The stylesheet this feature writes: the file the kernel puts in the layer nino.theme
 		public const string SHEET = '/assets/theme.css';
 
+		// The style element a preview draws in the place of the link to the bundle; what stands before its token is how it begins
+		private const string PREVIEW_STYLE = '<style data-nino-theme-preview>[[css]]</style>';
+
 		// What the draft of this request is - 'css' and 'variants' as the compiler made them - and null for a request that has none
 		private static ?array $_draft = null;
 		private static ?string $_link = null;
@@ -268,7 +271,7 @@ namespace Nino\Modules {
 
 			// The bundle's shortcode hands this callback its own template to be changed in place, and what the callback answers is the
 			// template for as long as the process lives: the link is kept, so that a request that asks for no preview has it back
-			if( self::$_link === null && str_starts_with( $template, '<style data-nino-theme-preview>' ) === false )
+			if( self::$_link === null && str_starts_with( $template, (string) strstr( self::PREVIEW_STYLE, '[[css]]', true ) ) === false )
 				self::$_link = $template;
 
 			if( self::$_draft === null )
@@ -296,7 +299,7 @@ namespace Nino\Modules {
 			$outline = self::$_mark === '' ? '' : "\n.". self::$_mark. " { outline: 2px solid #e8590c !important; outline-offset: -2px !important; }";
 
 			// A style element ends at the first closing tag in it, so none may stand in the text
-			return $bundle === '' ? ( self::$_link ?? $template ) : '<style data-nino-theme-preview>'. str_replace( '</', '<\\/', $bundle. $outline ). '</style>';
+			return $bundle === '' ? ( self::$_link ?? $template ) : strtr( self::PREVIEW_STYLE, [ '[[css]]' => str_replace( '</', '<\\/', $bundle. $outline ) ] );
 		}
 	}
 }
