@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Beiträge als Karten", "en_US": "Posts as cards" },
+	"description": { "de_DE": "Eine Überschrift und darunter die Beiträge einer Rubrik als Karten, mit Seitenzahlen.", "en_US": "A headline and below it the posts of a section as cards, with page numbers." },
+	"category": "content",
+	"rank": 80,
+	"images": {}
+}

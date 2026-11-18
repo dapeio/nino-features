@@ -2,8 +2,8 @@
 // features/Posts/install/text/en_US.php - what the two delivered templates
 // say, and the details of the page the default section is (its name, its title
 // and its description), merged into the project's own text file without
-// overwriting a key it already has. /feature/posts/pager/prev and /feature/posts/pager/next are also what the pager reads
-// before it falls back to its own words (see Shortcodes::_text())
+// overwriting a key it already has. The words of the pager and of the navigation are what a call
+// of posts-pager or posts-nav says where it names none of its own
 //
 // The page details are the system's keys of the section's Element-URI, which
 // is the feature's own choice (Posts::INDEX_URI after Sections::DEFAULT_KEY):
@@ -14,6 +14,9 @@ return [
 	'[[/_nino/webpage/blog/name]]'			=> 'Blog',
 	'[[/_nino/webpage/blog/title]]'			=> 'Blog',
 	'[[/_nino/webpage/blog/description]]'	=> 'What we have been writing about.',
+	'[[/_nino/webpage/blog/post/name]]'		=> 'Post',
+	'[[/_nino/webpage/blog/post/title]]'		=> 'Blog',
+	'[[/_nino/webpage/blog/post/description]]'	=> 'What we have been writing about.',
 	'[[/template/page-posts/intro/title]]'	=> 'Posts',
 	'[[/template/page-posts/intro/text]]'	=> 'What we have been writing about.',
 	'[[/feature/posts/pager/label]]'		=> 'Pages',

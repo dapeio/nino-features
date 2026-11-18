@@ -1,0 +1,1 @@
+<li class="posts-pager-item"><a class="posts-pager-link" href="[[href]]"[[attributes]]>[[label]]</a></li>

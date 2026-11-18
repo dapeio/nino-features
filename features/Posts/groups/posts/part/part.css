@@ -1,0 +1,21 @@
+/*	posts - the standard part: the pager under a list and the way to the posts beside the one that is read; the box of a post in another language takes no room of its own	*/
+:root {
+	--posts-pager-radius: var(--page-radius);
+	--posts-pager-gap: var(--page-space-1);
+}
+.posts-box { display: contents; }
+
+.posts-pager-list { display: flex; flex-wrap: wrap; align-items: center; gap: var(--posts-pager-gap); margin: 0; padding: 0; list-style: none; }
+.posts-pager-link { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 2.75rem; min-height: 2.75rem; padding: var(--page-space-1) var(--page-space-2); border: var(--page-line) solid var(--brand-ink-quiet); border-radius: var(--posts-pager-radius); color: var(--brand-ink); text-decoration: none; font-size: var(--page-text-2); line-height: 1.2; }
+.posts-pager-link:focus-visible, .posts-nav-link:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.posts-pager-item--current .posts-pager-link { border-color: var(--brand-accent); background: var(--brand-accent); color: var(--brand-on-accent); font-weight: 600; }
+@media ( hover: hover ) {
+	.posts-pager-link:hover { border-color: var(--brand-accent); }
+	.posts-nav-link:hover .posts-nav-title { text-decoration: underline; }
+}
+
+.posts-nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--page-space-3); width: 100%; }
+.posts-nav-link { display: flex; flex-direction: column; gap: var(--page-space-1); min-width: 0; max-width: 100%; color: var(--brand-ink); text-decoration: none; }
+.posts-nav-link--next { margin-inline-start: auto; text-align: end; }
+.posts-nav-word { color: var(--brand-ink-quiet); font-size: var(--page-text-1); }
+.posts-nav-title { font-size: var(--page-text-3); font-weight: 600; overflow-wrap: anywhere; }

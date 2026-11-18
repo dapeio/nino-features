@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Einzelner Beitrag", "en_US": "A single post" },
+	"description": { "de_DE": "Titel, Datum und Text des Beitrags, für den die Adresse steht, und darunter der Weg zum vorherigen und zum nächsten.", "en_US": "Title, date and text of the post the address is for, and below it the way to the previous and the next." },
+	"category": "content",
+	"rank": 81,
+	"images": {}
+}

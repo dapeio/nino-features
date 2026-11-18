@@ -1,0 +1,1 @@
+<a class="posts-nav-link posts-nav-link--[[rel]]" rel="[[rel]]" href="[[href]]"[[lang]]><span class="posts-nav-word">[[word]]</span><span class="posts-nav-title">[[title]]</span></a>

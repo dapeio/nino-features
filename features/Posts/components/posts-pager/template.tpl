@@ -1,0 +1,1 @@
+<nav class="[[class]]" aria-label="[[label]]"><ul class="posts-pager-list">[[items]]</ul></nav>

@@ -1,0 +1,1 @@
+<div class="posts-box" lang="[[lang]]">[[content]]</div>

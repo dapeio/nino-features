@@ -1,0 +1,1 @@
+<li class="posts-pager-item posts-pager-item--current"><a class="posts-pager-link" href="[[href]]" aria-current="page">[[label]]</a></li>
