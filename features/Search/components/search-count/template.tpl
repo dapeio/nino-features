@@ -1,0 +1,1 @@
+<[[tag]] class="[[class]]"><span class="search-count-number">[[number]]</span>[[word]]</[[tag]]>

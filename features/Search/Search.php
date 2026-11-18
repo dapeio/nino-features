@@ -2,7 +2,12 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Modules\\Search				A small weighted fuzzy index for Elements
+ *	Modules\\Search				A small weighted fuzzy index for Elements, and the three components that
+ *											put a search on a page: the field (search-form), the hits (search-results,
+ *											a loop) and their number (search-count). The feature has no page and no
+ *											route of its own but the json endpoint the setting api switches on: a
+ *											project writes its result page out of the components, or takes the block
+ *											search-page.
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -22,7 +27,29 @@ namespace Nino\Modules {
 			3 => 0.25,
 		];
 
-		private const int MAX_QUERY_LENGTH = 256;
+		// The longest query that is read, and the longest the search field takes: what a visitor sends beyond it is cut
+		public const int MAX_QUERY_LENGTH = 256;
+
+		// The query variable the components read unless `key` names another
+		public const string DEFAULT_KEY = 'q';
+
+		// How many hits a list draws when it names no number, and the most it draws whatever it names
+		public const int RESULTS_LIMIT = 20;
+		public const int RESULTS_MAX = 200;
+
+		// The markup a component makes round what it draws: the box of a hit that stands in the language of another, and the sentence for nothing found
+		public static array $html = [
+			'hit'		=> '<div class="search-results-hit"[[lang]]>[[content]]</div>',
+			'empty'	=> '<p class="search-results-empty">[[text]]</p>',
+			'lang'	=> ' lang="[[lang]]"',
+			'action'	=> ' action="[[action]]"',
+		];
+
+		// The state of the request while a list draws its hits: a list inside a list draws nothing
+		private const string DRAWING = './nino/search/drawing';
+
+		// The ranking of the request: [ what it depends on, the list ]
+		private const string RANKED = './nino/search/ranked';
 
 		// The feature's key, as the manifest names it - what its settings are
 		// read under
@@ -109,15 +136,14 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the write-time refresh and the two shortcodes a page puts a
-		 *	search on. Building the initial index stays an explicit action in the
-		 *	Search panel; init itself performs no I/O.
+		 *	Register the write-time refresh, and the json endpoint where the
+		 *	setting asks for it. The components are the feature's folders, not
+		 *	registered here. Building the initial index stays an explicit action
+		 *	in the Search panel; init itself performs no I/O.
 		 */
 		public static function init( array &$appData ): void {
 
 			\Nino\Callbacks::registerCallback( $appData, '/nino/elements/committed', [ self::class, 'callbackElementsCommitted' ] );
-
-			Search\Shortcodes::init( $appData );
 
 			/*	The json endpoint, only where the project switched it on: a
 				public address that hands out content is a decision, not a side
@@ -131,7 +157,7 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	GET /.search?q=…&type=…&limit=…&offset=… - the shortcodes' search as
+		 *	GET /.search?q=…&type=…&limit=…&offset=… - the components' search as
 		 *	json, for a page that searches while typing and for anything that is
 		 *	not a page. The same index, the same locale the request runs in, the
 		 *	same scores.
@@ -153,7 +179,7 @@ namespace Nino\Modules {
 		public static function callbackApi( array &$appData, array &$request ): void {
 
 			$query	= $request['/nino/http/request']['query'] ?? [];
-			$q			= is_string( $query['q'] ?? null ) === true ? trim( $query['q'] ) : '';
+			$q			= is_string( $query['q'] ?? null ) === true ? trim( mb_substr( trim( $query['q'] ), 0, self::MAX_QUERY_LENGTH ) ) : '';
 
 			// Never cached: the index changes with every save
 			$request['/nino/http/response']['header']['Cache-Control'] = 'no-store';
@@ -233,18 +259,301 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	[search-count] as the Components module hands it over, the Builder's way:
-		 *	every attribute is there, an empty one where nothing was written,
-		 *	and Search\Shortcodes::doCount() reads them as it reads a hand-written call
+		 *	What the visitor typed, for one query variable name
+		 *
+		 *	Read from the request that is being answered, which the kernel hands
+		 *	to code that has none in hand: a renderer is given $appData and the
+		 *	call, and reaches the request through \Nino\Http::getRequest(). Nothing
+		 *	was searched for where there is no request at all - a page rendered by
+		 *	a script. The words are the visitor's and stay text: trimmed, never an
+		 *	array, and cut at MAX_QUERY_LENGTH so that an address that is a megabyte
+		 *	of words is neither echoed nor searched
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *	@param		string		$key					A query variable name
 		 *
-		 *	@return 	string								What Search\Shortcodes::doCount() renders for them
+		 *	@return 	string								Trimmed, never an array
 		 */
-		public static function componentSearchCount( array &$appData, array $args ): string {
+		public static function query( array &$appData, string $key ): string {
 
-			return Search\Shortcodes::doCount( $appData, $args );
+			$request	= \Nino\Http::getRequest( $appData );
+			$query		= $request === false ? [] : ( $request['/nino/http/request']['query'] ?? [] );
+			$value		= is_array( $query ) === true ? ( $query[$key] ?? '' ) : '';
+
+			return is_string( $value ) === true ? trim( mb_substr( trim( $value ), 0, self::MAX_QUERY_LENGTH ) ) : '';
+		}
+
+		/**
+		 *	The query variable a call reads, held to what a form field may be called
+		 *
+		 *	@param		array 		$args					The arguments the register made ready
+		 *
+		 *	@return 	string
+		 */
+		private static function _key( array $args ): string {
+
+			$key = trim( html_entity_decode( (string) ( $args['key'] ?? '' ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+
+			return preg_match( '/^[A-Za-z_][A-Za-z0-9_-]*$/D', $key ) === 1 ? $key : self::DEFAULT_KEY;
+		}
+
+		/**
+		 *	The element types a call searches: the one its source names (a list is written like a collection,
+		 *	[search-results /posts]; the placeholder type of a block is none), and the ones it names in `type` - a name
+		 *	that is none is left out, one nobody indexed stays in and finds nothing - or, where it names none, every type
+		 *	that is indexed
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$args					The arguments the register made ready
+		 *
+		 *	@return 	array										Canonical /type names
+		 */
+		private static function _asked( array &$appData, array $args ): array {
+
+			$types = [];
+			$written = html_entity_decode( (string) ( $args['source'] ?? '' ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ). ','. html_entity_decode( (string) ( $args['type'] ?? '' ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
+			$named = false;
+
+			foreach( explode( ',', $written ) as $type ) {
+
+				$typeUri = self::typeUri( trim( $type ) );
+
+				// The placeholder type of a block names nothing; a word that names something that is no type names nothing either, and widens nothing
+				if( isset( \Nino\Elements::PLACEHOLDERS[ '/'. trim( trim( $type ), '/' ) ] ) === true )
+					continue;
+
+				$named = $named === true || trim( $type ) !== '';
+
+				if( $typeUri !== null && in_array( $typeUri, $types, true ) === false )
+					$types[] = $typeUri;
+			}
+
+			return $named === true ? $types : array_keys( self::_configuredTypes( $appData ) );
+		}
+
+		/**
+		 *	Replace search-form: the field and its button as a GET form that sends the words to the page of the
+		 *	results under the query variable of the call. It works without script; what was searched for stands in
+		 *	the field again, escaped once like any value
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The arguments made ready by the register
+		 *	@param		string		$content			''
+		 *	@param		array			$context			The place the call stands in
+		 *
+		 *	@return 	string
+		 */
+		public static function componentSearchForm( array &$appData, array $args, string $content, array $context ): string {
+
+			$key = self::_key( $args );
+
+			return \Nino\Components::fill( $appData, 'search-form', $args, $content, [
+				'[[action]]'	=> $args['action'] === '' ? '' : str_replace( '[[action]]', $args['action'], self::$html['action'] ),
+				'[[name]]'		=> $key,
+				'[[query]]'		=> \Nino\Components::escape( self::query( $appData, $key ) ),
+				'[[length]]'	=> (string) self::MAX_QUERY_LENGTH,
+			] );
+		}
+
+		/**
+		 *	Replace search-count: how many hits the running search has, as a plain number. It counts everything the
+		 *	query matched over the named types, not the page a list's limit draws - the number a visitor is told is the
+		 *	number there is. Nothing while nothing was searched for, 0 when something was and nothing fits
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The arguments made ready by the register
+		 *	@param		string		$content			''
+		 *	@param		array			$context			The place the call stands in
+		 *
+		 *	@return 	string
+		 */
+		public static function componentSearchCount( array &$appData, array $args, string $content, array $context ): string {
+
+			$types = self::_asked( $appData, $args );
+			$query = self::query( $appData, self::_key( $args ) );
+
+			if( $query === '' || $types === [] )
+				return '';
+
+			// The hits the list would draw: an entry of the index whose element is gone is none of them
+			$locale = \Nino\Locales::getCurrentLocale( $appData );
+			$number = 0;
+
+			foreach( self::getHits( $appData, $types, $query ) as $hit )
+				if( is_array( \Nino\Elements::getElementWithFallback( $appData, $hit['uri'], $locale ) ) === true )
+					$number++;
+
+			return \Nino\Components::fill( $appData, 'search-count', $args, $content, [
+				'[[tag]]'		=> $args['bare'] === '1' ? 'span' : 'p',
+				'[[number]]'	=> (string) $number,
+				'[[word]]'	=> $args['bare'] === '1' ? '' : ' '. self::_word( $appData, $number === 1 ? '/feature/search/count/hit' : '/feature/search/count/hits' ),
+			] );
+		}
+
+		/**
+		 *	A word of the site, as text escaped once: what the project's Texts panel says for the key in the language
+		 *	of the page
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					A key of the feature
+		 *
+		 *	@return 	string
+		 */
+		private static function _word( array &$appData, string $key ): string {
+			return \Nino\Components::escape( html_entity_decode( (string) ( \Nino\Html::getFills( $appData )['[['. $key. ']]'] ?? '' ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+		}
+
+		/**
+		 *	Replace search-results: what the call holds, once for each hit, the best first, in the round of a loop - the
+		 *	hit is the element, with the fields of its type and .score, and a component in it reads them as its source.
+		 *	Nothing is drawn round the rounds, so that a column stands in the row it was written in; the box of a hit that
+		 *	is in the language of another is taken out of the layout by the part. A search with no hit says so where the
+		 *	call has a text for it. A list inside a list draws nothing, so that the number of rounds is the limit and not its
+		 *	square
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The arguments made ready by the register
+		 *	@param		string		$content			''
+		 *	@param		array			$context			The place the call stands in, with the children
+		 *
+		 *	@return 	string
+		 */
+		public static function componentSearchResults( array &$appData, array $args, string $content, array $context ): string {
+
+			$types = self::_asked( $appData, $args );
+			$query = self::query( $appData, self::_key( $args ) );
+
+			// Nothing was asked, so there is nothing to say - which is a different thing from having asked and found nothing
+			if( $query === '' || $types === [] || isset( $appData[self::DRAWING] ) === true )
+				return '';
+
+			$elements = self::getElements( $appData, $types, $query, min( max( 1, (int) $args['limit'] ), self::RESULTS_MAX ) );
+
+			if( $elements === [] )
+				return self::_empty( $appData, $args );
+
+			$nodes = self::_unid( $appData, (array) $context['children'] );
+			$round = $context;
+			$models = [];
+			$scored = [];
+			$html = '';
+
+			$appData[self::DRAWING] = true;
+
+			try {
+
+				foreach( $elements as $index => $element ) {
+
+					$type = (string) $element['.type'];
+
+					// A field of the type called score is the type's: the number of the match is only there where the type has none
+					$models[$type] ??= \Nino\Elements::getElementModel( $appData, $type );
+
+					if( isset( $models[$type]['score'] ) === false ) {
+						$models[$type]['score'] = [ 'type' => 'string' ];
+						$scored[$type] = true;
+					}
+
+					if( isset( $scored[$type] ) === true )
+						$element['score'] = (string) round( (float) $element['.score'], 3 );
+
+					$round['element'] = [ 'uri' => $type, 'id' => $index, 'element' => $element, 'model' => $models[$type] ];
+					$round['fills'] = array_map( 'strval', \Nino\Modules\Elements::fills( $element, $models[$type], $index ) ) + ( is_array( $context['fills'] ?? null ) === true ? $context['fills'] : [] );
+
+					$drawn = \Nino\Components::render( $appData, $nodes, $round );
+					$lang = self::_lang( $element, $models[$type] );
+
+					$html .= $lang === '' ? $drawn : strtr( self::$html['hit'], [ '[[lang]]' => $lang, '[[content]]' => $drawn ] );
+				}
+			}
+			finally {
+				unset( $appData[self::DRAWING] );
+			}
+
+			return $html;
+		}
+
+		/**
+		 *	What stands where a search found nothing: the text of the call, else the word of the feature
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					What the renderer was handed
+		 *
+		 *	@return 	string
+		 */
+		private static function _empty( array &$appData, array $args ): string {
+
+			$text = trim( (string) $args['empty'] );
+
+			if( $text === '' )
+				$text = self::_word( $appData, '/feature/search/results/empty' );
+
+			return $text === '' ? '' : str_replace( '[[text]]', $text, self::$html['empty'] );
+		}
+
+		/**
+		 *	The lang attribute of a hit: the tag of the one language all the text of the element is from where that is
+		 *	not the language of the page. An element that took a field from another language and keeps the rest in its
+		 *	own has no one language, and says nothing
+		 *
+		 *	@param		array			$element			As getElements() answers it, with '.langs'
+		 *	@param		array			$model				The model of the type
+		 *
+		 *	@return 	string										' lang="de-DE"', or ''
+		 */
+		private static function _lang( array $element, array $model ): string {
+
+			$langs = is_array( $element['.langs'] ?? null ) === true ? $element['.langs'] : [];
+			$tags = array_unique( array_values( $langs ) );
+
+			if( count( $tags ) !== 1 || is_string( $tags[0] ) === false || $tags[0] === '' )
+				return '';
+
+			// Every per-language field the element has a text for is one of those that were taken
+			foreach( $model as $field => $declared )
+				if( is_array( $declared ) === true && ( $declared['locale'] ?? false ) === true && is_scalar( $element[$field] ?? null ) === true && trim( (string) $element[$field] ) !== '' && isset( $langs[$field] ) === false )
+					return '';
+
+			return str_replace( '[[lang]]', \Nino\Components::escape( $tags[0] ), self::$html['lang'] );
+		}
+
+		/**
+		 *	The nodes of a loop without the ids of what they hold: an id would stand once for each hit in the page, and a
+		 *	~name of it reads the section outside the loop. Which attribute is an id is the register's to say
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes
+		 *
+		 *	@return 	array
+		 */
+		private static function _unid( array &$appData, array $nodes ): array {
+
+			$ids = [];
+
+			foreach( \Nino\Components::components( $appData ) as $name => $schema )
+				foreach( $schema['attributes'] as $attribute => $declared )
+					if( $declared['type'] === 'id' )
+						$ids[$name][] = $attribute;
+
+			$strip = static function( array $nodes ) use ( &$strip, $ids ): array {
+
+				foreach( $nodes as $at => $node ) {
+
+					if( is_array( $node ) === false || isset( $node['n'] ) === false )
+						continue;
+
+					foreach( (array) ( $ids[(string) $node['n']] ?? [] ) as $attribute )
+						unset( $nodes[$at]['a'][$attribute] );
+
+					if( is_array( $node['c'] ?? null ) === true )
+						$nodes[$at]['c'] = $strip( $node['c'] );
+				}
+
+				return $nodes;
+			};
+
+			return $strip( $nodes );
 		}
 
 		/**
@@ -358,18 +667,71 @@ namespace Nino\Modules {
 
 			$types = self::_configuredTypes( $appData );
 			$locale = \Nino\Locales::getCurrentLocale( $appData );
+			$wanted = [];
+
+			foreach( is_array( $elementType ) === true ? $elementType : [ $elementType ] as $one )
+				if( ( $typeUri = self::typeUri( $one ) ) !== null && isset( $types[$typeUri] ) === true )
+					$wanted[$typeUri] = true;
+
+			/*	The ranking of one request is made once: a page with the number of the hits and their list asks for it twice,
+				and the one is the other's count. The key is what the ranking depends on; a write of an index or of the
+				index drops it (forget()). The hook is no part of the key: one that is registered after the first search of
+				a request does not reach that request - the features register theirs in init(), before a page is drawn.
+				A key that cannot be made ends the request, and is never one that two searches share	*/
+			$key = json_encode( [ $locale, array_keys( $wanted ), $query, $types ], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE );
+
+			if( ( $appData[self::RANKED][0] ?? null ) !== $key )
+				$appData[self::RANKED] = [ $key, self::_rank( $appData, array_keys( $wanted ), $types, $locale, $query, $tokens ) ];
+
+			$hits = $appData[self::RANKED][1];
+
+			$offset = max( 0, $offset );
+
+			return $limit > 0 ? array_slice( $hits, $offset, $limit ) : array_slice( $hits, $offset );
+		}
+
+		/**
+		 *	Drop the ranking a request has kept: an index or the configuration was written
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	void
+		 */
+		public static function forget( array &$appData ): void {
+			unset( $appData[self::RANKED] );
+		}
+
+		/**
+		 *	The whole ranked list of the types for one query, after the hook has taken from it what a visitor may not
+		 *	find. Of an index only the places whose field is the one the configuration names for the place today are
+		 *	read: an index that was made out of other fields - one a field was taken out of, and nobody has rebuilt - shows
+		 *	less and never more than the choice allows
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$typeUris			Canonical, configured types
+		 *	@param		array			$types				Configured type => priority => field
+		 *	@param		string		$locale
+		 *	@param		string		$query				Normalised
+		 *	@param		array			$tokens				Its words, at most MAX_QUERY_TOKENS
+		 *
+		 *	@return 	array										[ uri, type, score, coverage, matched, fields ], best first
+		 */
+		private static function _rank( array &$appData, array $typeUris, array $types, string $locale, string $query, array $tokens ): array {
+
 			$hits = [];
 
-			foreach( is_array( $elementType ) === true ? $elementType : [ $elementType ] as $wanted ) {
+			foreach( $typeUris as $typeUri ) {
 
-				$typeUri = self::typeUri( $wanted );
+				$index = self::_readIndex( $appData, $typeUri );
+				$documents = $index[$locale] ?? null;
+				$made = is_array( $index[self::META]['fields'] ?? null ) === true ? $index[self::META]['fields'] : [];
+				$chosen = [];
 
-				if( $typeUri === null || isset( $types[$typeUri] ) === false )
-					continue;
+				foreach( $types[$typeUri] as $priority => $field )
+					if( ( $made[$priority] ?? null ) === $field )
+						$chosen[$priority] = true;
 
-				$documents = self::_readIndex( $appData, $typeUri )[$locale] ?? null;
-
-				if( is_array( $documents ) === false )
+				if( is_array( $documents ) === false || $chosen === [] )
 					continue;
 
 				foreach( $documents as $uri => $fields ) {
@@ -377,7 +739,7 @@ namespace Nino\Modules {
 					if( is_string( $uri ) === false || is_array( $fields ) === false )
 						continue;
 
-					$hit = self::_score( $fields, $query, $tokens );
+					$hit = self::_score( array_intersect_key( $fields, $chosen ), $query, $tokens );
 
 					if( $hit !== null )
 						$hits[] = [ 'uri' => $uri, 'type' => $typeUri ] + $hit;
@@ -389,8 +751,8 @@ namespace Nino\Modules {
 				return $score !== 0 ? $score : strcmp( $a['uri'], $b['uri'] );
 			} );
 
-			/*	Before the page is cut, so that the count, the paging, the endpoint, both
-				shortcodes and the panel's probe all see the one list. A callback can only
+			/*	Before the page is cut, so that the count, the paging, the endpoint, the
+				components and the panel's probe all see the one list. A callback can only
 				take hits away: of what it answers, the entries that match one handed out
 				(by uri and type) stay, as they were ranked and in that order - what it
 				adds or alters is not read, and a list that is none is no result, so a
@@ -403,11 +765,7 @@ namespace Nino\Modules {
 				if( is_array( $hit ) === true && is_string( $hit['uri'] ?? null ) === true && is_string( $hit['type'] ?? null ) === true )
 					$kept[ $hit['type']. "\0". $hit['uri'] ] = true;
 
-			$hits = array_values( array_filter( $hits, static fn( array $hit ): bool => isset( $kept[ $hit['type']. "\0". $hit['uri'] ] ) ) );
-
-			$offset = max( 0, $offset );
-
-			return $limit > 0 ? array_slice( $hits, $offset, $limit ) : array_slice( $hits, $offset );
+			return array_values( array_filter( $hits, static fn( array $hit ): bool => isset( $kept[ $hit['type']. "\0". $hit['uri'] ] ) ) );
 		}
 
 		/**
@@ -470,7 +828,7 @@ namespace Nino\Modules {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										/type => [ fields, issues ], sorted
+		 *	@return 	array										/type => [ fields, issues ], sorted; an issue is [ code, argument, … ], which the panel words in the language of the workbench
 		 */
 		public static function configuration( array &$appData ): array {
 
@@ -488,7 +846,7 @@ namespace Nino\Modules {
 				if( $typeUri === null ) {
 					// An array key is an int or a string, so it is always printable
 					$types['?'. (string) $rawType] = [
-						'fields' => [], 'issues' => [ 'not an element type name' ],
+						'fields' => [], 'issues' => [ [ 'name' ] ],
 					];
 					continue;
 				}
@@ -496,13 +854,13 @@ namespace Nino\Modules {
 				$entry = [ 'fields' => [], 'issues' => [] ];
 
 				if( is_array( $rawFields ) === false ) {
-					$entry['issues'][] = 'the entry is not a list of fields';
+					$entry['issues'][] = [ 'list' ];
 					$types[$typeUri] = $entry;
 					continue;
 				}
 
 				if( \Nino\Filesystem::fileExists( $appData, '/elements/'. ltrim( $typeUri, '/' ). '.php' ) === false ) {
-					$entry['issues'][] = 'there is no element type "'. $typeUri. '"';
+					$entry['issues'][] = [ 'notype', $typeUri ];
 					$types[$typeUri] = $entry;
 					continue;
 				}
@@ -512,17 +870,17 @@ namespace Nino\Modules {
 				foreach( $rawFields as $priority => $field ) {
 
 					if( is_int( $priority ) === false || isset( self::WEIGHTS[$priority] ) === false ) {
-						$entry['issues'][] = 'priority "'. (string) $priority. '" is not 0, 1, 2 or 3';
+						$entry['issues'][] = [ 'priority', (string) $priority ];
 						continue;
 					}
 
 					if( is_string( $field ) === false ) {
-						$entry['issues'][] = 'priority '. $priority. ' does not name a field';
+						$entry['issues'][] = [ 'noname', (string) $priority ];
 						continue;
 					}
 
 					if( $field !== self::URI_FIELD && isset( $model[$field] ) === false ) {
-						$entry['issues'][] = 'the model of "'. $typeUri. '" has no field "'. $field. '"';
+						$entry['issues'][] = [ 'nofield', $typeUri, $field ];
 						continue;
 					}
 
@@ -530,7 +888,7 @@ namespace Nino\Modules {
 				}
 
 				if( $entry['fields'] === [] && $entry['issues'] === [] )
-					$entry['issues'][] = 'no field is named';
+					$entry['issues'][] = [ 'none' ];
 
 				ksort( $entry['fields'] );
 				$types[$typeUri] = $entry;
@@ -609,6 +967,8 @@ namespace Nino\Modules {
 				// text to search (see _normalizeValue)
 				'model' 		=> array_merge( [ self::URI_FIELD ], array_values( array_filter( array_keys( $model ),
 										static fn( string $field ): bool => in_array( (string) ( $model[$field]['type'] ?? 'string' ), self::INDEXABLE, true ) === true ) ) ),
+				// What the model calls a field, where it says so: the panel words a field by it
+				'labels' 		=> array_filter( array_map( static fn( mixed $field ): mixed => is_array( $field ) === true && is_string( $field['label'] ?? null ) === true ? $field['label'] : null, $model ), static fn( mixed $label ): bool => is_string( $label ) === true && $label !== '' ),
 				'elements' 	=> count( array_diff( array_unique( $slugs ), [ '*' ] ) ),
 			];
 		}
@@ -761,6 +1121,7 @@ namespace Nino\Modules {
 		 *	@return 	bool										Whether it was written
 		 */
 		private static function _writeIndex( array &$appData, string $typeUri, array $index ): bool {
+			self::forget( $appData );
 			return \Nino\Filesystem::putFileContent( $appData, self::_indexPath( $typeUri ), $index );
 		}
 
@@ -800,6 +1161,8 @@ namespace Nino\Modules {
 		public static function removeIndex( array &$appData, string $typeUri ): bool {
 
 			$path = \Nino\Filesystem::path( $appData, self::_indexPath( $typeUri ) );
+
+			self::forget( $appData );
 
 			return is_file( $path ) === true && @unlink( $path ) === true;
 		}

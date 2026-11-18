@@ -12,27 +12,21 @@ namespace Nino\Modules\Search {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Search\Admin			The "Search" panel. Up to 1.0.0 this was one button and
-	 *										nothing else: it rebuilt the indexes and reported a
-	 *										number. Everything the button could not say had to be
-	 *										worked out from config.php by hand - which types are
-	 *										indexed, whether the index still answers to them, why a
-	 *										configured type produces no hits, and whether the
-	 *										ranking does what somebody wanted.
-	 *
-	 *										Three screens now:
+	 *	Search\Admin			The "Search" panel. Three tabs and a view:
 	 *
 	 *										  Index		one row per element type the project has, with
-	 *														what it indexes, both counts and its state
-	 *										  Type		the four priority slots, each a select over
-	 *														the type's own model - a field name cannot be
-	 *														mistyped into a slot any more
-	 *										  Probe		a query, and the hits with their scores
+	 *														both counts and its state, and the buttons that
+	 *														rebuild an index
+	 *										  Types		the same rows with the fields their index holds;
+	 *														a type opens a view of its own with a checklist
+	 *														of the fields of its model, the order they are
+	 *														ticked in being their priority
+	 *										  Try it		a query, and the hits with their scores
 	 *
 	 *										The last of those is the one that earns its keep: this
 	 *										is a ranking feature, and a ranking is invisible. Move
-	 *										a field from priority 1 to 0 and the order changes on
-	 *										screen, in the same panel, without a page to test it on.
+	 *										a field to the front and the order changes on screen,
+	 *										in the same panel, without a page to test it on.
 	 *
 	 *										Saving writes /nino/elements/index in config.php. That
 	 *										key had no editor at all before, which is the one case
@@ -104,19 +98,18 @@ namespace Nino\Modules\Search {
 			];
 		}
 
+		// The sign of the rail entry: Lucide search, geometry and no view
 		public static function icon(): string {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search-code-icon lucide-search-code"><path d="m13 13.5 2-2.5-2-2.5"/><path d="m21 21-4.3-4.3"/><path d="M9 8.5 7 11l2 2.5"/><circle cx="11" cy="11" r="8"/></svg>';
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.3-4.3"/><circle cx="11" cy="11" r="8"/></svg>';
 		}
 
+		// The list with its three tabs, and the fields of one type: two levels of the pane, one shown at a time
 		public static function panes(): array {
-			return [ 'search-list', 'search-type', 'search-probe' ];
+			return [ 'search-list', 'search-type' ];
 		}
 
 		public static function assets(): array {
-			return [
-				\Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.js' ),
-				\Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.css' ),
-			];
+			return [ \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin.js' ) ];
 		}
 
 		// The panel's own strings, one <locale>.php per interface language
@@ -127,13 +120,14 @@ namespace Nino\Modules\Search {
 		public static function log( string $action, array $data ): string {
 			return match( $action ) {
 				'search/createindex'	=> 'Rebuild Search Index',
-				'search/save'					=> 'Configure Search Index'. ( is_string( $data['type'] ?? null ) === true ? ' ('. $data['type']. ')' : '' ),
+				// The type as the engine reads a name - what a person posted is never written into the log as it is, and a probe, whose words are a visitor's kind of input, is not logged at all
+				'search/save'					=> 'Configure Search Index ('. ( \Nino\Modules\Search::typeUri( $data['type'] ?? null ) ?? '?' ). ')',
 				default	=> '',
 			};
 		}
 
 		/**
-		 *	Everything the Index screen draws
+		 *	Everything the screens draw
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -152,7 +146,6 @@ namespace Nino\Modules\Search {
 				// ranking does not use
 				'weights' 	=> \Nino\Modules\Search::WEIGHTS,
 				'indexable' => \Nino\Modules\Search::INDEXABLE,
-				'locales' 	=> \Nino\Locales::getAvailableLocales( $appData ),
 			] );
 		}
 
@@ -254,10 +247,8 @@ namespace Nino\Modules\Search {
 			ksort( $config );
 			$appData[self::CONFIG] = $config;
 
-			if( \Nino\AppData::writeContentData( $appData, [ self::CONFIG ] ) === false ) {
-				\Nino\Http::fail( $request, 500, 'could not write '. self::CONFIG. ' to config.php' );
-				return;
-			}
+			// A write that cannot be made ends the request itself (\Nino\Runtime::fail()), so there is no answer to check
+			\Nino\AppData::writeContentData( $appData, [ self::CONFIG ] );
 
 			// Configured is not indexed: the rebuild is its own decision, and
 			// the screen says which of the two just happened

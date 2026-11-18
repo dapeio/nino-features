@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Suchseite", "en_US": "Search page" },
+	"description": { "de_DE": "Eine Überschrift, das Suchfeld, die Zahl der Treffer und die Liste der Treffer darunter.", "en_US": "A headline, the search field, the number of hits and the list of hits below it." },
+	"category": "content",
+	"rank": 70,
+	"images": {}
+}

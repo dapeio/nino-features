@@ -1,0 +1,22 @@
+/*	search - the standard part: the field with its button, the number of hits, and the box of a hit in another language and the sentence for none, which take no room of their own	*/
+:root {
+	--search-form-radius: var(--page-radius);
+	--search-form-gap: var(--page-space-2);
+}
+.search-form { display: flex; align-items: stretch; gap: var(--search-form-gap); width: 100%; max-width: 32rem; margin: 0; }
+.search-form-field { position: relative; display: flex; flex: 1 1 auto; min-width: 0; }
+.search-form-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset( 50% ); white-space: nowrap; }
+.search-form-input { box-sizing: border-box; flex: 1 1 auto; width: 100%; min-width: 0; min-height: 2.75rem; padding: var(--page-space-1) var(--page-space-2); border: var(--page-line) solid var(--brand-ink-quiet); border-radius: var(--search-form-radius); background: var(--brand-ground); color: var(--brand-ink); font: inherit; font-size: var(--page-text-2); }
+.search-form-input::placeholder { color: var(--brand-ink-quiet); opacity: 1; }
+.search-form-input:focus-visible, .search-form-button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.search-form-button { flex: 0 0 auto; min-height: 2.75rem; padding: var(--page-space-1) calc( var(--page-space-2) * 2 ); border: var(--page-line) solid var(--brand-accent); border-radius: var(--search-form-radius); background: var(--brand-accent); color: var(--brand-on-accent); font-family: var(--brand-font-button); font-size: var(--page-text-2); font-weight: 600; line-height: 1.2; cursor: pointer; }
+@media ( hover: hover ) {
+	.search-form-button:hover { filter: brightness( .9 ); }
+}
+
+.search-count { margin: 0; color: var(--brand-ink-quiet); }
+.search-count--bare { display: inline; }
+.search-count-number { font-weight: 600; color: var(--brand-ink); }
+
+.search-results-hit { display: contents; }
+.search-results-empty { flex: 0 0 auto; width: 100%; margin: 0; color: var(--brand-ink-quiet); }

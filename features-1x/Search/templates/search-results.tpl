@@ -1,1 +1,0 @@
-<[[tag]] class="nino-search-results[[classes]]">[[inner]]</[[tag]]>

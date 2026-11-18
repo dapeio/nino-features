@@ -1,0 +1,8 @@
+[section-wrap ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title tag="h2" size="m" text="Search the site"]
+			[search-form]
+		[/section-col]
+	[/section-row]
+[/section-wrap]
