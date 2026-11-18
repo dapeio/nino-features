@@ -1336,4 +1336,63 @@ foreach( $catalogue as $dir ) {
 
 check( 'the blocks of the catalogue that name variants - the contact form and the list over elements - have two or three, the first of them the template as it is, labels in both languages, and set only the looks that the register takes as classes', array_values( $sound ) === [ true, true ] );
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nI. The seam for a second panel\n";
+
+// the two steps of saving a block as a block of the library are public and each is its own: the parts from the tree of a block - nothing written -, and the parts held to the one rule of the
+// kernel and written - nothing written for what it refuses
+ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-seam.tpl', "<!-- nino:template-name Seam -->\n[template /templates/html-header]\n[section-wrap id=\"seam\"]\n\t[section-row]\n\t\t[section-col]\n\t\t\t[section-title ~title tag=\"h2\"]\n\t\t\t[text ~text]\n\t\t[/section-col]\n\t[/section-row]\n[/section-wrap]\n[template /templates/html-footer]\n" );
+\Nino\Text::put( $site, [ '/template/page-seam/seam/title' => [ 'de_DE' => 'Eine Naht', 'en_US' => 'A seam' ], '/template/page-seam/seam/text' => [ 'de_DE' => 'Zwei Seiten', 'en_US' => 'Two sides' ] ] );
+[ , $seamOpen ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-seam' ] );
+$seamState = \Nino\Modules\Builder\Store::state( $site, 'page-seam' );
+$seamAt = (string) array_search( 'seam', array_map( static fn( array $node ): string => (string) ( $node['a']['id'] ?? '' ), $seamOpen['tree'] ), true );
+$seamInput = [ 'at' => $seamAt, 'key' => 'seam-karten', 'name' => 'Naht', 'description' => 'Eine Naht', 'category' => 'content', 'texts' => [], 'pictures' => [] ];
+$beforeSeam = sourceSnapshot( $site );
+$seamParts = \Nino\Modules\Builder\Custom::parts( $site, 'page-seam', $seamState, $seamOpen['tree'], $seamInput );
+$meta = json_decode( (string) ( $seamParts['parts']['json'] ?? '' ), true );
+unset( $site['./nino/blocks/state'] );
+
+check( 'the parts of a block come from the tree of a block and nothing is written: the details of block.json in each language, the template with the id of the root, the words of each language - and a key, a name or a category that is none, or a place that is no block, is refused with its own code',
+	( $seamParts['key'] ?? '' ) === 'seam-karten' && ( $meta['name']['de_DE'] ?? '' ) === 'Naht' && ( $meta['category'] ?? '' ) === 'content' && str_starts_with( (string) $seamParts['parts']['tpl'], '[section-wrap id="seam"' ) && isset( $seamParts['parts']['texts']['de_DE'], $seamParts['parts']['texts']['en_US'] ) === true
+	&& sourceSnapshot( $site ) === $beforeSeam && isset( \Nino\Blocks::all( $site )['seam-karten'] ) === false
+	&& ( \Nino\Modules\Builder\Custom::parts( $site, 'page-seam', $seamState, $seamOpen['tree'], [ 'key' => 'Bad Key' ] + $seamInput )['failure'][2] ?? '' ) === 'builder_own_key'
+	&& ( \Nino\Modules\Builder\Custom::parts( $site, 'page-seam', $seamState, $seamOpen['tree'], [ 'category' => 'frame' ] + $seamInput )['failure'][2] ?? '' ) === 'builder_own_category'
+	&& ( \Nino\Modules\Builder\Custom::parts( $site, 'page-seam', $seamState, $seamOpen['tree'], [ 'at' => '999' ] + $seamInput )['failure'][2] ?? '' ) === 'builder_own_block' );
+
+$bad = $seamParts['parts'];
+$bad['tpl'] = "[nothing-like-this-call]\n";
+$beforeWrite = sourceSnapshot( $site );
+$refusedWrite = \Nino\Modules\Builder\Custom::write( $site, 'seam-bad', $bad );
+$seamWritten = \Nino\Modules\Builder\Custom::write( $site, 'seam-karten', $seamParts['parts'] );
+unset( $site['./nino/blocks/state'] );
+$again = \Nino\Modules\Builder\Custom::write( $site, 'seam-karten', $seamParts['parts'] );
+
+check( 'the parts are held to the rule of the kernel and written as a block of the project in the second step: what Blocks::validate() refuses is not written and nothing is left of it, a good block is listed by the kernel as the project\'s own, a key that is taken is refused with 409 and a key that is none with 400',
+	( $refusedWrite['failure'][2] ?? '' ) === 'builder_own_invalid' && is_dir( $sandbox. '/private/blocks/seam-bad' ) === false && $seamWritten === [ 'key' => 'seam-karten' ] && ( \Nino\Blocks::all( $site )['seam-karten']['origin'] ?? '' ) === 'project'
+	&& ( $again['failure'][0] ?? 0 ) === 409 && ( \Nino\Modules\Builder\Custom::write( $site, 'Bad Key', $seamParts['parts'] )['failure'][0] ?? 0 ) === 400 && array_keys( array_diff_key( sourceSnapshot( $site ), $beforeWrite ) ) !== [] );
+
+// the public drawer: the right is the caller's and has no default - a call that says no draws nothing - and a draft of one block is a source with one call
+$source = "[section-wrap id=\"seam\"]\n\t[section-title text=\"Naht\"]\n[/section-wrap]\n";
+$draft = [ 'template' => 'block-draft', 'source' => $source, 'fills' => [], 'locale' => 'en_US', 'slots' => [] ];
+$drawn = [];
+
+foreach( [ 'no right' => [ $draft, false ], 'two blocks' => [ [ 'source' => $source. $source ] + $draft, true ], 'free markup' => [ [ 'source' => $source. "<b>x</b>\n" ] + $draft, true ], 'no call' => [ [ 'source' => "\n" ] + $draft, true ], 'one block' => [ $draft, true ] ] as $label => [ $given, $allowed ] ) {
+
+	$appData = $site;
+	unset( $appData['./nino/preview/trace'] );
+	$request = [];
+	$answer = \Nino\Modules\Builder::drawBlock( $appData, $request, $given, $allowed );
+	$drawn[$label] = [ $answer, isset( $request['/nino/http/response']['locale'] ), ( $appData['./nino/preview/trace'] ?? false ) === true ];
+}
+
+// the general drawer, which the draft of a page is drawn by, has the same right as a parameter
+$appData = $site;
+unset( $appData['./nino/preview/trace'] );
+$request = [];
+$drawn['general, no right'] = [ \Nino\Modules\Builder::draw( $appData, $request, $draft, false, true ), isset( $request['/nino/http/response']['locale'] ), ( $appData['./nino/preview/trace'] ?? false ) === true ];
+
+check( 'the drawer of the draft of one block draws it with the trace only where the caller says the account may have it - and a source of two blocks, of free markup or of no call is not drawn: nothing of the language or the trace is set for any of them',
+	$drawn['one block'] === [ true, true, true ] && array_filter( $drawn, static fn( array $result, string $label ): bool => $label !== 'one block' && $result !== [ false, false, false ], ARRAY_FILTER_USE_BOTH ) === [] );
+
 ninoDone( $site );

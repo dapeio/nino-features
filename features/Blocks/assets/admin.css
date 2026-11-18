@@ -1,0 +1,50 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	Blocks						What the panel of the Blocks needs beyond the design system and the stylesheet of the Builder, whose rules for the list, the picture of a block and the
+ *										editor it shares by the id of its panel: the small picture in a row of the list. Scoped to the id of the panel.
+ *
+ *	@package					Dape/Nino
+ *	@author						David Perchermeier <mail@dape.io>
+ *	@link							https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+/* The picture of a block in a row of the list: as large as the tile of the dialog "Insert block" of the Builder, of which it is the same picture - the row is as high as it is */
+#blocks-app .blocks-tile {
+	width: 15rem;
+	max-width: 100%;
+}
+
+/* A narrow screen has less to spare: the picture is smaller, and the name is broken where it is long and never cut off */
+@media (max-width: 40rem) {
+
+	#blocks-app .blocks-tile {
+		width: 9rem;
+	}
+}
+
+/* The head of the column of the pictures is set as the heads of the others, which are the sort buttons of the table: it has none, a picture is not sorted */
+#blocks-app .nino-admin-table thead th[data-key="tile"] {
+	padding: var(--nino-admin-space-3) var(--nino-admin-space-5);
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-xs);
+	font-weight: var(--nino-admin-weight-strong);
+	letter-spacing: .04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+
+#blocks-app .builder-cell-name,
+#blocks-app .builder-cell-name > * {
+	min-width: 0;
+	max-width: 100%;
+	overflow: visible;
+	overflow-wrap: anywhere;
+	text-overflow: clip;
+	white-space: normal;
+}
+
+}

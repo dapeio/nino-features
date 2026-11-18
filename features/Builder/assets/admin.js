@@ -73,6 +73,8 @@
 	 */
 	const S = {
 		list			: null,
+		sheet			: 'page',
+		adapter		: null,
 		ready			: false,
 		saving		: false,
 		dropped		: null,
@@ -182,6 +184,11 @@
 
 	const word = function( key, ...params ) {
 		return Nino.adminUi.format( Nino.content.getText( '/_admin/builder/'+ key ), ...params );
+	};
+
+	// The word of a source that is the page's - or the block's, on the sheet of a block
+	const ownWord = function( page, block ) {
+		return S.adapter.sources === 'block' ? block : page;
 	};
 
 	const localized = function( value ) {
@@ -444,6 +451,9 @@
 	 *	@param		{boolean}	[reload]				false for a typed text
 	 */
 	const change = function( make, reload ) {
+
+		if( S.adapter.readOnly === true )
+			return;
 
 		const before = snap();
 
@@ -1266,7 +1276,7 @@
 
 		S.selected = keyAt( at );
 		rememberScroll();
-		Nino.admin.builder.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } );
+		S.adapter.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } );
 	};
 
 	// Roll the page in the frame to what a key names: the block, the head or the foot of the page
@@ -3146,7 +3156,7 @@
 	};
 
 	// The frame of a tile, once there is an address for it: the page with the block in it, laid out as a desktop lays it out and scaled into the box
-	const tileFrame = function( box, held ) {
+	const tileFrame = function( box, held, dir ) {
 
 		const frame = el( 'iframe', 'builder-tile-frame' );
 
@@ -3155,7 +3165,7 @@
 		frame.setAttribute( 'loading', 'lazy' );
 		frame.setAttribute( 'tabindex', '-1' );
 		frame.setAttribute( 'aria-hidden', 'true' );
-		frame.setAttribute( 'src', S.dir+ held.address+ ( held.address.indexOf('?') === -1 ? '?' : '&' )+ held.query );
+		frame.setAttribute( 'src', ( dir ?? S.dir )+ held.address+ ( held.address.indexOf('?') === -1 ? '?' : '&' )+ held.query );
 		box.appendChild( frame );
 		Nino.adminUi.scaleFrame( frame, box, TILE.width, TILE.height );
 	};
@@ -3165,20 +3175,24 @@
 	 *	drops the others, so what is held here is the newest as well
 	 *
 	 */
-	const tileAsk = function( box ) {
+	const tileAsk = function( box, adapter ) {
 
-		const key = box.dataset.block+ '|'+ S.locale;
+		// A panel that shows tiles outside of a sheet brings its adapter: the request goes through it, the tokens are kept apart from the page panel's, and its dir is the one the picture is asked at
+		const via = adapter ?? S.adapter;
+		const locale = adapter === undefined ? S.locale : adapter.base().locale;
+		const key = ( adapter === undefined ? '' : adapter.panel+ '|' )+ box.dataset.block+ '|'+ locale;
 		const held = S.tiles[key];
+		const dir = adapter === undefined ? S.dir : adapter.dir ?? S.dir;
 
 		if( box.querySelector('iframe') !== null )
 			return;
 
 		if( held !== undefined && Date.now() < held.until ) {
-			tileFrame( box, held );
+			tileFrame( box, held, dir );
 			return;
 		}
 
-		api( 'tile', { key : box.dataset.block, token : held === undefined ? '' : held.token }, function( status, response ) {
+		via.call( 'tile', Object.assign( via.base(), { key : box.dataset.block, token : held === undefined ? '' : held.token } ), function( status, response ) {
 
 			if( status !== 200 )
 				return;
@@ -3189,7 +3203,7 @@
 			Object.keys( S.tiles ).slice( 0, Math.max( 0, Object.keys( S.tiles ).length - TILES ) ).forEach( function( old ) { delete S.tiles[old] } );
 
 			if( box.isConnected !== false && box.querySelector('iframe') === null )
-				tileFrame( box, S.tiles[key] );
+				tileFrame( box, S.tiles[key], dir );
 		} );
 	};
 
@@ -3473,8 +3487,49 @@
 		} );
 	};
 
+	/**
+	 *	The sheet the editor works on: a page of the site - which is what the panel of the Builder opens - or a block, a draft whose top level is that one block and that has no page,
+	 *	no outline and no frames. Everything that takes the draft to a place - where the requests go and what they carry, where "back" leads, the address and the name of the
+	 *	panel, which level of the screen is shown, whether there is a last state - is the adapter's, so that another panel can work on a sheet of its own with the same
+	 *	code. The adapter of a page is what the panel has always done
+	 *
+	 *	@return		{Object}									{ panel, level, call( action, payload, done, extra ), base(), go( parts, options ), href( parts ), set( parts ), show(), back( advanced ), fail( level, status, response ), restore } - and, for a sheet that is
+	 *														not a page: readOnly (nothing of it is changed), sources: 'block' (the dialog of a source offers what a block can carry), uploads: false (a picture
+	 *														is no file here), buttons ([ { key, label, name, onPress } ] more of the bar), reload() (what the conflict of a save does to load the sheet again), code (what stands quietly behind the name in the title: the key of the block)
+	 */
+	const pageAdapter = {
+		panel		: 'builder',
+		level		: 'builder-page',
+		restore	: true,
+		call		: function( action, payload, done, extra ) { Nino.admin.builder.call( action, payload, done, extra ) },
+		base		: function() { return { template : S.template, locale : S.locale } },
+		go			: function( parts, options ) { Nino.admin.builder.go( parts, options ) },
+		href		: function( parts ) { return Nino.admin.router.href( 'builder', parts ) },
+		set			: function( parts ) { Nino.admin.router.set( 'builder', parts ) },
+		show		: function() { Nino.adminUi.showLevel( 'builder-page', { focus : false } ) },
+		fail		: function( level, status, response ) { Nino.admin.builder.fail( level, status, response ) },
+
+		// Where "back" goes from the view, the name it says and whether it keeps the draft: the extended view of a page is one draft with the page; that of a frame
+		// goes to where it was opened from - the list, a page or the view of the frame itself, the address of which is S.origin - and, where it is not known (an
+		// address that was typed or reloaded), to the page the address shows the frame on. The page that is left is asked about first (go() guards it)
+		back		: function( advanced ) {
+
+			if( advanced === false )
+				return { parts : [], name : word('label/pages'), keep : false, block : false };
+
+			if( S.frame === false )
+				return { parts : [ S.adv.slug ], name : nameOfPage( S.template ), keep : true, block : true };
+
+			const parts = S.origin ?? [ S.page !== '' ? S.page : addressOf( S.template ) ];
+
+			return { parts : parts, name : parts.length === 0 ? word('label/pages') : nameOfPage( templateOf( parts[0] ) ), keep : false, block : parts[0] === addressOf( S.template ) };
+		},
+	};
+
+	S.adapter = pageAdapter;
+
 	const api = function( action, payload, done, extra ) {
-		Nino.admin.builder.call( action, Object.assign( { template : S.template, locale : S.locale }, payload ), done, extra );
+		S.adapter.call( action, Object.assign( S.adapter.base(), payload ), done, extra );
 	};
 
 	// The pictures a person chose, as the server takes them: the slot a source reads and the file that was made for it
@@ -3516,7 +3571,8 @@
 		S.typeTitles = response.titles ?? S.typeTitles;
 		S.links = response.links ?? S.links;
 		learn( response.schemas ?? {} );
-		S.texts = response.texts;
+		// An answer with no texts is an empty list in JSON: the texts are a map, and a text that is typed is a key of it
+		S.texts = Array.isArray( response.texts ) === true || response.texts === undefined || response.texts === null ? {} : response.texts;
 		S.known = Object.assign( {}, S.known, response.known );
 		S.stamp = response.stamp;
 		S.last = response.last ?? 0;
@@ -3611,7 +3667,7 @@
 						S.force = true;
 						S.view.bar.press();
 					},
-					onReload		: function() { openPage( S.target, S.origin, function() {} ) },
+					onReload		: function() { typeof S.adapter.reload === 'function' ? S.adapter.reload() : openPage( S.target, S.origin, function() {} ) },
 					onCancel		: function() { S.view.bar.line.dirty() },
 				} );
 				return;
@@ -3681,6 +3737,10 @@
 	// in the new one at the place it was left. A page that Discard closed on the way is opened again
 	const followLanguage = function( locale ) {
 
+		// A sheet of a block is the panel's that brought it: that panel follows the language, and there is no page here to open again
+		if( S.sheet === 'block' )
+			return;
+
 		if( S.ready === false ) {
 
 			const left = S.dropped;
@@ -3723,20 +3783,9 @@
 		return advanced === true ? Object.assign( {}, LAYOUT, { desktop : DESKTOP } ) : LAYOUT;
 	};
 
-	// Where "back" goes from the view, the name it says and whether it keeps the draft: the extended view of a page is one draft with the page; that of a frame
-	// goes to where it was opened from - the list, a page or the view of the frame itself, the address of which is S.origin - and, where it is not known (an
-	// address that was typed or reloaded), to the page the address shows the frame on. The page that is left is asked about first (go() guards it)
+	// Where "back" goes from the view: the adapter of the sheet says
 	const backOf = function( advanced ) {
-
-		if( advanced === false )
-			return { parts : [], name : word('label/pages'), keep : false, block : false };
-
-		if( S.frame === false )
-			return { parts : [ S.adv.slug ], name : nameOfPage( S.template ), keep : true, block : true };
-
-		const parts = S.origin ?? [ S.page !== '' ? S.page : addressOf( S.template ) ];
-
-		return { parts : parts, name : parts.length === 0 ? word('label/pages') : nameOfPage( templateOf( parts[0] ) ), keep : false, block : parts[0] === addressOf( S.template ) };
+		return S.adapter.back( advanced );
 	};
 
 	// What the page in the frame stands for, for the switchboard between the views: the elements of a block by its key, and the key of the block an element is part of
@@ -3800,7 +3849,7 @@
 			S.refocus = { at : rootAt(), action : 'advanced', from : 'outline' };
 		}
 
-		Nino.admin.builder.go( way.parts, advanced === true && way.block === false ? { focus : S.frame === true ? 'frames' : 'page' } : undefined );
+		S.adapter.go( way.parts, advanced === true && way.block === false ? { focus : S.frame === true ? 'frames' : 'page' } : undefined );
 	};
 
 	// The frames of the site are two pages of their own, which a page does not hold: one icon beside its name asks which of them
@@ -3815,7 +3864,7 @@
 			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
 			size		: 'narrow',
 			opener	: opener,
-			onChoose	: function( part ) { Nino.admin.builder.go( [ addressOf( S.template ), part ], { focus : 'back' } ) },
+			onChoose	: function( part ) { S.adapter.go( [ addressOf( S.template ), part ], { focus : 'back' } ) },
 		} );
 	};
 
@@ -3864,11 +3913,11 @@
 
 		const context = Nino.adminUi.contextBar( {
 			panel	: Nino.adminUi.panelName( level ),
-			title	: advanced === true ? blockTitle() : S.name,
-			code	: advanced === true ? '' : S.template+ '.tpl',
+			title	: S.sheet === 'block' ? S.name : ( advanced === true ? blockTitle() : S.name ),
+			code	: S.sheet === 'block' ? ( S.adapter.code ?? '' ) : ( advanced === true ? '' : S.template+ '.tpl' ),
 			back	: {
 				to			: way.name,
-				href		: Nino.admin.router.href( 'builder', home ),
+				href		: S.adapter.href( home ),
 				onClick	: function() { leaveExtended( advanced, way ) },
 			},
 			icons	: icons,
@@ -3889,7 +3938,7 @@
 			buttons	: [
 				{ key : 'undo', label : word('label/undo'), name : word('label/undo'), onPress : function() { undo(); settle2( 'undo', 'redo' ) } },
 				{ key : 'redo', label : word('label/redo'), name : word('label/redo'), onPress : function() { redo(); settle2( 'redo', 'undo' ) } },
-			],
+			].concat( S.adapter.buttons ?? [] ),
 			onSave		: save,
 			onRestore	: askRestore,
 		} );
@@ -3898,6 +3947,12 @@
 		bar.buttons.redo.insertBefore( Nino.adminUi.icon('redo-2'), bar.buttons.redo.firstChild );
 		buttons.undo = bar.buttons.undo;
 		buttons.redo = bar.buttons.redo;
+
+		( S.adapter.buttons ?? [] ).forEach( function( extra ) { buttons[extra.key] = bar.buttons[extra.key] } );
+
+		// A sheet that is only looked at has nothing to save
+		if( S.adapter.readOnly === true )
+			bar.save.hidden = true;
 
 		// The outline: the blocks of the page as a tree - the place above the first one where the page has no head, and below it the rows -, in the column at the left of the surface
 		if( advanced === false ) {
@@ -4046,7 +4101,7 @@
 		level.appendChild( split.el );
 		level.appendChild( bar.el );
 
-		if( typeof Nino.admin.dirty === 'object' ) Nino.admin.dirty.register( 'builder', bar.entry( { discard : dropDraft, saving : function() { return S.saving === true } } ) );
+		if( typeof Nino.admin.dirty === 'object' ) Nino.admin.dirty.register( S.adapter.panel, bar.entry( { discard : dropDraft, saving : function() { return S.saving === true } } ) );
 
 		if( advanced === true )
 			drawLeft();
@@ -4114,12 +4169,112 @@
 	};
 
 	/**
+	 *	Open a sheet of the kind block: a draft whose top level is one block, with no page, no outline and no frames. The panel that works on it brings its adapter - where
+	 *	the requests go, where "back" leads, the name of the panel - and the draft in the form of the answer of an opened page: tree, texts, sources, schemas, known,
+	 *	images, slots, stamp, level, locale. The tree view of that block is drawn into the level the adapter names, with the line of its path, the marks that join the views, the
+	 *	frame with the page of the block, the lightbox of its components and the steps of Undo
+	 *
+	 *	@param		{Object}		adapter				As pageAdapter, with template (the name its words are filed under), name and, where the address has a first part, slug
+	 *	@param		{Object}		draft					The answer of an opened page, for one block
+	 *
+	 *	@return		{boolean}									Whether the sheet is open: false where the draft has no block
+	 */
+	const openSheet = function( adapter, draft ) {
+
+		leaveView();
+		release();
+
+		const page = dc.getElementById('builder-page');
+
+		if( page !== null && adapter.level !== 'builder-page' )
+			page.innerHTML = '';
+
+		S.sheet = 'block';
+		S.adapter = adapter;
+		S.ready = false;
+		S.built = false;
+		S.template = adapter.template;
+		S.page = '';
+		S.origin = null;
+		S.named = {};
+		S.selected = '';
+		S.frame = false;
+		S.staged = [];
+		S.dir = draft.dir ?? '';
+		S.dim = draft.dim ?? 'frame';
+		S.address = draft.address ?? '/';
+		S.locale = draft.contentLocale ?? draft.locale ?? S.locale;
+		S.fresh = draft.fresh ?? {};
+		S.locales = draft.locales ?? [];
+		S.native = draft.native ?? '';
+		S.catalog = null;
+		S.tiles = {};
+		S.undo = [];
+		S.redo = [];
+		S.name = adapter.name ?? '';
+		take( draft );
+
+		const block = S.top.find( function( node ) { return kindOf( node ) === 'block' } );
+
+		if( block === undefined || idOf( block ) === '' )
+			return false;
+
+		S.adv = { slug : adapter.slug ?? '', block : idOf( block ) };
+		S.mode = 'advanced';
+		S.tree = null;
+		S.mark = null;
+		S.ready = true;
+		S.stale = true;
+		S.target = null;
+		build( dc.getElementById( adapter.level ) );
+		S.built = true;
+		adapter.show();
+		S.at = partsOf();
+		adapter.set( S.at );
+
+		return true;
+	};
+
+	// The sheet is left: the editor is the page panel's again, with nothing open
+	const closeSheet = function() {
+
+		if( S.sheet === 'page' )
+			return;
+
+		leaveView();
+		release();
+
+		// What the sheet drew is no more: a view of the page that is drawn next has the ids of the bar and the split to itself
+		const drawn = dc.getElementById( S.adapter.level );
+
+		if( drawn !== null )
+			drawn.innerHTML = '';
+
+		S.sheet = 'page';
+		S.adapter = pageAdapter;
+		S.ready = false;
+		S.built = false;
+		S.view = null;
+		S.adv = null;
+		S.mode = 'basic';
+		S.template = '';
+		S.top = [];
+		S.undo = [];
+		S.redo = [];
+		S.found = null;
+		S.tree = null;
+		S.box = null;
+	};
+
+	/**
 	 *	Open a template: the page as the server has it, drawn on the screen, its draft asked for
 	 *
 	 *	@param		{Array|null}	origin				The address the extended view of a frame goes back to; null where that is the page the address shows it on
 	 *	@param		{Function}	done					Called with whether it was opened
 	 */
 	const openPage = function( target, origin, done ) {
+
+		closeSheet();
 
 		const template = target.template;
 
@@ -4216,7 +4371,7 @@
 	 */
 	const show = function( target ) {
 
-		const level = dc.getElementById('builder-page');
+		const level = dc.getElementById( S.adapter.level );
 		const was = S.adv;
 		let mode = target.mode;
 		let because = '';
@@ -4255,10 +4410,10 @@
 			paint();
 		}
 
-		Nino.adminUi.showLevel( 'builder-page', { focus : false } );
+		S.adapter.show();
 
 		S.at = mode === 'basic' ? [ addressOf( S.template ) ] : partsOf();
-		Nino.admin.router.set( 'builder', S.at );
+		S.adapter.set( S.at );
 
 		if( because !== '' )
 			told( because );
@@ -4509,6 +4664,10 @@
 
 		const list = [];
 		const title = titleOfRel( rel );
+
+		// A sheet that is only looked at has the properties of a component to read and nothing to do with it
+		if( S.adapter.readOnly === true )
+			return editable === true ? [ { key : 'edit', icon : 'pencil', name : word( 'label/edit-component', title ) } ] : [];
 
 		if( container === true )
 			list.push( { key : 'add', icon : 'plus', name : word( 'label/add-in', title ) } );
@@ -4810,6 +4969,9 @@
 
 	const moveComponent = function( rel, direction ) {
 
+		if( S.adapter.readOnly === true )
+			return false;
+
 		const here = relNode( rel );
 
 		if( rel === 'root' || here === null || here === undefined )
@@ -4844,6 +5006,9 @@
 	// A unit of locked pieces is taken out only after the question, as a block is: what is in it is nobody's to write again here
 	const askRemoveUnit = function( rel, opener ) {
 
+		if( S.adapter.readOnly === true )
+			return false;
+
 		Nino.adminUi.confirm( 'destructive', {
 			title		: word('confirm/unit-title'),
 			message	: word('confirm/unit-message'),
@@ -4859,6 +5024,9 @@
 	};
 
 	const removeComponent = function( rel ) {
+
+		if( S.adapter.readOnly === true )
+			return false;
 
 		if( rel === 'root' || relNode( rel ) === null )
 			return false;
@@ -4918,6 +5086,9 @@
 	 */
 	const addComponent = function( rel, offer, blank ) {
 
+		if( S.adapter.readOnly === true )
+			return false;
+
 		const container = relNode( rel );
 		const fresh = clone( offer.node );
 		const schema = S.schemas[offer.name];
@@ -4967,11 +5138,19 @@
 
 		S.marked = made;
 		S.advFocus = made;
+
+		// What was put in is the chosen entry, and what is above it is opened by that: a column that had nothing in it has the new component in view
+		if( S.tree !== null )
+			S.tree.select( made );
+
 		told( word( 'msg/component-added', localized( schema.label ) ) );
 	};
 
 	// The place for a component: asked of the server, which says what the register offers there - by group, each as the call it would be - and the dialog lists it
 	const openOffer = function( rel, opener ) {
+
+		if( S.adapter.readOnly === true )
+			return false;
 
 		api( 'offer', { tree : S.top, at : absOf( rel ) }, function( status, response ) {
 
@@ -5178,12 +5357,12 @@
 		const key = keyOf( rel, written );
 
 		if( spec.kind === 'image' )
-			return key === '' ? word( 'source/is-address', written ) : word( key.indexOf( '/template/'+ S.template+ '/' ) === 0 ? 'source/is-slot' : 'source/is-slot-other', ( S.pictures[key] ?? S.images[key] ?? {} ).label ?? key.slice( key.lastIndexOf('/') + 1 ) );
+			return key === '' ? word( 'source/is-address', written ) : word( key.indexOf( '/template/'+ S.template+ '/' ) === 0 ?																																																																																																																									ownWord( 'source/is-slot', 'source/is-slot-block' ) : 'source/is-slot-other', ( S.pictures[key] ?? S.images[key] ?? {} ).label ?? key.slice( key.lastIndexOf('/') + 1 ) );
 
 		if( key === '' )
 			return word( 'source/is-fixed', shortened( written, 60 ) );
 
-		return word( key.indexOf( '/template/'+ S.template+ '/' ) === 0 ? 'source/is-key' : 'source/is-key-other', key.slice( key.lastIndexOf('/') + 1 ), shortened( textOf( key ) || ( S.shared[key] ?? '' ), 60 ) || '–' );
+		return word( key.indexOf( '/template/'+ S.template+ '/' ) === 0 ?																																																																				ownWord( 'source/is-key', 'source/is-key-block' ) : 'source/is-key-other', key.slice( key.lastIndexOf('/') + 1 ), shortened( textOf( key ) || ( S.shared[key] ?? '' ), 60 ) || '–' );
 	};
 
 	// Put a source into a call: the first word of it or one of its attributes. A new text is a key of the scope of the call with the words of the view, a new picture a slot of
@@ -5244,7 +5423,7 @@
 		const node = relNode( rel );
 		const scope = scopeOf( rel );
 		const loop = loopOf( rel );
-		const tabs = spec.kind === 'link' ? [ 'pick', 'new', 'page', 'address' ] : ( spec.kind === 'image' ? [ 'pick', 'new' ] : [ 'pick', 'new', 'fixed' ] );
+		const tabs = ( spec.kind === 'link' ? [ 'pick', 'new', 'page', 'address' ] : ( spec.kind === 'image' ? [ 'pick', 'new' ] : [ 'pick', 'new', 'fixed' ] ) ).filter( function( tab ) { return S.adapter.sources !== 'block' || [ 'pick', 'new' ].indexOf( tab ) !== -1 } );
 		const given = spec.attr === '' ? ( typeof node.s === 'string' ? node.s : '' ) : ( typeof ( node.a ?? {} )[spec.attr] === 'string' ? node.a[spec.attr] : '' );
 		const fixed = spec.attr === '' && spec.kind === 'text' && typeof ( node.a ?? {} ).text === 'string' ? node.a.text : ( spec.attr !== '' && spec.kind === 'text' && given !== '' && given.match( /^[~./]\S*$/ ) === null ? given : '' );
 		const body = el( 'div', 'builder-source-body' );
@@ -5351,7 +5530,7 @@
 							return;
 
 						seen.add( key );
-						out.push( entryOf( label !== '' ? label : ( text !== '' ? text : name ), root === '' ? word('source/page') : word( 'source/page-of', root.charAt(0).toUpperCase()+ root.slice( 1 ) ), '', function() { finish( { form : 'key', written : writtenFor( key ) } ) } ) );
+						out.push( entryOf( label !== '' ? label : ( text !== '' ? text : name ), root === '' ? word(																																																																																																			ownWord( 'source/page', 'source/page-block' ) ) : word(																																																																																																																																																																																																																																																													ownWord( 'source/page-of', 'source/page-of-block' ), root.charAt(0).toUpperCase()+ root.slice( 1 ) ), '', function() { finish( { form : 'key', written : writtenFor( key ) } ) } ) );
 					} );
 
 					response.entries.forEach( function( entry ) {
@@ -5699,6 +5878,10 @@
 			box.appendChild( el( 'p', 'nino-admin-hint', word( key === '' ? 'picture/no-slot' : 'picture/other' ) ) );
 			return box;
 		}
+
+		// A picture of a block is the placeholder of the kernel: there is no file to give it
+		if( S.adapter.uploads === false )
+			return box;
 
 		const input = el( 'input', 'builder-picture-file' );
 		const button = Nino.adminUi.button( word( typeof info.url === 'string' && info.url !== '' ? 'picture/replace' : 'picture/upload' ), function() { input.click() }, { className : 'nino-admin-btn--small', name : word( 'picture/upload-of', label ) } );
@@ -7029,6 +7212,16 @@
 	};
 
 	// What stands under "Advanced": the id the texts and pictures of the block stand under, the markup of a call of html, the block as a block of the project and the notation
+	// A lightbox of a sheet that is only looked at: every control of it is off, the heads of its sections and the (?) behind a name are not
+	const freeze = function( holder ) {
+
+		holder.querySelectorAll('input, select, textarea, button').forEach( function( control ) {
+
+			if( control.getAttribute('aria-expanded') === null && String( control.className ).indexOf('nino-admin-help-button') === -1 )
+				control.disabled = true;
+		} );
+	};
+
 	const advancedRows = function( rel, box ) {
 
 		const node = relNode( rel );
@@ -7053,7 +7246,7 @@
 			rows.push( htmlRow( rel, node ) );
 
 		// A block of the page is kept as a block of the project, for the pages that are made after it: the lightbox gives way to the dialog that asks for its name
-		if( rel === 'root' && S.frame === false ) {
+		if( rel === 'root' && S.frame === false && S.sheet === 'page' ) {
 
 			const row = el( 'div', 'builder-box-change' );
 			const own = Nino.adminUi.button( word('own/open'), function() {
@@ -7159,6 +7352,10 @@
 
 			rows.forEach( function( row ) { part.appendChild( row ) } );
 
+			// A sheet that is only looked at has every control of its rows off, whenever a section makes them
+			if( S.adapter.readOnly === true )
+				freeze( part );
+
 			return part;
 		};
 		let accordion = null;
@@ -7215,6 +7412,7 @@
 
 					if( box.open === 'advanced' )
 						askNotation( box );
+
 				},
 			} );
 			holder.appendChild( accordion.el );
@@ -7353,6 +7551,9 @@
 	// A component is taken out of the block after the question, where the key for Delete asks it: the undo brings it back
 	const askRemoveComponent = function( rel, opener ) {
 
+		if( S.adapter.readOnly === true )
+			return;
+
 		if( rel === 'root' || relNode( rel ) === null )
 			return;
 
@@ -7465,7 +7666,7 @@
 		view.buttons.redo.disabled = S.redo.length === 0;
 
 		if( rootAt() === -1 ) {
-			Nino.admin.builder.go( [ S.frame === true ? addressOf( S.template ) : S.adv.slug ] );
+			S.adapter.go( [ S.frame === true ? addressOf( S.template ) : S.adv.slug ] );
 			return;
 		}
 
@@ -7730,6 +7931,8 @@
 
 	const render = function( data ) {
 
+		closeSheet();
+
 		S.list = data;
 		S.level = data.level ?? S.level;
 
@@ -7827,7 +8030,32 @@
 			selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
+		/**
+		 *	The editor, for a panel that works on a sheet of its own - the draft of one block of the library - with the code the page is edited with. Nothing of it is copied: the
+		 *	functions are the ones the panel of the pages runs, on the sheet the adapter brings (see openSheet())
+		 *
+		 *		open( adapter, draft )				the sheet of a block is open and its tree view is drawn into adapter.level; false for a draft with no block
+		 *		close()												the sheet is left, the panel of the pages has none
+		 *		view( level )									the tree view with the line of the path, the marks of the views, the frame and the bar, drawn again into a level
+		 *		properties( at, rel, opener, back )	the lightbox of a component - its source, its content, its look - of the block at an index of the top level
+		 *		source( rel, spec, opener )		the dialog that chooses where a value comes from, of the component at a place of the block (spec is what the lightbox reads: { form, kind, attr, written, where })
+		 *		change( make, reload )				a step of the draft that Undo takes back; make() changes it
+		 *		undo(), redo()								one step back, one step forward
+		 *		save( done )									the draft is sent as the adapter's 'save' and the answer is taken
+		 *		call( action, payload, done, extra )	a request of the sheet, through the adapter, with the base of its payload
+		 *		tile( box, [adapter] )				the picture of a block - a tile - asked for and drawn into box (box.dataset.block is its key); with an adapter, outside of any sheet: its call() asks, its dir is where the picture is drawn
+		 *		tileFrame( box, held, [dir] )	the frame of a tile that is asked for already ({ address, query })
+		 *		select( rel )									the entry of the tree that is chosen - 'root' or the places of a component, as the tree has them, 0.2.1 -, which opens what is above it
+		 *		state()												the model of the sheet, for the tests of the panel
+		 */
+		editor : {
+			open : openSheet, close : closeSheet, view : build, properties : openProperties, source : openSource, change : change, undo : undo, redo : redo, save : save,
+			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
+		},
+
 		go : function( parts, options ) {
+
+			closeSheet();
 
 			const target = targetOf( parts );
 			const leaves = ( N.open === true && ( isNew( parts ) === false || sourceOfNew( parts ) !== N.source ) ) || ( S.ready === true && ( parts.length === 0 || target === null || target.template !== S.template || target.page !== S.page ) );

@@ -596,7 +596,7 @@ namespace Nino\Modules\Builder {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'notation' => self::_notation( $appData, $canonical[1], $data['look'] ?? null ) ] );
+			\Nino\Http::ok( $request, [ 'notation' => self::notationOf( $appData, $canonical[1], $data['look'] ?? null ) ] );
 		}
 
 		public static function apiOffer( array &$appData, array &$request ): void {
@@ -613,15 +613,35 @@ namespace Nino\Modules\Builder {
 				return;
 
 			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
-			$at = \Nino\Admin\Admin::postString( $data, 'at' );
-			$registry = \Nino\Components::components( $appData );
-			$route = $canonical === null ? null : Tree::route( $canonical[1], $at );
-			$container = $canonical === null ? null : Tree::at( $canonical[1], $at );
+			$offered = $canonical === null ? null : self::offered( $appData, $canonical[1], \Nino\Admin\Admin::postString( $data, 'at' ), $level );
 
-			if( $route === null || $container === null || isset( $registry[$route[count( $route ) - 1]]['offers'] ) === false ) {
+			if( $offered === null ) {
 				self::_fail( $request, [ 400, 'there is no place for a component there', 'builder_place', [], 'at' ] );
 				return;
 			}
+
+			\Nino\Http::ok( $request, $offered );
+		}
+
+		/**
+		 *	What the register offers at a place of a tree: each component that may stand there, as the call it would be, with the schemas of them - the answer of the action
+		 *	"offer", for any panel that edits a tree with the code of the Builder. The html is offered to the step of the development and to no other
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes				The tree
+		 *	@param		string		$at						The place of the container, 'a.b.c'
+		 *	@param		int				$level				The step the account holds
+		 *
+		 *	@return 	array|null								'offers', 'blank', 'schemas', 'container' - null where the register has no place for a component there
+		 */
+		public static function offered( array &$appData, array $nodes, string $at, int $level ): ?array {
+
+			$registry = \Nino\Components::components( $appData );
+			$route = Tree::route( $nodes, $at );
+			$container = Tree::at( $nodes, $at );
+
+			if( $route === null || $container === null || isset( $registry[$route[count( $route ) - 1]]['offers'] ) === false )
+				return null;
 
 			$groups = \Nino\Components::groups( $appData );
 			$entries = [];
@@ -655,7 +675,7 @@ namespace Nino\Modules\Builder {
 			$call = [ 'n' => 'spacer', 's' => '', 'a' => [], 'c' => null ];
 			$laid = \Nino\Markup::layout( [ $call, $call ], count( $route ) );
 
-			\Nino\Http::ok( $request, [ 'offers' => $entries, 'blank' => (string) ( $laid[1]['t'] ?? "\n" ), 'schemas' => Tree::schemas( $appData, [], $registry, $names ), 'container' => $route[count( $route ) - 1] ] );
+			return [ 'offers' => $entries, 'blank' => (string) ( $laid[1]['t'] ?? "\n" ), 'schemas' => Tree::schemas( $appData, [], $registry, $names ), 'container' => $route[count( $route ) - 1] ];
 		}
 
 		/**
@@ -738,28 +758,14 @@ namespace Nino\Modules\Builder {
 			// The fields of the elements of a type, for the source that is a field of the element of a loop
 			if( \Nino\Admin\Admin::postString( $data, 'kind' ) === 'fields' ) {
 
-				$type = \Nino\Admin\Admin::postString( $data, 'type' );
-				$known = preg_match( '/^\/[a-z][a-z0-9_-]{0,63}$/D', $type ) === 1 || isset( \Nino\Elements::PLACEHOLDERS[$type] ) === true;
-				$labels = [];
-
-				// The words a field has in the model of its type, where it has some: a text, or the words of each language
-				foreach( $known === true ? \Nino\Elements::getElementModel( $appData, $type ) : [] as $name => $field ) {
-
-					$label = $field['label'] ?? null;
-					$label = is_array( $label ) === true ? ( $label[$locale] ?? reset( $label ) ) : $label;
-
-					if( is_string( $label ) === true && $label !== '' && str_contains( $label, '/' ) === false )
-						$labels[(string) $name] = mb_substr( $label, 0, 60 );
-				}
-
-				\Nino\Http::ok( $request, [ 'fields' => $known === true ? Tree::fields( $appData, $type ) : [], 'labels' => $labels ] );
+				\Nino\Http::ok( $request, self::fieldsOf( $appData, \Nino\Admin\Admin::postString( $data, 'type' ), $locale ) );
 				return;
 			}
 
 			// What a loop may show: the types of elements the project has, with their titles - the example type of the kernel is none of them
 			if( \Nino\Admin\Admin::postString( $data, 'kind' ) === 'types' ) {
 
-				\Nino\Http::ok( $request, [ 'types' => array_map( static fn( array $type ): array => [ 'type' => '/'. $type['uri'], 'title' => (string) $type['title'] ], \Nino\Modules\Elements\Types::summaries( $appData ) ) ] );
+				\Nino\Http::ok( $request, [ 'types' => self::typesOf( $appData ) ] );
 				return;
 			}
 
@@ -1239,6 +1245,57 @@ namespace Nino\Modules\Builder {
 					$titles['/'. $type['uri']] = (string) $type['title'];
 
 			return $titles;
+		}
+
+		/**
+		 *	The notation of the whole block and of the first line of a component, for any panel that shows it beside the settings
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$nodes				The tree of the draft
+		 *	@param		mixed			$look					[ 'block' => position, 'node' => position ]
+		 *
+		 *	@return 	array											'block' and 'node'
+		 */
+		public static function notationOf( array &$appData, array $nodes, mixed $look ): array {
+			return self::_notation( $appData, $nodes, $look );
+		}
+
+		/**
+		 *	The fields of the elements of a type and the words the model gives them: for the source that is a field of the element of a loop
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$type					'/team'
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array											'fields' and 'labels'
+		 */
+		public static function fieldsOf( array &$appData, string $type, string $locale ): array {
+
+			$known = preg_match( '/^\/[a-z][a-z0-9_-]{0,63}$/D', $type ) === 1 || isset( \Nino\Elements::PLACEHOLDERS[$type] ) === true;
+			$labels = [];
+
+			// The words a field has in the model of its type, where it has some: a text, or the words of each language
+			foreach( $known === true ? \Nino\Elements::getElementModel( $appData, $type ) : [] as $name => $field ) {
+
+				$label = $field['label'] ?? null;
+				$label = is_array( $label ) === true ? ( $label[$locale] ?? reset( $label ) ) : $label;
+
+				if( is_string( $label ) === true && $label !== '' && str_contains( $label, '/' ) === false )
+					$labels[(string) $name] = mb_substr( $label, 0, 60 );
+			}
+
+			return [ 'fields' => $known === true ? Tree::fields( $appData, $type ) : [], 'labels' => $labels ];
+		}
+
+		/**
+		 *	What a loop may show: the types of elements the project has, with their titles - the example type of the kernel is none of them
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	array											[ [ type, title ] ]
+		 */
+		public static function typesOf( array &$appData ): array {
+			return array_map( static fn( array $type ): array => [ 'type' => '/'. $type['uri'], 'title' => (string) $type['title'] ], \Nino\Modules\Elements\Types::summaries( $appData ) );
 		}
 
 		/**

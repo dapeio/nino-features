@@ -747,9 +747,21 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return opened === true && asked === true;
 	} )() );
+	check( 'F. a component that is put into a container with nothing in it is the chosen entry and the container is opened over it - a container with no child is no folded one with the new component hidden in it', ( function() {
+		const block = S.top[model.rootAt()];
+
+		block.c[1].c = [ { t : '\n' } ];
+		S.tree.update( model.itemsNow() );
+
+		const was = ( row( '1' ) ?? { attributes : {} } ).attributes['aria-expanded'];
+
+		model.addComponent( '1', { name : 'section-title', node : { n : 'section-title', s : '', a : {}, c : null } }, '\n' );
+
+		const out = was === undefined && S.tree.get().selected === '1.1' && row( '1' ).attributes['aria-expanded'] === 'true' && row( '1.1' ) !== undefined;
+
+		return out;
+	} )() );
 }
-
-
 
 // --- G. the pencil: reached by the pointer and by the keyboard --------------------------------------------------------
 
@@ -1295,6 +1307,103 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		x.S.typeTitles = { '/team' : 'Our team' };
 
 		return x.model.typeTitle( '/team' ) === 'Our team' && x.model.typeTitle( '/shop' ) === '/shop';
+	} )() );
+}
+
+
+// --- K. a sheet of the kind block, for a second panel -------------------------------------------------------------------
+
+{
+	const sheet = function() {
+
+		const w = opened();
+		const S = w.panel.model.state;
+		const level = element('div');
+		const sent = [];
+		const went = [];
+		const set = [];
+		let shown = 0;
+
+		level.id = 'dummy-level';
+		w.page.appendChild( level );
+
+		const adapter = {
+			panel : 'dummy', level : 'dummy-level', template : 'block-draft', name : 'Draft', slug : '', restore : false,
+			call : function( action, payload, done ) { sent.push( { action : action, payload : payload, done : done } ) },
+			base : function() { return { block : 'x', locale : S.locale } },
+			go : function( parts ) { went.push( parts ) },
+			href : function( parts ) { return '#dummy/'+ parts.join('/') },
+			set : function( parts ) { set.push( parts ) },
+			show : function() { shown++ },
+			fail : function() {},
+			back : function() { return { parts : [ 'list' ], name : 'Blocks', keep : false, block : false } },
+		};
+		const draft = pageAnswer( { tree : [ block( 'split', columns ) ], level : 3 } );
+
+		w.requests.length = 0;
+
+		return { w : w, S : S, adapter : adapter, draft : draft, sent : sent, went : went, set : set, shown : function() { return shown }, level : level, editor : w.panel.editor };
+	};
+
+	check( 'K. a panel with an adapter of its own works on a sheet of the kind block with the code of the pages: the tree view is drawn, the requests of the draft go to the adapter with its own payload and none to an action of the pages, and the way back is the adapter\'s', ( function() {
+		const x = sheet();
+		const opened = x.editor.open( x.adapter, x.draft );
+		const back = findAll( x.level, function( el ) { return String( el.className ).indexOf('nino-admin-back-link') !== -1 } )[0];
+		const preview = x.sent.filter( function( entry ) { return entry.action === 'preview' } );
+
+		const out = opened === true && x.S.sheet === 'block' && x.S.mode === 'advanced' && x.shown() === 1 && x.set.length === 1 && x.w.requests.length === 0
+			&& preview.length === 1 && preview[0].payload.block === 'x' && preview[0].payload.template === undefined && back !== undefined && ( back.attributes.href ?? back.href ) === '#dummy/list' && textOf( back ).indexOf('Blocks') !== -1;
+
+		x.editor.close();
+
+		return out === true && x.S.sheet === 'page';
+	} )() );
+	check( 'K. a change in the lightbox of the sheet and Undo and Redo are the draft of the sheet - one step each - and the draft is told to the registry of the panel that owns the adapter; saving it is a request of the adapter, never an action of the pages', ( function() {
+		const x = sheet();
+
+		x.editor.open( x.adapter, x.draft );
+
+		const at = x.S.top.findIndex( function( node ) { return node.n !== undefined } );
+		const before = JSON.stringify( x.S.top );
+
+		x.editor.properties( at, 'root', element('button'), function() {} );
+		x.editor.change( function() { x.S.top[at].a.ground = 'dark' } );
+
+		const changed = x.S.undo.length === 1 && x.S.top[at].a.ground === 'dark' && x.w.dirty.isDirty( [ 'dummy' ] ) === true;
+
+		x.editor.undo();
+
+		const undone = JSON.stringify( x.S.top ) === before && x.S.redo.length === 1;
+
+		x.editor.redo();
+
+		const redone = x.S.top[at].a.ground === 'dark';
+
+		x.sent.length = 0;
+		x.editor.save( function() {} );
+
+		const saved = x.sent.filter( function( entry ) { return entry.action === 'save' } );
+
+		x.editor.close();
+
+		return changed === true && undone === true && redone === true && saved.length === 1 && saved[0].payload.block === 'x' && saved[0].payload.template === undefined && x.w.requests.length === 0;
+	} )() );
+	check( 'K. a tile is asked for and drawn through the adapter as well, and the page panel has no sheet left when the sheet is closed: the next page opens as a page', ( function() {
+		const x = sheet();
+
+		x.editor.open( x.adapter, x.draft );
+		x.sent.length = 0;
+
+		const box = element('div');
+
+		box.dataset.block = 'hero-full';
+		x.editor.tile( box );
+
+		const asked = x.sent.filter( function( entry ) { return entry.action === 'tile' } );
+
+		x.editor.close();
+
+		return asked.length === 1 && asked[0].payload.key === 'hero-full' && asked[0].payload.block === 'x' && x.w.requests.length === 0 && x.S.adapter !== x.adapter && x.S.ready === false;
 	} )() );
 }
 

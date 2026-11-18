@@ -133,15 +133,32 @@ namespace Nino\Modules {
 			if( $held === null )
 				return;
 
-			$draft = $held['data'];
+			// The right was checked where the draft was held: the token is the session's and the account still has the permission
+			self::draw( $appData, $request, $held['data'], true, $tile === false );
+		}
 
-			if( is_string( $draft['template'] ?? null ) === false || is_string( $draft['source'] ?? null ) === false || is_array( $draft['fills'] ?? null ) === false )
-				return;
+		/**
+		 *	Draw a draft in place of its template: the template is swapped for the draft's source, the language of the view is the draft's and its words are the fills of the
+		 *	page. For a page of the Builder and for any other feature that holds drafts of its own with \Nino\Preview. The right is not looked at here and is no default: whoever
+		 *	calls says, in $allowed, that the account may have the draft - a call that says no draws nothing - and a draft that is not one is not drawn
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *	@param		array			$draft				template (the name), source, fills (key => text), locale and slots (uri => slot of a picture)
+		 *	@param		bool			$allowed			Whether the account may have the draft - the caller's check, with no default
+		 *	@param		bool			$trace				With the trace of the drawing, as the views that mark the page need it; without it the scripts of the site are left out, as for the picture of a block
+		 *
+		 *	@return 	bool											Whether the draft was drawn
+		 */
+		public static function draw( array &$appData, array &$request, array $draft, bool $allowed, bool $trace ): bool {
 
-			if( $tile === true )
-				\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/js', [ self::class, 'noScript' ] );
-			else
+			if( $allowed === false || is_string( $draft['template'] ?? null ) === false || is_string( $draft['source'] ?? null ) === false || is_array( $draft['fills'] ?? null ) === false )
+				return false;
+
+			if( $trace === true )
 				\Nino\Preview::trace( $appData );
+			else
+				\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/js', [ self::class, 'noScript' ] );
 
 			\Nino\Modules\Template::swap( $appData, '/templates/'. $draft['template'], $draft['source'] );
 
@@ -158,6 +175,38 @@ namespace Nino\Modules {
 					if( is_string( $uri ) === true && is_array( $slot ) === true )
 						$appData['/nino/html/images'][$uri] = $slot;
 			}
+
+			return true;
+		}
+
+		/**
+		 *	Draw the draft of ONE block - a source whose top level is a single call of a block with nothing but blanks round it - with the trace: the picture of a block that is
+		 *	worked on, for a feature that edits the blocks of the library. The right is the caller's and is asked for here as a parameter that has no default; a draft with more than
+		 *	one call, with free markup or with none is not drawn
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *	@param		array			$draft				As draw() takes it
+		 *	@param		bool			$allowed			Whether the account may have the draft - the caller's check, with no default
+		 *
+		 *	@return 	bool											Whether the draft was drawn
+		 */
+		public static function drawBlock( array &$appData, array &$request, array $draft, bool $allowed ): bool {
+
+			if( $allowed === false || is_string( $draft['source'] ?? null ) === false )
+				return false;
+
+			$calls = 0;
+
+			foreach( \Nino\Modules\Builder\Tree::read( $appData, $draft['source'] ) as $node ) {
+
+				if( isset( $node['n'] ) === true )
+					$calls++;
+				elseif( trim( (string) ( $node['t'] ?? '.' ), " \t\r\n" ) !== '' || isset( $node['f'] ) === true )
+					return false;
+			}
+
+			return $calls === 1 && self::draw( $appData, $request, $draft, true, true );
 		}
 	}
 }
