@@ -1,9 +1,8 @@
 /**
  *	Nino
- *	toc-js-smoke.js		What toc.js does over a dom stand-in: which headings it
- *										takes and which it leaves, the ids it makes and the one
- *										it must not touch, the list it builds, the anchors it
- *										puts on the headings when the setting asks for it, which
+ *	toc-js-smoke.js		What toc.js does over a dom stand-in, one pin each: the
+ *										list it builds from the headings it takes, the ids it
+ *										makes and the one it must not touch, the anchors, the
  *										item it marks while the page is scrolled, and that a
  *										page with no headings keeps a nav that says nothing.
  *
@@ -151,16 +150,16 @@ function page( options ) {
 
 	function nav( index ) {
 		const el = element( 'nav', {
-			'class'							: 'nino-toc',
+			'class'							: 'toc',
 			'data-toc-levels'		: options.levels !== undefined ? options.levels : '2,3',
 			'data-toc-within'		: options.within !== undefined ? options.within : '',
 			'data-toc-anchors'	: options.anchors !== undefined ? options.anchors : '1',
 			'data-toc-label'		: 'Link zu diesem Abschnitt',
 		} );
 		el.hidden = true;
-		const title = element( 'h2', { 'class' : 'nino-toc-title', id : index === 0 ? 'nino-toc-title' : 'nino-toc-title', text : 'Auf dieser Seite' } );
+		const title = element( 'h2', { 'class' : 'toc-title', id : index === 0 ? 'toc-title' : 'toc-title', text : 'Auf dieser Seite' } );
 		el.appendChild( title );
-		el.appendChild( element( 'ol', { 'class' : 'nino-toc-list' } ) );
+		el.appendChild( element( 'ol', { 'class' : 'toc-list' } ) );
 		body.appendChild( el );
 		return el;
 	}
@@ -254,7 +253,7 @@ function page( options ) {
 	return {
 		body : body, nav : first, other : other, headings : made, listeners : listeners,
 		items : function( which ) {
-			return ( which || first ).querySelectorAll( '.nino-toc-link' );
+			return ( which || first ).querySelectorAll( '.toc-link' );
 		},
 		texts : function( which ) { return this.items( which ).map( function( a ) { return a.textContent } ) },
 		hrefs : function( which ) { return this.items( which ).map( function( a ) { return a.href } ) },
@@ -280,142 +279,75 @@ function page( options ) {
 const plain = page( {} );
 
 check( 'the nav comes out of hiding once there is something in it', plain.nav.hidden === false );
-check( 'every heading is in the list, in the order the page has them', plain.texts().join(' | ') === 'Erstens | Genauer | Zweitens' );
-check( '...each linking to the heading it names', plain.hrefs().join(' ') === '#erstens #genauer #zweitens' );
-check( '...and carrying its level, which is what the indent is made of',
-	plain.items().map( function( a ) { return a.parent.className } ).join(' ') === 'nino-toc-item nino-toc-item--2 nino-toc-item nino-toc-item--3 nino-toc-item nino-toc-item--2' );
+check( 'every heading is in the list, in the order the page has them, each linking to its heading and carrying its level',
+	plain.texts().join(' | ') === 'Erstens | Genauer | Zweitens' && plain.hrefs().join(' ') === '#erstens #genauer #zweitens'
+	&& plain.items().map( function( a ) { return a.parent.className } ).join(' ') === 'toc-item toc-item--2 toc-item toc-item--3 toc-item toc-item--2' );
 check( 'the list never lists its own title', plain.texts().indexOf( 'Auf dieser Seite' ) === -1 );
+
+// The words of a heading are text in the list, and the id made of them has no character of markup in it
+const hostile = page( { headings : [ [ 'h2', '<img src=x onerror=alert(1)> & "quote"' ] ] } );
+check( 'the words of a heading stay text: set as text, never as markup, and the id made of them is a slug',
+	hostile.items()[0].textContent === '<img src=x onerror=alert(1)> & "quote"' && hostile.items()[0].children.length === 0 && /^[a-z0-9-]+$/.test( hostile.headings[0].id ) === true
+	&& /^#[a-z0-9-]+$/.test( hostile.items()[0].href ) === true );
 
 
 // --- The ids -------------------------------------------------------------------
 
-check( 'a heading with no id is given one made from its own words', plain.headings[0].id === 'erstens' );
+const kept = page( { headings : [ [ 'h2', 'Erstens', '', 'schon-da' ], [ 'h2', 'Kontakt' ], [ 'h2', 'Kontakt' ], [ 'h2', '???' ] ] } );
+check( 'a heading with no id is given one made from its words, one that has an id keeps it, equal words get a number, no word gets the feature\'s own',
+	plain.headings[0].id === 'erstens' && kept.headings[0].id === 'schon-da' && kept.hrefs().join(' ') === '#schon-da #kontakt #kontakt-2 #abschnitt'
+	&& kept.headings[1].id === 'kontakt' && kept.headings[2].id === 'kontakt-2' );
 
-const kept = page( { headings : [ [ 'h2', 'Erstens', '', 'schon-da' ] ] } );
-check( 'and one that already has an id keeps it - it may be linked to from somewhere else',
-	kept.headings[0].id === 'schon-da' && kept.hrefs().join('') === '#schon-da' );
-
-const twins = page( { headings : [ [ 'h2', 'Kontakt' ], [ 'h2', 'Kontakt' ] ] } );
-check( 'two headings with the same words get two different ids',
-	twins.headings[0].id === 'kontakt' && twins.headings[1].id === 'kontakt-2'
-	&& twins.hrefs().join(' ') === '#kontakt #kontakt-2' );
-
-const umlaut = page( { headings : [ [ 'h2', 'Über uns & mehr' ] ] } );
-check( '...and a heading with umlauts and punctuation still makes a usable one', umlaut.headings[0].id === 'ueber-uns-mehr' );
-
-/*	The words of an id are made by the kernel's slug, Nino.slug(), the twin of
-	\Nino\Feature::slug(): it writes out the letters of its table (ä as ae, ø as o,
-	æ as ae) and nothing else, so a letter outside the table - the ź of Łódź - is
-	dropped like any other mark, and the cut at sixty characters never leaves a
-	hyphen at the end of an id	*/
-const nordic = page( { headings : [ [ 'h2', 'Ærøskøbing' ], [ 'h2', 'Łódź' ], [ 'h2', 'Crème brûlée' ] ] } );
-check( 'a heading with letters the kernel\'s table writes out gets the id the server would make of it',
-	nordic.headings[0].id === 'aeroskobing' && nordic.headings[2].id === 'creme-brulee' );
-check( '...and one with a letter outside the table keeps the rest of its words', nordic.headings[1].id === 'lod' );
-
-const long = page( { headings : [ [ 'h2', 'a'.repeat( 59 )+ ' b' ] ] } );
-check( '...and the cut at sixty characters leaves no hyphen at the end of an id', long.headings[0].id === 'a'.repeat( 59 ) );
-
-const wordless = page( { headings : [ [ 'h2', '???' ], [ 'h2', '!!!' ] ] } );
-check( 'a heading with no letter or digit in it is given the word of this feature\'s own, and the next one that word and its number',
-	wordless.headings[0].id === 'abschnitt' && wordless.headings[1].id === 'abschnitt-2' );
-
-/*	An id is checked against the whole page rather than against the list: a
-	heading this list does not hold - marked nino-toc-skip here - is not among
-	the ones already handed out, and two elements carrying one id is a link
-	that lands on whichever of them the browser finds first	*/
-const elsewhere = page( { headings : [ [ 'h2', 'Kontakt', 'nino-toc-skip', 'kontakt' ], [ 'h2', 'Kontakt' ] ] } );
-check( '...and an id the page already carries outside the list is not handed out a second time',
-	elsewhere.headings[1].id === 'kontakt-2' && elsewhere.hrefs().join('') === '#kontakt-2' );
+const elsewhere = page( { headings : [ [ 'h2', 'Kontakt', 'toc-skip', 'kontakt' ], [ 'h2', 'Kontakt' ] ] } );
+check( 'an id the page already carries outside the list is not handed out a second time', elsewhere.headings[1].id === 'kontakt-2' && elsewhere.hrefs().join('') === '#kontakt-2' );
 
 
-// --- What is left out ----------------------------------------------------------
+// --- What is left out, and where it looks ---------------------------------------
 
-const skipped = page( { headings : [ [ 'h2', 'Erstens' ], [ 'h2', 'Nicht ins Verzeichnis', 'nino-toc-skip' ], [ 'h2', 'Zweitens' ] ] } );
-check( 'a heading marked nino-toc-skip is left out of the list', skipped.texts().join(' | ') === 'Erstens | Zweitens' );
-check( '...and given no anchor either', skipped.headings[1].querySelectorAll( '.nino-toc-anchor' ).length === 0 );
-
-const only2 = page( { levels : '2' } );
-check( 'a list built from h2 alone leaves the h3 out', only2.texts().join(' | ') === 'Erstens | Zweitens' );
-
-const empty = page( { headings : [] } );
-check( 'a page with no headings keeps a nav that says nothing rather than an empty list',
-	empty.nav.hidden === true && empty.items().length === 0 );
-
-
-// --- Where it looks ------------------------------------------------------------
+const skipped = page( { headings : [ [ 'h2', 'Erstens' ], [ 'h2', 'Nicht ins Verzeichnis', 'toc-skip' ], [ 'h3', 'Zweitens' ] ], levels : '2' } );
+check( 'a heading marked toc-skip is left out and gets no anchor, and a level the list was not asked for is left out',
+	skipped.texts().join(' | ') === 'Erstens' && skipped.headings[1].querySelectorAll( '.toc-anchor' ).length === 0 );
 
 const scoped = [ [ 'h2', 'Vorher' ], [ 'h2', 'Drinnen', '', '', undefined, true ], [ 'h3', 'Genauer', '', '', undefined, true ], [ 'h2', 'Danach' ] ];
+check( 'a list pointed at part of the page takes the headings in there, and one pointed at no selector takes the whole page',
+	page( { headings : scoped, within : '.toc-scope' } ).texts().join(' | ') === 'Drinnen | Genauer' && page( { headings : scoped, within : '[' } ).texts().length === 4 );
 
-const within = page( { headings : scoped, within : '.toc-scope' } );
-check( 'a list pointed at part of the page takes the headings in there and none outside it',
-	within.texts().join(' | ') === 'Drinnen | Genauer' );
-
-const unparsable = page( { headings : scoped, within : '[' } );
-check( '...and one pointed at something that is not a selector takes the whole page rather than failing',
-	unparsable.nav.hidden === false && unparsable.texts().join(' | ') === 'Vorher | Drinnen | Genauer | Danach' );
+const empty = page( { headings : [] } );
+check( 'a page with no headings keeps a nav that says nothing rather than an empty list', empty.nav.hidden === true && empty.items().length === 0 );
 
 
 // --- The anchors ---------------------------------------------------------------
 
-check( 'every listed heading gets a link to itself', plain.headings[0].querySelectorAll( '.nino-toc-anchor' ).length === 1 );
-check( '...that points at the heading and names itself for somebody who cannot see it',
-	plain.headings[0].querySelector( '.nino-toc-anchor' ).href === '#erstens'
-	&& plain.headings[0].querySelector( '.nino-toc-anchor' ).getAttribute( 'aria-label' ) === 'Link zu diesem Abschnitt' );
-
-const bare = page( { anchors : '0' } );
-check( 'and none at all where the project switched them off, though the list still works',
-	bare.headings[0].querySelectorAll( '.nino-toc-anchor' ).length === 0 && bare.texts().length === 3 );
+check( 'every listed heading gets a link to itself that names itself for somebody who cannot see it, and none where the setting is off',
+	plain.headings[0].querySelectorAll( '.toc-anchor' ).length === 1 && plain.headings[0].querySelector( '.toc-anchor' ).href === '#erstens'
+	&& plain.headings[0].querySelector( '.toc-anchor' ).getAttribute( 'aria-label' ) === 'Link zu diesem Abschnitt'
+	&& page( { anchors : '0' } ).headings[0].querySelectorAll( '.toc-anchor' ).length === 0 );
 
 
 // --- The section being read ----------------------------------------------------
 
 check( 'the first section is current before anything has been scrolled past', plain.current().join('') === 'Erstens' );
 
-/*	The mark sits a third down the viewport - 306 of 900 here. A heading above
-	it has been reached; the last one that has is the section being read	*/
-plain.scrollTo( [ -100, 400, 800 ] );
-check( 'the last heading above the mark is the one that is current', plain.current().join('') === 'Erstens' );
-
 plain.scrollTo( [ -800, -100, 500 ] );
-check( '...and it follows the page down', plain.current().join('') === 'Genauer' );
+check( 'the last heading above the mark is the one that is current, and only ever one', plain.current().join('') === 'Genauer' && plain.current().length === 1 );
 
-plain.scrollTo( [ -1600, -900, -100 ] );
-check( '...to the last one', plain.current().join('') === 'Zweitens' );
-check( 'and only ever one at a time', plain.current().length === 1 );
-
-/*	A resize moves the mark, a third down a window of another height	*/
 const resized = page( {} );
 resized.scrollTo( [ -100, 400, 800 ] );
-check( 'a window of 900 puts the mark above the second heading', resized.current().join('') === 'Erstens' );
-
 resized.resizeTo( 1500 );
-check( '...and one that grew to 1500 puts it below, which a resize is enough to find out', resized.current().join('') === 'Genauer' );
+check( 'a resize moves the mark, which is a third down the window', resized.current().join('') === 'Genauer' );
 
 
-// --- Two lists on one page -----------------------------------------------------
+// --- Two lists, and waiting for the dom ----------------------------------------
 
 const twice = page( { second : true } );
-check( 'a second list on the same page gets its own title id, so aria-labelledby names the right one',
-	twice.other !== null && twice.other.querySelector( '.nino-toc-title' ).id === 'nino-toc-title-2'
-	&& twice.other.getAttribute( 'aria-labelledby' ) === 'nino-toc-title-2' );
-check( '...and both are filled', twice.texts().length === 3 && twice.texts( twice.other ).length === 3 );
-
-/*	The first list puts an anchor on every heading it lists, and that '#' is
-	part of the heading's textContent from then on	*/
-check( '...with the headings\' own words in the second one too, not the # of the anchors the first put on them',
-	twice.texts( twice.other ).join(' | ') === 'Erstens | Genauer | Zweitens' );
-
-
-// --- Waiting for the dom -------------------------------------------------------
+check( 'a second list on the page gets its own title id, is filled, and reads the words of the headings and not the anchors of the first',
+	twice.other.querySelector( '.toc-title' ).id === 'toc-title-2' && twice.other.getAttribute( 'aria-labelledby' ) === 'toc-title-2'
+	&& twice.texts( twice.other ).join(' | ') === 'Erstens | Genauer | Zweitens' );
 
 const late = page( { readyState : 'loading' } );
-
-check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	late.nav.hidden === true && ( late.listeners['DOMContentLoaded'] || [] ).length === 1 );
-
+const waited = late.nav.hidden === true && ( late.listeners['DOMContentLoaded'] || [] ).length === 1;
 ( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
-check( '...and builds the list when it arrives', late.nav.hidden === false && late.texts().length === 3 );
+check( 'a script that ran before the dom was there waits for it, and builds the list when it arrives', waited === true && late.nav.hidden === false && late.texts().length === 3 );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

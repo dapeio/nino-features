@@ -1,0 +1,1 @@
+<nav class="[[class]]" data-toc-levels="[[levels]]" data-toc-within="[[within]]" data-toc-anchors="[[anchors]]" data-toc-label="[[/feature/toc/anchor/label]]" aria-labelledby="toc-title" hidden><h2 class="toc-title" id="toc-title">[[title]]</h2><ol class="toc-list"></ol></nav>

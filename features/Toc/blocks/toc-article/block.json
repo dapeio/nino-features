@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Artikel mit Inhaltsverzeichnis", "en_US": "Article with a table of contents" },
+	"description": { "de_DE": "Links das Verzeichnis, das am Rand mitläuft, rechts ein schmaler Artikel mit Überschriften auf zwei Ebenen; auf dem Handy untereinander.", "en_US": "The list on one side, which keeps to the edge, a narrow article with headings of two levels on the other; stacked on a phone." },
+	"category": "content",
+	"rank": 70,
+	"images": {}
+}

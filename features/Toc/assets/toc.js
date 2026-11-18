@@ -28,7 +28,7 @@
 
 ( function() {
 
-	var SELECTOR = '.nino-toc';
+	var SELECTOR = '.toc';
 
 	// How far down the viewport a heading counts as "the one being read".
 	// A third: high enough that a heading reaches it soon after it appears,
@@ -55,7 +55,7 @@
 
 			var node = heading.childNodes[i];
 
-			if( node.nodeType === 1 && node.classList.contains( 'nino-toc-anchor' ) === true )
+			if( node.nodeType === 1 && node.classList.contains( 'toc-anchor' ) === true )
 				continue;
 
 			text += node.textContent || '';
@@ -138,7 +138,7 @@
 			if( found[h].closest( SELECTOR ) !== null )
 				continue;
 
-			if( found[h].classList.contains( 'nino-toc-skip' ) === true )
+			if( found[h].classList.contains( 'toc-skip' ) === true )
 				continue;
 
 			if( words( found[h] ).trim() === '' )
@@ -163,11 +163,11 @@
 	 */
 	function anchor( heading, id, label ) {
 
-		if( heading.querySelector( '.nino-toc-anchor' ) !== null )
+		if( heading.querySelector( '.toc-anchor' ) !== null )
 			return;
 
 		var link = document.createElement( 'a' );
-		link.className = 'nino-toc-anchor';
+		link.className = 'toc-anchor';
 		link.href = '#' + id;
 		link.setAttribute( 'aria-label', label );
 		link.textContent = '#';
@@ -185,7 +185,7 @@
 	 */
 	function build( nav, taken ) {
 
-		var list = nav.querySelector( '.nino-toc-list' );
+		var list = nav.querySelector( '.toc-list' );
 
 		if( list === null )
 			return null;
@@ -206,10 +206,10 @@
 			var level = parseInt( heading.tagName.slice( 1 ), 10 );
 
 			var item = document.createElement( 'li' );
-			item.className = 'nino-toc-item nino-toc-item--' + level;
+			item.className = 'toc-item toc-item--' + level;
 
 			var link = document.createElement( 'a' );
-			link.className = 'nino-toc-link';
+			link.className = 'toc-link';
 			link.href = '#' + id;
 			link.textContent = words( heading ).trim();
 
@@ -270,10 +270,10 @@
 			/*	More than one list on a page would otherwise be more than one
 				element with the same id, and aria-labelledby would then name
 				whichever the browser found first	*/
-			var title = navs[i].querySelector( '.nino-toc-title' );
+			var title = navs[i].querySelector( '.toc-title' );
 
 			if( i > 0 && title !== null ) {
-				title.id = 'nino-toc-title-' + ( i + 1 );
+				title.id = 'toc-title-' + ( i + 1 );
 				navs[i].setAttribute( 'aria-labelledby', title.id );
 			}
 
