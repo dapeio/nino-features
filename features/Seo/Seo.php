@@ -813,7 +813,7 @@ namespace Nino\Modules {
 						nobody wrote	*/
 					$link = '- ['. self::_linkText( $title ). ']('. self::_linkUrl( $base. $page['externalPath'] ). ')';
 
-					$entries[] = $pageDescription !== '' ? $link. ': '. self::_oneLine( $pageDescription ) : $link;
+					$entries[] = $pageDescription !== '' ? $link. ': '. self::_linkText( $pageDescription ) : $link;
 				}
 
 				if( $entries === [] )

@@ -531,4 +531,28 @@ check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'seo' ) ==
 check( 'the class is removed from /nino/modules', in_array( '\\Nino\\Modules\\Seo', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the settings survive deactivation', \Nino\Features::setting( $appData, 'seo', 'description' ) === 'A tiny test site.' );
 
+// --- what another feature brings is somebody else's words --------------------------
+
+echo "\nA page a feature contributes: its title and its description are text\n";
+
+$appData['/nino/features']['seo']['settings']['agents'] = true;
+\Nino\Html::addShortcode( $appData, 'seoprobe', static fn(): string => 'RAN', false );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Seo::PAGES, static function( array &$appData, array &$list ): void {
+	$list[] = [ 'externalPath' => '/blog/hostile', 'title' => 'T [seoprobe] [[/project/company/general/name]]', 'description' => 'D [seoprobe] [[/project/company/general/name]]' ];
+} );
+$hostileRequest = ninoVisit( $appData, '/llms.txt' );
+\Nino\Http::response( $appData, $hostileRequest );
+
+// The kernel renders the body of every answer that is text: that is where a call or a fill in it would be read
+\Nino\Html::response( $appData, $hostileRequest );
+$hostileLine = '';
+
+foreach( explode( "\n", (string) ( $hostileRequest['/nino/http/response']['body'] ?? '' ) ) as $line )
+	if( str_contains( $line, '/blog/hostile' ) === true )
+		$hostileLine = $line;
+
+check( 'SAFETY: the title and the description of a contributed page reach llms.txt as text - no call in them is run, no fill is filled',
+	str_contains( $hostileLine, 'T ' ) === true && str_contains( $hostileLine, ': D ' ) === true && str_contains( $hostileLine, 'RAN' ) === false
+	&& str_contains( $hostileLine, 'Acme' ) === false && substr_count( $hostileLine, 'seoprobe' ) === 2 && substr_count( $hostileLine, 'project/company/general/name' ) === 2 );
+
 ninoDone( $appData );
