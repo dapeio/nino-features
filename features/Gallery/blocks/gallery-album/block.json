@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Galerie", "en_US": "Gallery" },
+	"description": { "de_DE": "Eine Überschrift und das Raster eines Albums, dessen Bilder sich bildschirmfüllend öffnen.", "en_US": "A headline and the grid of an album whose pictures open full screen." },
+	"category": "content",
+	"rank": 62,
+	"images": {}
+}

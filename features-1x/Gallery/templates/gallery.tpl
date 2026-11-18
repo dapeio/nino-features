@@ -1,1 +1,0 @@
-<ul class="nino-gallery-grid[[classes]]" style="--nino-gallery-columns:[[columns]];--nino-gallery-thumb-w:[[thumbWidth]];--nino-gallery-thumb-h:[[thumbHeight]]">[[items]]</ul>

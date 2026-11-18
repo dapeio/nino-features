@@ -1,0 +1,8 @@
+[section-wrap id="gallery" ground="base"]
+	[section-row width="wide"]
+		[section-col]
+			[section-title ~title tag="h2" size="m"]
+			[gallery]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

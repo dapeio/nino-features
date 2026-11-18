@@ -1,0 +1,50 @@
+/*	gallery - the standard part: an album's thumbnails in a grid, its two other looks (a mat round each picture, pictures edge to edge) and the dark room the script opens a picture in	*/
+:root {
+	--gallery-gap: .75rem;
+	--gallery-radius: var(--page-radius);
+}
+.gallery { --gallery-columns: 4; display: grid; grid-template-columns: repeat( auto-fit, minmax( min( 100%, max( 8rem, calc( ( 100% - ( var(--gallery-columns) - 1 ) * var(--gallery-gap) ) / var(--gallery-columns) ) ) ), 1fr ) ); gap: var(--gallery-gap); width: 100%; margin: 0; padding: 0; list-style: none; }
+.gallery-cell { margin: 0; padding: 0; }
+.gallery-link { position: relative; display: block; aspect-ratio: var(--gallery-thumb-width, 1) / var(--gallery-thumb-height, 1); overflow: hidden; border-radius: var(--gallery-radius); background-color: var(--brand-ground-alt); line-height: 0; }
+.gallery-frame { position: absolute; inset: 0; display: block; }
+.gallery-thumb { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform var(--page-motion) ease; }
+.gallery-link:hover .gallery-thumb { transform: scale( 1.04 ); }
+.gallery-link:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 3px; }
+.gallery--variant-mat > .gallery-cell { padding: var(--page-space-2); border: var(--page-line) solid var(--brand-line); border-radius: var(--gallery-radius); background-color: var(--brand-ground-alt); }
+.gallery--variant-mat .gallery-link { border-radius: calc( var(--gallery-radius) / 2 ); }
+.gallery--variant-seamless { --gallery-gap: 0rem; --gallery-radius: 0rem; }
+.gallery--variant-seamless .gallery-link:focus-visible { z-index: 1; outline-offset: -3px; }
+.gallery-view { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; color-scheme: dark; background: color-mix( in srgb, var(--brand-ground) 94%, transparent ); color: var(--brand-ink); opacity: 0; transition: opacity calc( var(--page-motion) * 1.5 ) ease; backdrop-filter: blur( 6px ); }
+.gallery-view.gallery-view-is-open { opacity: 1; }
+.gallery-view-stage { position: relative; display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-height: 0; padding: 3.5rem .5rem 4.5rem; }
+.gallery-view-figure { display: flex; flex-direction: column; align-items: center; gap: var(--page-space-3); max-width: 100%; max-height: 100%; margin: 0; }
+.gallery-view-image { max-width: 100%; max-height: calc( 100vh - 12rem ); object-fit: contain; border-radius: calc( var(--gallery-radius) / 2 ); opacity: 1; transition: opacity var(--page-motion) ease; }
+.gallery-view.gallery-view-is-swapping .gallery-view-image { opacity: 0; }
+.gallery-view-caption { max-width: 46rem; margin: 0; font-size: var(--page-text-1); line-height: 1.5; text-align: center; text-wrap: pretty; }
+.gallery-view-caption:empty { display: none; }
+.gallery-view-button { position: absolute; display: flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; padding: 0; border: var(--page-line) solid var(--brand-line); border-radius: 50%; background: color-mix( in srgb, var(--brand-ink) 10%, transparent ); color: inherit; font: inherit; font-size: 1.5rem; line-height: 1; cursor: pointer; transition: background var(--page-motion) ease; }
+.gallery-view-button > span { display: block; line-height: 1; }
+.gallery-view-button:hover, .gallery-view-button:focus-visible { background: color-mix( in srgb, var(--brand-ink) 22%, transparent ); }
+.gallery-view-button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.gallery-view-close { top: 1rem; right: 1rem; }
+.gallery-view-prev, .gallery-view-next { top: auto; bottom: 1rem; }
+.gallery-view-prev { left: 25%; }
+.gallery-view-next { right: 25%; }
+.gallery-view-count { position: absolute; top: 1.55rem; left: 1.25rem; font-size: var(--page-text-1); letter-spacing: .04em; color: var(--brand-ink-quiet); }
+.gallery-view-stage::before { content: ""; position: absolute; pointer-events: none; top: 50%; left: 50%; width: 2rem; height: 2rem; margin: -1rem 0 0 -1rem; border: 2px solid var(--brand-line); border-top-color: var(--brand-ink); border-radius: 50%; opacity: 0; animation: gallery-view-spin .7s linear infinite; }
+.gallery-view.gallery-view-is-loading .gallery-view-stage::before { opacity: 1; }
+@keyframes gallery-view-spin { to { transform: rotate( 360deg ); } }
+.gallery-view-lock { overflow: hidden; }
+@media (min-width: 640px) {
+	.gallery-view-stage { padding: 3.5rem 1rem 1rem; }
+	.gallery-view-image { max-height: calc( 100vh - 9rem ); }
+	.gallery-view-prev, .gallery-view-next { top: 50%; bottom: auto; transform: translateY( -50% ); }
+	.gallery-view-prev { left: 1rem; }
+	.gallery-view-next { right: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.gallery-thumb { transition: none; }
+	.gallery-link:hover .gallery-thumb { transform: none; }
+	.gallery-view.gallery-view-is-swapping .gallery-view-image { opacity: 1; }
+	.gallery-view-stage::before { animation: none; }
+}

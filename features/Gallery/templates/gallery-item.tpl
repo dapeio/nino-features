@@ -1,0 +1,1 @@
+<li class="gallery-cell"><a class="gallery-link" href="[[large]]" data-lightbox="[[group]]" data-caption="[[caption]]"><span class="gallery-frame"><img class="gallery-thumb" src="[[thumb]]" width="[[width]]" height="[[height]]" alt="[[alt]]" loading="lazy" decoding="async"></span></a></li>

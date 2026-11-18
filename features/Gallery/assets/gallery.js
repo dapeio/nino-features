@@ -1,0 +1,485 @@
+/**
+ *	Nino - Gallery
+ *	gallery.js	The overlay a gallery's thumbnail opens into: a link that points
+ *						at an image is opened full screen instead of navigated to, with
+ *						every other link carrying the same data-lightbox value as the
+ *						rest of the set - arrows, swipe, the keyboard, a caption, Escape
+ *						and the backdrop to close, the focus kept in the dialog and put
+ *						back on the link that opened it.
+ *
+ *						It needs no library, no build step and not even Nino.js: the
+ *						manifest's assets bundle it into the project's own
+ *						/.cache/script.js (docs/features.md, "Assets"). The look of the
+ *						overlay is the standard part of the group gallery.
+ *
+ *						Delegated from the document, once: a gallery rendered after
+ *						this ran needs no second call, and a page with two hundred
+ *						thumbnails carries no two hundred listeners. The set a link
+ *						belongs to is worked out when it is clicked, not when the page
+ *						loaded, for the same reason. Without this script a thumbnail is
+ *						what the markup says it is: a link to the large picture.
+ *
+ *						What it never does is guess. A link is one of the overlay's
+ *						because it says so with data-lightbox - the markup contract a
+ *						page of a project may write by hand as well -, and its caption
+ *						is what the page already says the picture is: data-caption - an
+ *						empty one being the page saying there is none - else the <img>'s
+ *						alt, else the link's title. Nothing is read out of a filename. A
+ *						caption and an alt text are written as text, never as markup.
+ *						The picture in the overlay is named by the <img>'s alt, not by
+ *						the caption: the caption is already on screen beside it.
+ *
+ *						This file is a static asset, never rendered through the fill
+ *						engine (docs/development.md, "Assets Are Not Templates"), so
+ *						there is no site-wide setting to read - what one overlay does
+ *						differently from another is an attribute on the link.
+ */
+
+( function( wn, dc ) {
+
+	'use strict';
+
+	// A link opts in with this. Its value is the group: two galleries on one
+	// page are two sets, and an empty value is its own set of one
+	var ATTR = 'data-lightbox';
+
+	// What a link may point at. Checked against the href rather than trusting
+	// the attribute alone: the overlay puts the value into an <img src>, and
+	// a "lightbox link" to something that is not an image would otherwise be
+	// a broken picture with no way back to the page
+	var IMAGE = /\.(?:jpe?g|png|gif|webp|avif|svg)(?:[?#].*)?$/i;
+
+	// ... and an address that has a scheme must be http or https: a javascript: or data: address that ends like a
+	// picture's is none, and what a browser strips off an address before it reads the scheme - tab and line breaks anywhere, controls and blanks at the front - is stripped here too
+	var SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+	var BLANK = /^[\s\u0000-\u001f]+/;
+	var STRIPPED = /[\t\n\r]/g;
+
+	/**
+	 *	Whether an address is one of a picture this overlay may open
+	 *
+	 *	@param		{string}		href
+	 *
+	 *	@return		{boolean}
+	 */
+	function isImage( href ) {
+
+		var address = String( href || '' ).replace( STRIPPED, '' ).replace( BLANK, '' );
+
+		return IMAGE.test( address ) === true && ( SCHEME.test( address ) === false || /^https?:/i.test( address ) === true );
+	}
+
+	// The words on the controls, for a screen reader, by the primary subtag of
+	// <html lang>. A link's own data-label-* comes first and English is what
+	// is left, so a language this does not have still gets words it can read
+	var LABELS = {
+		en : { close : 'Close', prev : 'Previous image', next : 'Next image' },
+		de : { close : 'Schlie\u00dfen', prev : 'Vorheriges Bild', next : 'N\u00e4chstes Bild' },
+	};
+
+	var box = null;			// the overlay, while one is open
+	var set = [];				// the links of the current set, in document order
+	var at = 0;					// which of them is on screen
+	var opener = null;	// the link that opened it, for the focus to go back to
+
+	/**
+	 *	The lightbox link an event landed on, or null - the target itself or
+	 *	whatever it sits inside, since the click is almost always on the <img>
+	 *
+	 *	@param		{EventTarget}	target
+	 *
+	 *	@return		{Element|null}
+	 */
+	function linkOf( target ) {
+
+		var node = target;
+
+		while( node && node !== dc ) {
+			if( node.tagName === 'A' && node.hasAttribute( ATTR ) === true )
+				return node;
+			node = node.parentNode;
+		}
+
+		return null;
+	}
+
+	/**
+	 *	Every link of one link's group, in the order the document has them -
+	 *	read at click time, so a set built after this file ran is a set
+	 *
+	 *	@param		{Element}	link
+	 *
+	 *	@return		{Array}
+	 */
+	function setOf( link ) {
+
+		var group = link.getAttribute( ATTR ) || '';
+
+		if( group === '' )
+			return [ link ];
+
+		return Array.prototype.filter.call(
+			dc.querySelectorAll( 'a[' + ATTR + ']' ),
+			function( candidate ) {
+				return ( candidate.getAttribute( ATTR ) || '' ) === group && isImage( candidate.getAttribute('href') ) === true;
+			}
+		);
+	}
+
+	/**
+	 *	What the page already says this picture is. Never the filename: a
+	 *	caption nobody wrote is worse than no caption
+	 *
+	 *	@param		{Element}	link
+	 *
+	 *	@return		{string}
+	 */
+	function captionOf( link ) {
+
+		// Present but empty is an answer: the page says this picture has no
+		// caption, and the alt text it carries is for the picture, not for
+		// somebody reading under it. Only an absent attribute falls back
+		if( link.hasAttribute('data-caption') === true )
+			return link.getAttribute('data-caption') || '';
+
+		var image = link.querySelector('img');
+
+		return ( image ? image.getAttribute('alt') : '' )
+			|| link.getAttribute('title')
+			|| '';
+	}
+
+	/**
+	 *	The words for one opening: the link's own data-label-*, else this
+	 *	file's for the page's language, else English
+	 *
+	 *	@param		{Element}	link
+	 *
+	 *	@return		{Object}									{ close, prev, next }
+	 */
+	function labelsOf( link ) {
+
+		var lang = String( dc.documentElement.getAttribute('lang') || '' ).toLowerCase().split( /[-_]/ )[0];
+		var words = Object.prototype.hasOwnProperty.call( LABELS, lang ) === true ? LABELS[lang] : LABELS.en;
+
+		return {
+			close : link.getAttribute('data-label-close') || words.close,
+			prev : link.getAttribute('data-label-prev') || words.prev,
+			next : link.getAttribute('data-label-next') || words.next,
+		};
+	}
+
+	/**
+	 *	One round control. The sign is drawn text inside it and hidden from a
+	 *	screen reader - the label says what the button does, and "multiplication
+	 *	sign" is not it
+	 *
+	 *	@param		{string}		className
+	 *	@param		{string}		label
+	 *	@param		{string}		symbol
+	 *	@param		{Function}	onClick
+	 *
+	 *	@return		{Element}
+	 */
+	function button( className, label, symbol, onClick ) {
+
+		var el = dc.createElement('button');
+		el.type = 'button';
+		el.className = 'gallery-view-button ' + className;
+		el.setAttribute( 'aria-label', label );
+
+		var sign = dc.createElement('span');
+		sign.setAttribute( 'aria-hidden', 'true' );
+		sign.textContent = symbol;
+		el.appendChild( sign );
+
+		el.addEventListener( 'click', function( ev ) {
+			ev.preventDefault();
+			ev.stopPropagation();
+			onClick();
+		} );
+
+		return el;
+	}
+
+	/**
+	 *	Build the overlay once per opening. The words come off the link that
+	 *	opened it (data-label-*), because this file cannot read a textfill;
+	 *	where it carries none, from the dictionary above for the page's
+	 *	language (<html lang>), and from English where that has none either
+	 *
+	 *	@param		{Element}	link
+	 *
+	 *	@return		void
+	 */
+	function open( link ) {
+
+		set = setOf( link );
+		at = set.indexOf( link );
+		if( at === -1 ) {
+			set = [ link ];
+			at = 0;
+		}
+		opener = link;
+
+		var labels = labelsOf( link );
+
+		box = dc.createElement('div');
+		box.className = 'gallery-view';
+		box.setAttribute( 'role', 'dialog' );
+		box.setAttribute( 'aria-modal', 'true' );
+		box.setAttribute( 'aria-label', labels.close );
+
+		var stage = dc.createElement('div');
+		stage.className = 'gallery-view-stage';
+
+		var figure = dc.createElement('figure');
+		figure.className = 'gallery-view-figure';
+
+		var image = dc.createElement('img');
+		image.className = 'gallery-view-image';
+		image.alt = '';
+
+		var caption = dc.createElement('figcaption');
+		caption.className = 'gallery-view-caption';
+
+		figure.appendChild( image );
+		figure.appendChild( caption );
+		stage.appendChild( figure );
+
+		var count = dc.createElement('span');
+		count.className = 'gallery-view-count';
+		if( set.length < 2 )
+			count.hidden = true;
+		stage.appendChild( count );
+
+		stage.appendChild( button( 'gallery-view-close', labels.close, '\u00d7', close ) );
+
+		if( set.length > 1 ) {
+			stage.appendChild( button( 'gallery-view-prev', labels.prev, '\u2039', function() { go( -1 ) } ) );
+			stage.appendChild( button( 'gallery-view-next', labels.next, '\u203a', function() { go( 1 ) } ) );
+		}
+
+		box.appendChild( stage );
+
+		box.image = image;
+		box.caption = caption;
+		box.count = count;
+
+		// The backdrop closes, the picture does not: a click that lands on the
+		// figure is somebody looking, not somebody leaving
+		box.addEventListener( 'click', function( ev ) {
+			if( ev.target === box || ev.target === stage )
+				close();
+		} );
+
+		bindSwipe( box );
+
+		dc.body.appendChild( box );
+		dc.documentElement.classList.add('gallery-view-lock');
+
+		show( at );
+
+		// Faded in on the next frame, so the transition has a state to come
+		// from - a class set in the same frame as the insert never animates
+		wn.requestAnimationFrame( function() {
+			if( box !== null )
+				box.classList.add('gallery-view-is-open');
+		} );
+
+		// The focus goes into the dialog, and is kept there while it is open
+		( box.querySelector('.gallery-view-close') || box ).focus();
+
+		dc.addEventListener( 'keydown', onKey, true );
+	}
+
+	/**
+	 *	Put one image of the set on screen
+	 *
+	 *	@param		{number}	index
+	 *
+	 *	@return		void
+	 */
+	function show( index ) {
+
+		if( box === null )
+			return;
+
+		at = ( index + set.length ) % set.length;
+
+		var link = set[at];
+		var href = link.getAttribute('href') || '';
+
+		box.classList.add('gallery-view-is-loading');
+		box.caption.textContent = captionOf( link );
+		box.count.textContent = ( at + 1 ) + ' / ' + set.length;
+
+		// The onload is set before the src, or a cached image can finish
+		// before there is anything listening for it
+		box.image.onload = function() {
+			if( box !== null ) {
+				box.classList.remove('gallery-view-is-loading');
+				box.classList.remove('gallery-view-is-swapping');
+			}
+		};
+		box.image.onerror = box.image.onload;
+		box.image.src = href;
+		// The thumbnail's own alt text, not the caption: the caption is on
+		// screen under the picture already, and a screen reader would read it
+		// twice. A link without a thumbnail has no alt text to give it
+		var thumb = link.querySelector('img');
+		box.image.alt = thumb ? ( thumb.getAttribute('alt') || '' ) : '';
+
+		// The neighbour, quietly, so the next arrow press has nothing to wait
+		// for. Never more than one in each direction: a set of forty images is
+		// not forty downloads because somebody opened the first
+		if( set.length > 1 )
+			[ set[ ( at + 1 ) % set.length ], set[ ( at - 1 + set.length ) % set.length ] ].forEach( function( neighbour ) {
+				var pre = new wn.Image();
+				pre.src = neighbour.getAttribute('href') || '';
+			} );
+	}
+
+	function go( by ) {
+
+		if( box === null || set.length < 2 )
+			return;
+
+		box.classList.add('gallery-view-is-swapping');
+		show( at + by );
+	}
+
+	function close() {
+
+		if( box === null )
+			return;
+
+		var leaving = box;
+		box = null;
+
+		dc.removeEventListener( 'keydown', onKey, true );
+		dc.documentElement.classList.remove('gallery-view-lock');
+		leaving.classList.remove('gallery-view-is-open');
+
+		// Taken out after the fade rather than on a timer that might outlive
+		// the page: transitionend fires once, and the fallback is only there
+		// for a browser that skipped the transition entirely
+		var remove = function() {
+			if( leaving.parentNode !== null )
+				leaving.parentNode.removeChild( leaving );
+		};
+
+		// Only the overlay's own fade ends it. transitionend bubbles, so a
+		// control that is still finishing its own hover or press transition
+		// reports through the overlay as well - and the close button always
+		// is, because the click that closed the lightbox started one. Taking
+		// the overlay out on that would cut the fade off after the button's
+		// .15s instead of the overlay's .22s, which reads as a picture that
+		// vanishes rather than one that fades
+		leaving.addEventListener( 'transitionend', function( ev ) {
+			if( ev.target === leaving )
+				remove();
+		} );
+		wn.setTimeout( remove, 400 );
+
+		if( opener !== null ) {
+			opener.focus();
+			opener = null;
+		}
+	}
+
+	/**
+	 *	Escape closes, the arrows move, and Tab stays inside: a dialog the
+	 *	keyboard can walk out of is a dialog the page behind it can be
+	 *	operated through
+	 *
+	 *	@param		{KeyboardEvent}	ev
+	 *
+	 *	@return		void
+	 */
+	function onKey( ev ) {
+
+		if( box === null )
+			return;
+
+		if( ev.key === 'Escape' ) {
+			ev.preventDefault();
+			return close();
+		}
+
+		if( ev.key === 'ArrowRight' ) {
+			ev.preventDefault();
+			return go( 1 );
+		}
+
+		if( ev.key === 'ArrowLeft' ) {
+			ev.preventDefault();
+			return go( -1 );
+		}
+
+		if( ev.key !== 'Tab' )
+			return;
+
+		var focusable = box.querySelectorAll('button');
+		if( focusable.length === 0 )
+			return;
+
+		var first = focusable[0];
+		var last = focusable[ focusable.length - 1 ];
+
+		if( ev.shiftKey === true && dc.activeElement === first ) {
+			ev.preventDefault();
+			last.focus();
+		} else if( ev.shiftKey !== true && dc.activeElement === last ) {
+			ev.preventDefault();
+			first.focus();
+		}
+	}
+
+	/**
+	 *	Swipe left and right on a touch screen. Horizontal only, and only
+	 *	past a distance a scroll would not travel sideways - otherwise
+	 *	scrolling a tall picture flips to the next one
+	 *
+	 *	@param		{Element}	el
+	 *
+	 *	@return		void
+	 */
+	function bindSwipe( el ) {
+
+		var startX = 0;
+		var startY = 0;
+
+		el.addEventListener( 'touchstart', function( ev ) {
+			startX = ev.changedTouches[0].clientX;
+			startY = ev.changedTouches[0].clientY;
+		}, { passive : true } );
+
+		el.addEventListener( 'touchend', function( ev ) {
+
+			var byX = ev.changedTouches[0].clientX - startX;
+			var byY = ev.changedTouches[0].clientY - startY;
+
+			if( Math.abs( byX ) > 48 && Math.abs( byX ) > Math.abs( byY ) )
+				go( byX < 0 ? 1 : -1 );
+		}, { passive : true } );
+	}
+
+	// One listener for the whole document, for every lightbox link there is
+	// now or will be. A modified click is the visitor asking for the image in
+	// a tab of its own, which is exactly what the href already does
+	dc.addEventListener( 'click', function( ev ) {
+
+		if( ev.defaultPrevented === true || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey )
+			return;
+
+		var link = linkOf( ev.target );
+
+		if( link === null || isImage( link.getAttribute('href') ) === false )
+			return;
+
+		ev.preventDefault();
+		open( link );
+	} );
+
+} )( window, document );
