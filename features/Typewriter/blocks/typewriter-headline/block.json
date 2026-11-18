@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Schreibmaschinen-Überschrift", "en_US": "Typewriter headline" },
+	"description": { "de_DE": "Eine Überschrift, die sich Zeile für Zeile selbst tippt und in der Schleife von vorn beginnt.", "en_US": "A headline that types itself line by line and starts over in a loop." },
+	"category": "content",
+	"rank": 85,
+	"images": {}
+}

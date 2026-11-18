@@ -1,0 +1,7 @@
+[section-wrap id="typewriter-headline" ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[typewriter ~lines tag="h2" loop]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

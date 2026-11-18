@@ -1,0 +1,1 @@
+<[[tag]] class="[[class]]"[[lang]] data-typewriter-speed="[[speed]]" data-typewriter-hold="[[hold]]" data-typewriter-loop="[[loop]]" data-typewriter-label="[[/feature/typewriter/pause/label]]">[[lines]]</[[tag]]>

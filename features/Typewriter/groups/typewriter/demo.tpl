@@ -1,0 +1,7 @@
+[section-wrap ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[typewriter tag="h2" loop text="Typed out line by line&#10;and then the next one"]
+		[/section-col]
+	[/section-row]
+[/section-wrap]
