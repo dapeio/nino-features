@@ -1,0 +1,7 @@
+[section-wrap id="form" ground="alt"]
+	[section-row width="narrow"]
+		[section-col]
+			[form]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Kontakt mit Formular", "en_US": "Contact with a form" },
+	"description": { "de_DE": "Überschrift und Text links, das erste Formular rechts; das Formular der Kontaktseite.", "en_US": "A headline and a text at the left, the first form at the right; the form of a contact page." },
+	"category": "contact",
+	"rank": 70,
+	"images": {}
+}

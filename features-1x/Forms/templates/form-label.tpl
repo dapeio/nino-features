@@ -1,1 +1,0 @@
-<label for="[[id]]">[[label]][[star]]</label>

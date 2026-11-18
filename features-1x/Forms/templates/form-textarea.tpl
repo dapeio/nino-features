@@ -1,1 +1,0 @@
-<textarea id="[[id]]" name="[[name]]" class="nino-form-textarea"[[required]]></textarea>

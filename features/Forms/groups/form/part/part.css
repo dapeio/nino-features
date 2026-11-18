@@ -1,0 +1,40 @@
+/*	form - the standard part: the fields of a form in a column, the message the script (or the page, without a script) writes, and the two looks that paint the fields, filled and line.
+	A form carries .nino-form for the script of the kernel and nothing else of it: the look is this part's.	*/
+:root {
+	--form-gap: var(--page-space-3);
+	--form-radius: var(--page-radius);
+	--form-size: var(--page-text-2);
+}
+.form { display: grid; gap: var(--form-gap); width: 100%; max-width: 100%; font-size: var(--form-size); }
+.form .form-field { display: grid; gap: var(--page-space-1); min-width: 0; margin: 0; padding: 0; border: 0; }
+.form .form-label { padding: 0; font-weight: 600; }
+.form .form-star { color: var(--brand-ink-quiet); }
+.form .form-control { box-sizing: border-box; width: 100%; min-height: 2.75rem; padding: var(--page-space-2) var(--page-space-3); border: var(--page-line) solid var(--brand-ink-quiet); border-radius: var(--form-radius); background: var(--brand-ground); color: inherit; font: inherit; }
+.form .form-textarea { min-height: 8rem; resize: vertical; }
+.form .form-control:focus-visible, .form .form-box:focus-visible, .form .form-submit:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.form .form-control[aria-invalid="true"], .form .form-box[aria-invalid="true"] { outline: 2px solid var(--brand-ink); outline-offset: 1px; }
+.form .form-group { gap: var(--page-space-2); }
+.form .form-check { display: flex; align-items: center; gap: var(--page-space-2); min-height: 1.5rem; font-weight: var(--page-weight-text); }
+.form .form-box { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--brand-accent); }
+.form .form-trap { position: absolute; left: -200vw; }
+.form .form-note { margin: 0; font-size: var(--page-text-1); color: var(--brand-ink-quiet); }
+.form .form-submit { justify-self: start; min-height: 2.75rem; padding: var(--page-space-2) calc( var(--page-space-2) * 2.5 ); border: var(--page-line) solid var(--brand-accent); border-radius: var(--form-radius); background: var(--brand-accent); color: var(--brand-on-accent); font-family: var(--brand-font-button); font-size: inherit; font-weight: 600; cursor: pointer; transition: filter var(--page-motion); }
+.form .form-submit:hover { filter: brightness( .9 ); }
+.form .form-submit:disabled { opacity: .6; cursor: default; }
+/*	The message: empty it is nothing. What it says is in its words, the box only sets it apart - a bar at its start, and for a refusal that the page was sent back with a double one, so that colour is never the one signal	*/
+.form .form-message { margin: 0; padding: var(--page-space-2) var(--page-space-3); border-inline-start: 4px solid var(--brand-accent); border-radius: var(--form-radius); background: color-mix( in srgb, var(--brand-ink) 8%, var(--brand-ground) ); font-size: var(--page-text-1); }
+.form .form-message:empty { display: none; }
+.form .form-message:is([data-form-outcome="error"], [data-form-outcome="invalid"], [data-form-outcome="email"]) { border-inline-start: 4px double var(--brand-ink); }
+/*	Without a script the page writes the message of a sent form into the paragraph of every form of the page, and the one the address names shows it (the fragment of the redirect is the id of the form). The script puts tabindex on a paragraph it has written into: from then on that message is its own	*/
+.form .form-message[data-form-outcome]:not([tabindex]) { display: none; }
+.form:target > .form-message[data-form-outcome]:not([tabindex]) { display: block; }
+/*	filled: tinted fields without a box, the line under a field only	*/
+.form--variant-filled .form-control { border-width: 0 0 var(--page-line); border-color: var(--brand-ink-quiet); background: color-mix( in srgb, var(--brand-ink) 7%, var(--brand-ground) ); }
+.form--variant-filled .form-control:focus-visible { background: var(--brand-ground); }
+/*	line: a field is a rule under the words, no fill and no corner	*/
+.form--variant-line .form-control { padding-inline: 0; border-width: 0 0 var(--page-line); border-radius: 0; background: transparent; }
+.form--variant-line .form-control:focus-visible { border-bottom-width: 2px; outline-offset: 4px; }
+.form--variant-line .form-message { border-radius: 0; }
+@media print {
+	.form .form-submit { background: none; color: #000; border-color: #000; }
+}
