@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Newsletter-Anmeldung", "en_US": "Newsletter signup" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und das Anmeldeformular für den Newsletter.", "en_US": "A headline, a sentence and the signup form of the newsletter." },
+	"category": "contact",
+	"rank": 80,
+	"images": {}
+}

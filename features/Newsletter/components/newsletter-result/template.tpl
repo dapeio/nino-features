@@ -1,0 +1,1 @@
+<div class="[[class]]"[[lang]]><h1 class="newsletter-result-title">[[title]]</h1><p class="newsletter-result-text">[[text]]</p>[[form]]<p class="newsletter-result-home"><a class="newsletter-result-button" href="[[home]]">[[homename]]</a></p></div>

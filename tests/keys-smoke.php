@@ -38,6 +38,10 @@ const KEYS_PAGES = [
 		'/blog/post' => [ [ 'Posts.php', '/POST_URI\s*=\s*\'\/%s\/post\'/' ], [ 'Sections/Sections.php', '/DEFAULT_KEY\s*=\s*\'blog\'/' ] ],
 	],
 	'protected' => [ '/.protected' => [ [ 'ProtectedArea.php', '/LOGIN_URI\s*=\s*\'\/\.protected\'/' ] ] ],
+	'newsletter' => [
+		'/.newsletter'             => [ [ 'Newsletter.php', '/\'GET:\/\/\.newsletter\'/' ] ],
+		'/.newsletter/unsubscribe' => [ [ 'Newsletter.php', '/\'GET:\/\/\.newsletter\/unsubscribe\'/' ] ],
+	],
 ];
 
 /*	The labels of the Elements panel for the fields of an element type that a unit brings: the workbench's words and no site's, so the unit's

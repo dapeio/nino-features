@@ -1,0 +1,10 @@
+<!-- nino:template-name Newsletter -->
+[template /templates/html-header]
+[section-wrap id="result" ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[newsletter-result]
+		[/section-col]
+	[/section-row]
+[/section-wrap]
+[template /templates/html-footer]

@@ -1,0 +1,12 @@
+<!-- nino:template-name Newsletter unsubscribe -->
+[template /templates/html-header]
+[section-wrap id="intro" ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title ~title tag="h1"]
+			[text ~text]
+			[newsletter-unsubscribe]
+		[/section-col]
+	[/section-row]
+[/section-wrap]
+[template /templates/html-footer]

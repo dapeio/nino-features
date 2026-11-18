@@ -1,0 +1,1 @@
+<form class="newsletter-result-action" id="newsletter-action" action="[[action]]" method="post">[[csrf]]<input type="hidden" name="[[field]]" value="[[token]]"><button type="submit" class="newsletter-result-button newsletter-result-primary">[[button]]</button></form>

@@ -32,6 +32,7 @@ const LEGAL_RANGES = [
 	'consent'   => [ 400, 499 ],
 	'forms'     => [ 500, 599 ],
 	'mailer'    => [ 500, 599 ],
+	'newsletter' => [ 500, 599 ],
 	'stats'     => [ 600, 699 ],
 	'embed'     => [ 700, 799 ],
 	'protected' => [ 800, 899 ],
