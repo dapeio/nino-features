@@ -1,0 +1,8 @@
+[section-wrap id="social" ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title ~title tag="h2" size="m"]
+			[social]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

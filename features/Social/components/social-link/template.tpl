@@ -1,0 +1,1 @@
+<a class="[[class]]" href="[[url]]"[[target]][[rel]]>[[icon]]<span class="social-label">[[title]]</span></a>

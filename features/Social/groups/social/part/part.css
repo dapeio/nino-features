@@ -1,0 +1,24 @@
+/*	social - the standard part: the links as a row of line icons in the colour of the link, each with its name for a screen reader, and two looks that put a round badge or a ring round the icon	*/
+:root {
+	--social-size: 1.5em;
+	--social-gap: var(--page-space-2);
+}
+.social { --social-fit: var(--social-size); display: flex; flex-wrap: wrap; align-items: center; gap: calc( var(--social-gap) / 2 ) var(--social-gap); margin: 0; padding: 0; list-style: none; }
+.social--size-small { --social-fit: calc( var(--social-size) * .75 ); }
+.social--size-large { --social-fit: calc( var(--social-size) * 4 / 3 ); }
+.social-item { margin: 0; }
+.social-link { display: inline-flex; align-items: center; min-width: 24px; min-height: 24px; color: var(--brand-accent); text-decoration: none; }
+.social-link:hover .social-label { text-decoration: underline; }
+.social-link:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.social-link--show-icon .social-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.social-icon { --social-box: var(--social-fit, calc( var(--social-size) * 5 / 6 )); display: inline-block; flex: none; width: var(--social-box); height: var(--social-box); vertical-align: -.25em; color: currentColor; }
+.social-icon + .social-label { margin-inline-start: .4em; }
+.social-icon > svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; }
+.social--variant-badges .social-link, .social--variant-outline .social-link, .social-link--variant-badges, .social-link--variant-outline { border-radius: 99rem; }
+.social--variant-badges .social-icon, .social-link--variant-badges .social-icon, .social-icon--variant-badges { box-sizing: content-box; padding: calc( var(--social-box) * .4 ); border: var(--page-line) solid var(--brand-line); border-radius: 50%; background-color: var(--brand-ground-alt); color: var(--brand-ink); }
+.social--variant-outline .social-icon, .social-link--variant-outline .social-icon, .social-icon--variant-outline { box-sizing: content-box; padding: calc( var(--social-box) * .4 ); border-radius: 50%; box-shadow: inset 0 0 0 calc( var(--social-box) / 12 ) currentColor; }
+.social-link--variant-badges .social-icon, .social-icon--variant-badges { margin-block: calc( var(--social-box) * -.4 - var(--page-line) ); }
+.social-link--variant-outline .social-icon, .social-icon--variant-outline { margin-block: calc( var(--social-box) * -.4 ); }
+@media (forced-colors: active) {
+	.social--variant-outline .social-icon, .social-link--variant-outline .social-icon, .social-icon--variant-outline { border: var(--page-line) solid currentColor; }
+}

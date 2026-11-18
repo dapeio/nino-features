@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Social-Links", "en_US": "Social links" },
+	"description": { "de_DE": "Eine Überschrift und eine Reihe von Links zu den Profilen der Seite, jeder mit seinem Icon. Die Links pflegst Du unter Elemente.", "en_US": "A headline and a row of links to the profiles of the site, each with its icon. You keep the links under Elements." },
+	"category": "contact",
+	"rank": 70,
+	"images": {}
+}

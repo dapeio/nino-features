@@ -1,0 +1,1 @@
+<span class="[[class]]"[[aria]]>[[svg]]</span>

@@ -8,9 +8,7 @@ return [
 	// Copied to /elements/social.php: the model and four links to start from
 	'elementTypes'	=> [ 'social.php' ],
 
-	// Holds [social], for a template of the project to include. The frames of
-	// the Design feature do not include it: a frame that wants the links
-	// writes [social] into the project's frame-header.tpl or frame-footer.tpl
+	// Holds [social], for a template of the project to include
 	'templates'			=> [ 'social-links.tpl' ],
 
 	// The Elements panel's labels for the type's fields - the workbench's
