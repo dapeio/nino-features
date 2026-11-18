@@ -4,8 +4,8 @@ return [
 	'key'					=> 'collections',
 	'name'				=> [ 'en_US' => 'Collections', 'de_DE' => 'Sammlungen' ],
 	'description'	=> [
-		'en_US' => 'Collections draws a list over the elements of a type, as components: a loop of any components, a list, a table and a filter. Cards in a row, a table of prices or the rows of a team page are written as a call, with the fields of each element in it.',
-		'de_DE' => 'Sammlungen zeichnet eine Liste über die Elemente eines Typs als Komponenten: eine Schleife über beliebige Komponenten, eine Liste, eine Tabelle und einen Filter. Karten in einer Zeile, eine Preistabelle oder die Zeilen einer Teamseite schreibst Du als Aufruf, mit den Feldern jedes Elements darin.',
+		'en_US' => 'Collections draws a list over the elements of a type, as components: a loop of any components, a list, a table and a filter. Cards in a row, a table of prices or the rows of a team page are written as a call, with the fields of each element in it. A row of logos is a block over a type of your own.',
+		'de_DE' => 'Sammlungen zeichnet eine Liste über die Elemente eines Typs als Komponenten: eine Schleife über beliebige Komponenten, eine Liste, eine Tabelle und einen Filter. Karten in einer Zeile, eine Preistabelle oder die Zeilen einer Teamseite schreibst Du als Aufruf, mit den Feldern jedes Elements darin. Eine Reihe von Logos ist ein Block über einen Typ Deiner Wahl.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -62,8 +62,12 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'blocks/<key>/' => [
-				'en_US' => 'Two blocks for the Builder, a list and a table over elements, which show the example elements until you choose what they show.',
-				'de_DE' => 'Zwei Blocks für den Builder, eine Liste und eine Tabelle über Elemente, die die Beispielelemente zeigen, bis Du wählst, was sie zeigen.',
+				'en_US' => 'Three blocks for the Builder, a list, a table and a row of logos over elements, which show the example elements until you choose what they show.',
+				'de_DE' => 'Drei Blocks für den Builder, eine Liste, eine Tabelle und eine Reihe von Logos über Elemente, die die Beispielelemente zeigen, bis Du wählst, was sie zeigen.',
+			],
+			'blocks/logo-row/' => [
+				'en_US' => 'The row of logos draws an image for each element; for its type create the fields image, name and optionally url under Elements, then choose it in the Builder and the fields for the call.',
+				'de_DE' => 'Die Reihe von Logos zeichnet ein Bild je Element; lege für den Typ unter Elemente die Felder Bild, Name und optional Adresse an, wähle ihn im Builder und die Felder für den Aufruf.',
 			],
 			'text/<locale>.php' => [
 				'en_US' => 'Puts the four words of the filter and the table - All, Filter, Showing, Table - into the Text panel, for the buttons and the names a screen reader reads.',

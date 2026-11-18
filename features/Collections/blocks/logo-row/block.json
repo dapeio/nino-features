@@ -1,0 +1,13 @@
+{
+	"name": {
+		"de_DE": "Reihe von Logos",
+		"en_US": "Row of logos"
+	},
+	"description": {
+		"de_DE": "Eine Überschrift und darunter eine Reihe von Logos, eines je Element eines Typs. Welchen Typ sie zeigt, wählst Du in der erweiterten Ansicht.",
+		"en_US": "A headline and below it a row of logos, one for each element of a type. You choose in the extended view which type it shows."
+	},
+	"category": "trust",
+	"rank": 60,
+	"images": {}
+}

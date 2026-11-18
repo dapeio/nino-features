@@ -21,7 +21,8 @@ declare(strict_types=1);
  *													F. the script of the filter, run over the kernel's stand-in of a page, in collections-js-smoke.js
  *													G. words, activation, sizes, and the cost of a loop of a thousand elements - what the register costs it
 												H. the demo of the group: read without a note, and drawn over the type of example elements the kernel brings
- *													I. the two blocks of the feature, a list and a table over elements: listed with the feature as their origin, valid, drawn
+ *													I. the three blocks of the feature, a list, a table and a row of logos over elements: listed with the feature as their origin, valid, drawn;
+ *													   the row of logos over a type of a project - a picture is its image, the name its alt text, an address a link only by an allowed scheme
  *
  *												Runs against an isolated sandbox directory. The kernel is the checkout's own; the feature is the one this
  *												file sits in, which the kernel reads from the directory it is told (NINO_FEATURES_DIR) and registers as it
@@ -1132,13 +1133,13 @@ check( '...whatever types the project has: with none of its own the demo is draw
 echo "\nI. The blocks\n";
 
 $blockSite = collectionsSite( 'en_US' );
-$blockKeys = [ 'list-over-elements', 'table-over-elements' ];
+$blockKeys = [ 'list-over-elements', 'table-over-elements', 'logo-row' ];
 $blockAll = \Nino\Blocks::all( $blockSite );
 $blockManifest = (array) require $featureDir. '/feature.php';
-check( 'the feature brings a list and a table over elements as blocks: both are listed with the feature as their origin and its name as the label, can be put in, and none of the feature\'s folders is refused',
+check( 'the feature brings a list, a table and a row of logos over elements as blocks: both are listed with the feature as their origin and its name as the label, can be put in, and none of the feature\'s folders is refused',
 	array_diff( $blockKeys, array_keys( $blockAll ) ) === [] && array_unique( array_column( array_intersect_key( $blockAll, array_flip( $blockKeys ) ), 'origin' ) ) === [ 'collections' ]
 	&& array_unique( array_map( 'json_encode', array_column( array_intersect_key( $blockAll, array_flip( $blockKeys ) ), 'label' ) ) ) === [ json_encode( $blockManifest['name'] ) ]
-	&& array_column( array_intersect_key( $blockAll, array_flip( $blockKeys ) ), 'missing' ) === [ [], [] ]
+	&& array_column( array_intersect_key( $blockAll, array_flip( $blockKeys ) ), 'missing' ) === [ [], [], [] ]
 	&& array_filter( array_keys( \Nino\Blocks::rejected( $blockSite ) ), static fn( string $where ): bool => str_starts_with( $where, 'collections/' ) ) === [] );
 
 $blockDrawn = [];
@@ -1169,6 +1170,32 @@ check( 'drawn, the list has one row and the table one row for each element of th
 	substr_count( $blockDrawn['list-over-elements'], '<li class="collection-list-row"' ) === $demoElements && substr_count( $blockDrawn['table-over-elements'], '<tr class="collection-table-row"' ) === $demoElements
 	&& preg_match_all( '#<th class="collection-col[^"]*" scope="col">[^<]+</th>#', $blockDrawn['table-over-elements'] ) === 4
 	&& str_contains( $blockDrawn['list-over-elements']. $blockDrawn['table-over-elements'], '[' ) === false && ninoWarnings() === [] );
+
+// the row of logos: drawn over the example elements it has a picture and a link for each, and over a type of the project - the three fields a
+// type needs for it are named by the manual - the picture is the image of the element, the name is its alt text as text and the address a link only
+// where its scheme is one the kernel lets through
+$logoBlock = \Nino\Blocks::get( $blockSite, 'logo-row' );
+$logoSource = (string) ( $logoBlock['source'] ?? '' );
+check( 'the row of logos is a loop of a picture with the title of the element as its alt text and the link of the element as its address, below a headline, in a section of the category trust',
+	( $logoBlock['category'] ?? '' ) === 'trust' && preg_match( '#\[image /nino/placeholder/mark alt="\.title" href="\.link"[^\]]*\]#', $logoSource ) === 1
+	&& str_contains( $logoSource, '[section-title ~title' ) === true && substr_count( $logoSource, '[collection '. $demoType ) === 1 );
+check( 'drawn over the example elements, it has one picture for each element, linked, and the alt text of each is the title of its element',
+	substr_count( $blockDrawn['logo-row'], '<img ' ) === $demoElements && substr_count( $blockDrawn['logo-row'], '<a href="#">' ) === $demoElements
+	&& preg_match_all( '/alt="([^"]*)"/', $blockDrawn['logo-row'], $logoAlts ) === $demoElements
+	&& array_diff( array_map( 'html_entity_decode', $logoAlts[1] ), array_column( array_slice( \Nino\Elements::PLACEHOLDERS[$demoType]['*'], 1 ), 'title' ) ) === [] );
+
+$logos = collectionsSite( 'en_US' );
+collectionsType( $logos, 'logo', [ 'name' => [ 'type' => 'string' ], 'image' => [ 'type' => 'image', 'alt' => 'name' ], 'url' => [ 'type' => 'string' ] ],
+	[ 'a' => [ 'name' => COLLECTIONS_HOSTILE, 'image' => 'elements/logo/a.png', 'url' => 'https://example.org/a' ], 'b' => [ 'name' => 'Beta', 'image' => 'elements/logo/b.png', 'url' => 'javascript:alert(1)' ],
+		'c' => [ 'name' => 'Gamma', 'image' => 'elements/logo/c.png', 'url' => '' ], 'd' => [ 'name' => 'Delta', 'image' => 'elements/logo/d.png', 'url' => "data:text/html,<script>1</script>" ] ], [] );
+$logoRow = collectionsDraw( $logos, str_replace( [ $demoType, '/nino/placeholder/mark', '.title', '.link' ], [ '/logo', '.image', '.name', '.url' ], $logoSource ) );
+[ $logoElements, $logoAttributes ] = collectionsDom( $logoRow );
+check( 'over a type of the project the row is the pictures of its elements: the name is the alt text as text - what spells a call, a tag or a quote is read as none - and no element or attribute comes of it that the picture and its link do not have',
+	substr_count( $logoRow, '<img ' ) === 4 && array_diff( $logoElements, [ 'html', 'body', 'section', 'div', 'figure', 'img', 'a' ] ) === [] && array_diff( $logoAttributes, [ 'id', 'class', 'src', 'alt', 'href', 'loading', 'decoding' ] ) === []
+	&& str_contains( $logoRow, '<script' ) === false && str_contains( $logoRow, "\0" ) === false && str_contains( $logoRow, 'onload="' ) === false
+	&& str_contains( str_replace( [ '&#91;', '&lt;', '&gt;', '&quot;', '&#039;' ], [ '[', '<', '>', '"', "'" ], $logoRow ), '[template /templates/evil]' ) === true );
+check( 'an address is a link only by a scheme the kernel lets through: https is one, a script address and a data address are none, an element with no address is a picture alone',
+	substr_count( $logoRow, '<a ' ) === 1 && str_contains( $logoRow, 'href="https://example.org/a"' ) === true && str_contains( $logoRow, 'javascript:' ) === false && str_contains( $logoRow, 'data:text' ) === false );
 
 foreach( $sandboxes as $sandbox )
 	if( is_dir( $sandbox ) === true )
