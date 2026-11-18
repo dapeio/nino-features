@@ -1,0 +1,16 @@
+/*	protected - the standard part: the password form as one column of a label, a field and a button, with the line that says a try failed, and the link that locks the area again	*/
+:root {
+	--protected-form-gap: var(--page-space-2);
+	--protected-form-radius: var(--page-radius);
+}
+.protected-form { display: flex; flex-direction: column; align-items: stretch; gap: var(--protected-form-gap); width: 100%; max-width: 26rem; margin: 0 auto; text-align: start; }
+.protected-form-field { display: flex; flex-direction: column; gap: var(--page-space-1); }
+.protected-form-label { font-weight: var(--page-weight-title); }
+.protected-form-input { box-sizing: border-box; width: 100%; min-height: 24px; margin: 0; padding: .6em .75em; border: var(--page-line) solid var(--brand-ink-quiet); border-radius: var(--protected-form-radius); background: var(--brand-ground); color: var(--brand-ink); font: inherit; line-height: 1.3; }
+.protected-form-input[aria-invalid="true"] { border-color: var(--brand-ink); }
+.protected-form-input:focus-visible, .protected-form-button:focus-visible, .protected-logout:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.protected-form-button { min-height: 24px; margin: 0; padding: .6em 1em; border: var(--page-line) solid var(--brand-accent); border-radius: var(--protected-form-radius); background: var(--brand-accent); color: var(--brand-on-accent); font: inherit; font-family: var(--brand-font-button); line-height: 1.2; cursor: pointer; }
+.protected-form-button:hover { background: transparent; color: var(--brand-accent); }
+.protected-form-error { margin: 0; padding: var(--page-space-1) var(--page-space-2); border-inline-start: 4px solid var(--brand-accent); background: var(--brand-ground-alt); color: var(--brand-ink); font-weight: var(--page-weight-title); }
+.protected-form-error[hidden] { display: none; }
+.protected-logout { color: var(--brand-accent); }

@@ -1,0 +1,1 @@
+<a class="[[class]]" href="[[href]]">[[/feature/protected/logout/label]]</a>

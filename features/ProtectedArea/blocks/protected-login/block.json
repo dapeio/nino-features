@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Anmeldung mit Passwort", "en_US": "Sign in with a password" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und das Passwortformular, für die Seite eines geschützten Bereichs.", "en_US": "A headline, a sentence and the password form, for the page of a protected area." },
+	"category": "content",
+	"rank": 95,
+	"images": {}
+}
