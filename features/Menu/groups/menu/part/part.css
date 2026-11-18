@@ -1,0 +1,93 @@
+/*	menu - the standard part: the list of a menu, and the panel an entry opens. With no script every panel stands open under its entry and there is no button; where scripting is on the button beside an entry turns the panel - a dropdown under the entry from 768px, in the line of the header, and an accordion below it, in the list that the small screen folds behind its button	*/
+:root {
+	--menu-width: 36rem;
+	--menu-gap: var(--page-space-4);
+	--menu-radius: var(--page-radius);
+	--menu-offset: var(--page-space-3);
+}
+.menu-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.menu-item { position: relative; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; }
+.menu-link { flex: 1 1 auto; min-width: 0; display: block; padding-block: var(--page-space-2); color: inherit; overflow-wrap: anywhere; text-decoration: none; }
+.menu-link:hover, .menu-link[aria-current], .menu-item--current > .menu-link { text-decoration: underline; text-decoration-thickness: 2px; }
+.menu-link:focus-visible, .menu-toggle:focus-visible, .menu-burger:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+
+/*	The button that turns a panel: a chevron drawn by the border of its own after-box, so that it takes the colour of the text. Without a script there is nothing to press	*/
+.menu-toggle { display: none; position: relative; flex: 0 0 auto; width: 2.75rem; height: 2.75rem; margin: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.menu-toggle::after { content: ""; position: absolute; top: 50%; left: 50%; width: .5rem; height: .5rem; border-style: solid; border-width: 0 2px 2px 0; transform: translate( -50%, -70% ) rotate( 45deg ); }
+.menu-toggle[aria-expanded="true"]::after { transform: translate( -50%, -30% ) rotate( 225deg ); }
+.menu-toggle-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/*	The panel: the columns of what the entry holds, as wide as the list under it	*/
+.menu-panel { flex: 1 0 100%; box-sizing: border-box; padding: var(--page-space-2) 0 var(--page-space-3) var(--page-space-3); }
+.menu-cols { display: grid; gap: var(--menu-gap); grid-template-columns: minmax( 0, 1fr ); }
+.menu-col { display: flex; flex-direction: column; align-items: flex-start; gap: var(--page-space-1); min-width: 0; overflow-wrap: anywhere; }
+.menu-title, .menu-subtitle { margin: 0; }
+.menu-title { font-family: var(--brand-font-title); font-weight: var(--page-weight-title); line-height: 1.3; }
+.menu-subtitle { color: var(--brand-ink-quiet); font-size: var(--page-text-1); }
+.menu-image { display: block; max-width: 100%; height: auto; border-radius: var(--menu-radius); }
+.menu-link--sub { flex: 0 1 auto; display: inline-flex; align-items: center; min-height: 1.75rem; padding-block: 0; text-decoration: underline; text-underline-offset: .2em; }
+.menu-html { max-width: 100%; }
+.menu-html p, .menu-html ul, .menu-html ol { margin: 0 0 var(--page-space-2); }
+.menu-html > :last-child { margin-bottom: 0; }
+.menu-html a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+
+/*	The menu is a details of the browser, with no script, as the menu of the header is: a button of three bars that opens the list below the line of the header, over the whole width. Where the browser draws the inside of a details as a part of its own (::details-content), the nav and the details are no boxes and the button and the list are items of the line of the header; a wide screen then shows the list open beside the logo and the actions, and no button. Where it does not, the button stays at every width	*/
+.menu-burger { display: flex; align-items: center; justify-content: center; margin-inline-start: auto; width: 2.75rem; height: 2.75rem; padding: 0; border: var(--page-line) solid var(--brand-line); border-radius: var(--page-radius); background: none; list-style: none; cursor: pointer; }
+.menu-burger::-webkit-details-marker { display: none; }
+.menu-burger span, .menu-burger span::before, .menu-burger span::after { display: block; width: 1.25rem; height: 2px; background: currentColor; }
+.menu-burger span { position: relative; }
+.menu-burger span::before, .menu-burger span::after { content: ""; position: absolute; left: 0; }
+.menu-burger span::before { top: -6px; }
+.menu-burger span::after { top: 6px; }
+.menu:not( .menu--footer ) .menu-list { margin-top: var(--page-space-2); max-height: calc( 100dvh - 10rem ); overflow-y: auto; overscroll-behavior: contain; }
+@supports selector( ::details-content ) {
+	.menu:not( .menu--footer ), .menu:not( .menu--footer ) .menu-details { display: contents; }
+	.menu:not( .menu--footer ) .menu-details::details-content { flex: 1 0 100%; min-width: 0; }
+	.menu:not( .menu--footer ) .menu-details:not( [open] )::details-content { display: none; }
+}
+@media (min-width: 768px) {
+	@supports selector( ::details-content ) {
+		.menu:not( .menu--footer ) .menu-details::details-content, .menu:not( .menu--footer ) .menu-details:not( [open] )::details-content { display: block; content-visibility: visible; flex: 1 1 0; }
+		.menu:not( .menu--footer ) .menu-burger { display: none; }
+		.menu:not( .menu--footer ) .menu-list { margin-top: 0; max-height: 40dvh; }
+	}
+	.menu-cols--2 { grid-template-columns: repeat( 2, minmax( 0, 1fr ) ); }
+	.menu-cols--3 { grid-template-columns: repeat( 3, minmax( 0, 1fr ) ); }
+	.menu-cols--4 { grid-template-columns: repeat( 4, minmax( 0, 1fr ) ); }
+}
+
+/*	In the foot the list stands open, with no button of its own, and the panels are accordions	*/
+.menu--footer .menu-burger { display: none; }
+
+/*	Where scripting is on, a wide screen has the line of the header at once, so that nothing jumps when the script starts: the list is a row and a panel hangs from its entry.
+	Until menu.js has started - it puts menu--ready on the nav - a panel waits hidden and opens on the :hover or the :focus-within of its entry, which is also all that is left where
+	the script never starts. Once it has, the button beside an entry is shown and turns the panel, which is shut until it is pressed; aria-expanded says which is open	*/
+@media (scripting: enabled) {
+	@media (min-width: 768px) {
+		@supports selector( ::details-content ) {
+			.menu:not( .menu--footer ) .menu-list { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--page-space-1) var(--page-space-4); max-height: none; overflow: visible; }
+			.menu:not( .menu--footer ) .menu-item { flex-wrap: nowrap; }
+			.menu:not( .menu--footer ) .menu-link { flex: 0 1 auto; }
+			.menu:not( .menu--footer ) .menu-toggle { width: 1.75rem; height: 1.75rem; }
+			.menu:not( .menu--footer ) .menu-panel { position: absolute; top: calc( 100% + var(--menu-offset) ); inset-inline-start: 0; z-index: 1; width: min( var(--menu-width), calc( 100vw - 2 * var(--page-space-3) ) ); padding: var(--page-space-4); background: var(--brand-ground); color: var(--brand-ink); border: var(--page-line) solid var(--brand-line); border-radius: var(--menu-radius); box-shadow: 0 .5rem 1.5rem color-mix( in srgb, var(--brand-ink) 16%, transparent ); translate: var(--menu-shift, 0px) 0; }
+			.menu:not( .menu--footer ) .menu-panel::before { content: ""; position: absolute; inset-inline: 0; bottom: 100%; height: var(--menu-offset); }
+			.menu:not( .menu--footer, .menu--ready ) .menu-panel { visibility: hidden; }
+			.menu:not( .menu--footer, .menu--ready ) .menu-item:hover > .menu-panel, .menu:not( .menu--footer, .menu--ready ) .menu-item:focus-within > .menu-panel { visibility: visible; }
+		}
+	}
+}
+.menu--ready .menu-toggle { display: inline-flex; }
+.menu--ready .menu-toggle[aria-expanded="false"] + .menu-panel { display: none; }
+.menu--ready .menu-item--panel > .menu-link { flex: 1 1 0; }
+@media (min-width: 768px) {
+	@supports selector( ::details-content ) {
+		.menu--ready:not( .menu--footer ) .menu-link { flex: 0 1 auto; }
+	}
+}
+@media (prefers-reduced-motion: no-preference) {
+	.menu--ready .menu-toggle::after { transition: transform var(--page-motion) ease; }
+}
+
+@media print {
+	.menu-burger, .menu-toggle { display: none; }
+}

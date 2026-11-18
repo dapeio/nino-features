@@ -1,0 +1,1 @@
+<button type="button" class="menu-toggle" aria-expanded="false" aria-controls="[[id]]"><span class="menu-toggle-name">[[open]]</span></button><div class="menu-panel" id="[[id]]"><div class="menu-cols menu-cols--[[columns]]">[[cols]]</div></div>

@@ -1,0 +1,1 @@
+<a class="menu-link menu-link--sub" href="[[href]]"[[current]][[target]][[lang]]>[[label]]</a>

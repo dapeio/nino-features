@@ -1,0 +1,1 @@
+<img class="menu-image" src="[[src]]"[[size]] alt="[[alt]]" loading="lazy" decoding="async">

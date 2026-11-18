@@ -1,0 +1,1 @@
+<p class="menu-title"[[lang]]>[[text]]</p>

@@ -1,0 +1,1 @@
+<li class="menu-item[[modifiers]]">[[link]][[panel]]</li>
