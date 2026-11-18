@@ -3242,7 +3242,7 @@
 		level.appendChild( split.el );
 		level.appendChild( bar.el );
 
-		Nino.admin.dirty.register( 'builder', bar.entry( { discard : dropDraft, saving : function() { return S.saving === true } } ) );
+		if( typeof Nino.admin.dirty === 'object' ) Nino.admin.dirty.register( 'builder', bar.entry( { discard : dropDraft, saving : function() { return S.saving === true } } ) );
 
 		if( advanced === true )
 			drawLeft();
@@ -5191,7 +5191,7 @@
 		N.taken = valuesOf();
 
 		// The form is no view of the language of the workbench - it shows them all - so the choice of another asks nothing of it and loses nothing (see choosing())
-		Nino.admin.dirty.register( 'builder', {
+		if( typeof Nino.admin.dirty === 'object' ) Nino.admin.dirty.register( 'builder', {
 			bar			: function() { return bar.el },
 			save		: submit,
 			saving	: function() { return sending === true },

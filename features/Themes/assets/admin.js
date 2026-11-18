@@ -3224,7 +3224,7 @@
 		S.view = { level : level, kind : 'groups', rows : {}, one : null, repaint : null, head : head, title : title, tools : tools, settings : settings, accordion : null, group : '', marked : tools.marked, bar : bar, line : bar.line, reset : bar.buttons.reset, save : bar.save, rebuild : bar.buttons.rebuild, apply : bar.buttons.apply, split : null, frame : null };
 
 		// The shell asks the bar about unsaved input and presses its Save for the keyboard: the entry of the screen that is on is the one of its bar
-		Nino.admin.dirty.register( 'themes', bar.entry( { discard : discard } ) );
+		if( typeof Nino.admin.dirty === 'object' ) Nino.admin.dirty.register( 'themes', bar.entry( { discard : discard } ) );
 
 		// The preview is the page laid out at the width of the choice and scaled to the room there is, which the split view does
 		const split = Nino.adminUi.split( { id : 'themes-split', settings : settings, tools : tools.el, preview : { src : previewUri(), title : word('label/preview-title') },
