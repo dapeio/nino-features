@@ -1,0 +1,29 @@
+/*	hours - the standard part: the week as a table in the ink of what it stands in, today marked by a bar, by weight and by the word, the closures below and the line for today	*/
+:root {
+	--hours-width: 36rem;
+	--hours-days: 8rem;
+	--hours-gap: var(--page-space-3);
+	--hours-row-gap: var(--page-space-1);
+}
+.hours { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--hours-gap); overflow-wrap: anywhere; max-width: var(--hours-width); margin-block: var(--page-space-3); }
+.hours > * { margin: 0; }
+.hours-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.hours-name { font-weight: 700; }
+.hours-address { font-style: normal; font-weight: 400; }
+caption.hours-name { caption-side: top; padding-block-end: var(--page-space-2); text-align: start; }
+.hours-table :is(th, td) { padding: var(--hours-row-gap) var(--page-space-2) var(--hours-row-gap) 0; border-block-end: var(--page-line) solid var(--brand-line); text-align: start; vertical-align: top; }
+.hours-table th { width: var(--hours-days); font-weight: 400; }
+.hours-row--today :is(th, td) { font-weight: 700; }
+.hours-row--today th { box-shadow: inset 3px 0 0 var(--brand-accent); padding-inline-start: var(--page-space-2); }
+.hours-flag { font-size: .85em; font-style: italic; }
+.hours-mark { margin-inline-start: var(--page-space-1); font-size: .85em; }
+.hours-range { white-space: nowrap; }
+.hours-closures { display: grid; gap: var(--page-space-2); margin: 0; }
+.hours-closure > dt { font-weight: 700; }
+.hours-closure > dd { margin: 0; }
+.hours-reason::before { content: ' · '; }
+.hours-note { font-style: italic; }
+.hours-today { overflow-wrap: anywhere; }
+.hours-today .hours-name { margin-inline-end: var(--page-space-2); }
+.hours-today .hours-label { font-weight: 700; }
+.hours-today .hours-label::after { content: ':'; }

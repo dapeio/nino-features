@@ -672,18 +672,20 @@ namespace Nino\Modules {
 		// ---- The shortcodes ------------------------------------------------------------------------
 
 		/**
-		 *	[hours /locations/main] - the week of a location. Without a location: the one
-		 *	there is, or all of them one below the other with their names. In the cell of a
-		 *	stack that loops locations, the location of the cell.
+		 *	The renderer of the component hours, [hours location="/locations/main" ahead="30" name="0" address="1" closures="0"]:
+		 *	the week of a location. Without a location: the one of the element a loop of locations stands in, else every one
+		 *	of them one below the other with their names
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					What the Components module made ready: source, location, ahead, name, closures, class
+		 *	@param		array			$args					The attributes of the call, made ready by the register: location, ahead, name, address, closures
+		 *	@param		string		$content			''
+		 *	@param		array			$context			Where the call stands
 		 *
 		 *	@return 	string										'' where there is no location
 		 */
-		public static function componentHours( array &$appData, array $args ): string {
+		public static function componentHours( array &$appData, array $args, string $content, array $context ): string {
 
-			$chosen = self::_choose( $appData, $args );
+			$chosen = self::_choose( $appData, $args, $context );
 
 			if( $chosen === [] )
 				return '';
@@ -704,63 +706,76 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	[hours-today /locations/main] - one line for today, the closures counted in
+		 *	The options of the attribute location of hours and hours-today: the locations there are
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					What the Components module made ready: source, location, name, class
+		 *	@param		string		$attribute		location
+		 *
+		 *	@return 	array											uri => name
+		 */
+		public static function locationOptions( array &$appData, string $attribute ): array {
+
+			$options = [];
+
+			foreach( self::locations( $appData ) as $uri => $element )
+				$options[$uri] = trim( (string) ( $element['name'] ?? '' ) ) !== '' ? (string) $element['name'] : basename( $uri );
+
+			return $options;
+		}
+
+		/**
+		 *	The renderer of the component hours-today, [hours-today location="/locations/main" name]: one line for today,
+		 *	the closures counted in
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The attributes of the call, made ready by the register: location, name
+		 *	@param		string		$content			''
+		 *	@param		array			$context			Where the call stands
 		 *
 		 *	@return 	string										'' where there is no location
 		 */
-		public static function componentHoursToday( array &$appData, array $args ): string {
+		public static function componentHoursToday( array &$appData, array $args, string $content, array $context ): string {
 
-			$chosen = self::_choose( $appData, $args );
+			$chosen = self::_choose( $appData, $args, $context );
 
 			if( $chosen === [] )
 				return '';
 
-			$now			= self::now( $appData );
-			$words		= self::_words( $appData );
-			$closures	= self::closures( $appData );
+			// The first location where none is asked for
 			$uri			= (string) array_key_first( $chosen );
 			$element	= $chosen[$uri];
-			$day			= self::effective( self::week( $element ), $closures, $uri, $now->format( 'Y-m-d' ) );
+			$now			= self::now( $appData );
+			$words		= self::_words( $appData );
+			$day			= self::effective( self::week( $element ), self::closures( $appData ), $uri, $now->format( 'Y-m-d' ) );
 
 			self::limitCache( $appData, $now );
 
-			return str_replace(
-				[ '[[classes]]', '[[closed]]', '[[times]]', '[[reason]]', '[[name]]' ],
-				[
-					\Nino\Feature::classes( $args ),
-					$day['spans'] === [] ? 'true' : 'false',
-					self::_times( $appData, $words, $day['spans'] ),
-					self::_reason( $appData, $day['reason'] ),
-					$args['name'] === '1' ? str_replace( '[[name]]', \Nino\Modules\Components::escape( (string) ( $element['name'] ?? '' ) ), \Nino\Feature::template( $appData, self::TEMPLATES, 'hours-line-name' ) ) : '',
-				],
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'hours-line' )
-			);
+			return \Nino\Components::fill( $appData, 'hours-today', $args, '', [
+				'[[closed]]'	=> $day['spans'] === [] ? 'true' : 'false',
+				'[[times]]'		=> self::_times( $appData, $words, $day['spans'] ),
+				'[[reason]]'	=> self::_reason( $appData, $day['reason'] ),
+				'[[who]]'			=> $args['name'] === '1' ? str_replace( '[[name]]', \Nino\Components::escape( (string) ( $element['name'] ?? '' ) ), self::_tpl( $appData, 'hours-line-name' ) ) : '',
+			] );
 		}
 
 		/**
-		 *	The locations a call asks for: the one it names, as the first argument, as its
-		 *	location or as the element of the cell it stands in; without any, all of them
+		 *	The locations a call asks for: the one it names, else the one of the element a loop of locations stands in;
+		 *	without any, all of them
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$args
+		 *	@param		array			$context			Where the call stands
 		 *
 		 *	@return 	array											uri => element
 		 */
-		private static function _choose( array &$appData, array $args ): array {
+		private static function _choose( array &$appData, array $args, array $context ): array {
 
 			$all		= self::locations( $appData );
-			$asked	= trim( (string) ( $args['source'] ?? '' ) );
-			$asked	= $asked !== '' ? $asked : trim( (string) ( $args['location'] ?? '' ) );
-			$cell		= \Nino\Modules\Components::element( $appData );
-			$inCell	= is_array( $cell ) === true && is_array( $cell['element'] ?? null ) === true ? (string) ( $cell['element']['.uri'] ?? '' ) : '';
+			$asked	= trim( (string) ( $args['location'] ?? '' ) );
+			$cell		= is_array( $context['element'] ?? null ) === true && is_array( $context['element']['element'] ?? null ) === true ? (string) ( $context['element']['element']['.uri'] ?? '' ) : '';
 
-			if( $asked === '.uri' || $asked === '.slug' )
-				$asked = $asked === '.uri' ? $inCell : ( $inCell === '' ? '' : self::LOCATIONS. '/'. basename( $inCell ) );
-			elseif( $asked === '' && str_starts_with( $inCell, self::LOCATIONS. '/' ) === true )
-				$asked = $inCell;
+			if( $asked === '' && str_starts_with( $cell, self::LOCATIONS. '/' ) === true )
+				$asked = $cell;
 
 			if( $asked !== '' )
 				return isset( $all[$asked] ) === true ? [ $asked => $all[$asked] ] : [];
@@ -787,7 +802,7 @@ namespace Nino\Modules {
 
 			$week			= self::week( $element );
 			$name			= (string) ( $element['name'] ?? '' );
-			$template	= static fn( string $file ): string => \Nino\Feature::template( $appData, self::TEMPLATES, $file );
+			$template	= static fn( string $file ): string => self::_tpl( $appData, $file );
 			$todayDay	= (int) ( new \DateTimeImmutable( $today. ' 00:00:00', new \DateTimeZone( 'UTC' ) ) )->format( 'N' );
 			$rows			= '';
 			$table		= '';
@@ -808,13 +823,13 @@ namespace Nino\Modules {
 				if( isset( $run['spans']['deviation'] ) === true )
 					$rows .= str_replace(
 						[ '[[days]]', '[[times]]', '[[reason]]' ],
-						[ \Nino\Modules\Components::escape( $days ), self::_times( $appData, $words, $run['spans']['deviation']['spans'] ), self::_reason( $appData, $run['spans']['deviation']['reason'] ) ],
+						[ \Nino\Components::escape( $days ), self::_times( $appData, $words, $run['spans']['deviation']['spans'] ), self::_reason( $appData, $run['spans']['deviation']['reason'] ) ],
 						$template( 'hours-row-deviation' )
 					);
 				else
 					$rows .= str_replace(
 						[ '[[days]]', '[[times]]' ],
-						[ \Nino\Modules\Components::escape( $days ), self::_times( $appData, $words, $run['spans'] ) ],
+						[ \Nino\Components::escape( $days ), self::_times( $appData, $words, $run['spans'] ) ],
 						$template( $holds === true ? 'hours-row-today' : 'hours-row' )
 					);
 			}
@@ -822,16 +837,16 @@ namespace Nino\Modules {
 			$open			= array_filter( $week, static fn( array $spans ): bool => $spans !== [] );
 			$address	= trim( (string) ( $element['address'] ?? '' ) );
 			$place		= $args['address'] === '1' && $address !== '' ? str_replace( '[[address]]', \Nino\Html::fieldValue( $address, [ 'type' => 'string', 'breaks' => true ] ), $template( 'hours-address' ) ) : '';
-			$title		= $args['name'] === '1' && $name !== '' ? str_replace( '[[name]]', \Nino\Modules\Components::escape( $name ), $template( 'hours-title' ) ) : '';
+			$title		= $args['name'] === '1' && $name !== '' ? str_replace( '[[name]]', \Nino\Components::escape( $name ), $template( 'hours-title' ) ) : '';
 
 			if( $open !== [] )
-				$table = str_replace(
-					[ '[[caption]]', '[[rows]]' ],
-					[ ( $title. $place ) === '' ? '' : str_replace( [ '[[name]]', '[[address]]' ], [ $title, $place ], $template( 'hours-caption' ) ), $rows ],
-					$template( 'hours-table' )
-				);
+				// One pass: the name and the rows hold what an editor typed, and nothing in them is a place to fill
+				$table = strtr( $template( 'hours-table' ), [
+					'[[caption]]'	=> ( $title. $place ) === '' ? '' : strtr( $template( 'hours-caption' ), [ '[[name]]' => $title, '[[address]]' => $place ] ),
+					'[[rows]]'		=> $rows,
+				] );
 			else
-				$table = ( $title === '' ? '' : str_replace( '[[name]]', \Nino\Modules\Components::escape( $name ), $template( 'hours-line-name' ) ) ). $place;
+				$table = ( $title === '' ? '' : str_replace( '[[name]]', \Nino\Components::escape( $name ), $template( 'hours-line-name' ) ) ). $place;
 
 			$coming		= self::sections( $week, $closures, $uri, $today, $ahead );
 			$items		= '';
@@ -846,18 +861,34 @@ namespace Nino\Modules {
 
 			$note = trim( (string) ( $element['note'] ?? '' ) );
 
-			return str_replace(
-				[ '[[classes]]', '[[uri]]', '[[table]]', '[[closures]]', '[[note]]', '[[data]]' ],
-				[
-					\Nino\Feature::classes( $args ),
-					\Nino\Modules\Components::escape( $uri ),
-					$table,
-					$items === '' ? '' : str_replace( '[[items]]', $items, \Nino\Feature::template( $appData, self::TEMPLATES, 'hours-closures' ) ),
-					$note === '' ? '' : str_replace( '[[note]]', \Nino\Html::fieldValue( $note, [ 'type' => 'string', 'breaks' => true ] ), \Nino\Feature::template( $appData, self::TEMPLATES, 'hours-note' ) ),
-					self::_data( $appData, $uri, $element, $week, $coming ),
-				],
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'hours' )
-			);
+			return \Nino\Components::fill( $appData, 'hours', $args, '', [
+				'[[uri]]'				=> \Nino\Components::escape( $uri ),
+				'[[table]]'			=> $table,
+				'[[closures]]'	=> $items === '' ? '' : str_replace( '[[items]]', $items, self::_tpl( $appData, 'hours-closures' ) ),
+				'[[note]]'			=> $note === '' ? '' : str_replace( '[[note]]', \Nino\Html::fieldValue( $note, [ 'type' => 'string', 'breaks' => true ] ), self::_tpl( $appData, 'hours-note' ) ),
+				'[[data]]'			=> self::_data( $appData, $uri, $element, $week, $coming ),
+			] );
+		}
+
+		/**
+		 *	A fragment of the markup of the week: the file of templates/ with the words it names written out, escaped. The
+		 *	fragments are the parts a component draws many times - a row, a time, a closure; the shell of each
+		 *	component is its own template.tpl
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					The template without '.tpl'
+		 *
+		 *	@return 	string
+		 */
+		private static function _tpl( array &$appData, string $name ): string {
+
+			$markup = \Nino\Feature::template( $appData, self::TEMPLATES, $name );
+
+			foreach( [ 'closed', 'deviation', 'today' ] as $word )
+				if( str_contains( $markup, '[[/feature/hours/word/'. $word. ']]' ) === true )
+					$markup = str_replace( '[[/feature/hours/word/'. $word. ']]', \Nino\Components::escape( self::_word( $appData, '/feature/hours/word/'. $word ) ), $markup );
+
+			return $markup;
 		}
 
 		/**
@@ -869,7 +900,7 @@ namespace Nino\Modules {
 		 *	@return 	string
 		 */
 		private static function _reason( array &$appData, string $reason ): string {
-			return $reason === '' ? '' : str_replace( '[[reason]]', \Nino\Modules\Components::escape( $reason ), \Nino\Feature::template( $appData, self::TEMPLATES, 'hours-reason' ) );
+			return $reason === '' ? '' : str_replace( '[[reason]]', \Nino\Components::escape( $reason ), self::_tpl( $appData, 'hours-reason' ) );
 		}
 
 		/**
@@ -940,15 +971,15 @@ namespace Nino\Modules {
 		private static function _times( array &$appData, array $words, array $spans ): string {
 
 			if( $spans === [] )
-				return \Nino\Feature::template( $appData, self::TEMPLATES, 'hours-closed' );
+				return self::_tpl( $appData, 'hours-closed' );
 
 			$ranges = [];
 
 			foreach( $spans as [ $start, $end ] )
 				$ranges[] = str_replace(
 					'[[range]]',
-					strtr( \Nino\Modules\Components::escape( $words['range'] ), [ '%1$s' => self::_clock( $appData, $words, $start ), '%2$s' => self::_clock( $appData, $words, $end ) ] ),
-					\Nino\Feature::template( $appData, self::TEMPLATES, 'hours-span' )
+					strtr( \Nino\Components::escape( $words['range'] ), [ '%1$s' => self::_clock( $appData, $words, $start ), '%2$s' => self::_clock( $appData, $words, $end ) ] ),
+					self::_tpl( $appData, 'hours-span' )
 				);
 
 			return implode( ', ', $ranges );
@@ -982,8 +1013,8 @@ namespace Nino\Modules {
 
 			return str_replace(
 				[ '[[datetime]]', '[[text]]' ],
-				[ self::_hhmm( $minute, false ), \Nino\Modules\Components::escape( $text ) ],
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'hours-time' )
+				[ self::_hhmm( $minute, false ), \Nino\Components::escape( $text ) ],
+				self::_tpl( $appData, 'hours-time' )
 			);
 		}
 
@@ -1002,11 +1033,11 @@ namespace Nino\Modules {
 
 			$one = static fn( string $date ): string => str_replace(
 				[ '[[datetime]]', '[[text]]' ],
-				[ $date, \Nino\Modules\Components::escape( \Nino\Format::dateLong( $appData, $date ) ?? $date ) ],
-				\Nino\Feature::template( $appData, self::TEMPLATES, 'hours-time' )
+				[ $date, \Nino\Components::escape( \Nino\Format::dateLong( $appData, $date ) ?? $date ) ],
+				self::_tpl( $appData, 'hours-time' )
 			);
 
-			return $from === $until ? $one( $from ) : strtr( \Nino\Modules\Components::escape( $words['dates'] ), [ '%1$s' => $one( $from ), '%2$s' => $one( $until ) ] );
+			return $from === $until ? $one( $from ) : strtr( \Nino\Components::escape( $words['dates'] ), [ '%1$s' => $one( $from ), '%2$s' => $one( $until ) ] );
 		}
 
 		// ---- The data for search engines -----------------------------------------------------
@@ -1069,12 +1100,11 @@ namespace Nino\Modules {
 
 			$place['openingHoursSpecification'] = $specifications;
 
-			// JSON_HEX_TAG keeps a '</script>' in a name from ending the element; a bracket inside a string is
-			// written as its escape so that the rendering that follows cannot read a name as a fill or a shortcode
+			// JSON_HEX_TAG writes every < and > as an escape, so that nothing an editor typed - a '</script>', a '<!--' - can end
+			// or open anything inside the element; the markup is finished, nobody reads it again
 			$json = json_encode( $place, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG );
-			$json = is_string( $json ) === true ? preg_replace_callback( '/"(?:[^"\\\\]|\\\\.)*"/s', static fn( array $string ): string => str_replace( [ '[', ']' ], [ "\x5cu005b", "\x5cu005d" ], $string[0] ), $json ) : null;
 
-			return str_replace( '[[json]]', is_string( $json ) === true ? $json : '{}', \Nino\Feature::template( $appData, self::TEMPLATES, 'hours-data' ) );
+			return str_replace( '[[json]]', is_string( $json ) === true ? $json : '{}', self::_tpl( $appData, 'hours-data' ) );
 		}
 
 		/**

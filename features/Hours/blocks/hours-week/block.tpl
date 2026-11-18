@@ -1,0 +1,8 @@
+[section-wrap id="hours" ground="base"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title ~title tag="h2" size="m"]
+			[hours address]
+		[/section-col]
+	[/section-row]
+[/section-wrap]

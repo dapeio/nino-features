@@ -14,21 +14,21 @@ return [
 				'en_US' => 'Draws the week of the one location there is, or of every location one below the other with its name, then the closures of the next 60 days and the note.',
 				'de_DE' => 'Zeichnet die Woche des einen Standorts oder aller Standorte untereinander mit Namen, danach die Abweichungen der nächsten 60 Tage und den Hinweis.',
 			],
-			'[hours /locations/main ahead="30" name="0" address="1" closures="0"]' => [
+			'[hours location="/locations/main" ahead="30" address name="0" closures="0"]' => [
 				'en_US' => 'Names the location, the days ahead for the closures, and whether the name, the address and the closures are drawn; the Builder offers it as a block.',
 				'de_DE' => 'Benennt den Standort, die Tage voraus für die Abweichungen und ob Name, Adresse und Abweichungen gezeichnet werden; der Builder bietet es als Block an.',
 			],
-			'[hours [[.uri]]]' => [
-				'en_US' => 'In a loop of [elements /locations] the location of each element; in the cell of a stack or of the Builder, [hours] alone takes the location of the cell.',
-				'de_DE' => 'In einer Schleife von [elements /locations] der Standort jedes Elements; in der Zelle eines Stapels oder des Builders nimmt [hours] allein den Standort der Zelle.',
+			'[collection /locations][hours][/collection]' => [
+				'en_US' => 'Inside a loop over the type locations, an empty location takes the location of each element.',
+				'de_DE' => 'In einer Schleife über den Typ locations nimmt ein leerer Standort den Standort jedes Elements.',
 			],
-			'[hours-today /locations/main name="1"]' => [
-				'en_US' => 'Draws one line for today, a closure counted in: the times, or Closed with the reason; without a location the first one, with name="1" its name in front.',
-				'de_DE' => 'Zeichnet eine Zeile für heute, eine Abweichung eingerechnet: die Zeiten, oder Geschlossen mit dem Grund; ohne Standort der erste, mit name="1" mit seinem Namen davor.',
+			'[hours-today location="/locations/main" name]' => [
+				'en_US' => 'Draws one line for today, a closure counted in: the times, or Closed with the reason; without a location the first one, with name its name in front.',
+				'de_DE' => 'Zeichnet eine Zeile für heute, eine Abweichung eingerechnet: die Zeiten, oder Geschlossen mit dem Grund; ohne Standort der erste, mit name mit seinem Namen davor.',
 			],
 		],
 		'markup' => [
-			'<div class="nino-hours" data-location>' => [
+			'<div class="hours" data-location>' => [
 				'en_US' => 'One location: a table with the name as its caption and a row for each run of days with equal hours, a list of closures and the note.',
 				'de_DE' => 'Ein Standort: eine Tabelle mit dem Namen als Überschrift und einer Zeile für jede Folge von Tagen mit gleichen Zeiten, eine Liste der Abweichungen und der Hinweis.',
 			],
@@ -41,8 +41,12 @@ return [
 				'de_DE' => 'Jede Uhrzeit und jedes Datum einer Abweichung ist ein time-Element mit dem maschinenlesbaren Wert.',
 			],
 			'script type="application/ld+json"' => [
-				'en_US' => 'A Place with an OpeningHoursSpecification for each time of the week and each listed closure, once for each location on a page, where the full table is drawn.',
-				'de_DE' => 'Ein Place mit einer OpeningHoursSpecification für jede Zeit der Woche und jede aufgelistete Abweichung, einmal je Standort und Seite, wo die volle Tabelle steht.',
+				'en_US' => 'A Place with an OpeningHoursSpecification for each time of the week and each listed closure, once for each location on a page; every angle bracket in it is an escape, so no text can end the element.',
+				'de_DE' => 'Ein Place mit einer OpeningHoursSpecification für jede Zeit der Woche und jede aufgelistete Abweichung, einmal je Standort und Seite; jede spitze Klammer darin ist ein Escape, kein Text beendet es.',
+			],
+			'--hours-gap, --hours-width, --hours-days' => [
+				'en_US' => 'The space between the week, the closures and the note is a knob of the group; the widest the hours grow and the column of days are tokens a project sets on :root.',
+				'de_DE' => 'Der Abstand von Woche, Abweichungen und Hinweis ist ein Regler der Gruppe; die größte Breite und die Spalte der Tage sind Eigenschaften, die ein Projekt auf :root setzt.',
 			],
 		],
 		'routes' => [],
@@ -79,6 +83,10 @@ return [
 				'en_US' => 'The element types locations and closures, copied to /elements where the project has none, with no element in them.',
 				'de_DE' => 'Die Elementtypen locations und closures, nach /elements kopiert, wo das Projekt keine hat, ohne ein Element darin.',
 			],
+			'blocks/hours-week/' => [
+				'en_US' => 'A block: a headline and the week with the address.',
+				'de_DE' => 'Ein Block: eine Überschrift und die Woche mit der Adresse.',
+			],
 			'text/<locale>.php' => [
 				'en_US' => 'The names of the days, the words Closed and Today, how a time and a date range are written, the week\'s first day and the labels of the fields, only added, never replaced.',
 				'de_DE' => 'Die Namen der Tage, die Wörter Geschlossen und Heute, wie Zeiten und Datumsbereiche geschrieben werden, der erste Tag der Woche und die Feldbeschriftungen, nur hinzugefügt, nie ersetzt.',
@@ -86,12 +94,12 @@ return [
 		],
 	],
 	'category'		=> 'content',
-	'version'			=> '0.1.0',
-	'nino'				=> '^1.12',
+	'version'			=> '2.0.0',
+	'nino'				=> '^2.0',
 	'requires'		=> [],
 	// The places and the closures are elements, which is where a project keeps them
 	'data'				=> [],
-	'assets'			=> [ '/features/Hours/assets/hours.css' ],
+	'assets'			=> [],
 	/*	One setting, the zone that today is counted in. 'server' is a value of its own rather than '':
 		a select the Features panel has once filled cannot be emptied again, and the kernel refuses '' for a
 		required one. The map is built here without a variable, because Features::manifest(), bin/build.php and
@@ -108,103 +116,6 @@ return [
 				+ ( static fn( array $ids ): array => array_combine( $ids, $ids ) )( \DateTimeZone::listIdentifiers() ),
 			'required'	=> true,
 			'default'		=> 'server',
-		],
-	],
-	/*	Two shortcodes with a schema, so that the Builder offers them. The location is an attribute and not
-		the first argument, which a component with no source has no place for in a tool; the first argument
-		is read all the same, so that the call written by hand and the call in a loop stand as the manual
-		writes them. The class has componentHours() and componentHoursToday()	*/
-	'components'	=> [
-		'hours' => [
-			'label'			=> [ 'en_US' => 'Opening hours', 'de_DE' => 'Öffnungszeiten' ],
-			'source'		=> 'none',
-			'attributes'	=> [
-				'location' => [
-					'type'		=> 'string',
-					'default'	=> '',
-					'label'		=> [ 'en_US' => 'Location', 'de_DE' => 'Standort' ],
-					'hint'		=> [
-						'en_US' => 'The element of the location, like /locations/main. Empty takes the location of the cell in a loop, else the only one, else all of them.',
-						'de_DE' => 'Das Element des Standorts, etwa /locations/main. Leer nimmt in einer Schleife den Standort der Zelle, sonst den einzigen, sonst alle.',
-					],
-				],
-				'ahead' => [
-					'type'		=> 'int',
-					'min'			=> 0,
-					'max'			=> 366,
-					'default'	=> 60,
-					'label'		=> [ 'en_US' => 'Days ahead', 'de_DE' => 'Tage voraus' ],
-					'hint'		=> [
-						'en_US' => 'How many days ahead the closures are listed; one that is over is never listed.',
-						'de_DE' => 'Wie viele Tage voraus die Abweichungen aufgelistet werden; eine, die vorbei ist, steht nie da.',
-					],
-				],
-				'name' => [
-					'type'		=> 'bool',
-					'default'	=> true,
-					'label'		=> [ 'en_US' => 'Name', 'de_DE' => 'Name' ],
-					'hint'		=> [
-						'en_US' => 'Whether the name of the location is drawn above its hours.',
-						'de_DE' => 'Ob der Name des Standorts über seinen Zeiten steht.',
-					],
-				],
-				'address' => [
-					'type'		=> 'bool',
-					'default'	=> false,
-					'label'		=> [ 'en_US' => 'Address', 'de_DE' => 'Adresse' ],
-					'hint'		=> [
-						'en_US' => 'Whether the address of the location is drawn under its name.',
-						'de_DE' => 'Ob die Adresse des Standorts unter seinem Namen steht.',
-					],
-				],
-				'closures' => [
-					'type'		=> 'bool',
-					'default'	=> true,
-					'label'		=> [ 'en_US' => 'Closures', 'de_DE' => 'Abweichungen' ],
-					'hint'		=> [
-						'en_US' => 'Whether the days that deviate are listed under the week.',
-						'de_DE' => 'Ob die abweichenden Tage unter der Woche aufgelistet werden.',
-					],
-				],
-			],
-			'preview'		=> 'block',
-			'draws'			=> 'div .nino-hours',
-			'in'				=> [ 'section', 'card' ],
-			'icon'			=> [
-				[ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '10' ] ],
-				[ 'polyline', [ 'points' => '12 6 12 12 16 14' ] ],
-			],
-		],
-		'hours-today' => [
-			'label'			=> [ 'en_US' => 'Opening hours today', 'de_DE' => 'Öffnungszeiten heute' ],
-			'source'		=> 'none',
-			'attributes'	=> [
-				'location' => [
-					'type'		=> 'string',
-					'default'	=> '',
-					'label'		=> [ 'en_US' => 'Location', 'de_DE' => 'Standort' ],
-					'hint'		=> [
-						'en_US' => 'The element of the location, like /locations/main. Empty takes the location of the cell in a loop, else the first one.',
-						'de_DE' => 'Das Element des Standorts, etwa /locations/main. Leer nimmt in einer Schleife den Standort der Zelle, sonst den ersten.',
-					],
-				],
-				'name' => [
-					'type'		=> 'bool',
-					'default'	=> false,
-					'label'		=> [ 'en_US' => 'Name', 'de_DE' => 'Name' ],
-					'hint'		=> [
-						'en_US' => 'Whether the name of the location stands in front of the line.',
-						'de_DE' => 'Ob der Name des Standorts vor der Zeile steht.',
-					],
-				],
-			],
-			'preview'		=> 'text',
-			'draws'			=> 'p .nino-hours-line',
-			'in'				=> [ 'section', 'card' ],
-			'icon'			=> [
-				[ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '10' ] ],
-				[ 'polyline', [ 'points' => '12 6 12 12 16 14' ] ],
-			],
 		],
 	],
 ];

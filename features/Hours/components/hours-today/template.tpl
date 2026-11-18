@@ -1,0 +1,1 @@
+<p class="[[class]]" data-closed="[[closed]]">[[who]] <span class="hours-label">[[/feature/hours/word/today]]</span> <span class="hours-times">[[times]]</span>[[reason]]</p>

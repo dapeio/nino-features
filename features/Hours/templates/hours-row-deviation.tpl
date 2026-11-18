@@ -1,0 +1,1 @@
+<tr class="hours-row hours-row--today hours-row--deviation" aria-current="date" data-today="true" data-deviation="true"><th scope="row">[[days]] <span class="hours-mark">[[/feature/hours/word/today]]</span></th><td><span class="hours-times">[[times]]</span>[[reason]] <span class="hours-flag">[[/feature/hours/word/deviation]]</span></td></tr>

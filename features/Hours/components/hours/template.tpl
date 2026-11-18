@@ -1,0 +1,1 @@
+<div class="[[class]]" data-location="[[uri]]">[[table]][[closures]][[note]]</div>[[data]]

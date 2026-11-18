@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Öffnungszeiten", "en_US": "Opening hours" },
+	"description": { "de_DE": "Eine Überschrift und die Öffnungszeiten der Woche mit der Adresse. Die Standorte und die Abweichungen pflegst Du unter Elemente.", "en_US": "A headline and the opening hours of the week with the address. You keep the locations and the closures under Elements." },
+	"category": "contact",
+	"rank": 80,
+	"images": {}
+}
