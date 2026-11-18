@@ -14,6 +14,9 @@ namespace Nino\Modules\Builder {
 		// The root of a block that stands on a page: the frames are blocks too, and are no part of a page
 		public const string PAGE = 'section-wrap';
 
+		// The groups the dialog "Insert block" shows, in its order: the categories of the kernel but the frames, and the dynamic content - a block with a loop - between the static and the proof
+		public const array GROUPS = [ 'intro', 'content', 'dynamic', 'trust', 'offer', 'action', 'contact' ];
+
 		/**
 		 *	The blocks of the dialog: each that \Nino\Blocks offers for a page - one that lacks the components of a feature that is off with the names of the features, to be shown grey
 		 *
@@ -42,6 +45,7 @@ namespace Nino\Modules\Builder {
 					'name'				=> $block['name'],
 					'description'	=> $block['description'],
 					'category'		=> $block['category'],
+					'group'				=> self::group( $appData, (string) $key, $block ),
 					'origin'			=> self::_origin( $features, (string) $block['origin'], $block['label'] ?? null ),
 					'own'					=> (string) $block['origin'] === 'project',
 					'variants'		=> count( (array) ( $block['alternatives'] ?? [] ) ),
@@ -50,7 +54,40 @@ namespace Nino\Modules\Builder {
 				];
 			}
 
-			return [ 'blocks' => $list, 'categories' => array_values( array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ) ) ];
+			return [ 'blocks' => $list, 'categories' => self::GROUPS ];
+		}
+
+		/**
+		 *	The group a block is shown in: 'dynamic' where its template has a loop - the same recognition as the register's schema makes - whatever category block.json says, else the
+		 *	category. Nothing is written: the category in block.json is the one the block has
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key
+		 *	@param		array			$block				As \Nino\Blocks::all() has it
+		 *
+		 *	@return 	string
+		 */
+		public static function group( array &$appData, string $key, array $block ): string {
+
+			$registry = \Nino\Components::components( $appData );
+			$looped = static function( array $nodes ) use ( &$looped, &$appData, $registry ): bool {
+
+				foreach( $nodes as $node ) {
+
+					if( isset( $node['n'] ) === false )
+						continue;
+
+					if( isset( $registry[$node['n']] ) === true && ( Tree::schema( $appData, $registry, (string) $node['n'] )['loop'] ?? false ) === true )
+						return true;
+
+					if( is_array( $node['c'] ?? null ) === true && $looped( $node['c'] ) === true )
+						return true;
+				}
+
+				return false;
+			};
+
+			return $looped( Tree::read( $appData, (string) ( \Nino\Blocks::get( $appData, $key )['source'] ?? '' ) ) ) === true ? 'dynamic' : (string) $block['category'];
 		}
 
 		/**

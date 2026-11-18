@@ -610,7 +610,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const box = open( x, '5' );
 		const select = findAll( box.dialog, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === '5:size' } )[0];
 		const variant = findAll( box.dialog, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === '5:variant' } )[0];
-		const buttons = findAll( box.dialog.querySelector('.nino-admin-dialog-actions'), function( el ) { return el.tagName === 'BUTTON' } );
+		const buttons = findAll( box.dialog.querySelector('.nino-admin-dialog-actions'),																																																																																			function( el ) { return el.tagName === 'BUTTON' && /nino-admin-btn-(?:primary|secondary|danger)/.test( el.className ) } );
 		const column = function() { return x.S.top[2].c[5].a };
 		const steps = x.S.undo.length;
 
@@ -660,6 +660,264 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 
 
+// --- the fixes of the owner's feedback: the work surface and the lightbox ---------------------------------------------------------------
+
+{
+	/** A column and a row with settings of every kind: one with a value for each width alone, two of them, the strips that are pictures, a strip that is none, and a word */
+	const attrs = {
+		'section-col' : schema( 'Column', 'columns-3', 'none', { variants : [], standard : 'regular', attributes : {
+			id : { type : 'id', label : 'Id', hint : '', default : '' },
+			size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '50', '100' ], optionLabels : null, responsive : true },
+			align : { type : 'choice', label : 'Align', hint : '', default : 'start', options : [ 'start', 'center', 'end' ], optionLabels : { start : 'Start', center : 'Centre', end : 'End' }, responsive : true },
+		} } ),
+		'section-row' : schema( 'Row', 'rows-2', 'none', { variants : [], standard : 'regular', attributes : {
+			id : { type : 'id', label : 'Id', hint : '', default : '' },
+			reverse : { type : 'choice', label : 'Reverse', hint : '', default : 'off', options : [ 'off', 'on' ], optionLabels : { off : 'Off', on : 'On' }, responsive : true },
+			halign : { type : 'choice', label : 'Across', hint : '', default : 'start', options : [ 'start', 'center', 'end', 'between' ], optionLabels : { start : 'Start', center : 'Centre', end : 'End', between : 'Between' }, responsive : false },
+			tone : { type : 'choice', label : 'Tone', hint : '', default : 'a', options : [ 'a', 'b', 'c' ], optionLabels : { a : 'A', b : 'B', c : 'C' }, responsive : false },
+		} } ),
+		'section-title' : schema( 'Title', 'heading', 'text', { attributes : { href : { type : 'link', label : 'Target', hint : '', default : '' } } } ),
+	};
+	const page = [
+		{ n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
+		{ n : 'section-wrap', s : '', a : { id : 'team' }, c : [ { t : '\n' }, { n : 'section-title', s : '~title', a : {}, c : null }, { t : '\n' }, { n : 'section-row', s : '', a : {}, c : [ { t : '\n' }, { n : 'section-col', s : '', a : { id : 'one' }, c : [] }, { t : '\n' } ] }, { t : '\n' } ] }, { t : '\n' },
+		{ n : 'template', s : '/templates/html-footer', a : {}, c : null }, { t : '\n' },
+	];
+	const make = function( level ) {
+
+		const w = opened( { page : pageAnswer( { tree : page, level : level, schemas : Object.assign( {}, pageAnswer().schemas, attrs ), texts : { '/template/page-home/team/title' : { de_DE : 'Team', en_US : 'Team' } } } ) } );
+		const S = w.panel.model.state;
+
+		S.hot = '';
+
+		return { w : w, S : S, model : w.panel.model };
+	};
+	const lightbox = function( x, rel ) {
+
+		x.model.state.box = null;
+		x.model.openProperties( 2, rel, element('button'), function() {} );
+
+		return { dialog : x.w.dialogs[x.w.dialogs.length - 1], close : function() { fire( x.w.dialogs[x.w.dialogs.length - 1], 'close' ) } };
+	};
+	const withClass = function( node, name ) { return findAll( node, function( el ) { return String( el.className ).split(' ').indexOf( name ) !== -1 } ) };
+	const picture = function( node ) { return findAll( node, function( el ) { return String( el.tagName ).toLowerCase() === 'svg' } ).length };
+
+	check( 'I. 3: the outline is folded when a page is opened for the first time - the strip of the icons of the types is there and the body is not - and what a person chooses stays', ( function() {
+		const x = make( 3 );
+		const aside = x.S.view.split.aside;
+
+		return aside !== null && aside.collapsed() === true && /aside\s*:[^}]*collapsed\s*:\s*true/.test( script ) === true;
+	} )() );
+
+	check( 'I. 7: the width of the preview is chosen by the devices - the phone, the tablet, the desktop - each a picture with its word for the tooltip and for a screen reader', ( function() {
+		const x = make( 3 );
+		const steps = findAll( x.w.view, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-steps-step') !== -1 && el.attributes.role === 'radio' } );
+		const widths = steps.filter( function( step ) { return [ 'Mobile', 'Tablet', 'Desktop' ].indexOf( textOf( step ).trim() ) !== -1 } );
+
+		return widths.length === 3 && widths.every( function( step ) { return picture( step ) === 1 && step.title === textOf( step ).trim() && withClass( step, 'nino-admin-sr-only' ).length === 1 } );
+	} )() );
+
+	check( 'I. 12: a strip whose values the builder has a picture for - the alignments, the direction - is a strip of pictures, each named by its word; a value or an attribute it has none for stays a word; the table is ONE place, by the name of the attribute and the value', ( function() {
+		const x = make( 3 );
+		const row = lightbox( x, '3' );
+		const strip = function( key ) { return findAll( row.dialog, function( el ) { return el.dataset !== undefined && el.dataset.stepKey === key } )[0] };
+		const across = strip( '3:halign' );
+		const tone = strip( '3:tone' );
+		const model = x.model;
+
+		row.close();
+
+		const named = across === undefined ? [] : withClass( across, 'nino-admin-sr-only' ).map( function( word ) { return textOf( word ).trim() } ).filter( function( word ) { return word.indexOf('(') !== 0 } );
+
+		return across !== undefined && picture( across ) === 4 && named.join() === 'Start,Centre,End,Between'
+			&& tone !== undefined && picture( tone ) === 0 && textOf( tone ).indexOf('A') !== -1
+			&& model.glyphOf( 'halign', 'between' ) === 'align-horizontal-space-between' && model.glyphOf( 'align', 'end' ) === 'align-right' && model.glyphOf( 'reverse', 'on' ) === 'arrow-left' && model.glyphOf( 'hide', 'on' ) === 'eye-off'
+			&& model.glyphOf( 'size', '50' ) === null && model.glyphOf( 'halign', 'sideways' ) === null && model.glyphOf( 'nothing', 'start' ) === null;
+	} )() );
+
+	check( 'I. 13: a setting with a value for each width that is alone in its section has the three devices as the heads of three columns and a choice under each; each choice writes its part of the value and is one step of the undo', ( function() {
+		const x = make( 3 );
+		const row = lightbox( x, '3' );
+		const heads = withClass( row.dialog, 'builder-device' );
+		const selects = findAll( row.dialog, function( el ) { return el.tagName === 'SELECT' && /^3:reverse:/.test( el.dataset.key ?? '' ) } );
+		const steps = x.S.undo.length;
+
+		selects[1].value = 'on';
+		fire( selects[1], 'change' );
+
+		const written = x.S.top[2].c[3].a.reverse === 'off m:on' && x.S.undo.length === steps + 1;
+
+		x.model.undo();
+
+		const back = x.S.top[2].c[3].a.reverse === undefined && x.S.undo.length === steps;
+
+		row.close();
+
+		return heads.length === 3 && picture( row.dialog ) >= 3 && selects.map( function( el ) { return el.dataset.key } ).join() === '3:reverse:,3:reverse:m,3:reverse:l' && withClass( row.dialog, 'builder-widths-group' ).length === 0 && written === true && back === true;
+	} )() );
+
+	check( 'I. 13: several settings with a value for each width in one section have ONE choice of the width - the devices - and one choice for each setting for that width; the dot at a device says that something is written for it, the choice of the width is the width of the preview, and a change is one step of the undo', ( function() {
+		const x = make( 3 );
+
+		x.S.width = 'tablet';
+
+		const col = lightbox( x, '3.1' );
+		const picker = withClass( col.dialog, 'builder-width-pick' );
+		const radios = findAll( col.dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes.role === 'radio' } );
+		const keys = function() { return findAll( col.dialog, function( el ) { return el.tagName === 'SELECT' && /^3\.1:(?:size|align):/.test( el.dataset.key ?? '' ) } ).map( function( el ) { return el.dataset.key } ).join() };
+		const atTablet = keys();
+		const steps = x.S.undo.length;
+		const sized = findAll( col.dialog, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === '3.1:size:m' } )[0];
+
+		sized.value = '50';
+		fire( sized, 'change' );
+
+		const dots = function() { return withClass( col.dialog, 'builder-device-dot' ).map( function( dot ) { return dot.hidden === true ? '0' : '1' } ).join('') };
+		const written = x.S.top[2].c[3].c[1].a.size === '100 m:50' && x.S.undo.length === steps + 1;
+		const shown = dots();
+
+		fire( radios[2], 'click' );
+
+		const atDesktop = keys();
+		const coupled = x.S.width === 'desktop';
+
+		x.model.undo();
+		col.close();
+
+		return picker.length === 1 && radios.length === 3 && picture( picker[0] ) === 3 && atTablet === '3.1:size:m,3.1:align:m' && written === true && shown === '010' && atDesktop === '3.1:size:l,3.1:align:l' && coupled === true && x.S.top[2].c[3].c[1].a.size === undefined;
+	} )() );
+
+	check( 'I. 9: "Change source" stands where the value stands - in its column, under it, at the left - at every value alike: the text, the link; one place for every row', ( function() {
+		const x = make( 3 );
+		const own = lightbox( x, '1' );
+		const buttons = findAll( own.dialog, function( el ) { return el.tagName === 'BUTTON' && /:source:/.test( el.dataset.key ?? '' ) } );
+		const places = buttons.map( function( button ) {
+
+			const held = String( button.parentNode.className );
+			const above = String( button.parentNode.parentNode.className );
+
+			return ( held.indexOf('builder-box-value') !== -1 && above.indexOf('nino-admin-field') !== -1 ) || ( held.indexOf('builder-box-change') !== -1 && above.indexOf('nino-admin-field') !== -1 );
+		} );
+
+		own.close();
+
+		return buttons.length === 2 && places.every( function( place ) { return place === true } ) && /\.builder-box-change\s*\{[^}]*justify-content:\s*flex-start/.test( sheet ) === true;
+	} )() );
+
+	check( 'I. 10: the dialog of the source of a link has the tabs "Internal page", "Address", "Choose a value", "New" in that order, and the one that shows what the link has now is open - the first where it has nothing', ( function() {
+		const x = make( 3 );
+		const tabs = function( written ) {
+
+			x.S.top[2].c[1].a = written === '' ? {} : { href : written };
+			x.model.state.box = null;
+			x.model.state.box = { block : 'team' };
+			x.w.panel.editor.source( '1', { kind : 'link', attr : 'href', label : 'Target' }, element('button') );
+
+			const dialog = x.w.dialogs[x.w.dialogs.length - 1];
+			const buttons = findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes.role === 'tab' } );
+			const out = { order : buttons.map( function( button ) { return textOf( button ).trim() } ).join('|'), open : buttons.filter( function( button ) { return button.attributes['aria-selected'] === 'true' } ).map( textOf ).join() };
+
+			fire( dialog, 'close' );
+
+			return out;
+		};
+		const none = tabs( '' );
+		const address = tabs( 'https://example.org' );
+		const key = tabs( '~title' );
+
+		return none.order === 'Internal page|Address|Choose a value|New' && none.open === 'Internal page' && address.open === 'Address' && key.open === 'Choose a value';
+	} )() );
+
+	check( 'I. 11: the notation of a component is no row of "Advanced" but behind the button <> in the foot of the lightbox - for the account that designs and not for the one that writes the content; Escape closes the small window of it and not the lightbox', ( function() {
+		const x = make( 3 );
+		const box = lightbox( x, '1' );
+		const button = findAll( box.dialog, function( el ) { return el.tagName === 'BUTTON' && el.dataset.key === 'notation' } )[0];
+		const inside = withClass( box.dialog, 'builder-code' ).every( function( code ) { return String( code.parentNode.className ).indexOf('builder-notation-pop') !== -1 } );
+		const pop = withClass( box.dialog, 'builder-notation-pop' )[0];
+		const closed = pop.hidden === true;
+
+		fire( button, 'click' );
+
+		const shown = pop.hidden === false && button.attributes['aria-expanded'] === 'true';
+
+		fire( box.dialog, 'keydown', { key : 'Escape' } );
+
+		const only = pop.hidden === true && x.S.box !== null;
+
+		box.close();
+
+		const content = make( 1 );
+		const plain = lightbox( content, '1' );
+		const none = findAll( plain.dialog, function( el ) { return el.dataset !== undefined && el.dataset.key === 'notation' } ).length === 0 && withClass( plain.dialog, 'builder-code' ).length === 0;
+
+		plain.close();
+
+		return button !== undefined && inside === true && closed === true && shown === true && only === true && none === true;
+	} )() );
+
+	check( 'I. 5 and 6: the pencil is always INSIDE the mark of its component - at its top corner on the right, the mark growing to the right or upward where a word would be under it - and covers no word, for the boxes of ten kinds of components at a wide and a narrow window; the mark of the component the pencil is for is stronger than the fine marks round what holds it, and neither moves with prefers-reduced-motion', ( function() {
+		const model = opened().panel.model;
+		const kinds = [ { w : 400, h : 60, words : true }, { w : 160, h : 48, words : true }, { w : 600, h : 100, words : true }, { w : 300, h : 200, words : false }, { w : 320, h : 180, words : false }, { w : 380, h : 40, words : false }, { w : 1200, h : 300, words : false }, { w : 1200, h : 120, words : false }, { w : 1100, h : 500, words : false }, { w : 350, h : 400, words : false } ];
+		const bad = [];
+
+		[ 1280, 390 ].forEach( function( width ) {
+
+			const view = { top : 0, left : 0, width : width };
+
+			kinds.forEach( function( kind, at ) {
+
+				const box = { top : 200 + at * 3, left : 16, width : Math.min( kind.w, width - 32 ), height : kind.h };
+				const words = kind.words === true ? [ { top : box.top + 4, left : box.left + 2, width : box.width - 4, height : box.height - 8 } ] : [ { top : box.top + 4, left : box.left + 2, width : Math.min( 80, box.width - 4 ), height : 16 } ];
+				const spot = model.penSpot( box, 26, view, false, words );
+				const pen = { left : spot.left, top : spot.top, right : spot.left + 26, bottom : spot.top + 26 };
+				const mark = spot.mark;
+				const within = pen.left >= mark.left && pen.right <= mark.left + mark.width && pen.top >= mark.top && pen.bottom <= mark.top + mark.height;
+				const covered = words.some( function( word ) { return pen.left < word.left + word.width && pen.right > word.left && pen.top < word.top + word.height && pen.bottom > word.top } );
+
+				if( within === false || covered === true )
+					bad.push( width+ '/'+ at );
+			} );
+		} );
+
+		// a title as wide as the window with a word above it as well: the pencil stands below, and the mark grows downward to hold it
+		const crowded = model.penSpot( { top : 300, left : 16, width : 358, height : 80 }, 26, { top : 0, left : 0, width : 390 }, false, [ { top : 304, left : 18, width : 350, height : 40 }, { top : 262, left : 16, width : 300, height : 30 }, { top : 272, left : 330, width : 40, height : 20 } ] );
+		const low = crowded.side === 'below' && crowded.top === 380 && crowded.mark.top + crowded.mark.height >= crowded.top + 26;
+
+		return bad.length === 0 && low === true && /\.mark\.main\{opacity:\.95\}/.test( script ) === true && /\.mark\{[^']*border:1px solid[^']*opacity:\.35/.test( script ) === true && /prefers-reduced-motion:reduce\)\{button\.pen,\.mark\{transition:none\}/.test( script ) === true && /const drawMarks = function/.test( script ) === true;
+	} )() );
+
+	check( 'I. 4: the place for a block between two blocks is a soft, larger button with a plus and no word - centred on the width of the block, a dashed line round it, 32 pixels at least - and its name and tooltip are the words', ( function() {
+		return /const button = pill\( '', word\(/.test( script ) === true && /button\.insert\{min-width:44px;min-height:32px;[^']*border-style:dashed/.test( script ) === true && /pill\.style\.left = Math\.max\( box\.left, box\.left \+ \( box\.width - pill\.offsetWidth \* back \) \/ 2 \)/.test( script ) === true;
+	} )() );
+
+	check( 'I. 1, 2 and 8: the name of the panel above the way back is not shown - only said to a screen reader -, what the other views point at is drawn in the colour of the accent with a line of its own, and the origin of a block and the language of a field are quiet words and no labels with a ground of their own', ( function() {
+		return /nino-admin-contextbar-panel\s*\{[^}]*clip-path:\s*inset\(50%\)/.test( sheet ) === true && /\.builder-rail-button\.is-lit\s*\{[^}]*border-color:\s*var\(--editor-blue\)[^}]*box-shadow/.test( sheet ) === true && /\.builder-outline \.is-lit[^{]*\{[^}]*box-shadow:\s*inset 0 0 0 2px var\(--editor-blue\)/.test( sheet ) === true
+			&& /builder-tile-origin/.test( script ) === true && /builder-field-lang/.test( script ) === true && /nino-admin-badge builder-field-chip/.test( script ) === false && /builder-tile-chips/.test( script ) === false;
+	} )() );
+}
+
+
+// --- the way back to the list -----------------------------------------------------------------------------------------
+
+{
+	const w = world();
+	const regions = function() { return JSON.stringify( [ w.list.children.map( function( child ) { return child.className.split(' ')[0] } ), w.view.children.length, w.form.children.length ] ) };
+
+	w.title.textContent = 'Builder';
+	w.open('#builder');
+
+	const first = regions();
+
+	w.open('#builder/home');
+
+	const during = w.view.children.length > 0;
+
+	w.open('#builder');
+
+	check( 'H. the way back from a page to the list leaves the list with the regions it had when it was opened the first time and the levels that were left with nothing in them: a bar of a level that is shown no more, with the name of the panel in it, takes the head of the pane - its name and its tabs - away for good',
+		during === true && regions() === first && w.view.children.length === 0 && w.form.children.length === 0 );
+}
+
 // --- F. the tree of the extended view -------------------------------------------------------------------------------
 
 {
@@ -686,10 +944,46 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 	const row = function( id ) { return rowsOf( w ).find( function( el ) { return el.dataset.id === id } ) };
 	const lit = function() { return rowsOf( w ).filter( function( el ) { return el.querySelector('.nino-admin-tree-row').classList.contains('is-lit') } ).map( function( el ) { return el.dataset.id } ).join() };
 
-	check( 'F. the tree is the tree of the workbench with the line of the path over it - the kinds from the block to the chosen row - and the extended view has no column of settings: the tree stands alone', ( function() {
+	check( 'F. the tree is the tree of the workbench with no line of the path over it, and the extended view has no column of settings: the tree stands alone', ( function() {
 		const split = w.view.querySelector('.nino-admin-split');
 
-		return S.tree !== null && S.tree.path !== null && S.tree.path.classList.contains('builder-adv-path') === true && split.querySelector('.nino-admin-split-settings') !== null && split.querySelector('.nino-admin-accordion') === null && tree() !== null;
+		return S.tree !== null && S.tree.path === null && split.querySelector('.builder-adv-path') === null && split.querySelector('.nino-admin-tree-path') === null && split.querySelector('.nino-admin-split-settings') !== null && split.querySelector('.nino-admin-accordion') === null && tree() !== null;
+	} )() );
+	check( 'F. the column of the tree and the outline of a page are one pane: the same classes - the ground and the measure - on both, so that one rule dresses them in the scheme that is on', ( function() {
+		const settings = w.view.querySelector('.nino-admin-split-settings');
+
+		return settings !== null && String( settings.className ).indexOf('builder-tree-pane') !== -1 && String( settings.className ).indexOf('builder-tree-pane--column') !== -1
+			&& /\.builder-tree-pane\s*\{[^}]*background:\s*var\(--editor-bg-elevated\)/.test( sheet ) === true && /\.builder-tree-pane--column\s*\{[^}]*padding:\s*var\(--nino-admin-space-3\)/.test( sheet ) === true && /builder-outline builder-tree-pane/.test( script ) === true;
+	} )() );
+	check( 'F. a double click on a row opens the lightbox of its component - as Enter does - and on a button of the row or on the arrow that opens it nothing: one click chooses as ever', ( function() {
+		const rows = rowsOf( w );
+		const row = rows.find( function( el ) { return el.dataset.id === '1' } ) ?? rows[1];
+		const asked = w.dialogs.length;
+
+		S.box = null;
+		fire( row, 'click' );
+
+		const chosen = w.dialogs.length === asked;
+		const button = buttonsOf( row )[0];
+
+		if( button !== undefined )
+			fire( S.tree.el, 'dblclick', { target : button } );
+
+		const none = w.dialogs.length === asked;
+		const toggle = findAll( row, function( el ) { return String( el.className ).indexOf('nino-admin-tree-toggle') !== -1 } )[0];
+
+		if( toggle !== undefined )
+			fire( S.tree.el, 'dblclick', { target : toggle } );
+
+		const arrow = w.dialogs.length === asked;
+
+		fire( S.tree.el, 'dblclick', { target : row } );
+
+		const opened = w.dialogs.length === asked + 1 && S.box !== null;
+
+		fire( w.dialogs[w.dialogs.length - 1], 'close' );
+
+		return chosen === true && none === true && arrow === true && opened === true;
 	} )() );
 	check( 'F. a loop is the icon of a loop with its type and sort, its children stand once as the pattern, and a value that comes from a field - of the first word or of an attribute - is a tag with the whole name of the field', ( function() {
 		const items = model.itemsNow()[0].children[0];

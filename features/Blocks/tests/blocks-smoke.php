@@ -109,13 +109,19 @@ $script = (string) file_get_contents( $feature. '/assets/admin.js' );
 
 preg_match_all( "/word\\(\\s*'([a-z][a-z\\/-]*)'/", $script, $asked );
 $asked = array_unique( $asked[1] );
-$dynamic = [ 'cat/intro', 'cat/content', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'rename/title', 'rename/submit', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'error/load' ];
+$dynamic = [ 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'rename/title', 'rename/submit', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'error/load' ];
 $lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && isset( $words['de_DE']['[[/_admin/blocks/'. $key. ']]'], $words['en_US']['[[/_admin/blocks/'. $key. ']]'] ) === false );
 $sentence = static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/'. $code. ']]'], $words['en_US']['[[/_admin/error/'. $code. ']]'] );
 $codes = [ 'blocks_language', 'blocks_shell', 'blocks_unknown', 'blocks_name', 'blocks_category', 'blocks_taken', 'blocks_invalid', 'blocks_refused', 'blocks_tree', 'blocks_place', 'blocks_preview', 'blocks_write', 'blocks_key', 'blocks_block', 'blocks_id', 'blocks_locked', 'blocks_html', 'blocks_foreign', 'blocks_address', 'blocks_picture', 'blocks_empty', 'blocks_long' ];
 
 check( 'every word the script asks for and every failure code the API answers has its sentence in both interface languages, and the two files have the same keys',
 	$lacking === [] && array_filter( $codes, static fn( string $code ): bool => $sentence( $code ) === false ) === [] && array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) );
+
+$said = static function( array $words ): array { return array_filter( $words, static fn( string $text ): bool => preg_match( '/projekt|project/i', $text ) === 1 ); };
+
+check( 'the blocks of the owner are "Own blocks" - "Eigene Blocks" - in every word of the panel:																																																																																																	no sentence of either language says "project" or "Projekt": the owner has no project, he has blocks of his own',
+																																																																																																		$said( $words['de_DE'] ) === [] && $said( $words['en_US'] ) === [] && $words['de_DE']['[[/_admin/blocks/tab/project]]'] === 'Eigene Blocks' && $words['en_US']['[[/_admin/blocks/tab/project]]'] === 'Own blocks'
+	&& isset( $words['de_DE']['[[/_admin/blocks/theme/note]]'], $words['de_DE']['[[/_admin/blocks/saveas/message]]'] ) === false );
 
 $style = (string) file_get_contents( $feature. '/assets/admin.css' );
 
@@ -289,6 +295,8 @@ $free = \Nino\Modules\Blocks::alone( $appData, $request, [ 'source' => (string) 
 unset( $site['./nino/template/swapped'] );
 ninoVisit( $site, '/home?'. \Nino\Preview::QUERY. '='. $draft['token'] );
 $visited = (string) ( $site['./nino/template/swapped']['page-home'] ?? '' );
+$opening = (string) ( $site['./nino/template/swapped']['html-header'] ?? '' );
+$closing = (string) ( $site['./nino/template/swapped']['html-footer'] ?? '' );
 unset( $site['./nino/template/swapped'] );
 ninoUser( $site, 'other@example.com', [ '/_admin/builder/manage' ] );
 ninoVisit( $site, '/home?'. \Nino\Preview::QUERY. '='. $draft['token'] );
@@ -297,10 +305,14 @@ unset( $site['./nino/template/swapped'] );
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
 
 check( 'a request that asks for the draft of a block with its token is drawn by the module for the account that holds the right: the page is the draft - the frame of the site and the block - and for an account that has not, the page is as the visitors have it',
-	str_contains( $visited, '[section-wrap id="mein-block"' ) === true && str_contains( $visited, '<main>' ) === true && $refused === false );
+	str_contains( $visited, '[section-wrap id="mein-block"' ) === true && str_starts_with( $visited, '[template /templates/html-header]' ) === true && $refused === false );
 
 check( 'the draft is drawn ALONE: the page is the page of the pictures - the stylesheet of the site and a main - with the block in it, and neither the calls of the frame nor the head and the foot of the site',
-	str_contains( $visited, '[assets /.cache/style.css]' ) === true && str_contains( $visited, '/templates/html-header' ) === false && str_contains( $visited, '/templates/html-footer' ) === false && str_contains( $visited, 'frame-header' ) === false );
+	str_contains( $opening, '[assets /.cache/style.css]' ) === true && str_contains( $opening, '<main>' ) === true && str_contains( $closing, '</main>' ) === true && str_contains( $opening. $closing, 'frame-header' ) === false && str_contains( $opening. $closing, 'frame-footer' ) === false
+	&& str_contains( $visited, '/templates/frame-header' ) === false );
+
+check( 'the sheet is drawn as the sheet it is - the two calls of the frame and the block between them - so that the marks the drawing leaves have the places of the tree of the sheet, which the editor finds its components by: the block is the third entry of the top level, as in the tree',
+	( static function() use ( $visited ): bool { $nodes = Tree::read( $GLOBALS['site'], $visited ); return Sheet::rootAt( $nodes ) === 2; } )() );
 
 check( 'the draft is drawn as a draft of ONE block - the two calls of the frame and the block - and not drawn without the frame or with free markup beside the block', $drawn === true && $bare === false && $free === false );
 
@@ -596,6 +608,24 @@ foreach( [ 'list-over-elements' => 'collection-list', 'table-over-elements' => '
 }
 
 check( 'a block with a loop is copied and saved over itself: the type of the elements the loop shows and the fields it reads of them are kept - the list and the table over elements of the Collections', array_values( $loops ) === [ true, true ] );
+
+// the groups of the dialog "Insert block": the categories of the kernel in the order the owner chose - titles, static content, dynamic content, social proof, offer, action, contact -
+// with the frames none of them, and a block whose template has a loop in the dynamic content, whatever category block.json says; what is stored is not touched
+$catalog = \Nino\Modules\Builder\Library::all( $site );
+$groups = array_column( $catalog['blocks'], 'group', 'key' );
+$shown = array_filter( $catalog['blocks'], static fn( array $entry ): bool => in_array( $entry['group'], $catalog['categories'], true ) === false );
+[ , $listing ] = blocksCall( $site, 'blocks/list' );
+$listed = array_column( $listing['blocks'] ?? [], 'group', 'key' );
+$frames = array_filter( \Nino\Blocks::all( $site ), static fn( array $block ): bool => $block['wrap'] !== 'section-wrap' );
+
+check( 'the dialog groups the blocks as titles, static content, dynamic content, social proof, offer, action and contact - in that order, and no frame is a group of the page: the frame blocks of the kernel are no entry of it',
+	$catalog['categories'] === [ 'intro', 'content', 'dynamic', 'trust', 'offer', 'action', 'contact' ] && in_array( 'frame', $catalog['categories'], true ) === false && $shown === [] && $frames !== [] && array_intersect( array_keys( $frames ), array_keys( $groups ) ) === [] );
+
+check( 'a block whose template has a loop - the list and the table over elements - is dynamic content whatever category it has, a block without a loop keeps its category, and the category in block.json is not touched',
+	( $groups['list-over-elements'] ?? '' ) === 'dynamic' && ( $groups['table-over-elements'] ?? '' ) === 'dynamic' && ( $groups['hero-full'] ?? '' ) === \Nino\Blocks::get( $site, 'hero-full' )['category'] && ( $groups['three-columns'] ?? '' ) === \Nino\Blocks::get( $site, 'three-columns' )['category']
+	&& \Nino\Blocks::get( $site, 'list-over-elements' )['category'] !== 'dynamic' && in_array( 'dynamic', \Nino\Blocks::CATEGORIES, true ) === false );
+
+check( 'the list of the panel Blocks says the same group of each block as the dialog does - the column of the category is the word of the group',																																																																																																																																																		count( array_filter( $listed, static fn( string $group ): bool => $group === 'dynamic' ) ) === 2 && count( array_filter( $listed, static fn( string $group ): bool => $group !== 'dynamic' ) ) > 0 );
 
 // the empty column of the draft is a quiet place with a sentence - in the preview alone: what is saved has none, and what is sent is made plain text
 [ $hinted, $held ] = blocksCall( $site, 'blocks/preview', [ 'key' => 'nach-dem-abbruch', 'tree' => blocksCall( $site, 'blocks/open', [ 'key' => 'nach-dem-abbruch' ] )[1]['tree'], 'texts' => [], 'hint' => 'Komponente <b>einfügen</b> [[x]]' ] );

@@ -332,8 +332,8 @@ const LIST = function( extra ) {
 	return Object.assign( {
 		tab : 'project', theme : { name : 'Nino' },
 		blocks : [
-			{ key : 'karten', name : { de_DE : 'Karten', en_US : 'Cards' }, category : 'content', variants : 2, rank : 900 },
-			{ key : 'held', name : 'Held', category : 'intro', variants : 0, rank : 900 },
+			{ key : 'karten', name : { de_DE : 'Karten', en_US : 'Cards' }, category : 'content', group : 'content', variants : 2, rank : 900 },
+			{ key : 'held', name : 'Held', category : 'intro', group : 'intro', variants : 0, rank : 900 },
 		],
 		library : [ { key : 'hero-full', name : { en_US : 'Hero' }, origin : { en_US : 'Basis' }, own : false }, { key : 'karten', name : { en_US : 'Cards' }, origin : { en_US : 'Project' }, own : true } ],
 		categories : [ 'intro', 'content', 'trust', 'offer', 'action', 'contact' ],
@@ -422,7 +422,7 @@ const typed = function( dialog, values ) {
 
 	check( 'B. a new block asks for a name in each language of the site, for a category - those of the kernel but the frames - and for what it begins with: nothing, or the copy of a block of the library with the name of its source',
 		inputs.length === 2 && selects.length === 2 && findAll( selects[0], function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value } ).join() === 'intro,content,trust,offer,action,contact'
-		&& findAll( selects[1], function( el ) { return el.tagName === 'OPTION' } ).map( textOf ).join('|') === W('new/empty')+ '|'+ W( 'new/copy-of', 'Hero' )+ ' · Basis|'+ W( 'new/copy-of', 'Cards' )+ ' · Project' );
+		&& findAll( selects[1], function( el ) { return el.tagName === 'OPTION' } ).map( textOf ).join('|') === W('new/empty')+ '|'+ W( 'new/copy-of', 'Hero' )+ ' · Basis|'+ W( 'new/copy-of', 'Cards' )+ ' · '+ W('tab/project') );
 
 	typed( dialog, [ 'Neu', 'New' ] );
 	pressed( dialog, W('new/submit') );
@@ -580,8 +580,13 @@ const sheetOf = function( hash, extra ) {
 	model.setAttr( 'root', 'ground', 'dark' );
 	model.move( 2, 1 );
 
-	check( 'C. a block of the theme is a sheet that is only looked at: it says so, the way back is the theme tab, Save is not there and Save as is, no change is taken - a setting, a move - and the lightbox of a component has no control that is on',
-		sheet.adapter.readOnly === true && notice.length === 1 && textOf( notice[0] ).indexOf( W('theme/note') ) !== -1 && sheet.view.bar.save.hidden === true && sheet.view.buttons.saveas !== undefined && JSON.stringify( sheet.top ) === before && sheet.undo.length === 0
+	check( 'C. a block of the theme is a sheet that is only looked at: it says so in a quiet badge beside the state of the bar - with the reason as its tooltip - and in no box above the tree, the way back is the theme tab, Save is not there and "Save to own blocks" is, no change is taken - a setting, a move - and the lightbox of a component has no control that is on',
+		sheet.adapter.readOnly === true && notice.length === 0 && ( function() {
+
+			const badge = findAll( w.page, function( el ) { return String( el.className ).indexOf('builder-state-badge') !== -1 } )[0];
+
+			return badge !== undefined && badge.dataset.state === 'muted' && badge.title === W('readonly/reason') && textOf( badge ).indexOf( W('readonly/badge') ) !== -1 && String( badge.className ).indexOf('nino-admin-badge') !== -1 && textOf( sheet.view.buttons.saveas ).trim() === W('saveas/button-theme');
+		} )() && sheet.view.bar.save.hidden === true && sheet.view.buttons.saveas !== undefined && JSON.stringify( sheet.top ) === before && sheet.undo.length === 0
 		&& controls.length > 0 && controls.every( function( control ) { return control.disabled === true } ) && ( function( link ) { return link.attributes.href ?? link.href } )( findAll( w.page, function( el ) { return String( el.className ).indexOf('nino-admin-back-link') !== -1 } )[0] ) === '#blocks/theme' );
 }
 
@@ -707,6 +712,36 @@ const sheetOf = function( hash, extra ) {
 
 	check( 'D. a change of the working language while a block is open asks for no page of the Builder - no builder/open for the key of a block - and asks this panel for the block in the new language',
 		asked.filter( function( action ) { return /^builder\//.test( action ) === true } ).length === 0 && asked.filter( function( action ) { return /^blocks\//.test( action ) === true } ).length > 0 );
+}
+
+// The tabs stand in the head of the pane, beside its name - where the workbench keeps the tabs of a panel - and not over the list; the first is "Own blocks"
+{
+	const x = shown('#blocks');
+	const head = x.w.page.querySelector('.admin-panel-head');
+	const inHead = head === null ? [] : findAll( head, function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).map( textOf );
+	const inList = findAll( x.w.page.querySelector('#blocks-list'), function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).length;
+
+	check( 'D. the tabs of the list stand in the head of the pane - "Own blocks" and the theme - and none stands in the list itself', inHead.join() === W('tab/project')+ ','+ W( 'tab/theme', 'Nino' ) && inList === 0 && W('tab/project') === 'Own blocks' && String( words.de['/_admin/blocks/tab/project'] ) === 'Eigene Blocks' );
+}
+
+// "Save as" in a block of one's own keeps its name and says what it does behind a (?); in a block of the theme it is "Save to own blocks" - and neither has a paragraph over its field
+{
+	const dialogOfSave = function( hash ) {
+
+		const w = sheetOf( hash, hash === '#blocks/theme/karten' ? { editable : false } : undefined );
+
+		fire( w.builder.editor.state().view.buttons.saveas, 'click' );
+
+		const dialog = dialogOf( w );
+		const message = findAll( dialog, function( el ) { return el.tagName === 'P' } ).filter( function( el ) { return String( el.className ).indexOf('nino-admin-field') === -1 } );
+
+		return { title : textOf( dialog.querySelector('.nino-admin-dialog-title') ), submit : findAll( dialog, function( el ) { return el.tagName === 'BUTTON' } ).map( function( el ) { return textOf( el ).trim() } ), paragraphs : message.map( textOf ).join(' '), help : findAll( dialog, function( el ) { return String( el.className ).indexOf('nino-admin-help-button') !== -1 } ).length };
+	};
+	const mine = dialogOfSave('#blocks/karten');
+	const theirs = dialogOfSave('#blocks/theme/karten');
+
+	check( 'D. "Save as" of an own block is called so and has its sentence behind a (?) at the name; of a block of the theme it is "Save to own blocks" - the title and the button - and with no (?) of its own; neither dialog has a paragraph above its field, and the name is the one field',
+		mine.title === W('saveas/title') && mine.submit.indexOf( W('saveas/submit') ) !== -1 && mine.help === 1 && mine.paragraphs.indexOf( W('saveas/help') ) === -1 && theirs.title === W('saveas/title-theme') && theirs.submit.indexOf( W('saveas/submit-theme') ) !== -1 && theirs.help === 0 && theirs.paragraphs === '' );
 }
 
 // The title of the editor is the NAME of the block, with its key quietly behind it - and not the kind of the root and the key

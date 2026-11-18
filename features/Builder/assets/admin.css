@@ -115,9 +115,30 @@
 	color: var(--editor-text);
 }
 
+/* What the other views point at - the pointer over a block, the component the pencil is for - is marked in the strip and in the rows of the outline in the colour of the accent:
+   its own line round the button or the row, over a tint, so that it is seen at a glance and not as a shade of the ground */
 :is( #builder-app, #blocks-app ) .builder-rail-button.is-lit {
+	border-color: var(--editor-blue);
 	background: var(--editor-blue-soft);
-	color: var(--editor-text);
+	box-shadow: inset 0 0 0 1px var(--editor-blue);
+	color: var(--editor-blue);
+}
+
+:is( #builder-app, #blocks-app ) .builder-outline .is-lit:not(.builder-rail-button) {
+	background: var(--editor-blue-soft);
+	box-shadow: inset 0 0 0 2px var(--editor-blue);
+}
+
+/* The name of the panel above the way back is told to a screen reader and not shown: the head of the pane gives way to the bar, and the bar needs no second title */
+:is( #builder-app, #blocks-app ) .nino-admin-contextbar-panel {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
 }
 
 :is( #builder-app, #blocks-app ) .builder-rail-button.is-quiet + .builder-rail-button:not(.is-quiet),
@@ -237,6 +258,7 @@
 }
 
 .builder-tile-about,
+.builder-tile-origin,
 .builder-tile-note {
 	display: block;
 	margin: 0;
@@ -244,12 +266,6 @@
 
 .builder-tile-note {
 	font-weight: 600;
-}
-
-.builder-tile-chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: .25rem;
 }
 
 /* The extended view: the tree of a block, in the column that is the outline of the page */
@@ -260,12 +276,18 @@
 	min-width: 0;
 }
 
-/* The path of the chosen row stays at the top of the column while the tree scrolls under it */
-:is( #builder-app, #blocks-app ) .builder-adv-tree > .builder-adv-path {
-	position: sticky;
-	top: 0;
-	z-index: 1;
+/* The outline of a page and the tree of a block are one pane: the ground of the workbench's raised surface, and in the column of the tree the measure the body of the outline has */
+:is( #builder-app, #blocks-app ) .builder-tree-pane {
+	min-width: 0;
 	background: var(--editor-bg-elevated);
+}
+
+:is( #builder-app, #blocks-app ) .builder-tree-pane--column {
+	box-sizing: border-box;
+	padding: var(--nino-admin-space-3);
+	border: 0;
+	border-right: 1px solid var(--editor-separator);
+	border-radius: 0;
 }
 
 /* The lightbox of a component stands in a window of the workbench, which is no part of the panel's own element: its rules hang on the class of that window */
@@ -289,7 +311,20 @@
 
 .builder-lightbox .builder-box-change {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: flex-start;
+}
+
+/* ...under the value: in the column of the value, where the field is a label and a control, and under it where the field is one column */
+.builder-lightbox .nino-admin-field > .builder-box-change {
+	grid-column: -2 / -1;
+	justify-self: start;
+}
+
+/* The steps that are pictures: the picture stands in the middle of its step, the word is for the tooltip and a screen reader */
+.builder-step-glyph > span:first-child {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .builder-lightbox .builder-field-label {
@@ -303,24 +338,78 @@
 	overflow-wrap: anywhere;
 }
 
-.builder-lightbox .builder-field-chip {
+.builder-lightbox .builder-field-lang {
 	display: inline-block;
 	margin: 0 0 0 var(--nino-admin-space-3);
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-xs);
+	font-weight: normal;
+	letter-spacing: .06em;
 }
 
-/* A setting that has a value for the phone, the tablet and the desktop: its name at the left like every field, the three rows beside it */
-.builder-lightbox .builder-widths-rows {
+/* A setting that has a value for each width and is alone in its section: its name at the left, at the right the three devices as the heads of three columns and under each its choice */
+.builder-lightbox .builder-widths-grid {
 	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--nino-admin-space-3);
 	min-width: 0;
 }
 
-.builder-lightbox .builder-width-row {
+.builder-lightbox .builder-widths-column {
 	display: grid;
-	grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr);
-	align-items: center;
-	gap: var(--nino-admin-space-3);
+	gap: var(--nino-admin-space-2);
+	min-width: 0;
+}
+
+/* The choice of a column has its name in the head above it: the label of the field is for a screen reader */
+.builder-lightbox .builder-width-cell {
+	display: block;
 	margin: 0;
+}
+
+.builder-lightbox .builder-width-cell > span {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.builder-lightbox .builder-device {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	justify-self: center;
+	color: var(--editor-text-secondary);
+}
+
+/* Several settings of one section with a value for each width: the choice of the width over them, and the choices for that width under it */
+.builder-lightbox .builder-widths-group {
+	display: grid;
+	gap: var(--nino-admin-space-5);
+	min-width: 0;
+}
+
+.builder-lightbox .builder-widths-list {
+	min-width: 0;
+}
+
+/* The dot at a device: something is written for that width */
+.builder-lightbox .builder-device-dot {
+	position: absolute;
+	top: 3px;
+	right: 3px;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--editor-blue);
+}
+
+.builder-lightbox .nino-admin-steps-step {
+	position: relative;
 }
 
 /* A step of the sort of a loop: the field, the direction, and the button that takes it away */
@@ -335,6 +424,40 @@
 .builder-lightbox .builder-sort-step > .nino-admin-field {
 	display: block;
 	margin: 0;
+}
+
+/* The button <> in the foot of the lightbox and the small window of the notation over it: at the left of the foot, where "Close" is at the right */
+.builder-lightbox .builder-notation {
+	position: relative;
+	margin-right: auto;
+}
+
+.builder-lightbox .builder-notation-pop {
+	position: absolute;
+	bottom: calc(100% + var(--nino-admin-space-3));
+	left: 0;
+	z-index: 2;
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	justify-items: start;
+	width: min(34rem, 80vw);
+	max-height: 50vh;
+	overflow: auto;
+	padding: var(--nino-admin-space-4);
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+}
+
+.builder-lightbox .builder-notation-pop[hidden] {
+	display: none;
+}
+
+.builder-lightbox .builder-notation-pop .builder-code {
+	width: 100%;
+	box-sizing: border-box;
+	user-select: text;
 }
 
 /* The notation of the component or of the block, as a block of text that is read and copied */

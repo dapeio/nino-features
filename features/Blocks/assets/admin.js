@@ -2,7 +2,7 @@
  *	Nino features
  *	Blocks						The panel of the workbench for the blocks of the project: the list of them - those of the project, which are changed, and those of the
  *										theme in use, which are looked at - and for a block the editor of the Builder on a sheet of its own. The editor is not written here: the tree
- *										view with the line of its path, the lightbox of a component with its dialog of a source, the frame that draws the block alone, Undo and Redo
+ *										view, the lightbox of a component with its dialog of a source, the frame that draws the block alone, Undo and Redo
  *										and the picture of a block are Nino.admin.builder.editor - the functions of the panel of the pages - and what this script brings is the adapter
  *										that says where the requests of the sheet go (blocks/...), where back leads, what the panel is called, and the list, the forms and the questions
  *										that stand round it. Everything it shows is the answer of the API (see Modules\Blocks\Admin).
@@ -189,7 +189,14 @@
 				Nino.admin.blocks.go( tabParts( key ) );
 		} } );
 
-		mount.appendChild( strip.el );
+		// The tabs are the head of the pane's: beside its name, where the workbench keeps the tabs of a panel - and where there is no head, over the list
+		const head = Nino.adminUi.panelHead( mount );
+
+		if( head !== null )
+			head.tabs( strip.el );
+		else
+			mount.appendChild( strip.el );
+
 		mount.appendChild( holder );
 
 		if( data.blocks.length === 0 )
@@ -204,7 +211,7 @@
 					{ key : 'category', label : word('list/category'), type : 'string', render : function( value ) { return categoryWord( value ) } },
 					{ key : 'variants', label : word('list/variants'), type : 'integer' },
 				],
-				rows			: data.blocks.map( function( block ) { return { key : block.key, tile : block.key, name : localized( block.name ), category : block.category, variants : block.variants } } ),
+				rows			: data.blocks.map( function( block ) { return { key : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants } } ),
 				actions		: rowButtons,
 				labels		: { search : word('list/search'), empty : word('msg/none-project'), noMatch : word('list/no-match') },
 				search		: true,
@@ -284,7 +291,7 @@
 		clearFail();
 
 		const copies = [ { value : '', label : word('new/empty') } ].concat( N.data.library.map( function( entry ) {
-			return { value : entry.key, label : word( 'new/copy-of', localized( entry.name ) ) + ' · ' + localized( entry.origin ) };
+			return { value : entry.key, label : word( 'new/copy-of', localized( entry.name ) ) + ' · ' + ( entry.own === true ? word('tab/project') : localized( entry.origin ) ) };
 		} ) );
 
 		Nino.adminUi.formDialog( {
@@ -397,11 +404,17 @@
 		const model = Nino.admin.builder.model;
 		const sheet = editor().state();
 
+		const own = adapter.readOnly !== true;
+		const field = nameField( copyNames( N.open === null ? {} : N.open.names, true ) );
+
+		// In a block of one's own the field says what is made of what behind its (?) - in a block of the theme it is "save to own blocks" and speaks for itself
+		if( own === true )
+			field.help = word('saveas/help');
+
 		Nino.adminUi.formDialog( {
-			title		: word('saveas/title'),
-			message	: word('saveas/message'),
-			fields	: [														nameField( copyNames( N.open === null ? {} : N.open.names, true ) ) ],
-			submit	: word('saveas/submit'),
+			title		: word( own === true ? 'saveas/title' : 'saveas/title-theme' ),
+			fields	: [ field ],
+			submit	: word( own === true ? 'saveas/submit' : 'saveas/submit-theme' ),
 			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
 			opener	: sheet.view.bar.buttons.saveas,
 			onSubmit	: function( values, ctl ) {
@@ -440,6 +453,8 @@
 			dir			: response.dir,
 			restore	: false,
 			readOnly	: theme === true,
+			// A block of the theme is only looked at: a quiet badge beside the state of the bar says so, with where it is changed as its reason
+			badge		: theme === true ? { text : word('readonly/badge'), reason : word('readonly/reason') } : undefined,
 			sources	: 'block',
 			uploads	: false,
 			call		: function( action, payload, done, extra ) { Nino.admin.blocks.call( action, payload, done, extra ) },
@@ -453,7 +468,7 @@
 			fail		: function( level, status, answer ) { Nino.admin.blocks.fail( level, status, answer ) },
 			back		: function() { return { parts : tabParts( theme === true ? 'theme' : 'project' ), name : word('title'), keep : false, block : false } },
 			reload	: function() { openBlock( key, theme ) },
-			buttons	: [ { key : 'saveas', label : word('saveas/button'), name : word( 'saveas/name', title ), onPress : function() { askSaveAs( adapter ) } } ],
+			buttons	: [ { key : 'saveas', label : word( theme === true ? 'saveas/button-theme' : 'saveas/button' ), name : word( theme === true ? 'saveas/name-theme' : 'saveas/name', title ), onPress : function() { askSaveAs( adapter ) } } ],
 		};
 
 		return adapter;
@@ -524,10 +539,6 @@
 				if( column !== '' )
 					editor().select( column );
 			}
-
-			// A block of the theme is looked at: the sentence says so and where it is changed
-			if( theme === true )
-				level.insertBefore( Nino.adminUi.notice( word('theme/note') ), level.children[1] ?? null );
 		} );
 	};
 

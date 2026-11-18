@@ -113,7 +113,7 @@ const words = {
 	[ 'section-wrap', 'header-wrap', 'footer-wrap' ].forEach( function( key ) { asked.add( 'kind/'+ key ) } );
 	[ 'mobile', 'tablet', 'desktop', 'frame-header', 'frame-footer' ].forEach( function( key ) { asked.add( 'word/'+ key ) } );
 	// The places of the dialog: the categories and the two ways a place is named
-	[ 'all', 'intro', 'content', 'trust', 'offer', 'action', 'contact' ].forEach( function( key ) { asked.add( 'insert/cat-'+ key ) } );
+	[ 'all', 'intro', 'content', 'dynamic', 'trust', 'offer', 'action', 'contact' ].forEach( function( key ) { asked.add( 'insert/cat-'+ key ) } );
 	[ 'before', 'after' ].forEach( function( key ) { asked.add( 'label/insert-'+ key ) } );
 	// The words of the extended view that are put together: what the register has against a place and why a component is grey, the three rows of a width, the
 	// two variants that have a word, what a field says of the id and the picture - and the three steps of the roles tab, which the kernel reads
@@ -604,7 +604,7 @@ check( 'C. a component that repeats its children for each element is a loop with
 
 check( 'C. the stylesheet of the feature draws no tree of its own: no rule names a class of the workbench tree', fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' ).indexOf( 'nino-admin-tree' ) === -1 );
 
-check( 'C. the tree of the extended view has the line of the path over it and is the block of the workbench', /Nino\.adminUi\.tree\(\s*\{[^}]*\bpath\s*:\s*true\b/.test( script ) === true && /appendChild\( S\.tree\.path \)/.test( script ) === true );
+check( 'C. the tree of the extended view is the tree of the workbench and has no line of the path over it - the owner took it away - and nothing of it is left: no option, no class, no rule', /Nino\.adminUi\.tree\(\s*\{[^}]*\bpath\s*:\s*true\b/.test( script ) === false && /S\.tree\.path/.test( script ) === false && /builder-adv-path/.test( script ) === false && /builder-adv-path/.test( fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' ) ) === false );
 
 check( 'C. a component is moved among its neighbours - over free markup too, never off the end - and taken out with the blanks that lay it out, so that no two texts stand side by side, and the undo gives back the tree to the byte', ( function() {
 	extended();

@@ -68,8 +68,10 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Draw the draft of a block alone: on the page of the Builder's pictures - the stylesheet of the site and a main - without the head and the foot of the site. The draft is the
-		 *	sheet - the two calls of the frame and the block - and a draft that is anything else is not drawn; only the block of it is put on the page
+			 *	Draw the draft of a block alone: on the page of the Builder's pictures - the stylesheet of the site and a main - without the head and the foot of the site. The draft is the
+			 *	sheet - the two calls of the frame and the block - and a draft that is anything else is not drawn. The sheet is drawn as it is - so that the marks the drawing leaves in the page
+			 *	have the places of the tree of the sheet, which the editor finds its components by - and the two templates that the calls of the frame are, for this request, the two halves of
+			 *	the page of the pictures: what comes before the block and what comes after it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			&$request			(reference) The request
@@ -88,8 +90,10 @@ namespace Nino\Modules {
 			if( $at === null )
 				return false;
 
-			$page = \Nino\Feature::template( $appData, '/features/Builder/templates', 'tile' );
-			$draft['source'] = str_replace( '[[block]]', rtrim( \Nino\Markup::write( [ $nodes[$at] ], \Nino\Components::containers( $appData ) ) ), $page );
+			[ $head, $foot ] = array_pad( explode( '[[block]]', \Nino\Feature::template( $appData, '/features/Builder/templates', 'tile' ), 2 ), 2, '' );
+
+			\Nino\Modules\Template::swap( $appData, \Nino\Modules\Blocks\Sheet::FRAMES[0], $head );
+			\Nino\Modules\Template::swap( $appData, \Nino\Modules\Blocks\Sheet::FRAMES[1], $foot );
 
 			return \Nino\Modules\Builder::draw( $appData, $request, $draft, true, true );
 		}

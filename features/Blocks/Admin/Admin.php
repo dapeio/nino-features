@@ -342,7 +342,7 @@ namespace Nino\Modules\Blocks {
 			$blocks = [];
 
 			foreach( Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project' ) as $key => $block )
-				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'category' => (string) $block['category'], 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'rank' => (int) $block['rank'] ];
+				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'category' => (string) $block['category'],																																																																																																						'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'rank' => (int) $block['rank'] ];
 
 			usort( $blocks, static fn( array $one, array $other ): int => $one['rank'] <=> $other['rank'] ?: strcmp( $one['key'], $other['key'] ) );
 
