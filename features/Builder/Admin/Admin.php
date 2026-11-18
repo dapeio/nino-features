@@ -181,12 +181,14 @@ namespace Nino\Modules\Builder {
 
 			// The pictures that were uploaded for a draft nobody saved and are older than a day are taken away when a page is opened
 			Pictures::sweep( $appData, $template );
+			$sources = Tree::sources( $nodes, $registry, $template );
 
 			\Nino\Http::ok( $request, [
 				'template'	=> $template,
 				'frame'			=> Store::named( $template )['frame'],
 				'tree'			=> $nodes,
-				'sources'		=> Tree::sources( $nodes, $registry, $template ),
+				'sources'		=> $sources,
+				'shared'		=> self::_shared( $appData, $sources, $template, $locale ),
 				'texts'			=> $state['texts'],
 				'known'			=> Tree::known( $nodes, $registry ),
 				'slots'			=> array_keys( $state['slots'] ),
@@ -197,6 +199,43 @@ namespace Nino\Modules\Builder {
 				'unback'		=> self::_unbacked( $appData, $template, $state, $nodes, $level ),
 				'fresh'			=> array_combine( \Nino\Locales::getTextLocales( $appData ), array_map( static fn( string $text ): string => self::_word( $appData, 'new/text', $text ), \Nino\Locales::getTextLocales( $appData ) ) ),
 			] + self::_more( $appData, $nodes, $registry, $level, $locale ) + self::_view( $appData, $locale, $level ) );
+		}
+
+		/**
+		 *	The words of the texts a page reads from another place - the facts of the company, the words several templates share -, as the page shows them in the language of the
+		 *	view: what the screen tells the account that may only write the content, which cannot change them here. Only the keys a text may name as a textfill are offered
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$sources			Tree::sources()
+		 *	@param		string		$template
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array											key => text
+		 */
+		private static function _shared( array &$appData, array $sources, string $template, string $locale ): array {
+
+			$out = [];
+			$native = \Nino\Locales::getNativeLocale( $appData );
+			$prefixes = \Nino\Text::FILL_FORMS['textfill']['prefixes'];
+
+			foreach( $sources as $entry ) {
+
+				$key = (string) $entry['key'];
+
+				if( $entry['kind'] !== 'text' || $key === '' || isset( $out[$key] ) === true || Tree::own( $key, $template ) === true || count( explode( '/', $key ) ) !== 5 )
+					continue;
+
+				if( array_filter( $prefixes, static fn( string $prefix ): bool => str_starts_with( $key, $prefix ) ) === [] )
+					continue;
+
+				$values = \Nino\Text::values( $appData, dirname( $key, 2 ) )[$key] ?? [];
+				$text = (string) ( $values[$locale] ?? $values[$native] ?? reset( $values ) ?: '' );
+
+				if( $text !== '' )
+					$out[$key] = mb_substr( $text, 0, 200, 'UTF-8' );
+			}
+
+			return $out;
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {
@@ -1037,12 +1076,12 @@ namespace Nino\Modules\Builder {
 			$registry = \Nino\Components::components( $appData );
 
 			return [ 'last' => self::_last( $appData, $template ), 'unback' => $state === null ? '' : self::_unbacked( $appData, $template, $state, $nodes, $level ), 'stamp' => $state === null ? '' : Store::stamp( $state ), 'tree' => $nodes, 'texts' => $state['texts'] ?? [], 'sources' => Tree::sources( $nodes, $registry, $template ), 'known' => Tree::known( $nodes, $registry ), 'slots' => array_keys( $state['slots'] ?? [] ), 'images' => Pictures::shown( $appData, $state['slots'] ?? [] ) ]
-				+ ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'findings' => Tree::findings( $appData, $nodes ), 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ] : [] );
+				+ [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'findings' => Tree::findings( $appData, $nodes ) ] : [] );
 		}
 
 		/**
-		 *	What only the screen of a person who designs needs of a page that is opened: the schemas of its components, what the register has against it and the pages
-		 *	of the site a link can name
+		 *	What the screen needs of a page that is opened beyond the page itself: the schemas of its components - for every step - and, for the one that designs, what the
+		 *	register has against the page and the pages of the site a link can name
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		array			$nodes
@@ -1054,8 +1093,10 @@ namespace Nino\Modules\Builder {
 		 */
 		private static function _more( array &$appData, array $nodes, array $registry, int $level, string $locale ): array {
 
+			// What the lightbox of a component is drawn from - its kind, what it reads and what it offers - is the register's and is told to every step: it shows the account that may write the
+			// content the source to read and the content to write. The findings and the pages a link may go to are for the design
 			if( $level < \Nino\Modules\Builder::LEVEL_DESIGN )
-				return [];
+				return [ 'schemas' => Tree::schemas( $appData, $nodes, $registry ) ];
 
 			$links = [];
 

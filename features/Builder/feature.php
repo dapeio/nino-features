@@ -4,8 +4,8 @@ return [
 	'key'					=> 'builder',
 	'name'				=> [ 'en_US' => 'Builder', 'de_DE' => 'Builder' ],
 	'description'	=> [
-		'en_US' => 'Builder shows a page of the site as a row of blocks. A block is moved, copied or removed on the page itself, and a text is clicked and written where it stands; whoever may design opens a block as a tree of components with their settings, chooses where each content comes from, keeps a block as a block of the project and makes, copies and deletes pages. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
-		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Block wird auf der Seite selbst verschoben, kopiert oder entfernt, und ein Text wird dort angeklickt und geschrieben, wo er steht; wer gestalten darf, öffnet einen Block als Baum aus Komponenten mit ihren Einstellungen, wählt, woher jeder Inhalt kommt, legt einen Block als Block des Projekts ab und macht, kopiert und löscht Seiten. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
+		'en_US' => 'Builder shows a page of the site as a row of blocks. A block is moved, copied or removed on the page itself, and a text is clicked and written where it stands; whoever may design opens a block as a tree of components with their properties, chooses where each content comes from, keeps a block as a block of the project and makes, copies and deletes pages. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
+		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Block wird auf der Seite selbst verschoben, kopiert oder entfernt, und ein Text wird dort angeklickt und geschrieben, wo er steht; wer gestalten darf, öffnet einen Block als Baum aus Komponenten mit ihren Eigenschaften, wählt, woher jeder Inhalt kommt, legt einen Block als Block des Projekts ab und macht, kopiert und löscht Seiten. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -36,8 +36,12 @@ return [
 				'de_DE' => 'Der Bildschirm für die Seiten: die Tabelle mit Suche, und je Seite die Seite mit ihrer Gliederung und einer Leiste am Block unter dem Zeiger; das Recht: /_admin/builder/manage.',
 			],
 			'Advanced' => [
-				'en_US' => 'On a block of the page: the tree of its components, which are put in, moved and taken out where the register allows, and the settings of each by its schema.',
-				'de_DE' => 'An einem Block der Seite: der Baum seiner Komponenten, die eingefügt, verschoben und entfernt werden, wo das Register es erlaubt, und die Einstellungen jeder nach ihrem Schema.',
+				'en_US' => 'On a block of the page: the tree of its components, which are put in, moved and taken out where the register allows, and the properties of each in the lightbox.',
+				'de_DE' => 'An einem Block der Seite: der Baum seiner Komponenten, die eingefügt, verschoben und entfernt werden, wo das Register es erlaubt, und die Eigenschaften jeder in der Lightbox.',
+			],
+			'Properties' => [
+				'en_US' => 'The pencil at a component and a row of the tree open its properties in one lightbox: the source, the content, how it looks and the advanced part, the last two for whoever designs.',
+				'de_DE' => 'Der Stift an einer Komponente und eine Zeile des Baums öffnen ihre Eigenschaften in einer Lightbox: Quelle, Inhalt, Aussehen und Erweitert, die letzten beiden für alle, die gestalten.',
 			],
 			'/_admin/builder/*' => [
 				'en_US' => 'The door /_admin/builder/manage is needed by every role; content/*, design/* and develop/* below it make that blocks and texts, components and frames, or also the markup of html.',
@@ -48,8 +52,8 @@ return [
 				'de_DE' => 'Woher Text, Adresse oder Bild einer Komponente kommen: ein Text, der da ist, oder ein neuer, ein fester Text, eine Seite, eine Adresse, ein Bildplatz oder ein Feld des Elements einer Schleife.',
 			],
 			'Save as own block …' => [
-				'en_US' => 'In the settings of a block, for whoever designs: the block of the page is kept as a block of the project, which then stands in the dialog Insert block and can be deleted there.',
-				'de_DE' => 'In den Einstellungen eines Blocks, für alle, die gestalten: der Block der Seite wird als Block des Projekts abgelegt, steht danach im Dialog Block einfügen und lässt sich dort wieder löschen.',
+				'en_US' => 'Under Advanced in a block, for whoever designs: the block is kept as a block of the project, which then stands in the dialog Insert block and can be deleted there.',
+				'de_DE' => 'Unter Erweitert an einem Block, für alle, die gestalten: der Block wird als Block des Projekts abgelegt, steht danach im Dialog Block einfügen und lässt sich dort löschen.',
 			],
 			'New page …' => [
 				'en_US' => 'In the view #builder/@new, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',

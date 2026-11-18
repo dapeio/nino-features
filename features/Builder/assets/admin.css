@@ -252,76 +252,86 @@
 	gap: .25rem;
 }
 
-/* The extended view: the tree of a block and the settings of a component, in the column that is the outline of the page */
-#builder-app .builder-adv-level,
-#builder-app .builder-adv-block,
-#builder-app .builder-adv-content,
-#builder-app .builder-adv-look {
+/* The extended view: the tree of a block, in the column that is the outline of the page */
+#builder-app .builder-adv-tree {
 	display: grid;
-	gap: .75rem;
+	gap: var(--nino-admin-space-4);
+	align-content: start;
 	min-width: 0;
 }
 
-#builder-app .builder-adv-title {
-	margin: .5rem 0;
+/* The path of the chosen row stays at the top of the column while the tree scrolls under it */
+#builder-app .builder-adv-tree > .builder-adv-path {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--editor-bg-elevated);
 }
 
-#builder-app .builder-adv-id {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: .25rem .5rem;
+/* The lightbox of a component stands in a window of the workbench, which is no part of the panel's own element: its rules hang on the class of that window */
+.builder-lightbox .builder-box {
+	display: grid;
+	gap: var(--nino-admin-space-5);
+	min-width: 0;
+}
+
+.builder-lightbox .builder-box-value {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	justify-items: start;
+	min-width: 0;
+}
+
+.builder-lightbox .builder-box-sentence {
 	margin: 0;
-}
-
-#builder-app .builder-field-label {
-	font-weight: 600;
-}
-
-#builder-app .builder-field-value {
 	overflow-wrap: anywhere;
 }
 
-#builder-app .builder-field-hint,
-#builder-app .builder-field-chip {
-	display: inline-block;
-	margin: 0 0 0 .5rem;
+.builder-lightbox .builder-box-change {
+	display: flex;
+	justify-content: flex-end;
 }
 
-#builder-app .builder-field-hint {
+.builder-lightbox .builder-field-label {
 	display: block;
-	margin: .25rem 0 0;
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-xs);
+	font-weight: var(--nino-admin-weight-strong);
 }
 
-#builder-app .builder-widths-set {
+.builder-lightbox .builder-field-value {
+	overflow-wrap: anywhere;
+}
+
+.builder-lightbox .builder-field-chip {
+	display: inline-block;
+	margin: 0 0 0 var(--nino-admin-space-3);
+}
+
+/* A setting that has a value for the phone, the tablet and the desktop: its name at the left like every field, the three rows beside it */
+.builder-lightbox .builder-widths-rows {
 	display: grid;
-	gap: .5rem;
+	gap: var(--nino-admin-space-3);
 	min-width: 0;
-	margin: 0;
-	padding: 0;
-	border: 0;
 }
 
-#builder-app .builder-link-field {
+.builder-lightbox .builder-width-row {
 	display: grid;
-	gap: .5rem;
-}
-
-#builder-app .builder-notation {
-	display: grid;
-	gap: .25rem;
-	min-width: 0;
-	margin-top: .75rem;
-}
-
-#builder-app .builder-code {
+	grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr);
+	align-items: center;
+	gap: var(--nino-admin-space-3);
 	margin: 0;
-	padding: .5rem .75rem;
+}
+
+/* The notation of the component or of the block, as a block of text that is read and copied */
+.builder-lightbox .builder-code {
+	margin: 0;
+	padding: var(--nino-admin-space-3) var(--nino-admin-space-5);
 	border: 1px solid var(--editor-border);
 	border-radius: var(--editor-radius-sm);
 	background: var(--editor-bg-elevated);
-	color: var(--editor-ink);
-	font: .8125rem/1.5 ui-monospace, monospace;
+	color: var(--editor-text);
+	font: var(--nino-admin-text-sm)/1.5 ui-monospace, monospace;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	tab-size: 2;

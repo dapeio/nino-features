@@ -2038,6 +2038,78 @@ foreach( $numbers as $name => $ms )
 
 check( 'the times are told, none is held to a limit: the machines the suite runs on differ', count( $numbers ) === 4 );
 
+// the lightbox is for whoever may change the content what the server lets that account write: the account that holds the content step and nothing above it cannot write, by any
+// route the lightbox has, a look (a variant, a width), an id, a fixed text, the source of a value or the markup of a call - save and preview both refuse, and nothing is written -
+// and writes the words of the page
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+builderAccount( $site, 'lightbox-content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$column = builderFind( $open['tree'], static fn( array $node ): bool => ( $node['a']['id'] ?? '' ) === 'start-1' ) ?? '';
+$heading = builderFind( $open['tree'], static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-title' && ( $node['s'] ?? '' ) === '~title' ) ?? '';
+$attribute = static fn( string $at, string $name, string $value ): array => builderEdit( $open['tree'], $at, static function( array $node ) use ( $name, $value ): array {
+	$node['a'][$name] = $value;
+	return $node;
+} );
+$edits = [
+	'a variant'				=> $attribute( $column, 'variant', 'plain' ),
+	'a width'					=> $attribute( $column, 'size', '100 m:50' ),
+	'an id'						=> $attribute( $column, 'id', 'start-9' ),
+	'a fixed text'		=> $attribute( $heading, 'text', 'Fixed' ),
+	'the source'			=> builderEdit( $open['tree'], $heading, static function( array $node ): array {
+		$node['s'] = '~other';
+		return $node;
+	} ),
+	'the markup'			=> builderEdit( $open['tree'], $column, static function( array $node ): array {
+		$node['c'][] = [ 'n' => 'html', 's' => '', 'a' => [], 'c' => [ [ 't' => '<b>x</b>' ] ] ];
+		return $node;
+	} ),
+];
+$before = builderSnapshot( $site );
+$refused = [];
+
+foreach( $edits as $label => $tree )
+	foreach( [ 'save', 'preview' ] as $action )
+		$refused[$label. ' '. $action] = builderCall( $site, 'builder/'. $action, [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [], 'base' => $open['stamp'] ] )[0];
+
+$kept = builderSnapshot( $site ) === $before;
+[ $written ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $open['tree'], 'texts' => [ '/template/page-home/hero/title' => [ 'de_DE' => 'Neu geschrieben' ] ], 'base' => $open['stamp'] ] );
+
+check( 'the lightbox gives the content step no way to write a look, an id, a fixed text, a source or markup: each of the six is a 403 for save and for preview and nothing is written, and the words of the page are written',
+	count( $refused ) === 12 && array_values( array_unique( $refused ) ) === [ 403 ] && $kept === true && $written === 200 && ( builderWords( $site, '/template/page-home/hero/title' )['de_DE'] ?? '' ) === 'Neu geschrieben'
+	&& isset( $open['schemas']['section-title'] ) === true && isset( $open['findings'] ) === false && isset( $open['links'] ) === false );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+
+// what the lightbox is told by the answers of the server: the content step gets the schemas and the shared words, never the findings or the pages a link may go to - in the answer
+// of a save and of a restore as in the one of open - and a request that mixes a word it may write with a change it may not is refused whole, nothing written
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', str_replace( '[template /templates/html-footer]', "[text /project/company/general/name]\n[text /project/mail/box/owner]\n[template /templates/html-footer]", (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) ) );
+\Nino\Text::put( $site, [ '/project/company/general/name' => [ 'de_DE' => 'Beispiel GmbH' ], '/project/mail/box/owner' => [ 'de_DE' => 'secret@example.com' ] ] );
+$answers = [];
+
+foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' ], 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ] ] as $step => $perms ) {
+
+	builderAccount( $site, 'answers-'. $step. '@example.com', $perms );
+	[ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+	[ , $saved ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $open['tree'], 'texts' => [ '/template/page-home/hero/title' => [ 'de_DE' => 'Antwort '. $step ] ], 'base' => $open['stamp'] ] );
+	[ , $restored ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-home', 'base' => $saved['stamp'] ] );
+	$told = static fn( array $body ): string => implode( ',', array_filter( [ isset( $body['schemas'] ) ? 'schemas' : '', isset( $body['findings'] ) ? 'findings' : '', isset( $body['links'] ) ? 'links' : '' ] ) );
+	$answers[$step] = [ $told( $open ), $told( $saved ), $told( $restored ) ];
+
+	if( $step === 'content' ) {
+		$shared = $open['shared'] ?? [];
+		$mixed = builderEdit( $open['tree'], builderFind( $open['tree'], static fn( array $node ): bool => ( $node['a']['id'] ?? '' ) === 'start-1' ) ?? '', static function( array $node ): array {
+			$node['a']['variant'] = 'plain';
+			return $node;
+		} );
+		$before = builderSnapshot( $site );
+		[ $refused ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $mixed, 'texts' => [ '/template/page-home/hero/title' => [ 'de_DE' => 'Gemischt' ] ], 'base' => $saved['stamp'] ] );
+		$answers['mixed'] = [ $refused, builderSnapshot( $site ) === $before ];
+	}
+}
+
+check( 'the answers tell the content step the schemas and no finding or link - in open, save and restore - and the design all three; the words of the company are told for reading, a mailbox is not; a word it may write mixed with a change it may not is a 403 and nothing is written',
+	$answers['content'] === [ [ 'schemas', 'schemas', 'schemas' ] ] [0] && $answers['design'] === [ 'schemas,findings,links', 'schemas,findings', 'schemas,findings' ] && ( $shared['/project/company/general/name'] ?? '' ) === 'Beispiel GmbH' && array_filter( array_keys( $shared ), static fn( string $key ): bool => str_starts_with( $key, '/project/mail/' ) ) === [] && $answers['mixed'] === [ 403, true ] );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+
 // The script of the panel has three suites of its own - the model, the list and the view that makes a page, and the surface of a page that is worked on - which run where node is
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 

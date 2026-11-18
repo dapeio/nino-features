@@ -524,23 +524,396 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return rolled === 412 && text.source === true && loop.source === true && wrap.source === false;
 	} )() );
-	check( 'D. the pencil at a component opens its settings in the extended view - the content where the component has a source or is a loop, else its look - for whoever may design, and offers nothing to the one who may only write the content', ( function() {
+	check( 'D. the pencil at a component opens the lightbox of that component and no other view - the address stays where it is - for whoever may design, and for the one who may only write the content where the lightbox has a source to show or a text to write, and nowhere else', ( function() {
 		const text = model.penOf( '2.1', S.top[2].c[1] );
-		const loop = model.penOf( '4.1', { n : 'collection', s : '/team', a : {}, c : [] } );
-		const wrap = model.penOf( '4.1', { n : 'section-wrap', s : '', a : { id : 'x' }, c : [] } );
+		const wrap = model.penOf( '4.3', S.top[4].c[3] );
+		const opener = element('button');
+		const before = w.state.hash;
+		const count = w.dialogs.length;
 
-		text.open();
-		const toText = w.state.hash;
-		loop.open();
-		const toLoop = w.state.hash;
-		wrap.open();
-		const toWrap = w.state.hash;
+		text.open( opener );
+
+		const opened = w.dialogs.length === count + 1 && S.box !== null && w.state.hash === before;
+
+		S.box = null;
 		S.level = 1;
-		const poor = model.penOf( '2.1', S.top[2].c[1] );
+		const own = model.penOf( '2.1', S.top[2].c[1] );
+		const loopWrap = model.penOf( '4.3', S.top[4].c[3] );
 		S.level = 3;
 
-		return text.name === W( 'label/edit-component', 'Title' ) && toText === '#builder/home/hero/1/content' && toLoop === '#builder/home/cards/1/content' && toWrap === '#builder/home/cards/1/look' && poor === null && S.selected === 'cards';
+		return text.name === W( 'label/edit-component', 'Title' ) && wrap !== null && wrap.source === false && opened === true && own !== null && loopWrap === null;
 	} )() );
 }
+
+
+// --- E. the lightbox -----------------------------------------------------------------------------------------------
+
+{
+	/** The page of the lightbox: a column with a width and a variant, a title that reads a field of the elements inside a collection, and a title of its own */
+	const attributes = {
+		'section-col' : schema( 'Column', 'columns-3', 'none', { variants : [ 'card' ], standard : 'regular', attributes : {
+			id : { type : 'id', label : 'Id', hint : '', default : '' },
+			size : { type : 'choice', label : 'Width', hint : 'How wide', default : '100', options : [ '25', '50', '100' ], optionLabels : { '25' : 'A quarter of the row', '50' : 'Half of the row', '100' : 'The whole row' }, responsive : false },
+		} } ),
+		'section-title' : schema( 'Title', 'heading', 'text', { attributes : { href : { type : 'link', label : 'Target', hint : '', default : '' }, tag : { type : 'choice', label : 'Tag', hint : 'Which heading', default : 'h2', options : [ 'h1', 'h2', 'h3' ], optionLabels : { h1 : 'Heading of the page', h2 : 'Heading of a part', h3 : 'Heading of a section' }, responsive : false } } } ),
+		collection : schema( 'Collection', 'database', 'none', { loop : true } ),
+	};
+	const tree = [
+		{ n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
+		{ n : 'section-wrap', s : '', a : { id : 'team' }, c : [ { t : '\n' }, { n : 'section-title', s : '~title', a : {}, c : null }, { t : '\n' }, { n : 'collection', s : '/team', a : {}, c : [ { t : '\n' }, { n : 'section-title', s : '.title', a : {}, c : null }, { t : '\n' } ] }, { t : '\n' }, { n : 'section-col', s : '', a : { id : 'team-1', size : '50' }, c : [] }, { t : '\n' } ] }, { t : '\n' },
+		{ n : 'template', s : '/templates/html-footer', a : {}, c : null }, { t : '\n' },
+	];
+	const world2 = function( level ) {
+
+		const w = opened( { page : pageAnswer( { tree : tree, level : level, schemas : Object.assign( {}, pageAnswer().schemas, attributes ), texts : { '/template/page-home/team/title' : { de_DE : 'Team', en_US : 'Team' } } } ) } );
+		const S = w.panel.model.state;
+
+		S.hot = '';
+		return { w : w, S : S, model : w.panel.model };
+	};
+	const heads = function( dialog ) { return findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && el.attributes['aria-controls'] !== undefined && el.className.indexOf('nino-admin-help-button') === -1 } ) };
+	const names = function( dialog ) { return heads( dialog ).map( function( head ) { return textOf( head ).replace( /\s+/g, ' ' ).trim() } ) };
+	const open = function( x, rel ) {
+
+		const back = { called : 0 };
+		const opener = element('button');
+
+		x.model.state.box = null;
+		x.model.openProperties( 2, rel, opener, function() { back.called++ } ) === true || ( back.refused = true );
+
+		return { dialog : x.w.dialogs[x.w.dialogs.length - 1], back : back, opener : opener, close : function() { const dialog = x.w.dialogs[x.w.dialogs.length - 1]; fire( dialog, 'close' ) } };
+	};
+
+	check( 'E. the lightbox is one dialog of the workbench in the size of a form with the title "<kind> edit", and its sections stand in the fixed order - the source first, and open, where the content comes from one, then the content, how it looks, the advanced part - each only where it has something to show (the title of its own has no source, the column has neither source nor content)', ( function() {
+		const x = world2( 3 );
+		const field = open( x, '3.1' );
+		const fieldHeads = names( field.dialog );
+		const fieldOpen = heads( field.dialog ).map( function( head ) { return head.attributes['aria-expanded'] } ).join();
+		field.close();
+		const own = open( x, '1' );
+		const ownHeads = names( own.dialog );
+		own.close();
+		const column = open( x, '5' );
+		const columnHeads = names( column.dialog );
+		const form = column.dialog.className.indexOf('nino-admin-dialog--form') !== -1;
+		const title = textOf( column.dialog.querySelector('.nino-admin-dialog-title') );
+
+		column.close();
+
+		return fieldHeads.length === 4 && [ 'source', 'content', 'look', 'advanced' ].every( function( key, at ) { return fieldHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } ) && fieldOpen === 'true,false,false,false'
+			&& ownHeads.length === 3 && [ 'content', 'look', 'advanced' ].every( function( key, at ) { return ownHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } )
+			&& columnHeads.length === 2 && columnHeads[0].indexOf( W('box/look') ) === 0 && columnHeads[1].indexOf( W('box/advanced') ) === 0 && form === true && title === W( 'label/edit-component', 'Column' );
+	} )() );
+
+	check( 'E. a value that is changed in the lightbox is in the draft at once and is one step of the undo, the lightbox has nothing to apply - Close is its only button - and the undo takes the changes back one by one', ( function() {
+		const x = world2( 3 );
+		const box = open( x, '5' );
+		const select = findAll( box.dialog, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === '5:size' } )[0];
+		const variant = findAll( box.dialog, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === '5:variant' } )[0];
+		const buttons = findAll( box.dialog.querySelector('.nino-admin-dialog-actions'), function( el ) { return el.tagName === 'BUTTON' } );
+		const column = function() { return x.S.top[2].c[5].a };
+		const steps = x.S.undo.length;
+
+		select.value = '25';
+		fire( select, 'change' );
+		const sized = column().size === '25' && x.S.undo.length === steps + 1;
+		variant.value = 'card';
+		fire( variant, 'change' );
+		const varied = column().variant === 'card' && x.S.undo.length === steps + 2;
+		const open2 = x.w.dialogs[x.w.dialogs.length - 1] === box.dialog && x.S.box !== null;
+
+		x.model.undo();
+		const one = column().variant === undefined && column().size === '25';
+		x.model.undo();
+		const two = column().size === '50';
+
+		box.close();
+
+		return sized === true && varied === true && open2 === true && one === true && two === true && buttons.length === 1 && textOf( buttons[0] ) === workbench['/_admin/common/label/close'];
+	} )() );
+
+	check( 'E. the lightbox gives the focus back to what opened it when it is closed, and holds nothing of the component afterwards', ( function() {
+		const x = world2( 3 );
+		const box = open( x, '1' );
+
+		box.close();
+
+		return box.back.called === 1 && x.S.box === null;
+	} )() );
+
+	check( 'E. the account that may only write the content is given the source, to read, and the content - and no look, no advanced part: the lightbox of a column has nothing to show it and is not opened', ( function() {
+		const x = world2( 1 );
+		const field = open( x, '3.1' );
+		const fieldHeads = names( field.dialog );
+		const noSetting = findAll( field.dialog, function( el ) { return el.tagName === 'SELECT' || ( el.tagName === 'BUTTON' && /:source:/.test( el.dataset.key ?? '' ) ) } ).length === 0;
+		field.close();
+		const own = open( x, '1' );
+		const ownHeads = names( own.dialog );
+		own.close();
+		const column = open( x, '5' );
+		const refused = column.back.refused === true;
+		x.S.box = null;
+
+		return fieldHeads.length === 1 && fieldHeads[0].indexOf( W('box/source') ) === 0 && noSetting === true && ownHeads.length === 1 && ownHeads[0].indexOf( W('box/content') ) === 0 && refused === true;
+	} )() );
+}
+
+
+
+// --- F. the tree of the extended view -------------------------------------------------------------------------------
+
+{
+	const marksSeen = [];
+	let marks = null;
+	const w = world( { page : pageAnswer( { schemas : Object.assign( {}, pageAnswer().schemas, { button : schema( 'Button', 'mouse-pointer-click', 'text', { attributes : { href : { type : 'link', label : 'Target', hint : '', default : '' } } } ) } ),
+		tree : [ { n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' }, { n : 'section-wrap', s : '', a : { id : 'team' }, c : [ { t : '\n' }, { n : 'collection', s : '/team', a : {}, c : [ { t : '\n' }, { n : 'section-title', s : '.title', a : {}, c : null }, { t : '\n' }, { n : 'button', s : '~label', a : { href : '.url' }, c : null }, { t : '\n' }, { n : 'section-title', s : '.teaser', a : {}, c : null }, { t : '\n' } ] }, { t : '\n' } ] }, { t : '\n' } ] } ) } );
+	const advanced = function() {
+
+		w.title.textContent = 'Builder';
+		w.ui.frameMarks = function( options ) {
+			marks = options;
+			return { highlight : function( keys, extra ) { marksSeen.push( [ keys, extra ] ) }, refresh : function() {}, stop : function() {} };
+		};
+		w.open('#builder/home/team');
+		w.serve();
+	};
+
+	advanced();
+
+	const model = w.panel.model;
+	const S = model.state;
+	const tree = function() { return w.view.querySelector('.nino-admin-tree') };
+	const row = function( id ) { return rowsOf( w ).find( function( el ) { return el.dataset.id === id } ) };
+	const lit = function() { return rowsOf( w ).filter( function( el ) { return el.querySelector('.nino-admin-tree-row').classList.contains('is-lit') } ).map( function( el ) { return el.dataset.id } ).join() };
+
+	check( 'F. the tree is the tree of the workbench with the line of the path over it - the kinds from the block to the chosen row - and the extended view has no column of settings: the tree stands alone', ( function() {
+		const split = w.view.querySelector('.nino-admin-split');
+
+		return S.tree !== null && S.tree.path !== null && S.tree.path.classList.contains('builder-adv-path') === true && split.querySelector('.nino-admin-split-settings') !== null && split.querySelector('.nino-admin-accordion') === null && tree() !== null;
+	} )() );
+	check( 'F. a loop is the icon of a loop with its type and sort, its children stand once as the pattern, and a value that comes from a field - of the first word or of an attribute - is a tag with the whole name of the field', ( function() {
+		const items = model.itemsNow()[0].children[0];
+		const kids = items.children;
+
+		return typeof items.loop === 'object' && kids.length === 3 && kids[0].source === '.title' && typeof kids[1].source === 'object' && kids[1].source.field === '.url' && kids[1].source.label === 'Target' && kids[2].source === '.teaser';
+	} )() );
+	check( 'F. a field that the type of the loop has not is a finding at its row, and the fields the type has are not', ( function() {
+		S.fields['/team'] = [ 'title', 'url' ];
+		const kids = model.itemsNow()[0].children[0].children;
+
+		return kids[0].finding === undefined && kids[1].finding === undefined && kids[2].finding !== undefined && kids[2].finding.state === 'warn' && kids[2].finding.text.indexOf('teaser') !== -1;
+	} )() );
+	check( 'F. the note of a loop ends with the number of its elements, counted from the page in the frame, and has none where there is no page to count in', ( function() {
+		const abs = model.absOf('1.1');
+		const note = function() { return model.itemsNow()[0].children[0].loop.detail };
+
+		S.found = null;
+		const none = note();
+		S.found = { blocks : [], all : [ { path : abs, elements : [] }, { path : abs, elements : [] }, { path : abs, elements : [] } ] };
+		const three = note();
+		S.found = { blocks : [], all : [ { path : abs, elements : [] } ] };
+		const one = note();
+
+		return none.indexOf( W('adv/elements', 3) ) === -1 && three.slice( -W('adv/elements', 3).length ) === W('adv/elements', 3) && one.slice( -W('adv/element').length ) === W('adv/element');
+	} )() );
+	check( 'F. a row marks the same component in the page, and the page marks its row: every repetition of a pattern of a loop is marked, a click on any of them is the one row, and the chosen component stays marked where nothing is pointed at', ( function() {
+		const inner = { id : 'inner' };
+		const one = { id : 'a', contains : function( node ) { return node === one || node === inner } };
+		const two = { id : 'b', contains : function( node ) { return node === two } };
+		const abs = model.absOf('1.1');
+
+		S.found = { blocks : [], all : [ { path : abs, elements : [ one ] }, { path : abs, elements : [ two ] }, { path : model.absOf('1'), elements : [ one, two ] } ] };
+		S.marked = 'root';
+		marksSeen.length = 0;
+		row('1.1').dispatchEvent( { type : 'pointerover', bubbles : true } );
+		const toPage = marksSeen.length > 0 && marksSeen[marksSeen.length - 1][0] === '1.1';
+		const elements = marks.elements('1.1');
+		const key = marks.keyAt( inner );
+		tree().dispatchEvent( { type : 'pointerleave', bubbles : false } );
+		const backToChosen = marksSeen[marksSeen.length - 1][0] === 'root';
+		marks.onHover('1.1');
+
+		return toPage === true && elements.length === 2 && elements[0] === one && elements[1] === two && key === '1.1' && backToChosen === true && lit() === '1.1' && marks.keyAt( {} ) === null;
+	} )() );
+	check( 'F. Enter on a row opens the lightbox of its component, and Delete asks before the component is taken out - nothing is taken out by the key alone', ( function() {
+		const count = w.dialogs.length;
+		const before = JSON.stringify( S.top );
+
+		row('1.1').dispatchEvent( { type : 'keydown', key : 'Enter', bubbles : true, target : row('1.1') } );
+		const opened = w.dialogs.length === count + 1 && S.box !== null && S.box.rel === '1.1';
+		fire( w.dialogs[w.dialogs.length - 1], 'close' );
+		row('1.1').dispatchEvent( { type : 'keydown', key : 'Delete', bubbles : true, target : row('1.1') } );
+		const asked = w.dialogs.length === count + 2 && JSON.stringify( S.top ) === before;
+
+		return opened === true && asked === true;
+	} )() );
+}
+
+
+
+// --- G. the pencil: reached by the pointer and by the keyboard --------------------------------------------------------
+
+{
+	const w = opened();
+	const model = w.panel.model;
+	const view = { top : 0, left : 0, width : 1000 };
+	const inside = function( spot, box ) { return spot.top >= box.top && spot.top + 26 <= box.top + box.height && spot.left >= box.left && spot.left + 26 <= box.left + box.width };
+
+	check( 'G. the pencil stands INSIDE the box of its component - in its top corner on the right, also where the component begins above the window or reaches past its right edge - so that the way from the component to it never leaves it; a loop has no box, its pencil touches the top of the repetitions', ( function() {
+		const boxes = [ { top : 100, left : 50, width : 300, height : 80 }, { top : -200, left : 50, width : 300, height : 500 }, { top : 100, left : 900, width : 400, height : 80 } ];
+		const spots = boxes.map( function( box ) { return model.penSpot( box, 26, view, false ) } );
+		const placed = spots.every( function( spot, at ) { return inside( { top : spot.top + view.top, left : spot.left + view.left }, boxes[at] ) } );
+		const loop = model.penSpot( { top : 300, left : 50, width : 300, height : 400 }, 26, view, true );
+
+		return placed === true && spots[0].left + 26 + 2 === 350 && spots[1].top >= 2 && spots[2].left + 26 <= 1000 && loop.top + 26 === 300 && loop.left + 26 + 2 === 350;
+	} )() );
+	check( 'G. what the pointer is over decides the component of the pencil - except over the pencil itself, which is no part of the page: the pointer on it leaves the component as it is', ( function() {
+		const before = { entry : 'a' };
+		let asked = 0;
+		const pick = function() { asked++; return { entry : 'b' }; };
+
+		return model.pointerAim( before, true, pick ) === before && asked === 0 && model.pointerAim( before, false, pick ).entry === 'b' && asked === 1;
+	} )() );
+	check( 'G. every component that has a pencil is a stop of the Tab key and its pencil is the next one after it: a text and a picture are stops already, a column is given one - a loop has none - and the pencil stands after a text and as the first thing inside a column', ( function() {
+		const has = function( names ) { const el = { attrs : {}, hasAttribute : function( name ) { return names.indexOf( name ) !== -1 } }; return el };
+		const text = has( [ 'data-nino-text' ] );
+		const picture = has( [ 'data-nino-image' ] );
+		const column = has( [] );
+		const entries = [ { path : '1.1', elements : [ column ], loop : false }, { path : '1.1.1', elements : [ text ], loop : false }, { path : '1.1.3', elements : [ picture ], loop : false }, { path : '1.5', elements : [ column ], loop : true } ];
+		const found = { texts : [ { path : '1.1.1', element : text } ] };
+		const stops = model.stopsOf( found, entries, function() { return true } );
+
+		return stops.length === 1 && stops[0] === column && model.carrierOf( found, entries[1] ) === text && model.carrierOf( found, entries[2] ) === picture && model.carrierOf( found, entries[3] ) === null
+			&& model.seatOf( text ) === 'after' && model.seatOf( picture ) === 'after' && model.seatOf( column ) === 'inside' && model.stopsOf( found, entries, function() { return false } ).length === 0;
+	} )() );
+}
+
+// --- H. the lightbox: what each step is shown, and what it keeps -------------------------------------------------------
+
+{
+	const html = { n : 'html', s : '', a : {}, c : [ { t : '<b>x</b>' } ] };
+	const schemas = {
+		'section-title' : schema( 'Title', 'heading', 'text', { attributes : {
+			tip : { type : 'text', label : 'Tip', hint : '', default : '' },
+			href : { type : 'link', label : 'Target', hint : '', default : '' },
+			alt : { type : 'text', label : 'Alt', hint : '', default : '' },
+		} } ),
+		html : schema( 'HTML', 'code', 'none' ),
+	};
+	const tree = [
+		{ n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
+		{ n : 'section-wrap', s : '', a : { id : 'x' }, c : [ { t : '\n' }, { n : 'section-title', s : '~title', a : { tip : '~tip', href : '~target', alt : '~alt' }, c : null }, { t : '\n' }, { n : 'section-title', s : '~fixed', a : { text : 'Fixed' }, c : null }, { t : '\n' }, html, { t : '\n' } ] }, { t : '\n' },
+		{ n : 'template', s : '/templates/html-footer', a : {}, c : null }, { t : '\n' },
+	];
+	const texts = { '/template/page-home/x/title' : { de_DE : 'T' }, '/template/page-home/x/tip' : { de_DE : 'Tip' }, '/template/page-home/x/target' : { de_DE : '/a' }, '/template/page-home/x/alt' : { de_DE : 'Alt' } };
+	const ofLevel = function( level ) {
+
+		const w = opened( { page : pageAnswer( { tree : tree, level : level, texts : texts, schemas : Object.assign( {}, pageAnswer().schemas, schemas ) } ) } );
+
+		return { w : w, model : w.panel.model, S : w.panel.model.state };
+	};
+	const show = function( x, rel, one ) {
+
+		x.S.box = null;
+		x.model.openProperties( 2, rel, element('button'), function() {} );
+
+		const dialog = x.w.dialogs[x.w.dialogs.length - 1];
+		const heads = findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && el.attributes['aria-controls'] !== undefined && el.className.indexOf('nino-admin-help-button') === -1 } );
+
+		// Every section is opened, so that what each holds is there to be looked at
+		if( one !== true )
+			heads.forEach( function( head ) { fire( head, 'click' ) } );
+
+		return { dialog : dialog, keys : findAll( dialog, function( el ) { return el.dataset !== undefined && el.dataset.key !== undefined } ).map( function( el ) { return el.dataset.key } ), controls : findAll( dialog, function( el ) { return /^(INPUT|TEXTAREA|SELECT)$/.test( el.tagName ) && el.type !== 'file' } ).length, close : function() { fire( dialog, 'close' ) } };
+	};
+
+	check( 'H. the account that may only write the content is given the words of the page and the alt of a picture as fields, and no other: no button that changes a source, no field for a fixed text, for the text of a tip or of a target, and no markup', ( function() {
+		const x = ofLevel( 1 );
+		const title = show( x, '1' );
+		title.close();
+		const fixed = x.model.penOf( '2.3', x.S.top[2].c[3] );
+		const markup = x.model.penOf( '2.5', x.S.top[2].c[5] );
+
+		return title.keys.some( function( key ) { return /:source:/.test( key ) } ) === false && title.keys.indexOf('1:content') !== -1 && title.keys.indexOf('1:alt') !== -1 && title.keys.indexOf('1:tip') === -1 && title.keys.indexOf('1:href') === -1
+			&& title.controls === 2 && fixed === null && markup === null;
+	} )() );
+	check( 'H. the account that may design gets the tip, the target and the fixed text as fields and the buttons that change a source, and the markup of a call of html only from the step of the development', ( function() {
+		const two = ofLevel( 2 );
+		const title = show( two, '1' );
+		title.close();
+		const fixed = show( two, '3' );
+		fixed.close();
+		const noMarkup = show( two, '5' );
+		noMarkup.close();
+		const three = ofLevel( 3 );
+		const markup = show( three, '5' );
+		markup.close();
+
+		return title.keys.some( function( key ) { return /:source:/.test( key ) } ) === true && title.keys.indexOf('1:tip') !== -1 && fixed.keys.indexOf('3:content') !== -1
+			&& noMarkup.keys.indexOf('5:content') === -1 && markup.keys.indexOf('5:content') !== -1;
+	} )() );
+	check( 'H. what the lightbox shows is drawn again by an undo and a redo - the value that was taken back is the one in the field - and the pencil is given back the focus when the lightbox is closed', ( function() {
+		const x = ofLevel( 3 );
+		const box = show( x, '1', true );
+		const field = function() { return findAll( box.dialog, function( el ) { return el.dataset !== undefined && el.dataset.key === '1:content' } )[0] };
+		const before = field().value;
+
+		field().value = 'Changed';
+		fire( field(), 'change' );
+		x.model.undo();
+		const back = field().value === before;
+		x.model.redo();
+		const again = field().value === 'Changed';
+		const opener = element('button');
+		let focused = '';
+
+		box.close();
+		x.S.penBack = '';
+		x.S.box = null;
+		const pen = x.model.penOf( '2.1', x.S.top[2].c[1] );
+
+		pen.open( opener );
+		fire( x.w.dialogs[x.w.dialogs.length - 1], 'close' );
+		focused = x.S.penBack;
+
+		return back === true && again === true && focused === '2.1';
+	} )() );
+
+	check( 'H. a text of another place is told with its words and where it is changed - the words as the server sends them, the sentence behind the (?) - and the loop is told by the number of its elements, which the page in the frame shows and nothing else tells', ( function() {
+		const shared = [ { n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' }, { n : 'section-wrap', s : '', a : { id : 'x' }, c : [ { t : '\n' }, { n : 'section-title', s : '/project/company/general/name', a : {}, c : null }, { t : '\n' } ] }, { t : '\n' }, { n : 'template', s : '/templates/html-footer', a : {}, c : null }, { t : '\n' } ];
+		const x = { w : null };
+		const w = opened( { page : pageAnswer( { tree : shared, level : 1, shared : { '/project/company/general/name' : 'Beispiel GmbH' }, schemas : Object.assign( {}, pageAnswer().schemas, schemas ) } ) } );
+		const model = w.panel.model;
+
+		model.state.box = null;
+		model.openProperties( 2, '1', element('button'), function() {} );
+
+		const dialog = w.dialogs[w.dialogs.length - 1];
+		const said = textOf( dialog );
+		const helps = findAll( dialog, function( el ) { return el.className.indexOf('nino-admin-help-text') !== -1 } ).map( textOf ).join();
+
+		fire( dialog, 'close' );
+
+		return x.w === null && said.indexOf('Beispiel GmbH') !== -1 && helps.indexOf( W('word/not-here') ) !== -1;
+	} )() );
+	check( 'H. a lightbox whose component is taken away closes, and the focus goes to the work surface - never to the body of the page - and the notation of the component before is not shown in the next', ( function() {
+		const x = ofLevel( 3 );
+		const box = show( x, '5' );
+
+		x.S.notation = { node : '[old]' };
+		x.model.removeComponent('5');
+		x.model.redrawBox();
+		fire( box.dialog, 'close' );
+
+		const landed = x.S.view.title.focused === true;
+		const next = show( x, '1' );
+		const notation = findAll( next.dialog, function( el ) { return el.tagName === 'PRE' } )[0];
+
+		next.close();
+
+		return x.S.box === null && landed === true && ( notation === undefined || textOf( notation ) === '' );
+	} )() );
+}
+
 
 done();

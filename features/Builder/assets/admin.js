@@ -7,10 +7,9 @@
  *
  *										The address is #builder (the list), #builder/<page> (a page: its template without page-), #builder/@new (the view that makes one; with a page behind it,
  *										#builder/@new/<page>, the view that makes a copy of that page) and #builder/@header or #builder/@footer
- *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components, and
- *										#builder/<page>/<block>/@block its settings - and of one component #builder/<page>/<block>/<path>/<section>, the path being the
- *										position of the component in the block; the frames are the same views at #builder/<page>/@header and #builder/<page>/@footer. They
- *										are for the account that may design.
+ *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components - and the frames are the same
+ *										views at #builder/<page>/@header and #builder/<page>/@footer. They are for the account that may design. The properties of a component have no address
+ *										of their own: they are the lightbox that the pencil at the component, the row of the tree and the row of the outline open.
  *
  *										A block is put in with "Insert block": between the blocks of the page, at its end and in the outline. The dialog lists what the
  *										server offers, by category, each with a small picture drawn by the website in the active theme; the block that is chosen is asked
@@ -21,7 +20,7 @@
  *										in it is the position the trace of the drawing names. A block is a node on the top level that the register has; free markup and a
  *										call that has no schema are locked and stay where they are. Moving a block swaps it with the next block - never past a locked
  *										piece. The extended view works on the same tree: a component is put in where the register says it may stand, moved among its
- *										neighbours, taken out - the undo brings it back - and has its settings by the schema of its component.
+ *										neighbours, taken out - the undo brings it back - and has its properties, by the schema of its component, in the lightbox.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -152,7 +151,12 @@
 		selected		: '',
 		paintBars		: null,
 		scroll			: null,
-		autoSource	: false,
+		box					: null,
+		penBack			: '',
+		penFocus		: null,
+		penHost			: null,
+		fields			: {},
+		shared			: {},
 	};
 
 	/**
@@ -474,6 +478,7 @@
 		S.inserted = now.inserted;
 		S.pictures = now.pictures;
 		changed( true );
+		redrawBox();
 
 		// What the bar said of a change is not true of a page that is back to what is saved
 		if( S.view !== null && isDirty() === false )
@@ -1333,6 +1338,7 @@
 			+ '[data-nino-text][contenteditable]{outline:2px solid '+ tone.blue+ ';background:'+ tone.soft+ '}'
 			+ '[data-nino-placeholder]:not([contenteditable]){opacity:.6;font-style:italic}'
 			+ '[data-nino-locked]{cursor:not-allowed}'
+			+ '[data-nino-carrier]:focus-visible{outline:2px solid '+ tone.blue+ ';outline-offset:2px}'
 			+ '[data-nino-block]{transition:opacity .12s}'
 			+ '[data-nino-dim]{opacity:'+ FADE+ '}'
 			+ '@media (prefers-reduced-motion:reduce){[data-nino-block]{transition:none}}';
@@ -1342,7 +1348,7 @@
 	// of its block and the places to put a block in are shown only for the block that is on - the pointer or the focus is in it, or it is the chosen one
 	const BAR_CSS = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}'
 		+ '.bar{position:absolute;width:max-content;display:flex;flex-wrap:wrap;gap:2px;align-items:center;box-sizing:border-box;max-width:calc(100vw - 16px);padding:2px;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-ink);font:600 12px/1.2 system-ui,sans-serif;box-shadow:var(--b-shadow);opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
-		+ '.bar[data-on],.bar:focus-within,button.insert[data-on],button.insert:focus-visible,button.pen[data-on],button.pen:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
+		+ '.bar[data-on],.bar:focus-within,button.insert[data-on],button.insert:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
 		+ '.name{flex:1 1 auto;min-width:0;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
 		+ 'button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:24px;min-height:24px;margin:0;padding:0 4px;border:1px solid transparent;border-radius:var(--b-radius);background:transparent;color:inherit;font:600 12px/1 system-ui,sans-serif;cursor:pointer}'
 		+ 'button:hover{background:var(--b-soft)}button:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}button:disabled{opacity:.5;cursor:default}'
@@ -1350,11 +1356,19 @@
 		+ 'svg{flex:none;width:14px;height:14px}'
 		+ '.frame{position:absolute;display:none;pointer-events:none;box-sizing:border-box;border:2px solid var(--b-blue);border-radius:3px}'
 		+ '.frame[data-on]{display:block}'
-		+ 'button.insert,button.pen{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-shadow);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
+		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-shadow);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
 		+ 'button.insert{padding:0 10px;border-style:dashed;border-color:var(--b-blue);border-radius:14px}'
-		+ 'button.pen{padding:0;color:var(--b-blue)}'
-		+ 'button.insert:hover,button.pen:hover{background:var(--b-soft)}'
-		+ '@media (prefers-reduced-motion:reduce){.bar,button.insert,button.pen{transition:none}}';
+		+ 'button.insert:hover{background:var(--b-soft)}'
+		+ '@media (prefers-reduced-motion:reduce){.bar,button.insert{transition:none}}';
+
+	// The pencil stands in a shadow of its own, in the window of the page: it is moved in the page to stand next to the component the keyboard is on, so that the Tab key reaches it
+	// next to the component, and that place may lie in a box of the page that is positioned
+	const PEN_CSS = ':host{all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483000}'
+		+ 'button.pen{position:fixed;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:24px;min-height:24px;margin:0;padding:0;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-blue);box-shadow:var(--b-shadow);cursor:pointer;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
+		+ 'button.pen[data-on],button.pen:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
+		+ 'button.pen:hover{background:var(--b-soft)}button.pen:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}'
+		+ 'svg{flex:none;width:14px;height:14px}'
+		+ '@media (prefers-reduced-motion:reduce){button.pen{transition:none}}';
 
 	/**
 	 *	The blocks and the texts of the page in the frame, from the comments the trace of the drawing writes: a block is the elements between the comment
@@ -1643,44 +1657,118 @@
 	};
 
 	/**
-	 *	What the account may open at a component of the page, and how it is named: the settings of the component in the extended view, which is for whoever may design -
-	 *	an account that may write the content only has nothing to open here, it writes the texts where they stand. The pencil on a component is drawn from this and
-	 *	opens what open() does; what it opens is the only thing the pencil has of the view it opens
+	 *	What the account may open at a component of the page, and how it is named: its properties in the lightbox - the one form of them in the Builder. The pencil on a
+	 *	component is drawn from this and opens what open() does; an account that may only write the content is given a pencil where the lightbox has the source to read or
+	 *	a content to write, and none where it has nothing to show it
 	 *
 	 *	@param		{string}		path					The position of the component in the tree of the page, 'a.b.c'
 	 *	@param		{Object}		node					The call
 	 *
-	 *	@return		{Object|null}							{ name, open } or null where there is nothing to open
+	 *	@return		{Object|null}							{ name, source, open( opener ) } or null where there is nothing to open
 	 */
 	const penOf = function( path, node ) {
 
-		if( S.level < 2 || node.n === undefined || S.schemas[node.n] === undefined || /^\d+\.\d+/.test( path ) === false )
+		if( node.n === undefined || S.schemas[node.n] === undefined || /^\d+\.\d+/.test( path ) === false )
 			return null;
 
 		const parts = path.split('.');
-		const block = S.top[ Number( parts[0] ) ];
-		const base = block === undefined ? null : advancedParts( block );
+		const at = Number( parts[0] );
+		const block = S.top[at];
 
-		if( base === null )
+		if( block === undefined || kindOf( block ) !== 'block' || idOf( block ) === '' )
+			return null;
+
+		const rel = parts.slice( 1 ).join('.');
+		const had = S.box;
+
+		S.box = { block : idOf( block ) };
+
+		const has = hasProperties( rel );
+
+		S.box = had;
+
+		if( has === false )
 			return null;
 
 		const schema = S.schemas[node.n];
 		const own = Nino.content.getText( '/_admin/builder/kind/'+ node.n );
-		const section = schema.source !== 'none' || schema.loop === true || ( node.n === 'html' && S.level >= DEVELOP ) ? 'content' : 'look';
-
-		// A component that reads a source, and a loop, is opened at the dialog that changes the source
-		const source = schema.source !== 'none' || schema.loop === true;
 
 		return {
 			name	: word( 'label/edit-component', own !== '' ? own : localized( schema.label ) ),
-			source	: source,
-			open	: function() {
-				S.selected = keyAt( Number( parts[0] ) );
-				S.autoSource = source;
-				rememberScroll();
-				Nino.admin.builder.go( base.concat( [ parts.slice( 1 ).join('.'), section ] ), { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } );
-			},
+			source	: schema.source !== 'none' || schema.loop === true,
+			open	: function( opener ) { openProperties( at, rel, opener, function() { penBack( path ) } ) },
 		};
+	};
+
+	// The pencil gets the focus back where the page is drawn again after the lightbox: the page in the frame is a new one by then, or about to be
+	const penBack = function( path ) {
+
+		S.penBack = path;
+
+		if( S.stale === false && S.penFocus !== null ) {
+			S.penBack = '';
+			S.penFocus( path );
+		}
+	};
+
+	// The component the pencil is for when the pointer comes over something: what the pointer is over - and the pencil is no part of the page: the pointer on it, or on the
+	// way to it inside the component, leaves the component as it is
+	const pointerAim = function( before, overOwn, pick ) {
+		return overOwn === true ? before : pick();
+	};
+
+	// Where the pencil stands for a box: in its top corner on the right, inside it, and for a loop - which has no box of its own - above the repetitions, touching them. The
+	// box and the window are in the coordinates of the page, the answer is in those of the window
+	const penSpot = function( box, size, view, loop ) {
+
+		const right = Math.min( box.left + box.width, view.left + view.width );
+		let top = loop === true ? box.top - size : box.top + 2;
+
+		if( loop === true && top < view.top )
+			top = box.top + 2;
+
+		top = Math.min( Math.max( top, loop === true ? top : view.top + 2 ), Math.max( box.top, box.top + box.height - size ) );
+
+		return { top : top - view.top, left : Math.max( box.left, right - size - 2 ) - view.left };
+	};
+
+	// The element of a component that the Tab key stops at: the text that is written where it stands, the picture that is exchanged, else its first element - which is given
+	// a stop of its own where it has none. A loop has no stop: it is reached by its row in the tree
+	const carrierOf = function( found, entry ) {
+
+		if( entry.loop === true || entry.elements.length === 0 )
+			return null;
+
+		const text = found.texts.find( function( candidate ) { return candidate.path === entry.path && candidate.element.hasAttribute('data-nino-text') === true } );
+
+		if( text !== undefined )
+			return text.element;
+
+		const image = entry.elements.find( function( element ) { return element.hasAttribute('data-nino-image') === true } );
+
+		return image ?? entry.elements[0];
+	};
+
+	// Where the one pencil stands in the page for the Tab key: after a text or a picture, which hold nothing else, and as the first thing in a component that holds others - so
+	// that the pencil is the next stop after the component, and the components inside come after it
+	const seatOf = function( carrier ) {
+		return carrier.hasAttribute('data-nino-text') === true || carrier.hasAttribute('data-nino-image') === true ? 'after' : 'inside';
+	};
+
+	// The elements that are given a stop of the Tab key: of every component that has a pencil, the one it stands next to - those that are stops already (a text, a picture) are none
+	const stopsOf = function( found, entries, hasPen ) {
+
+		const out = [];
+
+		entries.forEach( function( entry ) {
+
+			const carrier = carrierOf( found, entry );
+
+			if( carrier !== null && hasPen( entry ) === true && seatOf( carrier ) === 'inside' && out.indexOf( carrier ) === -1 )
+				out.push( carrier );
+		} );
+
+		return out;
 	};
 
 	/**
@@ -1859,14 +1947,25 @@
 
 		// The pencil: one button, put at the corner of the component the pointer or the focus is on
 		const pen = tool( 'pencil', '', word('hint/write'), 'pen' );
+		const penHost = doc.createElement('nino-builder-pen');
+		const penShadow = penHost.attachShadow( { mode : 'open' } );
+		const penStyle = doc.createElement('style');
 		let aimed = null;
 
+		penStyle.textContent = PEN_CSS;
+		penShadow.appendChild( penStyle );
+		Object.keys( tone ).forEach( function( name ) { penHost.style.setProperty( '--b-'+ name, tone[name] ) } );
+		penHost.setAttribute( 'aria-hidden', 'false' );
+		S.penHost = penHost;
 		pen.addEventListener( 'click', function() {
 
 			if( aimed !== null )
-				aimed.pen.open();
+				aimed.pen.open( pen );
 		} );
-		shadow.appendChild( pen );
+		penShadow.appendChild( pen );
+
+		// A thing of the page that is in one of the two shadows: the bars or the pencil
+		const ownOf = function( node ) { return shadow.contains( node ) === true || penShadow.contains( node ) === true };
 
 		// The page is laid out at a width and scaled into the pane where the person chose a width the pane has not: a bar is scaled back, so that it is as large
 		// as the workbench's own controls
@@ -1911,17 +2010,17 @@
 
 			const back = scaleBack();
 			const size = 26 * back;
-			const right = Math.min( box.left + box.width, win.scrollX + win.innerWidth );
-
 			pen.title = aimed.pen.name;
 			pen.setAttribute( 'aria-label', aimed.pen.name );
 			pen.dataset.key = aimed.key;
 			pen.style.transformOrigin = '0 0';
 			pen.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
 
-			// At the corner, outside of the component, where it covers no text of it; at the edge of the page - nothing above the component to stand in - inside
-			pen.style.top = ( box.top - size >= win.scrollY ? box.top - size : box.top + 2 * back )+ 'px';
-			pen.style.left = Math.max( box.left, right - size )+ 'px';
+			// In the top corner on the right, INSIDE the box of the component: the way from the component to its pencil never leaves it
+			const spot = penSpot( box, size, { top : win.scrollY, left : win.scrollX, width : win.innerWidth }, aimed.entry.loop === true );
+
+			pen.style.top = spot.top+ 'px';
+			pen.style.left = spot.left+ 'px';
 			pen.setAttribute( 'data-on', '' );
 		};
 
@@ -1952,33 +2051,73 @@
 				}
 			} );
 
-			return list.map( function( entry ) { return { path : entry.path, elements : entry.elements, inLoop : Object.keys( loops ).some( function( path ) { return entry.path.indexOf( path+ '.' ) === 0 } ) } } )
-				.concat( Object.keys( loops ).map( function( path ) { return { path : path, elements : loops[path], inLoop : false } } ) );
+			return list.map( function( entry ) { return { path : entry.path, elements : entry.elements, loop : false } } )
+				.concat( Object.keys( loops ).map( function( path ) { return { path : path, elements : loops[path], loop : true } } ) );
 		};
 
-		// The component the pencil is for: the innermost one that holds the element and has something to open - in a loop a component that reads a source, else the loop
-		const aim = function( target ) {
+		// The component the pencil is for: the innermost one that holds the element and has something to open for the account - a card of a loop and the field in it have theirs,
+		// and the loop its own at the edge of its repetitions. The pencil is no part of the page: the pointer on it does not change the component
+		const pickAim = function( target ) {
 
-			aimed = null;
+			let found = null;
 
 			if( S.stale === false && S.editing === null && target !== null )
 				aims().filter( function( entry ) {
 					return entry.elements.some( function( element ) { return element.contains( target ) } ) === true;
-				} ).sort( function( one, other ) { return other.path.length - one.path.length } ).some( function( entry ) {
+				} ).sort( function( one, other ) { return other.path.length - one.path.length || ( one.loop === true ? 1 : 0 ) - ( other.loop === true ? 1 : 0 ) } ).some( function( entry ) {
 
 					const node = nodeAt( entry.path );
 					const open = node === null ? null : penOf( entry.path, node );
 
-					// A column or a row inside a loop is no place for the pencil: the loop is
-					if( open === null || ( entry.inLoop === true && open.source === false ) )
+					if( open === null )
 						return false;
 
-					aimed = { entry : entry, pen : open, key : keyAt( Number( entry.path.split('.')[0] ) ) };
+					found = { entry : entry, pen : open, key : keyAt( Number( entry.path.split('.')[0] ) ) };
 
 					return true;
 				} );
 
+			return found;
+		};
+
+		const aim = function( target ) {
+
+			aimed = pickAim( target );
 			placePen();
+		};
+
+		// The pencil stands in the page next to its component for the Tab key: after a text or a picture, which hold nothing else, and as the first thing in a component that
+		// holds others - so that the one pencil is the next stop after the component, and the components inside come after it
+		const anchorPen = function() {
+
+			if( aimed === null )
+				return;
+
+			const carrier = carrierOf( S.found, aimed.entry );
+
+			if( carrier === null )
+				return;
+
+			if( seatOf( carrier ) === 'after' )
+				carrier.after( penHost );
+			else
+				carrier.insertBefore( penHost, carrier.firstChild );
+		};
+
+		// The pencil of a component, with the focus on it: where the lightbox of the component was closed
+		S.penFocus = function( path ) {
+
+			const entry = aims().find( function( candidate ) { return candidate.path === path } );
+			const node = entry === undefined ? null : nodeAt( entry.path );
+			const open = node === null ? null : penOf( entry.path, node );
+
+			if( open === null )
+				return;
+
+			aimed = { entry : entry, pen : open, key : keyAt( Number( entry.path.split('.')[0] ) ) };
+			anchorPen();
+			placePen();
+			pen.focus();
 		};
 
 		// The page is laid out at a width and scaled into the pane where the person chose a width the pane has not: a bar is scaled back, so that it is as large
@@ -2092,10 +2231,11 @@
 
 			const origin = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
 
-			if( shadow.contains( origin ) === false ) {
+			if( ownOf( origin ) === false )
 				S.overBar = '';
-				aim( event.target );
-			}
+
+			aimed = pointerAim( aimed, ownOf( origin ), function() { return pickAim( event.target ) } );
+			placePen();
 		} );
 		doc.documentElement.addEventListener( 'pointerleave', function( event ) {
 
@@ -2105,7 +2245,7 @@
 
 			S.overBar = '';
 
-			if( aimed !== null && shadow.activeElement !== pen ) {
+			if( aimed !== null && penShadow.activeElement !== pen ) {
 				aimed = null;
 				placePen();
 			}
@@ -2115,7 +2255,7 @@
 		doc.addEventListener( 'focusin', function( event ) {
 
 			const origin = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
-			const inside = shadow.contains( origin ) === true;
+			const inside = ownOf( origin ) === true;
 			const own = inside === true && origin.closest !== undefined ? origin.closest('[data-key]') : null;
 
 			S.focus = own !== null ? own.dataset.key : ( keyInPage( event.target ) ?? '' );
@@ -2125,13 +2265,15 @@
 			paintBars();
 			tell( S.focus === '' ? null : S.focus );
 
-			if( inside === false )
+			if( inside === false ) {
 				aim( event.target );
+				anchorPen();
+			}
 		} );
 		doc.addEventListener( 'pointermove', function( event ) {
 
 			const origin = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
-			const key = shadow.contains( origin ) === true ? S.overBar : ( keyInPage( event.target ) ?? '' );
+			const key = ownOf( origin ) === true ? S.overBar : ( keyInPage( event.target ) ?? '' );
 
 			if( key !== S.hot ) {
 				S.hot = key;
@@ -2144,11 +2286,19 @@
 			paintBars();
 			tell( null );
 
-			if( event.relatedTarget === null || ( event.relatedTarget !== host && shadow.contains( event.relatedTarget ) === false ) )
+			if( event.relatedTarget === null || ( event.relatedTarget !== host && event.relatedTarget !== penHost && ownOf( event.relatedTarget ) === false ) )
 				aim( null );
 		} );
 
+		penShadow.addEventListener( 'pointerover', function() { S.overBar = pen.dataset.key ?? '' } );
 		doc.body.appendChild( host );
+		doc.body.appendChild( penHost );
+
+		// Every component that has a pencil is a stop of the Tab key, in the order of the page
+		stopsOf( S.found, aims(), function( entry ) { const node = nodeAt( entry.path ); return node !== null && penOf( entry.path, node ) !== null } ).forEach( function( carrier ) {
+			carrier.tabIndex = 0;
+			carrier.setAttribute( 'data-nino-carrier', '' );
+		} );
 		S.paintBars = paintBars;
 		place();
 		paintBars();
@@ -2338,6 +2488,14 @@
 
 		bars( frame, found.blocks, behind );
 
+		if( S.penBack !== '' && S.penFocus !== null ) {
+
+			const path = S.penBack;
+
+			S.penBack = '';
+			S.penFocus( path );
+		}
+
 		// The way back from the extended view shows the page where it was left
 		if( S.scroll !== null ) {
 			frame.contentWindow.scrollTo( { top : S.scroll } );
@@ -2395,6 +2553,8 @@
 
 		if( view === null )
 			return;
+
+		paintBox();
 
 		if( S.mode === 'advanced' ) {
 			paintAdvanced();
@@ -2767,6 +2927,7 @@
 	const take = function( response ) {
 
 		S.top = normalize( fixAttrs( response.tree ) );
+		S.shared = response.shared ?? S.shared;
 		S.level = response.level ?? S.level;
 		S.schemas = response.schemas ?? S.schemas;
 		S.findings = response.findings ?? {};
@@ -2810,21 +2971,15 @@
 	};
 
 	const send = function( token, done ) {
-		api( 'preview', { tree : S.top, texts : S.texts, slots : S.copies, pictures : picturesNow(), inserted : insertedNow(), token : token, look : S.mode === 'advanced' ? S.look : null, page : S.page }, function( status, response ) {
+		api( 'preview', { tree : S.top, texts : S.texts, slots : S.copies, pictures : picturesNow(), inserted : insertedNow(), token : token, look : null, page : S.page }, function( status, response ) {
 
 			if( status === 200 ) {
 				S.pending = response.sources;
 				S.address = response.address;
+				S.findings = response.findings ?? {};
 
-				if( S.mode === 'advanced' ) {
-
-					S.findings = response.findings ?? {};
-					S.notation = response.notation ?? {};
-					refreshNotation();
-
-					if( S.adv.view === 'tree' && S.tree !== null )
-						S.tree.update( itemsNow() );
-				}
+				if( S.mode === 'advanced' && S.tree !== null )
+					S.tree.update( itemsNow() );
 			}
 
 			done( status, response );
@@ -3008,10 +3163,41 @@
 		return block === undefined ? [] : block.elements;
 	};
 
+	// The extended view: the elements of the page that stand for a component of the block - every repetition of it where it stands in a loop - and the component an element is
+	// part of, the innermost one, both by the place in the block
+	const elementsOfRel = function( rel ) {
+
+		if( S.found === null || rootAt() === -1 )
+			return [];
+
+		const abs = absOf( rel );
+
+		return S.found.all.filter( function( entry ) { return entry.path === abs } ).reduce( function( all, entry ) { return all.concat( entry.elements ) }, [] );
+	};
+
+	const relInPage = function( element ) {
+
+		const root = String( rootAt() );
+		let best = null;
+
+		if( S.found === null || rootAt() === -1 )
+			return null;
+
+		S.found.all.forEach( function( entry ) {
+
+			const inside = entry.path === root || entry.path.indexOf( root+ '.' ) === 0;
+
+			if( inside === true && entry.elements.some( function( held ) { return held.contains( element ) } ) === true && ( best === null || entry.path.length > best.path.length ) )
+				best = entry;
+		} );
+
+		return best === null ? null : ( best.path === root ? 'root' : best.path.slice( root.length + 1 ) );
+	};
+
 	const keyInPage = function( element ) {
 
 		// A bar, a place or the pencil stands in the shadow of one element, which the page takes for the element that holds the pointer: it is the block of that bar
-		if( S.host !== null && element === S.host )
+		if( ( S.host !== null && element === S.host ) || ( S.penHost !== null && element === S.penHost ) )
 			return S.overBar === '' ? null : S.overBar;
 
 		const block = S.found === null ? undefined : S.found.blocks.find( function( candidate ) {
@@ -3226,9 +3412,43 @@
 				},
 			};
 		}
+		else {
+
+			// The tree, the page in the frame and the line of the path show the same component: what the pointer or the focus is over in one is marked in the others - the page
+			// shows the chosen component where nothing is pointed at, and every repetition of a pattern of a loop where the pattern is
+			const sync = Nino.adminUi.hoverSync();
+			let pointed = null;
+			const inTree = sync.join( function( key ) {
+				if( S.tree !== null )
+					S.tree.highlight( key );
+			} );
+			const marks = preview.marks( {
+				elements	: elementsOfRel,
+				keyAt			: relInPage,
+				onHover		: function( key ) { inPage.set( key ) },
+			} );
+			const inPage = sync.join( function( key ) {
+				pointed = key;
+				marks.highlight( key === null ? ( S.marked === '' ? null : S.marked ) : key );
+			} );
+
+			board = {
+				tree		: inTree,
+				page		: inPage,
+				show		: function( scroll ) { marks.highlight( pointed === null && S.marked !== '' ? S.marked : pointed, { scroll : scroll === true } ) },
+				refresh	: function() { marks.refresh() },
+				leave		: function() {
+					marks.stop();
+					inTree.leave();
+					inPage.leave();
+				},
+			};
+		}
 
 		S.found = null;
 		S.paintBars = null;
+		S.penFocus = null;
+		S.penHost = null;
 		S.host = null;
 		S.hot = '';
 		S.focus = '';
@@ -3373,9 +3593,9 @@
 	};
 
 	/**
-	 *	What an address names: the template, the page a frame is shown on, and for the extended view the block, the place in it and the section
+	 *	What an address names: the template, the page a frame is shown on, and for the extended view the block
 	 *
-	 *	@param		{Array}			parts				[ page, block, place, section ]
+	 *	@param		{Array}			parts				[ page, block ]
 	 *
 	 */
 	const targetOf = function( parts ) {
@@ -3385,13 +3605,12 @@
 		if( template === '' )
 			return null;
 
-		const head = { mode : 'basic', template : template, page : '', slug : addressOf( template ), block : '', path : '', section : '' };
+		const head = { mode : 'basic', template : template, page : '', slug : addressOf( template ), block : '' };
 
 		if( parts.length < 2 || /^@(?:header|footer)$/.test( parts[0] ) === true )
 			return head;
 
 		const frame = /^@(?:header|footer)$/.test( parts[1] ) === true;
-		const place = parts[2] ?? '';
 
 		if( frame === false && /^[a-z][a-z0-9-]*$/.test( parts[1] ) === false )
 			return head;
@@ -3402,8 +3621,6 @@
 			page		: frame === true ? parts[0].replace( /^page-/, '' ) : '',
 			slug		: parts[0],
 			block		: parts[1],
-			path		: place === '@block' || /^root$|^\d+(?:\.\d+)*$/.test( place ) === true ? place : '',
-			section	: place === '@block' ? '' : ( parts[3] ?? '' ),
 		};
 	};
 
@@ -3416,11 +3633,17 @@
 	const show = function( target ) {
 
 		const level = dc.getElementById('builder-page');
-		const was = S.adv === null ? null : S.adv.path;
+		const was = S.adv;
 		let mode = target.mode;
 		let because = '';
 
-		S.adv = mode === 'advanced' ? { slug : target.slug, block : target.block, path : target.path, section : target.section, view : '', accordion : null } : null;
+		S.adv = mode === 'advanced' ? { slug : target.slug, block : target.block } : null;
+
+		// Another block by the address is another view: its name, its marks and its tree are its own
+		const another = was !== null && S.adv !== null && ( was.block !== S.adv.block || was.slug !== S.adv.slug );
+
+		if( another === true )
+			S.marked = '';
 
 		if( mode === 'advanced' && S.level < 2 )
 			because = word('msg/no-advanced');
@@ -3432,24 +3655,11 @@
 			S.adv = null;
 		}
 
-		// A step of the browser's history between the levels puts the focus where the person's own step does
-		if( S.focusNext === '' && was !== null && S.adv !== null ) {
-
-			const inside = function( path ) { return path !== '' && path !== '@block' };
-
-			if( inside( S.adv.path ) === true && inside( was ) === false )
-				S.focusNext = 'back';
-			else if( inside( S.adv.path ) === false && inside( was ) === true ) {
-				S.focusNext = 'tree';
-				S.focusFrom = was;
-			}
-		}
-
 		S.mode = mode;
 		S.tree = null;
 		S.mark = null;
 
-		if( S.built === false || S.view === null || S.view.kind !== mode ) {
+		if( S.built === false || S.view === null || S.view.kind !== mode || another === true ) {
 
 			leaveView();
 
@@ -3463,29 +3673,24 @@
 
 		Nino.adminUi.showLevel( 'builder-page', { focus : false } );
 
-		S.at = mode === 'basic' ? [ addressOf( S.template ) ] : ( S.adv.path === '' || S.adv.path === '@block' ? partsOf( '', S.adv.path === '' ? 'tree' : 'block' ) : partsOf( S.adv.path, S.adv.accordion === null ? S.adv.section : ( S.adv.accordion.get()[0] ?? '' ) ) );
+		S.at = mode === 'basic' ? [ addressOf( S.template ) ] : partsOf();
 		Nino.admin.router.set( 'builder', S.at );
 
 		if( because !== '' )
 			told( because );
 
-		// The focus goes where the move says: into a component on its first line, out of it on the entry it was left from
+		// The focus goes where the move says: into the view that was opened on its title, or back to the icon or the title it was opened from
 		const wanted = S.focusNext;
 
 		S.focusNext = '';
 
 		if( wanted === 'back' && mode === 'advanced' ) {
 
-			const link = dc.getElementById('builder-back-tree');
-			const into = link !== null ? link : S.view.title;
+			if( S.view.title.hasAttribute('tabindex') === false )
+				S.view.title.setAttribute( 'tabindex', '-1' );
 
-			if( into.hasAttribute('tabindex') === false && into.tagName !== 'A' )
-				into.setAttribute( 'tabindex', '-1' );
-
-			into.focus();
+			S.view.title.focus();
 		}
-		else if( wanted === 'tree' && S.tree !== null )
-			S.tree.focus( S.focusFrom );
 		else if( wanted === 'frames' && mode === 'basic' && dc.getElementById('builder-frames') !== null )
 			dc.getElementById('builder-frames').focus();
 		else if( wanted === 'page' && mode === 'basic' ) {
@@ -3495,17 +3700,6 @@
 		}
 
 		S.focusFrom = '';
-
-		// The pencil of a component that has a source leads to the dialog of that source
-		if( S.autoSource === true && mode === 'advanced' ) {
-
-			const change = S.view.split.settings.querySelector('[data-key*=":source:"]');
-
-			S.autoSource = false;
-
-			if( change !== null )
-				change.click();
-		}
 	};
 
 	const nameOfPage = function( template ) {
@@ -3523,11 +3717,13 @@
 	// The index in the top level of the tree of the block the view is about: the block with its id - a frame has one block, its first - or -1 where it is gone
 	const rootAt = function() {
 
-		if( S.adv === null )
+		const block = S.box !== null ? S.box.block : ( S.adv !== null ? S.adv.block : null );
+
+		if( block === null )
 			return -1;
 
 		return S.top.findIndex( function( node ) {
-			return kindOf( node ) === 'block' && ( S.frame === true || idOf( node ) === S.adv.block );
+			return kindOf( node ) === 'block' && ( S.frame === true || idOf( node ) === block );
 		} );
 	};
 
@@ -3725,7 +3921,7 @@
 		return labelOfVariant( schema.variantLabels, variant ) || variant;
 	};
 
-	const actionsOf = function( rel, container ) {
+	const actionsOf = function( rel, container, editable ) {
 
 		const list = [];
 		const title = titleOfRel( rel );
@@ -3736,8 +3932,14 @@
 		if( rel !== 'root' ) {
 			list.push( { key : 'up', icon : 'arrow-up', name : word( 'label/up-comp', title ), disabled : siblingAt( rel, -1 ) === -1 } );
 			list.push( { key : 'down', icon : 'arrow-down', name : word( 'label/down-comp', title ), disabled : siblingAt( rel, 1 ) === -1 } );
-			list.push( { key : 'remove', icon : 'trash-2', name : word( 'label/remove-comp', title ), danger : true } );
 		}
+
+		// What the register knows has its properties in the lightbox: the pieces that are locked have none
+		if( editable === true )
+			list.push( { key : 'edit', icon : 'pencil', name : word( 'label/edit-component', title ) } );
+
+		if( rel !== 'root' )
+			list.push( { key : 'remove', icon : 'trash-2', name : word( 'label/remove-comp', title ), danger : true } );
 
 		return list;
 	};
@@ -3759,12 +3961,32 @@
 	};
 
 	// What a loop shows, in a note: the title of the type of its elements and how they are sorted
-	const loopNote = function( node, schema ) {
+	const loopNote = function( node, schema, rel ) {
 
 		const type = typeof node.s === 'string' && node.s.charAt(0) === '/' ? typeTitle( node.s ) : '';
 		const sort = schema.attributes.sort !== undefined && typeof ( node.a ?? {} ).sort === 'string' ? node.a.sort : '';
 
-		return [ type, sort ].filter( function( part ) { return part !== '' } ).join(' · ');
+		return [ type, sort, loopCount( node, rel ) ].filter( function( part ) { return part !== '' } ).join(' · ');
+	};
+
+	// How many elements a loop shows, counted from the page in the frame: the first component inside it is drawn once for each element. None where there is no page to count in
+	const loopCount = function( node, rel ) {
+
+		if( S.found === null )
+			return '';
+
+		const list = node.c ?? [];
+
+		for( let at = 0; at < list.length; at++ )
+			if( isPiece( list[at] ) === true && list[at].n !== undefined && S.schemas[list[at].n] !== undefined ) {
+
+				const abs = absOf( childOf( rel, at ) );
+				const count = S.found.all.filter( function( entry ) { return entry.path === abs } ).length;
+
+				return count === 0 ? '' : ( count === 1 ? word('adv/element') : word( 'adv/elements', count ) );
+			}
+
+		return '';
 	};
 
 	// The entry of the tree for a component or for a piece that is locked, and for everything inside it
@@ -3796,7 +4018,7 @@
 			open		: true,
 			locked	: schema === undefined,
 			finding	: hintOf( absOf( rel ) ),
-			actions	: actionsOf( rel, schema !== undefined && schema.container === true ),
+			actions	: actionsOf( rel, schema !== undefined && schema.container === true, schema !== undefined ),
 		};
 
 		if( schema === undefined )
@@ -3805,13 +4027,39 @@
 		entry.name = ownText( node, rel, 40 );
 		entry.meta = metaOf( node, schema );
 
-		// A value that comes from a field of the element - its first word begins with a dot - is the field, and no text of its own
-		if( typeof node.s === 'string' && node.s.charAt(0) === '.' )
+		// A value that comes from a field of the element - its first word, or an attribute, begins with a dot - is the field, and no text of its own; the word before the field
+		// of an attribute is the attribute's
+		const fieldsRead = [];
+
+		if( typeof node.s === 'string' && node.s.charAt(0) === '.' ) {
 			entry.source = node.s;
+			fieldsRead.push( node.s );
+		}
+		else
+			Object.keys( schema.attributes ).forEach( function( name ) {
+
+				const given = ( node.a ?? {} )[name];
+
+				if( [ 'text', 'link', 'image' ].indexOf( schema.attributes[name].type ) !== -1 && typeof given === 'string' && /^\.[A-Za-z][A-Za-z0-9_-]*$/.test( given ) === true && fieldsRead.length === 0 ) {
+					entry.source = { field : given, label : localized( schema.attributes[name].label ) };
+					fieldsRead.push( given );
+				}
+			} );
+
+		// A field that the type of the loop does not have is the commonest mistake in a loop: the row says so
+		const type = fieldsRead.length === 0 ? null : loopOf( rel );
+
+		if( type !== null && type !== '' && Array.isArray( S.fields[type] ) === true ) {
+
+			const missing = fieldsRead.find( function( written ) { return [ 'id', 'uri', 'slug', 'lang' ].indexOf( written.slice( 1 ) ) === -1 && S.fields[type].indexOf( written.slice( 1 ) ) === -1 } );
+
+			if( missing !== undefined )
+				entry.finding = { text : word( 'finding/nofield', missing.slice( 1 ), typeTitle( type ) ), state : 'warn' };
+		}
 
 		// What is inside a loop is drawn for each element: the type is told in the tag where the loop stands in another
 		if( schema.loop === true )
-			entry.loop = { detail : loopNote( node, schema ), type : typeof node.s === 'string' && node.s.charAt(0) === '/' ? typeTitle( node.s ) : '' };
+			entry.loop = { detail : loopNote( node, schema, rel ), type : typeof node.s === 'string' && node.s.charAt(0) === '/' ? typeTitle( node.s ) : '' };
 
 		return entry;
 	};
@@ -3823,24 +4071,9 @@
 		return node === undefined ? [] : [ itemOf( node, 'root' ) ];
 	};
 
-	const countCalls = function( node ) {
-
-		return 1 + ( node.c ?? [] ).reduce( function( sum, inner ) { return sum + ( inner.n === undefined ? 0 : countCalls( inner ) ) }, 0 );
-	};
-
-	// The parts of an address of the extended view: the page, the block, and where in it
-	const partsOf = function( rel, section ) {
-
-		const head = [ S.adv.slug, S.adv.block ];
-
-		if( rel === '' )
-			return head.concat( section === 'block' ? [ '@block' ] : [] );
-
-		return head.concat( [ rel ], section === '' ? [] : [ section ] );
-	};
-
-	const hrefOf = function( parts ) {
-		return Nino.admin.router.href( 'builder', parts );
+	// The parts of an address of the extended view: the page and the block
+	const partsOf = function() {
+		return [ S.adv.slug, S.adv.block ];
 	};
 
 	// A line for the bar of the page, where there is one
@@ -4238,7 +4471,7 @@
 		if( key === '' )
 			return word( 'source/is-fixed', shortened( written, 60 ) );
 
-		return word( key.indexOf( '/template/'+ S.template+ '/' ) === 0 ? 'source/is-key' : 'source/is-key-other', key.slice( key.lastIndexOf('/') + 1 ), shortened( textOf( key ), 60 ) || '–' );
+		return word( key.indexOf( '/template/'+ S.template+ '/' ) === 0 ? 'source/is-key' : 'source/is-key-other', key.slice( key.lastIndexOf('/') + 1 ), shortened( textOf( key ) || ( S.shared[key] ?? '' ), 60 ) || '–' );
 	};
 
 	// Put a source into a call: the first word of it or one of its attributes. A new text is a key of the scope of the call with the words of the view, a new picture a slot of
@@ -4287,6 +4520,7 @@
 		} );
 
 		told( word('msg/source-set') );
+		redrawBox();
 	};
 
 	/**
@@ -4617,6 +4851,7 @@
 			message		: word('source/note'),
 			content		: body,
 			size			: 'form',
+			nested		: true,
 			opener		: opener,
 			choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
 			onChoose	: function() {
@@ -4627,21 +4862,6 @@
 		} );
 
 		buttons.pick.focus();
-	};
-
-	// The place of a source in the settings of a call: what it is in a sentence and the button that changes it
-	const sourceField = function( rel, spec, summary ) {
-
-		const field = el( 'div', 'nino-admin-field builder-source-field' );
-		const line = el( 'p', 'nino-admin-hint builder-source', summary );
-		const button = Nino.adminUi.button( word('source/change'), function() { openSource( rel, spec, button ) }, { className : 'nino-admin-btn--small', name : word( 'source/change-of', spec.label ) } );
-
-		button.dataset.key = rel+ ':source:'+ spec.attr;
-		field.appendChild( el( 'span', 'builder-field-label', spec.label ) );
-		field.appendChild( line );
-		field.appendChild( button );
-
-		return field;
 	};
 
 	// The id above a place of the top level of the page: where a ~name of a call there is read
@@ -5335,17 +5555,27 @@
 		return parts.join(' ');
 	};
 
-	const fieldNote = function( field, declared ) {
+	// The sentence that explains what an attribute does: it stands behind the (?) at the name of the field, and is none where the schema has no hint
+	const helpOf = function( declared ) {
 
 		const hint = localized( declared.hint );
 
-		if( hint !== '' )
-			field.appendChild( el( 'span', 'nino-admin-hint builder-field-hint', hint ) );
+		return hint === '' ? undefined : hint;
+	};
+
+	// The (?) of a field that is made by hand - a strip of steps, the three rows of a width -: after its name, and tied to what it explains
+	const withHelp = function( field, caption, control, declared, label ) {
+
+		const hint = helpOf( declared );
+
+		if( hint !== undefined )
+			caption.appendChild( Nino.adminUi.fieldHelp( hint, { field : control, name : label } ) );
 
 		return field;
 	};
 
-	// One attribute as the control its type says: a choice as a pick or a strip of steps, a responsive choice as three rows, a bool as a switch, a number, a line, a link
+	// One attribute as the control its type says: a choice as a pick or a strip of steps, a responsive choice as three rows, a bool as a switch, a number, a line. What an
+	// attribute reads - a text, an address, a picture - is a source and has its row in the content; the id is not changed and stands in the advanced part
 	const attributeField = function( rel, name, declared ) {
 
 		const node = relNode( rel );
@@ -5353,26 +5583,14 @@
 		const label = localized( declared.label );
 		const standard = declared.default;
 		const key = rel+ ':'+ name;
-
-		// What an attribute reads - a text, an address, a picture - is a source: its sentence and the dialog that changes it
-		if( declared.type === 'text' || declared.type === 'link' || declared.type === 'image' ) {
-
-			const spec = { kind : declared.type, attr : name, label : label };
-			const written = typeof given === 'string' ? given : '';
-			const field = sourceField( rel, spec, sayOf( spec, written, rel ) );
-
-			if( declared.type === 'image' )
-				field.appendChild( pictureBox( keyOf( rel, written ), label ) );
-
-			return fieldNote( field, declared );
-		}
+		const help = helpOf( declared );
 
 		if( declared.type === 'choice' ) {
 
 			// A choice between off and on is a switch
 			if( declared.responsive !== true && declared.options.length === 2 && declared.options.indexOf('off') !== -1 && declared.options.indexOf('on') !== -1 ) {
 
-				const field = Nino.adminUi.switchField( { key : key, checked : ( given === undefined ? standard : String( given ) ) === 'on', label : label } );
+				const field = Nino.adminUi.switchField( { key : key, checked : ( given === undefined ? standard : String( given ) ) === 'on', label : label, help : help } );
 
 				field.querySelector('input').addEventListener( 'change', function( event ) {
 
@@ -5381,7 +5599,7 @@
 					setAttr( rel, name, now === standard ? null : now );
 				} );
 
-				return fieldNote( field, declared );
+				return field;
 			}
 
 			// A width is a share of the row: the numbers say so
@@ -5391,19 +5609,21 @@
 			if( declared.responsive === true ) {
 
 				const widths = widthsOf( given ?? standard );
-				const group = el( 'div', 'builder-widths-set' );
+				const group = el( 'div', 'nino-admin-field builder-widths-set' );
 				const caption = el( 'span', 'builder-field-label', label );
+				const rows = el( 'div', 'builder-widths-rows' );
 
 				caption.id = 'builder-widths-'+ rel.replace( /\./g, '-' )+ '-'+ name;
 				group.setAttribute( 'role', 'group' );
 				group.setAttribute( 'aria-labelledby', caption.id );
 				group.appendChild( caption );
+				group.appendChild( rows );
 
 				[ [ '', 'rows/all' ], [ 'm', 'rows/tablet' ], [ 'l', 'rows/desktop' ] ].forEach( function( row ) {
 
 					const choices = row[0] === '' ? options : [ { value : '', label : row[0] === 'm' ? word('rows/below-tablet') : word('rows/below-desktop') } ].concat( options );
 
-					group.appendChild( Nino.adminUi.selectField( {
+					rows.appendChild( Nino.adminUi.selectField( {
 						key			: key+ ':'+ row[0],
 						label		: word( row[1] ),
 						options	: choices,
@@ -5422,7 +5642,7 @@
 					} ) );
 				} );
 
-				return fieldNote( group, declared );
+				return withHelp( group, caption, group, declared, label );
 			}
 
 			const current = given === undefined ? standard : String( given );
@@ -5437,7 +5657,7 @@
 			const set = function( value ) { setAttr( rel, name, value === standard ? null : value ) };
 
 			if( wide === true )
-				return fieldNote( Nino.adminUi.selectField( { key : key, label : label, options : options, value : current, onChange : set } ), declared );
+				return Nino.adminUi.selectField( { key : key, label : label, options : options, value : current, onChange : set, help : help } );
 
 			const box = el( 'div', 'nino-admin-field builder-steps-field' );
 			const caption = el( 'span', 'builder-field-label', label );
@@ -5450,13 +5670,13 @@
 			box.appendChild( caption );
 			box.appendChild( steps.el );
 
-			return fieldNote( box, declared );
+			return withHelp( box, caption, steps.el, declared, label );
 		}
 
 		if( declared.type === 'bool' ) {
 
 			const on = given === undefined ? standard === true : ( given === true || ON.indexOf( String( given ).toLowerCase() ) !== -1 );
-			const field = Nino.adminUi.switchField( { key : key, checked : on, label : label } );
+			const field = Nino.adminUi.switchField( { key : key, checked : on, label : label, help : help } );
 
 			field.querySelector('input').addEventListener( 'change', function( event ) {
 
@@ -5465,12 +5685,12 @@
 				setAttr( rel, name, now === ( standard === true ) ? null : ( now === true ? true : 'off' ) );
 			} );
 
-			return fieldNote( field, declared );
+			return field;
 		}
 
 		if( declared.type === 'int' ) {
 
-			const field = Nino.adminUi.numberField( { key : key, label : label, value : given === undefined ? standard : Number( given ), min : declared.min ?? undefined, max : declared.max ?? undefined } );
+			const field = Nino.adminUi.numberField( { key : key, label : label, value : given === undefined ? standard : Number( given ), min : declared.min ?? undefined, max : declared.max ?? undefined, help : help } );
 
 			field.querySelector('input').addEventListener( 'change', function( event ) {
 
@@ -5479,27 +5699,16 @@
 				setAttr( rel, name, value === '' || value === String( standard ) ? null : value );
 			} );
 
-			return fieldNote( field, declared );
-		}
-
-		if( declared.type === 'id' ) {
-
-			const field = el( 'div', 'nino-admin-field' );
-
-			field.appendChild( el( 'span', 'builder-field-label', label ) );
-			field.appendChild( el( 'code', 'builder-field-value', given === undefined ? '-' : String( given ) ) );
-			field.appendChild( el( 'span', 'nino-admin-hint builder-field-hint', word( 'field/read-'+ declared.type ) ) );
-
 			return field;
 		}
 
-		const line = Nino.adminUi.textField( { key : key, label : label, value : given === undefined ? '' : String( given ) } );
+		const line = Nino.adminUi.textField( { key : key, label : label, value : given === undefined ? '' : String( given ), help : help } );
 
 		line.querySelector('input').addEventListener( 'change', function( event ) {
 			setAttr( rel, name, event.target.value === '' ? null : event.target.value );
 		} );
 
-		return fieldNote( line, declared );
+		return line;
 	};
 
 	// The variant: the schema's and the ones the theme adds - a word of a variant that the theme does not have stays where it is, with the sentence of the register
@@ -5515,110 +5724,7 @@
 		return Nino.adminUi.selectField( { key : rel+ ':variant', label : word('field/variant'), options : options, value : given, onChange : function( value ) { setAttr( rel, 'variant', value === '' ? null : value ) } } );
 	};
 
-	// The words of a component: a text written in the language of the view - a fixed one for all - and in a sentence where it is read
-	// The markup a call of html holds, for the account that may develop - the component cleans it where it draws it; with calls inside it is shown and not changed
-	const htmlBody = function( rel, node ) {
-
-		const body = el( 'div', 'builder-adv-content' );
-		const field = el( 'label', 'nino-admin-field' );
-		const control = el( 'textarea', 'nino-admin-input' );
-		const calls = ( node.c ?? [] ).some( function( inner ) { return inner.t === undefined } );
-
-		field.appendChild( el( 'span', 'builder-field-label', word('field/content') ) );
-		field.appendChild( el( 'span', 'nino-admin-badge builder-field-chip', word('field/all-languages') ) );
-		control.value = ( node.c ?? [] ).map( function( inner ) { return inner.t ?? '' } ).join('');
-		control.rows = 10;
-		control.dataset.key = rel+ ':content';
-
-		if( calls === true ) {
-			control.readOnly = true;
-			control.setAttribute( 'aria-readonly', 'true' );
-		}
-		else
-			control.addEventListener( 'change', function() {
-				change( function() { relNode( rel ).c = control.value === '' ? [] : [ { t : control.value } ] } );
-			} );
-
-		field.appendChild( control );
-		body.appendChild( field );
-		body.appendChild( el( 'p', 'nino-admin-hint builder-source', word( calls === true ? 'field/html-calls' : 'field/html-note' ) ) );
-
-		return body;
-	};
-
-	const contentBody = function( rel ) {
-
-		const node = relNode( rel );
-		const source = sourceOf( rel );
-		const body = el( 'div', 'builder-adv-content' );
-
-		if( node.n === 'html' && S.level >= DEVELOP )
-			return htmlBody( rel, node );
-
-		// A loop shows the elements of a type: the type is its source
-		if( source === null && S.schemas[node.n].loop === true )
-			return typeBody( rel, node, body );
-
-		if( source === null )
-			return body;
-
-		if( source.kind === 'text' || source.kind === 'fixed' ) {
-
-			const rich = source.kind === 'text' && source.format !== 'plain' && source.format !== 'inline';
-			const value = source.kind === 'fixed' ? node.a.text : textOf( source.key );
-			const field = el( 'label', 'nino-admin-field' );
-			const control = el( rich === true ? 'textarea' : 'input', 'nino-admin-input' );
-
-			field.appendChild( el( 'span', 'builder-field-label', word('field/content') ) );
-			field.appendChild( el( 'span', 'nino-admin-badge builder-field-chip', source.kind === 'fixed' ? word('field/all-languages') : Nino.adminUi.localeName( S.locale ) ) );
-			control.value = value;
-			control.dataset.key = rel+ ':content';
-
-			// A text the language of the view has none of is shown as the page shows it - the text of the next language - and says so: the field begins empty
-			if( source.kind === 'text' && source.key !== '' && value.trim() === '' && fallbackText( source.key ) !== '' ) {
-
-				control.placeholder = fallbackText( source.key );
-				field.appendChild( el( 'span', 'nino-admin-hint builder-field-hint', word( 'hint/missing', Nino.adminUi.localeName( S.locale ) ) ) );
-			}
-
-			if( rich === true )
-				control.rows = 5;
-			else
-				control.type = 'text';
-
-			if( source.editable === false ) {
-				control.readOnly = true;
-				control.setAttribute( 'aria-readonly', 'true' );
-			}
-			else
-				control.addEventListener( 'change', function() {
-					settle( { kind : source.kind, key : source.key, format : source.format }, absOf( rel ), control.value, value, true );
-				} );
-
-			field.appendChild( control );
-			body.appendChild( field );
-		}
-
-		// The source in one sentence; changing it is for the dialog of the source
-		const sentence = source.written.charAt(0) === '.' ? sayOf( { kind : source.kind }, source.written, rel ) : source.kind === 'fixed' ? word('source/fixed')
-			: ( source.kind === 'image' ? word('source/image')
-			: ( source.kind === 'link' ? word('source/link')
-			: ( source.editable === true ? word( S.frame === true ? 'source/own-frame' : 'source/own' ) : ( source.key === '' ? word('source/none') : word('source/other') ) ) ) );
-		const line = el( 'p', 'nino-admin-hint builder-source', sentence );
-
-		body.appendChild( line );
-
-		const spec = { kind : source.kind === 'fixed' ? 'text' : source.kind, attr : '', label : word('field/content') };
-		const other = Nino.adminUi.button( word('source/change'), function() { openSource( rel, spec, other ) }, { className : 'nino-admin-btn--small', name : word( 'source/change-of', spec.label ) } );
-
-		other.dataset.key = rel+ ':source:';
-		body.appendChild( other );
-
-		if( source.kind === 'image' && source.written.charAt(0) !== '.' )
-			body.appendChild( pictureBox( source.key, spec.label ) );
-
-		return body;
-	};
+	// --- the properties of a component: the lightbox ----------------------------------------------------------------------------------
 
 	// The title the project gives a type of elements, else what the loop names
 	const typeTitle = function( given ) {
@@ -5639,24 +5745,6 @@
 				then();
 			}
 		} );
-	};
-
-	// What a loop shows: the type of elements it names as its first word, in the words the project gives the type, and the dialog that chooses another
-	const typeBody = function( rel, node, body ) {
-
-		const given = typeof node.s === 'string' ? node.s : '';
-		const line = el( 'p', 'nino-admin-hint builder-source', '' );
-		const say = function() { line.textContent = given === '' ? word('type/none') : word( 'type/is', typeTitle( given ) ) };
-		const choose = Nino.adminUi.button( word('type/change'), function() { openType( rel, choose ) }, { className : 'nino-admin-btn--small' } );
-
-		choose.dataset.key = rel+ ':source:';
-		say();
-		body.appendChild( line );
-		body.appendChild( choose );
-
-		askTypes( say );
-
-		return body;
 	};
 
 	// The types of elements of the project, to choose what a loop shows
@@ -5698,12 +5786,15 @@
 				message		: word('type/note'),
 				content		: body,
 				size			: 'form',
+				nested		: true,
 				opener		: opener,
 				choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
 				onChoose	: function() {
 
 					if( picked !== '' )
 						change( function() { relNode( rel ).s = picked } );
+
+					redrawBox();
 				},
 			} );
 
@@ -5714,27 +5805,509 @@
 		} );
 	};
 
-	const lookBody = function( rel ) {
+	// Where a call reads its words from, at each place it does: its first word and each attribute that is a text, an address or a picture - and a loop reads the elements of a
+	// type. `where` says where a value comes from: the field of an element, a text of another place than the page, or the page's own (a fixed text and a value that is not set too)
+	const readsOf = function( rel ) {
+
+		const node = relNode( rel );
+		const schema = node === null || node === undefined || node.n === undefined ? undefined : S.schemas[node.n];
+		const out = [];
+
+		if( schema === undefined )
+			return out;
+
+		const place = function( kind, written ) {
+
+			if( written.charAt(0) === '.' )
+				return 'field';
+
+			const key = kind === 'link' ? '' : keyOf( rel, written );
+
+			return key !== '' && key.indexOf( '/template/'+ S.template+ '/' ) !== 0 ? 'shared' : 'own';
+		};
+
+		if( schema.loop === true && schema.source === 'none' )
+			out.push( { form : 'type', kind : 'type', attr : '', label : word('box/collection'), written : typeof node.s === 'string' ? node.s : '', where : 'collection' } );
+
+		const source = schema.source === 'none' ? null : sourceOf( rel );
+
+		if( source !== null )
+			out.push( { form : source.kind === 'fixed' ? 'fixed' : 'first', kind : source.kind === 'fixed' ? 'text' : source.kind, attr : '', label : word('field/content'), written : source.written, where : source.kind === 'fixed' ? 'own' : place( source.kind, source.written ), source : source } );
+
+		// What stands under the source is told by what it is - the text, the picture, the target - and not by "content", which is the next section's name
+		if( source !== null && out[out.length - 1].where !== 'own' )
+			out[out.length - 1].label = word( 'source/label-'+ out[out.length - 1].kind );
+
+		Object.keys( schema.attributes ).forEach( function( name ) {
+
+			const declared = schema.attributes[name];
+			const given = ( node.a ?? {} )[name];
+			const written = typeof given === 'string' ? given : '';
+
+			if( declared.type === 'text' || declared.type === 'link' || declared.type === 'image' )
+				out.push( { form : 'attribute', kind : declared.type, attr : name, label : localized( declared.label ), written : written, where : place( declared.type, written ) } );
+		} );
+
+		return out;
+	};
+
+	// What the content of a component is made of, for the account: a text that is written here, a picture that is exchanged here, and - for the one that may design - the sentence
+	// of every other value with the button that changes its source. An account that may write the content only is given the texts of the page and its pictures, the alt of a
+	// picture among them - what the server lets it write
+	const contentPlan = function( rel, reads ) {
+
+		const own = '/template/'+ S.template+ '/';
+		const plan = [];
+
+		reads.forEach( function( read ) {
+
+			if( read.where !== 'own' )
+				return;
+
+			const key = read.form === 'first' ? read.source.key : ( read.form === 'fixed' ? '' : keyOf( rel, read.written ) );
+			const mine = key !== '' && key.indexOf( own ) === 0;
+
+			if( read.kind === 'text' && read.form === 'fixed' && S.level >= 2 )
+				plan.push( { how : 'text', read : read, key : '' } );
+			else if( read.kind === 'text' && mine === true && ( S.level >= 2 || read.form === 'first' || read.attr === 'alt' ) && ( read.form !== 'first' || read.source.editable === true ) )
+				plan.push( { how : 'text', read : read, key : key } );
+			else if( read.kind === 'image' && mine === true && S.frame === false && ( S.images[key] !== undefined || S.pictures[key] !== undefined ) )
+				plan.push( { how : 'picture', read : read, key : key } );
+			else if( S.level >= 2 )
+				plan.push( { how : 'sentence', read : read, key : key } );
+		} );
+
+		return plan;
+	};
+
+	// Whether the lightbox of a component has anything to show the account: the sources it reads from elsewhere and the content it may write, and for the one that may design the
+	// look and the advanced part as well
+	const hasProperties = function( rel ) {
+
+		if( S.level >= 2 )
+			return true;
+
+		const reads = readsOf( rel );
+
+		return reads.some( function( read ) { return read.where !== 'own' } ) === true || contentPlan( rel, reads ).length > 0;
+	};
+
+	// The sentence of a value in words
+	const sentenceOf = function( rel, read ) {
+
+		if( read.form === 'type' )
+			return read.written === '' ? word('type/none') : word( 'type/is', typeTitle( read.written ) );
+
+		if( read.form === 'fixed' )
+			return word( 'source/is-fixed', shortened( ( relNode( rel ).a ?? {} ).text ?? '', 60 ) );
+
+		return sayOf( { kind : read.kind, attr : read.attr }, read.written, rel );
+	};
+
+	// The button that changes where a value comes from, for the one that may design
+	const changeButton = function( rel, read ) {
+
+		const spec = { kind : read.kind, attr : read.attr, label : read.label };
+		const button = Nino.adminUi.button( read.form === 'type' ? word('type/change') : word('source/change'), function() {
+
+			if( read.form === 'type' )
+				openType( rel, button );
+			else
+				openSource( rel, spec, button );
+		}, { className : 'nino-admin-btn--small', name : word( 'source/change-of', read.label ) } );
+
+		button.dataset.key = rel+ ':source:'+ read.attr;
+
+		return button;
+	};
+
+	// A value that is told and not written: its name at the left, what it is in a sentence and - for the one that may design - the button that changes it
+	const sentenceRow = function( rel, read ) {
+
+		const row = el( 'div', 'nino-admin-field builder-box-row' );
+		const value = el( 'div', 'builder-box-value' );
+
+		const name = el( 'span', '', read.label );
+
+		row.appendChild( name );
+		value.appendChild( el( 'p', 'builder-box-sentence', sentenceOf( rel, read ) ) );
+
+		// A text of another place is not changed here: where it is changed stands behind the (?)
+		if( read.where === 'shared' && read.kind === 'text' )
+			name.appendChild( Nino.adminUi.fieldHelp( word('word/not-here'), { field : value, name : read.label } ) );
+
+		if( S.level >= 2 )
+			value.appendChild( changeButton( rel, read ) );
+
+		row.appendChild( value );
+
+		return row;
+	};
+
+	// The text a call reads and this page writes: one field, in the language of the view - a fixed text for every language -, whose change is one step of the undo
+	const textRow = function( rel, step ) {
+
+		const read = step.read;
+		const fixed = read.form === 'fixed';
+		const first = read.form === 'first';
+		const format = first === true ? read.source.format : 'plain';
+		const rich = first === true && read.kind === 'text' && format !== 'plain' && format !== 'inline';
+		const now = function() { return fixed === true ? String( ( relNode( rel ).a ?? {} ).text ?? '' ) : textOf( step.key ) };
+		const value = now();
+		const options = { key : rel+ ':'+ ( read.attr === '' ? 'content' : read.attr ), label : read.label, value : value };
+
+		// A text the language of the view has none of is shown as the page shows it - the text of the next language - and says so: the field begins empty
+		if( fixed === false && value.trim() === '' && fallbackText( step.key ) !== '' ) {
+			options.placeholder = fallbackText( step.key );
+			options.note = word( 'hint/missing', Nino.adminUi.localeName( S.locale ) );
+		}
+
+		if( rich === true )
+			options.rows = 5;
+
+		const field = rich === true ? Nino.adminUi.textareaField( options ) : Nino.adminUi.textField( options );
+
+		field.querySelector('span').appendChild( el( 'span', 'nino-admin-badge builder-field-chip', fixed === true ? word('field/all-languages') : Nino.adminUi.localeName( S.locale ) ) );
+		field.querySelector( rich === true ? 'textarea' : 'input' ).addEventListener( 'change', function( event ) {
+			settle( { kind : fixed === true ? 'fixed' : 'text', key : step.key, format : format }, absOf( rel ), event.target.value, now(), true );
+		} );
+
+		return field;
+	};
+
+	// The picture a call reads and this page owns: the picture as it is and the button that uploads another
+	const pictureRow = function( rel, step ) {
+
+		const row = el( 'div', 'nino-admin-field builder-box-row' );
+		const value = el( 'div', 'builder-box-value' );
+
+		row.appendChild( el( 'span', '', step.read.label ) );
+		value.appendChild( pictureBox( step.key, step.read.label, redrawBox ) );
+		row.appendChild( value );
+
+		return row;
+	};
+
+	// The button that makes a value come from another source, under a text or a picture of the page: for the one that may design
+	const moreRow = function( rel, read ) {
+
+		const row = el( 'div', 'builder-box-change' );
+
+		row.appendChild( changeButton( rel, read ) );
+
+		return row;
+	};
+
+	const sourceRows = function( rel, reads ) {
+		return reads.filter( function( read ) { return read.where !== 'own' } ).map( function( read ) { return sentenceRow( rel, read ) } );
+	};
+
+	const contentRows = function( rel, plan ) {
+
+		const rows = [];
+
+		plan.forEach( function( step ) {
+
+			if( step.how === 'sentence' )
+				rows.push( sentenceRow( rel, step.read ) );
+			else {
+				rows.push( step.how === 'text' ? textRow( rel, step ) : pictureRow( rel, step ) );
+
+				if( S.level >= 2 )
+					rows.push( moreRow( rel, step.read ) );
+			}
+		} );
+
+		return rows;
+	};
+
+	// How it looks and where it stands: the variant and the settings of the schema - not what a call reads, which is its content, and not its id
+	const lookRows = function( rel ) {
 
 		const node = relNode( rel );
 		const schema = S.schemas[node.n];
-		const body = el( 'div', 'builder-adv-look' );
-		const names = Object.keys( schema.attributes );
+		const rows = [];
 
 		if( schema.variants.length > 0 )
-			body.appendChild( variantField( rel, node, schema ) );
+			rows.push( variantField( rel, node, schema ) );
 
-		names.forEach( function( name ) {
-			body.appendChild( attributeField( rel, name, schema.attributes[name] ) );
+		Object.keys( schema.attributes ).forEach( function( name ) {
+
+			if( [ 'text', 'link', 'image', 'id' ].indexOf( schema.attributes[name].type ) === -1 )
+				rows.push( attributeField( rel, name, schema.attributes[name] ) );
 		} );
 
-		if( names.length === 0 && schema.variants.length === 0 )
-			body.appendChild( el( 'p', 'nino-admin-hint', word('field/none') ) );
-
-		return body;
+		return rows;
 	};
 
-	// --- the two levels of the left column ---
+	// The markup a call of html holds, for the account that may develop - the component cleans it where it draws it; with calls inside it is shown and not changed
+	const htmlRow = function( rel, node ) {
+
+		const calls = ( node.c ?? [] ).some( function( inner ) { return inner.t === undefined } );
+		const field = Nino.adminUi.textareaField( { key : rel+ ':content', label : word('field/markup'), value : ( node.c ?? [] ).map( function( inner ) { return inner.t ?? '' } ).join(''), rows : 10, help : word( calls === true ? 'field/html-calls' : 'field/html-note' ) } );
+		const control = field.querySelector('textarea');
+
+		field.querySelector('span').appendChild( el( 'span', 'nino-admin-badge builder-field-chip', word('field/all-languages') ) );
+
+		if( calls === true ) {
+			control.readOnly = true;
+			control.setAttribute( 'aria-readonly', 'true' );
+		}
+		else
+			control.addEventListener( 'change', function() {
+				change( function() { relNode( rel ).c = control.value === '' ? [] : [ { t : control.value } ] } );
+			} );
+
+		return field;
+	};
+
+	// What stands under "Advanced": the id the texts and pictures of the block stand under, the markup of a call of html, the block as a block of the project and the notation
+	const advancedRows = function( rel, box ) {
+
+		const node = relNode( rel );
+		const schema = S.schemas[node.n];
+		const rows = [];
+		const id = Object.keys( schema.attributes ).find( function( name ) { return schema.attributes[name].type === 'id' } );
+
+		if( id !== undefined ) {
+
+			const row = el( 'div', 'nino-admin-field builder-box-row' );
+			const label = localized( schema.attributes[id].label );
+			const name = el( 'span', '', label );
+			const value = el( 'code', 'builder-field-value', ( node.a ?? {} )[id] === undefined ? '-' : String( node.a[id] ) );
+
+			name.appendChild( Nino.adminUi.fieldHelp( word('field/read-id'), { field : value, name : label } ) );
+			row.appendChild( name );
+			row.appendChild( value );
+			rows.push( row );
+		}
+
+		if( node.n === 'html' && S.level >= DEVELOP )
+			rows.push( htmlRow( rel, node ) );
+
+		// A block of the page is kept as a block of the project, for the pages that are made after it: the lightbox gives way to the dialog that asks for its name
+		if( rel === 'root' && S.frame === false ) {
+
+			const row = el( 'div', 'builder-box-change' );
+			const own = Nino.adminUi.button( word('own/open'), function() {
+				box.then = 'own';
+				box.close();
+			}, { className : 'nino-admin-btn--small' } );
+
+			own.dataset.key = 'block:own';
+			row.appendChild( own );
+			rows.push( row );
+		}
+
+		const code = el( 'pre', 'builder-code', S.notation[ rel === 'root' ? 'block' : 'node' ] ?? '' );
+		const note = el( 'div', 'nino-admin-field builder-box-row' );
+
+		code.tabIndex = 0;
+		note.appendChild( el( 'span', '', word( rel === 'root' ? 'field/notation-block' : 'field/notation' ) ) );
+		note.appendChild( code );
+		rows.push( note );
+		box.code = code;
+
+		return rows;
+	};
+
+	// The notation as the template has it, which the server writes of the draft: asked for with every change that is made while the lightbox is open
+	const askNotation = function( box ) {
+
+		const turn = ++box.asked;
+
+		api( 'notation', { tree : S.top, look : { block : absOf('root'), node : box.rel === 'root' ? '' : absOf( box.rel ) } }, function( status, response ) {
+
+			if( status === 200 && turn === box.asked && S.box === box && box.code !== null ) {
+				S.notation = response.notation ?? {};
+				box.code.textContent = S.notation[ box.rel === 'root' ? 'block' : 'node' ] ?? '';
+			}
+		} );
+	};
+
+	// The component of a lightbox is gone - an undo took it away: the focus goes to the work surface, to the row of the tree that is chosen or else to the name of the view
+	const focusWork = function() {
+
+		if( S.tree !== null && S.tree.focus( S.marked === '' ? 'root' : S.marked ) === true )
+			return;
+
+		if( S.view !== null ) {
+			S.view.title.setAttribute( 'tabindex', '-1' );
+			S.view.title.focus();
+		}
+	};
+
+	// The lightbox is drawn again where something it shows was changed from outside - a source that was chosen, a picture, an undo
+	const redrawBox = function() {
+
+		if( S.box !== null )
+			S.box.draw();
+	};
+
+	// What every change leaves in the lightbox that is open: the notation
+	const paintBox = function() {
+
+		if( S.box !== null && S.box.code !== null && S.level >= 2 )
+			askNotation( S.box );
+	};
+
+	/**
+	 *	The properties of one component of a page - the one form of them in the whole Builder, whoever opens it: the pencil at the component in the page, its row in the tree of the
+	 *	extended view, the row of a block in the outline. A modal dialog of the workbench in the size of a form, its sections in a fixed order - the source where the content comes
+	 *	from one, the content, how it looks and where it stands, the advanced part - and only those that have something to show the account: the one that may only write the content
+	 *	is given the source, to read, and the content. A value is in the draft the moment it is changed - one step of the undo each -, and Close is all there is to press
+	 *
+	 *	@param		{number}		at						The index of its block in the top level of the tree
+	 *	@param		{string}		rel						'root' for the block itself, else its place in the block
+	 *	@param		{Element}		opener				What opened it
+	 *	@param		{Function}	[back]				Called when it is closed: gives the focus to what opened it where that is not the element itself
+	 *
+	 *	@return		{boolean}									Whether it was opened
+	 */
+	const openProperties = function( at, rel, opener, back ) {
+
+		const root = S.top[at];
+
+		if( S.box !== null || root === undefined || kindOf( root ) !== 'block' || idOf( root ) === '' )
+			return false;
+
+		const box = { block : idOf( root ), rel : rel, open : '', code : null, asked : 0, then : '', draw : null, close : null, gone : false };
+
+		S.box = box;
+
+		// The notation of the component that was open before is not this one's: it stands empty until the answer comes
+		S.notation = {};
+
+		const node = relNode( rel );
+
+		if( node === null || node === undefined || node.n === undefined || S.schemas[node.n] === undefined || hasProperties( rel ) === false ) {
+			S.box = null;
+			return false;
+		}
+
+		const holder = el( 'div', 'builder-box' );
+		const body = function( rows ) {
+
+			const part = el( 'div', 'nino-admin-dialog-fields builder-box-body' );
+
+			rows.forEach( function( row ) { part.appendChild( row ) } );
+
+			return part;
+		};
+		let accordion = null;
+
+		box.draw = function() {
+
+			const now = relNode( rel );
+
+			if( now === null || now === undefined || S.schemas[now.n] === undefined ) {
+				box.gone = true;
+				box.close();
+				return;
+			}
+
+			const inside = holder.contains( dc.activeElement ) === true;
+			const held = dc.activeElement !== null && dc.activeElement.dataset !== undefined ? dc.activeElement.dataset.key : undefined;
+			const reads = readsOf( rel );
+			const plan = contentPlan( rel, reads );
+			const sections = [];
+
+			box.code = null;
+
+			if( reads.some( function( read ) { return read.where !== 'own' } ) === true )
+				sections.push( { key : 'source', label : word('box/source'), content : function() { return body( sourceRows( rel, reads ) ) } } );
+
+			if( plan.length > 0 )
+				sections.push( { key : 'content', label : word('box/content'), summary : ownText( now, rel, 40 ), content : function() { return body( contentRows( rel, plan ) ) } } );
+
+			if( S.level >= 2 && lookRows( rel ).length > 0 )
+				sections.push( { key : 'look', label : word('box/look'), summary : variantSummary( now ), content : function() { return body( lookRows( rel ) ) } } );
+
+			if( S.level >= 2 )
+				sections.push( { key : 'advanced', label : word('box/advanced'), content : function() { return body( advancedRows( rel, box ) ) } } );
+
+			if( sections.some( function( section ) { return section.key === box.open } ) === false )
+				box.open = sections[0].key;
+
+			S.strips = {};
+			holder.innerHTML = '';
+
+			const finding = S.level >= 2 ? hintOf( absOf( rel ) ) : undefined;
+
+			if( finding !== undefined )
+				holder.appendChild( Nino.adminUi.notice( finding.text ) );
+
+			accordion = Nino.adminUi.accordion( {
+				id			: 'builder-box-acc',
+				level		: 3,
+				open		: box.open,
+				sections	: sections,
+				onToggle	: function( open ) {
+
+					box.open = open[0] ?? box.open;
+
+					if( box.open === 'advanced' )
+						askNotation( box );
+				},
+			} );
+			holder.appendChild( accordion.el );
+
+			if( box.open === 'advanced' )
+				askNotation( box );
+
+			// The focus stays in the dialog: on the field it was on, else on the head of the section that is open
+			const again = held === undefined ? null : holder.querySelector( '[data-key="'+ held+ '"]' );
+
+			if( again !== null )
+				again.focus();
+			else if( inside === true && accordion.head( box.open ) !== null )
+				accordion.head( box.open ).focus();
+		};
+
+		box.draw();
+
+		// The types of elements are the design's to read: a loop is told by the path of its type to the step below
+		if( S.level >= 2 )
+			askTypes( redrawBox );
+
+		const first = accordion.body( box.open ).querySelector('input, textarea, select, button');
+		const name = titleOfRel( rel );
+
+		Nino.adminUi.choiceDialog( {
+			title			: word( 'label/edit-component', name ),
+			message		: word( 'label/edit-component', name ),
+			content		: holder,
+			size			: 'form',
+			className	: 'builder-lightbox',
+			opener		: opener,
+			focus			: first ?? undefined,
+			choices		: [ { value : 'close', label : Nino.adminUi.text('/_admin/common/label/close'), kind : 'secondary' } ],
+			onOpen		: function( handle ) { box.close = function() { handle.close('close') } },
+			onChoose	: function() {
+
+				S.box = null;
+
+				if( box.gone === true )
+					focusWork();
+				else if( typeof back === 'function' )
+					back();
+
+				if( box.then === 'own' )
+					openBlockSave( opener );
+			},
+		} );
+
+		return true;
+	};
+
+	// --- the extended view: the tree of a block ---
+
+	const variantSummary = function( node ) {
+
+		const count = Object.keys( node.a ?? {} ).filter( function( name ) { return name !== 'id' } ).length;
+
+		return count === 0 ? word('adv/defaults') : word( 'adv/given', count );
+	};
 
 	const blockTitle = function() {
 
@@ -5746,38 +6319,83 @@
 		return node === undefined ? '' : titleOf( node );
 	};
 
-	// The notation as the template has it, which the server writes of the draft: the whole block, or the first line of a component
-	const notationBox = function( id, which ) {
+	// A row of the tree is the chosen one, and the page in the frame shows it
+	const chooseRow = function( id, roll ) {
 
-		const box = el( 'div', 'builder-notation' );
-		const code = el( 'pre', 'builder-code', S.notation[which] ?? '' );
+		S.marked = id;
 
-		code.id = id;
-		code.tabIndex = 0;
-		box.appendChild( el( 'span', 'builder-field-label', which === 'block' ? word('field/notation-block') : word('field/notation') ) );
-		box.appendChild( code );
+		if( S.tree !== null )
+			S.tree.select( id );
 
-		return box;
+		if( S.mark !== null )
+			S.mark( roll === true );
+
 	};
 
-	const refreshNotation = function() {
+	// The types of the loops of the block, and what fields each has: asked for once, and the rows that read a field are drawn again with the answer
+	const loopTypes = function( node, into ) {
 
-		[ [ 'builder-notation-block', 'block' ], [ 'builder-notation-node', 'node' ] ].forEach( function( pair ) {
+		if( node.n !== undefined && S.schemas[node.n] !== undefined && S.schemas[node.n].loop === true && typeof node.s === 'string' && /^\/[a-z_][a-z0-9_-]{0,63}$/.test( node.s ) === true )
+			into.add( node.s );
 
-			const code = dc.getElementById( pair[0] );
+		( node.c ?? [] ).forEach( function( inner ) { loopTypes( inner, into ) } );
 
-			if( code !== null )
-				code.textContent = S.notation[ pair[1] ] ?? '';
+		return into;
+	};
+
+	const askFields = function() {
+
+		if( rootAt() === -1 )
+			return;
+
+		loopTypes( S.top[rootAt()], new Set() ).forEach( function( type ) {
+
+			if( S.fields[type] !== undefined )
+				return;
+
+			S.fields[type] = null;
+			api( 'keys', { kind : 'fields', type : type }, function( status, response ) {
+
+				if( status === 200 ) {
+					S.fields[type] = Object.keys( response.fields );
+
+					if( S.tree !== null )
+						S.tree.update( itemsNow() );
+				}
+				else
+					delete S.fields[type];
+			} );
 		} );
 	};
 
-	const treeLevel = function( section ) {
+	// A component is taken out of the block after the question, where the key for Delete asks it: the undo brings it back
+	const askRemoveComponent = function( rel, opener ) {
 
-		const holder = el( 'div', 'builder-adv-level' );
-		const rootNode = S.top[rootAt()];
-		const treeBox = el( 'div', 'builder-adv-tree' );
-		const settings = el( 'div', 'builder-adv-block' );
-		const idLine = el( 'p', 'builder-adv-id' );
+		if( rel === 'root' || relNode( rel ) === null )
+			return;
+
+		if( lockedNode( relNode( rel ) ) === true ) {
+			askRemoveUnit( rel, opener );
+			return;
+		}
+
+		Nino.adminUi.confirm( 'destructive', {
+			title		: word('confirm/component-title'),
+			message	: word( 'confirm/component-message', titleOfRel( rel ) ),
+			yes			: word('confirm/component-title'),
+			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+			kind		: 'danger',
+			opener	: opener,
+			onChoose : function( ok ) {
+				if( ok === true )
+					removeComponent( rel );
+			},
+		} );
+	};
+
+	const treeLevel = function() {
+
+		const holder = el( 'div', 'builder-adv-tree' );
 
 		S.tree = Nino.adminUi.tree( {
 			id				: 'builder-tree',
@@ -5785,21 +6403,25 @@
 			items			: itemsNow(),
 			path			: true,
 			selected	: S.marked === '' ? 'root' : S.marked,
-			onSelect	: function( id ) { Nino.admin.builder.go( partsOf( id, sectionOf( id ) ), { focus : 'back' } ) },
+			onSelect	: function( id ) { chooseRow( id, true ) },
 			onAction	: function( key, id ) {
 
 				const opener = S.tree.el.querySelector( '[data-key="'+ key+ '"]' );
+				const held = dc.activeElement ?? opener;
 
 				if( key === 'add' )
-					openOffer( id, dc.activeElement ?? opener );
+					openOffer( id, held );
+				else if( key === 'edit' )
+					openProperties( rootAt(), id, held, function() { S.tree.focus( id, 'edit' ) } );
 				else if( key === 'remove' && lockedNode( relNode( id ) ) === true )
-					askRemoveUnit( id, dc.activeElement ?? opener );
+					askRemoveUnit( id, held );
 				else if( key === 'remove' )
 					removeComponent( id );
 				else
 					moveComponent( id, key === 'up' ? -1 : 1 );
 			},
 			// The entry that has the stop is the one the preview marks; the tree is not drawn again here - a press on a button of another row moves the stop first
+			// The stop of the tree moves by a hand or by the keyboard - the pointer over a row only marks it, in onHover -: the page rolls to the component
 			onFocus		: function( id ) {
 
 				S.marked = id;
@@ -5807,169 +6429,48 @@
 				if( S.mark !== null )
 					S.mark( true );
 			},
+			onHover		: function( id ) { S.view.board.tree.set( id ) },
 		} );
+
 		// A loop is told by the title of its type: the types come and the entries are drawn again
 		askTypes( function() { if( S.tree !== null ) S.tree.update( itemsNow() ) } );
-		treeBox.appendChild( S.tree.path );
-		treeBox.appendChild( S.tree.el );
+		askFields();
 
-		idLine.appendChild( el( 'span', 'builder-field-label', word('field/id') ) );
-		idLine.appendChild( el( 'code', 'builder-field-value', S.frame === true ? ( idOf( rootNode ) === '' ? '-' : idOf( rootNode ) ) : S.adv.block ) );
-		settings.appendChild( idLine );
-		settings.appendChild( el( 'p', 'nino-admin-hint', word( 'adv/block-sentence', countCalls( rootNode ) ) ) );
+		// Enter on a row is the way into its properties and Delete asks to take it out; a button of the row has its own keys
+		S.tree.el.addEventListener( 'keydown', function( event ) {
 
-		// A block of the page is kept as a block of the project, for the pages that are made after it
-		if( S.frame === false && S.level >= 2 ) {
+			const row = event.target.closest === undefined ? null : event.target.closest('li[data-id]');
 
-			const own = Nino.adminUi.button( word('own/open'), function() { openBlockSave( own ) }, { className : 'nino-admin-btn--small' } );
+			if( row === null || event.target !== row || relNode( row.dataset.id ) === null )
+				return;
 
-			own.dataset.key = 'block:own';
-			settings.appendChild( own );
-		}
-
-		settings.appendChild( notationBox( 'builder-notation-block', 'block' ) );
-
-		const accordion = Nino.adminUi.accordion( {
-			id			: 'builder-acc',
-			level		: 3,
-			open		: section === 'block' ? 'block' : 'tree',
-			sections	: [
-				{ key : 'tree', label : word('adv/tree'), summary : word( 'adv/count', countCalls( rootNode ) ), content : treeBox },
-				{ key : 'block', label : word('adv/settings'), summary : blockTitle(), content : settings },
-			],
-			onToggle	: function( open ) {
-
-				S.adv.section = open[0] === 'block' ? 'block' : '';
-				S.adv.path = S.adv.section === 'block' ? '@block' : '';
-				S.at = partsOf( '', S.adv.section === '' ? 'tree' : 'block' );
-				Nino.admin.router.go( 'builder', S.at );
-			},
+			if( event.key === 'Enter' && S.schemas[ relNode( row.dataset.id ).n ] !== undefined )
+				openProperties( rootAt(), row.dataset.id, row, function() { S.tree.focus( row.dataset.id ) } );
+			else if( event.key === 'Delete' )
+				askRemoveComponent( row.dataset.id, row );
 		} );
 
-		holder.appendChild( accordion.el );
-		S.adv.accordion = accordion;
+		S.tree.path.classList.add('builder-adv-path');
+		holder.appendChild( S.tree.path );
+		holder.appendChild( S.tree.el );
 
 		return holder;
 	};
 
-	const componentLevel = function( rel, section ) {
-
-		const node = relNode( rel );
-		const schema = S.schemas[node.n];
-		const holder = el( 'div', 'builder-adv-level' );
-		const back = el( 'a', 'nino-admin-back-link', word('label/back-tree') );
-		const keys = [ 'look' ];
-
-		back.id = 'builder-back-tree';
-		back.href = hrefOf( partsOf( '', 'tree' ) );
-		back.setAttribute( 'data-keep-draft', '' );
-		back.addEventListener( 'click', function( event ) {
-			event.preventDefault();
-			Nino.admin.builder.go( partsOf( '', 'tree' ), { focus : 'tree', from : rel } );
-		} );
-		holder.appendChild( back );
-		holder.appendChild( el( 'h3', 'builder-adv-title', titleOfRel( rel ) ) );
-
-		const finding = hintOf( absOf( rel ) );
-
-		if( finding !== undefined )
-			holder.appendChild( Nino.adminUi.notice( finding.text ) );
-
-		if( schema.source !== 'none' || schema.loop === true || ( node.n === 'html' && S.level >= DEVELOP ) )
-			keys.unshift( 'content' );
-
-		const open = keys.indexOf( section ) === -1 ? keys[0] : section;
-		const accordion = Nino.adminUi.accordion( {
-			id			: 'builder-acc',
-			level		: 4,
-			open		: open,
-			sections	: keys.map( function( key ) {
-
-				return key === 'content'
-					? { key : key, label : word('adv/content'), summary : ownText( node, rel, 40 ), content : function() { return contentBody( rel ) } }
-					: { key : key, label : word('adv/settings'), summary : variantSummary( node ), content : function() { return lookBody( rel ) } };
-			} ),
-			onToggle	: function( now ) {
-
-				S.adv.section = now[0] ?? open;
-				S.at = partsOf( rel, S.adv.section );
-				Nino.admin.router.go( 'builder', S.at );
-			},
-		} );
-
-		holder.appendChild( accordion.el );
-		holder.appendChild( notationBox( 'builder-notation-node', 'node' ) );
-		S.adv.accordion = accordion;
-
-		return holder;
-	};
-
-	// The section of a component that opens first: its content where it has one, else its settings
-	const sectionOf = function( rel ) {
-
-		const node = relNode( rel );
-
-		return rel === 'root' || node === null || ( S.schemas[node.n].source === 'none' && ( node.n !== 'html' || S.level < DEVELOP ) ) ? 'look' : 'content';
-	};
-
-	const variantSummary = function( node ) {
-
-		const count = Object.keys( node.a ?? {} ).filter( function( name ) { return name !== 'id' } ).length;
-
-		return count === 0 ? word('adv/defaults') : word( 'adv/given', count );
-	};
-
-	// The left column of the extended view: the level the address names. The focus goes where the move says: into a component on its way back, out of it on the entry
-	const drawLeft = function( ask ) {
+	// The left column of the extended view: the tree of the block
+	const drawLeft = function() {
 
 		const view = S.view;
-		const rel = S.adv.path;
-		const held = dc.activeElement !== null && dc.activeElement.dataset !== undefined ? dc.activeElement.dataset.key : undefined;
-		const strip = dc.activeElement !== null && dc.activeElement.closest !== undefined && dc.activeElement.closest('[data-step-key]') !== null ? dc.activeElement.closest('[data-step-key]').dataset.stepKey : undefined;
-		const level = rel === '' || rel === '@block' || relNode( rel ) === null || S.schemas[ relNode( rel ).n ] === undefined ? 'tree' : 'component';
 
 		S.tree = null;
-		S.strips = {};
 		view.split.settings.innerHTML = '';
-		view.split.words( { settings : word( level === 'tree' ? 'adv/tree' : 'adv/settings' ), preview : word('label/preview') } );
+		view.split.words( { settings : word('adv/tree'), preview : word('label/preview') } );
 
-		if( level === 'tree' ) {
+		// The block itself is the one that is marked, until the focus is on another entry
+		if( S.marked === '' || S.marked === '@block' || relNode( S.marked ) === null )
+			S.marked = 'root';
 
-			// The block itself is the one that is marked, until the focus is on another entry
-			if( S.marked === '' || S.marked === '@block' || relNode( S.marked ) === null )
-				S.marked = 'root';
-
-			S.adv.view = 'tree';
-			view.split.settings.appendChild( treeLevel( rel === '@block' ? 'block' : '' ) );
-			S.look = { block : absOf( 'root' ), node : '' };
-		}
-		else {
-			S.adv.view = 'component';
-			S.marked = rel;
-			view.split.settings.appendChild( componentLevel( rel, S.adv.section ) );
-			S.look = { block : absOf( 'root' ), node : absOf( rel ) };
-		}
-
-		if( held !== undefined ) {
-
-			const again = view.split.settings.querySelector( '[data-key="'+ held+ '"]' );
-
-			if( again !== null )
-				again.focus();
-		}
-		else if( strip !== undefined && S.strips[strip] !== undefined )
-			S.strips[strip].focus();
-
-		// What is written of the block and of the component is what the server writes of the draft: it is asked for when the level changes, and the answer of
-		// each draft brings it again
-		if( ask !== false )
-			api( 'notation', { tree : S.top, look : S.look }, function( status, response ) {
-
-				if( status === 200 && S.mode === 'advanced' ) {
-					S.notation = response.notation;
-					refreshNotation();
-				}
-			} );
+		view.split.settings.appendChild( treeLevel() );
 	};
 
 	// What a change does to the left column of the extended view
@@ -5990,72 +6491,38 @@
 
 		S.advFocus = '';
 
-		if( S.adv.view === 'tree' && S.tree !== null ) {
+		if( S.tree !== null ) {
 
 			S.tree.update( itemsNow() );
 
 			if( advFocus !== '' )
 				S.tree.focus( advFocus );
-
-			if( S.adv.accordion !== null )
-				S.adv.accordion.update( 'tree', { summary : word( 'adv/count', countCalls( S.top[rootAt()] ) ) } );
-
-			refreshNotation();
 		}
-		else
-			drawLeft( false );
 
 		if( S.mark !== null )
 			S.mark( false );
 	};
 
-	// The page in the frame of the extended view: the call that is chosen has a box round it, which follows the page where it is laid out again, and a click on a
-	// component of the block chooses it. Nothing is written in the frame here
+	// The page in the frame of the extended view: the components of the block are marked by the switchboard of the views, and a click on one of them - on any repetition of a
+	// pattern of a loop - chooses the one row of the pattern. Nothing is written in the frame here
 	const instrumentAdvanced = function( frame, doc ) {
 
-		const found = traced( doc );
 		const style = doc.createElement('style');
-		const host = doc.createElement('nino-builder-mark');
-		const shadow = host.attachShadow( { mode : 'open' } );
-		const box = doc.createElement('div');
-		const css = doc.createElement('style');
-		const win = frame.contentWindow;
+
+		S.found = traced( doc );
+
+		// The loops are told by the number of their elements, which the page shows
+		if( S.tree !== null )
+			S.tree.update( itemsNow() );
 
 		style.textContent = '[data-nino-pick]{cursor:pointer}';
 		doc.head.appendChild( style );
-		const tone = toneOf();
-
-		css.textContent = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}.mark{position:absolute;pointer-events:none;box-sizing:border-box;border:2px solid '+ tone.blue+ ';background:'+ tone.soft+ ';border-radius:3px}';
-		shadow.appendChild( css );
-		box.className = 'mark';
-		shadow.appendChild( box );
-		host.setAttribute( 'aria-hidden', 'true' );
-		doc.body.appendChild( host );
 
 		S.mark = function( scroll ) {
-
-			const wanted = rootAt() === -1 || S.marked === '' ? null : found.all.find( function( entry ) { return entry.path === absOf( S.marked ) } );
-			const place = wanted === undefined || wanted === null ? null : boxOf( wanted.elements, win );
-
-			box.style.display = place === null ? 'none' : '';
-
-			if( place === null )
-				return;
-
-			box.style.top = place.top+ 'px';
-			box.style.left = place.left+ 'px';
-			box.style.width = place.width+ 'px';
-			box.style.height = place.height+ 'px';
-
-			if( scroll === true )
-				win.scrollTo( { top : Math.max( 0, place.top - win.innerHeight / 3 ) } );
+			if( S.view !== null && S.view.board !== null )
+				S.view.board.show( scroll );
 		};
 
-		// The box follows the component where the page is laid out again: a width of the preview, a picture that arrives
-		if( typeof win.ResizeObserver === 'function' )
-			new win.ResizeObserver( function() { if( S.mark !== null ) S.mark( false ) } ).observe( doc.body );
-
-		win.addEventListener( 'resize', function() { if( S.mark !== null ) S.mark( false ) } );
 		doc.querySelectorAll('a, button, input, select, textarea, summary, [tabindex]').forEach( function( element ) { element.tabIndex = -1 } );
 		doc.addEventListener( 'submit', function( event ) { event.preventDefault() }, true );
 		doc.addEventListener( 'keydown', function( event ) { keys( event, [], doc ) } );
@@ -6064,25 +6531,15 @@
 			if( event.target.closest && event.target.closest('a') !== null )
 				event.preventDefault();
 
-			const root = rootAt();
-			let best = null;
+			const rel = relInPage( event.target );
 
-			found.all.forEach( function( entry ) {
-
-				const inside = entry.path === String( root ) || entry.path.indexOf( root+ '.' ) === 0;
-
-				if( inside === true && entry.elements.some( function( element ) { return element.contains( event.target ) } ) === true && ( best === null || entry.path.length > best.path.length ) )
-					best = entry;
-			} );
-
-			if( best === null || S.stale === true )
+			if( rel === null || S.stale === true )
 				return;
 
-			const rel = best.path === String( root ) ? 'root' : best.path.slice( String( root ).length + 1 );
 			const node = relNode( rel );
 
 			if( node !== null && S.schemas[node.n] !== undefined )
-				Nino.admin.builder.go( partsOf( rel, sectionOf( rel ) ), { focus : 'back' } );
+				chooseRow( rel, false );
 		}, true );
 
 		S.mark( true );
@@ -6389,7 +6846,7 @@
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, openExtended : openExtended, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			selectBlock : selectBlock, rowAction : rowAction, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			selectBlock : selectBlock, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, penSpot : penSpot, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		go : function( parts, options ) {

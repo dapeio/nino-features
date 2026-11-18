@@ -117,7 +117,7 @@ const words = {
 	[ 'before', 'after' ].forEach( function( key ) { asked.add( 'label/insert-'+ key ) } );
 	// The words of the extended view that are put together: what the register has against a place and why a component is grey, the three rows of a width, the
 	// two variants that have a word, what a field says of the id and the picture - and the three steps of the roles tab, which the kernel reads
-	[ 'unknown', 'variant', 'outside', 'foreign', 'place', 'once', 'self', 'depth', 'duplicate' ].forEach( function( key ) { asked.add( 'finding/'+ key ) } );
+	[ 'unknown', 'variant', 'outside', 'foreign', 'place', 'once', 'self', 'depth', 'duplicate', 'nofield' ].forEach( function( key ) { asked.add( 'finding/'+ key ) } );
 	[ 'once', 'depth', 'self' ].forEach( function( key ) { asked.add( 'offer/why-'+ key ) } );
 	[ 'all', 'tablet', 'desktop' ].forEach( function( key ) { asked.add( 'rows/'+ key ) } );
 	asked.add('variant/regular');
@@ -126,6 +126,7 @@ const words = {
 	// Where a text is from, the technical fields of an element and the menus of the starter site
 	[ 'company', 'website', 'mail', 'project', 'common', 'page', 'feature', 'other' ].forEach( function( key ) { asked.add( 'source/area-'+ key ) } );
 	[ 'id', 'uri', 'slug' ].forEach( function( key ) { asked.add( 'source/field-'+ key ) } );
+	[ 'text', 'image', 'link' ].forEach( function( key ) { asked.add( 'source/label-'+ key ) } );
 	[ 'main', 'footer', 'legal' ].forEach( function( key ) { asked.add( 'page/menu-'+ key ) } );
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
@@ -537,7 +538,7 @@ const extended = function() {
 	S.level = 2;
 	S.findings = {};
 	S.mode = 'advanced';
-	S.adv = { slug : 'home', block : 'hero', path : '', section : '', view : '', accordion : null };
+	S.adv = { slug : 'home', block : 'hero' };
 	S.locale = 'de_DE';
 	S.top = [ { t : '<!-- note -->\n' }, { n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
 		{ n : 'section-wrap', s : '', a : { id : 'hero' }, c : [ { t : '\n\t' }, { n : 'section-col', s : '', a : { id : 'hero-1', size : '100' }, c : [ { t : '\n\t\t' }, { n : 'section-title', s : '~title', a : {}, c : null }, { t : '\n\t\t' }, { n : 'text', s : '~text', a : {}, c : null }, { t : '\n\t\t<p>free</p>\n\t' } ] }, { t : '\n' } ] }, { t : '\n' } ];
@@ -545,16 +546,15 @@ const extended = function() {
 	S.saved = JSON.stringify( [ S.top, S.texts, S.pictures ] );
 };
 
-check( 'C. an address names the page, the block and the place in it - the path, or the settings of the block - and the section; a frame is named by the page it is shown on; what is none is the page', ( function() {
+check( 'C. an address names the page and the block: the properties of a component have no address, so more parts name the same view; a frame is named by the page it is shown on; what is none is the page', ( function() {
 	const at = function( parts ) { return builder.targetOf( parts ) };
 	const tree = at( [ 'home', 'hero' ] );
-	const component = at( [ 'home', 'hero', '1.1', 'look' ] );
+	const more = at( [ 'home', 'hero', '1.1', 'look' ] );
 	const frame = at( [ 'contact', '@header', '1' ] );
 
-	return tree.mode === 'advanced' && tree.template === 'page-home' && tree.block === 'hero' && tree.path === ''
-		&& at( [ 'home', 'hero', '@block' ] ).path === '@block' && component.path === '1.1' && component.section === 'look'
-		&& frame.template === 'frame-header' && frame.page === 'contact' && frame.path === '1' && at( [ '@header' ] ).mode === 'basic' && at( [ '@header' ] ).template === 'frame-header'
-		&& at( [ 'home', 'Not A Block' ] ).mode === 'basic' && at( [ 'home', 'hero', '../x' ] ).path === '' && at( [ 'no_page' ] ) === null;
+	return tree.mode === 'advanced' && tree.template === 'page-home' && tree.block === 'hero' && more.mode === 'advanced' && more.block === 'hero' && more.path === undefined && more.section === undefined
+		&& frame.template === 'frame-header' && frame.page === 'contact' && at( [ '@header' ] ).mode === 'basic' && at( [ '@header' ] ).template === 'frame-header'
+		&& at( [ 'home', 'Not A Block' ] ).mode === 'basic' && at( [ 'no_page' ] ) === null;
 } )() );
 
 check( 'C. the tree of a block is its components with their kind and first words, a locked entry for free markup, and the id of an entry is its place in the block', ( function() {
@@ -566,7 +566,7 @@ check( 'C. the tree of a block is its components with their kind and first words
 
 	return root.id === 'root' && root.kind === 'Section' && column.id === '1' && column.children.map( function( item ) { return item.id } ).join() === '1.1,1.3,1.4'
 		&& column.children[0].name === 'Hallo Welt' && column.children[2].locked === true && column.children[0].locked === false
-		&& root.actions.map( function( action ) { return action.key } ).join() === 'add' && column.actions.map( function( action ) { return action.key } ).join() === 'add,up,down,remove'
+		&& root.actions.map( function( action ) { return action.key } ).join() === 'add,edit' && column.actions.map( function( action ) { return action.key } ).join() === 'add,up,down,edit,remove'
 		&& column.children[2].actions.map( function( action ) { return action.key } ).join() === 'up,down,remove';
 } )() );
 
@@ -603,7 +603,7 @@ check( 'C. a component that repeats its children for each element is a loop with
 
 check( 'C. the stylesheet of the feature draws no tree of its own: no rule names a class of the workbench tree', fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' ).indexOf( 'nino-admin-tree' ) === -1 );
 
-check( 'C. the tree of the extended view has the line of the path over it and is the block of the workbench', /Nino\.adminUi\.tree\(\s*\{[^}]*\bpath\s*:\s*true\b/.test( script ) === true && /treeBox\.appendChild\( S\.tree\.path \)/.test( script ) === true );
+check( 'C. the tree of the extended view has the line of the path over it and is the block of the workbench', /Nino\.adminUi\.tree\(\s*\{[^}]*\bpath\s*:\s*true\b/.test( script ) === true && /appendChild\( S\.tree\.path \)/.test( script ) === true );
 
 check( 'C. a component is moved among its neighbours - over free markup too, never off the end - and taken out with the blanks that lay it out, so that no two texts stand side by side, and the undo gives back the tree to the byte', ( function() {
 	extended();
