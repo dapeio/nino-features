@@ -613,11 +613,11 @@ echo "\nC. The palette\n";
 
 use Nino\Modules\Themes\Palette;
 
-$pairs = static fn( string $color, string $tone ): array => array_map( static fn( float $ratio ): float => round( $ratio, 2 ), Palette::pairs( Palette::make( $color, '#2b2622', $tone ), $color ) );
+$pairs = static fn( string $color, string $tone ): array => array_map( static fn( float $ratio ): float => round( $ratio, 2 ), Palette::pairs( Palette::make( $color, '#2b2622', $tone ), $color, '#2b2622' ) );
 check( 'the palette of the blue of Nino.css, neutral: the eight pairs and the contrast of each pair a part reads, as worked out', $pairs( '#1c5db8', 'neutral' ) === [
 	'light ink/base' => 16.49, 'light quiet/base' => 6.01, 'light accent/base' => 6.35, 'light ink/alt' => 14.95, 'light quiet/alt' => 5.45, 'light accent/alt' => 5.76, 'light ink/tint' => 14.22, 'light quiet/tint' => 5.19, 'light accent/tint' => 5.48, 'light button' => 6.35,
 	'dark ink/base' => 15.0, 'dark quiet/base' => 8.28, 'dark accent/base' => 8.32, 'dark ink/alt' => 13.75, 'dark quiet/alt' => 7.59, 'dark accent/alt' => 7.63, 'dark ink/tint' => 12.71, 'dark quiet/tint' => 7.01, 'dark accent/tint' => 7.05,
-	'dark ink/picture' => 8.44, 'dark quiet/picture' => 4.66, 'dark accent/picture' => 4.68, 'dark button' => 9.48, 'primary' => 6.35 ] );
+	'dark ink/picture' => 8.44, 'dark quiet/picture' => 4.66, 'dark accent/picture' => 4.68, 'dark button' => 9.48, 'primary' => 6.35, 'second' => 14.97 ] );
 check( 'a brown, warm: the accent is the colour where it holds on every ground, lighter in the dark mode where it does not', Palette::make( '#9a4b1d', '#2b2622', 'warm' )['light']['accent'] === '#9a4b1d' && Palette::make( '#9a4b1d', '#2b2622', 'warm' )['dark']['accent'] === '#ef986c'
 	&& $pairs( '#9a4b1d', 'warm' )['dark accent/picture'] === 4.63 && $pairs( '#9a4b1d', 'warm' )['primary'] === 6.18 );
 check( 'a yellow, cool: the colour written on it is black, its accent in the light mode is its hue in the lightness that reads, in the dark mode it is itself', Palette::make( '#ffd400', '#2b2622', 'cool' )['on-color-1'] === '#000000' && Palette::make( '#ffd400', '#2b2622', 'cool' )['light']['accent'] === '#7f6904'
@@ -638,14 +638,14 @@ foreach( $colours as $colour )
 
 		$made++;
 
-		foreach( Palette::pairs( Palette::make( $colour, '#123456', $tone ), $colour ) as $pair => $ratio )
+		foreach( Palette::pairs( Palette::make( $colour, '#123456', $tone ), $colour, '#123456' ) as $pair => $ratio )
 			$lowest[$pair] = min( $lowest[$pair] ?? INF, $ratio );
 	}
 
 $numbers['palette'] = ( hrtime( true ) - $started ) / 1e6 / $made;
 check( 'over '. $made. ' palettes - '. count( $colours ). ' colours, three tones - the ink holds 7 : 1 on every ground, the quiet ink and the accent 4.5 : 1, in both modes and in the dark one on the picture under the veil',
-	$made === 3 * count( $colours ) && count( $lowest ) === 24 && array_filter( $lowest, static fn( float $ratio, string $pair ): bool => $ratio < ( str_contains( $pair, ' ink/' ) === true ? 7.0 : 4.5 ) && $pair !== 'primary', ARRAY_FILTER_USE_BOTH ) === [] );
-check( 'the colour written on a colour is the better of white and black, and never under the square root of 21', $lowest['primary'] >= 4.58 && $lowest['light button'] >= 4.5 && Palette::on( '#ffffff' ) === '#000000' && Palette::on( '#000000' ) === '#ffffff' && Palette::on( '#777777' ) === '#000000' );
+	$made === 3 * count( $colours ) && count( $lowest ) === 25 && array_filter( $lowest, static fn( float $ratio, string $pair ): bool => $ratio < ( str_contains( $pair, ' ink/' ) === true ? 7.0 : 4.5 ) && $pair !== 'primary' && $pair !== 'second', ARRAY_FILTER_USE_BOTH ) === [] );
+check( 'the colour written on a colour is the better of white and black, and never under the square root of 21', $lowest['primary'] >= 4.58 && $lowest['second'] >= 4.58 && $lowest['light button'] >= 4.5 && Palette::on( '#ffffff' ) === '#000000' && Palette::on( '#000000' ) === '#ffffff' && Palette::on( '#777777' ) === '#000000' );
 check( 'the contrast is that of WCAG 2: black on white is 21 : 1, a colour on itself 1 : 1', round( Palette::contrast( '#000000', '#ffffff' ), 3 ) === 21.0 && Palette::contrast( '#123456', '#123456' ) === 1.0 );
 check( 'a colour is six hexadecimal digits and is written in lower case', Palette::color( '#9A4B1D' ) === '#9a4b1d' && Palette::color( '#fff' ) === null && Palette::color( 'red' ) === null && Palette::color( '#12345g' ) === null && Palette::color( '#123456; }' ) === null && Palette::color( 123456 ) === null && Palette::color( null ) === null );
 
@@ -908,7 +908,7 @@ $section = $body['groups']['section'] ?? [];
 check( 'open: the mix of the theme, the part of each group with where it is from, its knobs on their steps - the additional one marked - and the variants with their standard, the brand as stored, as it comes out and as the theme suggests it, and the contrast of every pair',
 	$status === 200 && $body['mix'] === Mix::of( $site, 'craft-probe' ) && $section['from'] === 'craft-probe@1.0.0' && $section['origin'] === 'installed' && $section['problem'] === '' && array_column( $section['knobs'], 'step' ) === [ 0, 0, 0, 0, 0, 0 ]
 	&& array_column( array_filter( $section['knobs'], static fn( array $knob ): bool => $knob['extra'] === true ), 'key' ) === [ 'section-col.x-shadow' ] && array_values( array_filter( $section['components'], static fn( array $component ): bool => $component['name'] === 'section-wrap' ) )[0]['standard'] === 'soft'
-	&& array_column( $section['offers'], 'theme' ) === [ 'band-probe', 'craft-probe', 'nino' ] && $body['brand']['suggested']['tone'] === 'warm' && $body['brand']['effective']['font-title'] === 'open-sans' && count( $body['palette']['contrast'] ) === 24 && min( $body['palette']['contrast'] ) >= 4.5
+	&& array_column( $section['offers'], 'theme' ) === [ 'band-probe', 'craft-probe', 'nino' ] && $body['brand']['suggested']['tone'] === 'warm' && $body['brand']['effective']['font-title'] === 'open-sans' && count( $body['palette']['contrast'] ) === 25 && min( $body['palette']['contrast'] ) >= 4.5
 	&& array_column( $body['groups']['page']['knobs'], 'key' ) === [ 'size', 'width', 'space', 'radius', 'line', 'motion', 'density' ] && str_contains( json_encode( $body ), ninoSandboxDir( $site ) ) === false && $body['notes'] === [] );
 
 mkdir( ninoSandboxDir( $site ). '/themes/broken-one' );
@@ -928,8 +928,8 @@ check( 'R2 open: each knob with its five values, its middle one as the default a
 	&& $components['section-wrap']['variants'][1] === [ 'name' => 'soft', 'label' => [ 'de_DE' => 'Weiche Fläche', 'en_US' => 'Soft surface' ], 'source' => 'part' ] && $components['section-wrap']['standard'] === 'soft' && $groupsOf['section']['package'] === 'installed' && $groupsOf['page']['knobs'][0]['ladder'][0] === [ '--page-size' => '93.75%' ]
 	&& $groupsOf['page']['knobs'][6]['small'] === true && array_column( $groupsOf['section']['offers'], 'theme' ) === [ 'band-probe', 'craft-probe', 'nino' ] && isset( $components['section-col']['variants'][0]['label'] ) === false );
 check( 'R2 open: the palette says where it comes from - craft names a tone, so it is worked out of the brand; band names no colour and no tone but the neutral, so the colours of the reset stand, as Nino.css has them and with the contrast of each pair',
-	$body['palette']['source'] === 'brand' && count( $body['palette']['contrast'] ) === 24 && ( $reset = themesCall( $site, 'themes/open', [ 'theme' => 'band-probe' ] )[1]['palette'] )['source'] === 'reset' && $reset['colors']['dark']['alt'] === '#1e2127' && $reset['colors']['dark']['accent'] === '#86b6f6'
-	&& $reset['colors']['light']['ink'] === '#1b1d21' && $reset['colors']['light']['accent'] === '#1c5db8' && $reset['colors']['dark']['on'] === '#0f1b2e' && count( $reset['contrast'] ) === 24 && min( $reset['contrast'] ) > 4.0 );
+	$body['palette']['source'] === 'brand' && count( $body['palette']['contrast'] ) === 25 && ( $reset = themesCall( $site, 'themes/open', [ 'theme' => 'band-probe' ] )[1]['palette'] )['source'] === 'reset' && $reset['colors']['dark']['alt'] === '#1e2127' && $reset['colors']['dark']['accent'] === '#86b6f6'
+	&& $reset['colors']['light']['ink'] === '#1b1d21' && $reset['colors']['light']['accent'] === '#1c5db8' && $reset['colors']['dark']['on'] === '#0f1b2e' && count( $reset['contrast'] ) === 25 && min( $reset['contrast'] ) > 4.0 );
 
 // R2 preview: the draft is described as open describes a theme, so that the panel needs no save to show "part from" and the colours
 $partOf = Mix::of( $site, 'craft-probe' );
@@ -938,7 +938,7 @@ $partOf['parts']['section'] = [ 'from' => 'band-probe@1.0.0', 'values' => [ 'sec
 $draftSection = $body['groups']['section'];
 check( 'R2 preview: the answer holds the groups and the brand of the draft - the part of band for the section, its knob with the step of the draft and its ladder, its variants - and the palette with the contrast of the colour that was posted, from the brand', $status === 200 && preg_match( \Nino\Preview::TOKEN, $body['token'] ) === 1 && $draftSection['from'] === 'band-probe@1.0.0'
 	&& array_values( array_filter( $draftSection['knobs'], static fn( array $knob ): bool => $knob['key'] === 'section-title.x-rule' ) )[0]['step'] === 2 && array_column( array_column( $draftSection['components'], null, 'name' )['section-wrap']['variants'], 'name' ) === [ 'regular', 'band' ]
-	&& $body['palette']['source'] === 'brand' && $body['palette']['colors']['light']['accent'] === '#00775e' && count( $body['palette']['contrast'] ) === 24 && $body['brand']['effective']['color-1'] === '#00775e' && in_array( 'color-1', $body['brand']['named'], true ) === true && in_array( 'tone', $body['brand']['named'], true ) === true );
+	&& $body['palette']['source'] === 'brand' && $body['palette']['colors']['light']['accent'] === '#00775e' && count( $body['palette']['contrast'] ) === 25 && $body['brand']['effective']['color-1'] === '#00775e' && in_array( 'color-1', $body['brand']['named'], true ) === true && in_array( 'tone', $body['brand']['named'], true ) === true );
 
 // the first change: the theme of a package, as the mix it is
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
@@ -2279,14 +2279,14 @@ check( 'L. open and preview say what the brand is: every value as it comes out, 
 	$described['brand']['defaults'] === \Nino\Modules\Themes\Brand::DEFAULTS && $described['brand']['suggested']['tone'] === 'warm' && $described['brand']['suggested']['font-title'] === 'open-sans' && $described['brand']['stored'] === $none
 	&& $described['brand']['effective']['font-title'] === 'open-sans' && $described['brand']['effective']['color-1'] === '#1c5db8' );
 check( 'L. a brand that names no colour and no tone but the neutral one has the colours of the reset, and says so - the theme that suggests a warm tone has colours of its own; the pairs are those of the reset and the veil is the ground of a picture under a section',
-	$neutral['palette']['source'] === 'reset' && $described['palette']['source'] === 'brand' && $neutral['palette']['veil'] === \Nino\Modules\Themes\Palette::VEIL && isset( $neutral['palette']['colors']['light']['ink'] ) === true && count( $neutral['palette']['contrast'] ) === 24 && min( $neutral['palette']['contrast'] ) >= 4.5 );
+	$neutral['palette']['source'] === 'reset' && $described['palette']['source'] === 'brand' && $neutral['palette']['veil'] === \Nino\Modules\Themes\Palette::VEIL && isset( $neutral['palette']['colors']['light']['ink'] ) === true && count( $neutral['palette']['contrast'] ) === 25 && min( $neutral['palette']['contrast'] ) >= 4.5 );
 [ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [] ], 'brand' => $own( [ 'color-1' => '#9a4b1d' ] ) ] );
 $truncated = [];
 
-foreach( \Nino\Modules\Themes\Palette::pairs( $body['palette']['colors'], $body['palette']['colors']['color-1'] ) as $name => $ratio )
+foreach( \Nino\Modules\Themes\Palette::pairs( $body['palette']['colors'], $body['palette']['colors']['color-1'], $body['palette']['colors']['color-2'] ) as $name => $ratio )
 	$truncated[$name] = floor( $ratio * 100 + 1e-9 ) / 100;
 
-check( 'L. a contrast is told cut to two decimals and not rounded, as the field of the colour of the workbench cuts it - so that the number of a pair and the number under its colour are one', $body['palette']['contrast'] === $truncated && $body['palette']['contrast'] !== array_map( static fn( float $ratio ): float => round( $ratio, 2 ), \Nino\Modules\Themes\Palette::pairs( $body['palette']['colors'], $body['palette']['colors']['color-1'] ) ) );
+check( 'L. a contrast is told cut to two decimals and not rounded, as the field of the colour of the workbench cuts it - so that the number of a pair and the number under its colour are one', $body['palette']['contrast'] === $truncated && $body['palette']['contrast'] !== array_map( static fn( float $ratio ): float => round( $ratio, 2 ), \Nino\Modules\Themes\Palette::pairs( $body['palette']['colors'], $body['palette']['colors']['color-1'], $body['palette']['colors']['color-2'] ) ) );
 check( 'L. a draft with a colour of its own has a palette of its own: the source is the brand, the first colour is the one set, the colour written on it is white or black, and no pair is under 4.5 : 1',
 	$status === 200 && $body['palette']['source'] === 'brand' && $body['palette']['colors']['color-1'] === '#9a4b1d' && in_array( $body['palette']['colors']['on-color-1'], [ '#ffffff', '#000000' ], true ) === true && min( $body['palette']['contrast'] ) >= 4.5 && $body['brand']['stored']['color-1']['value'] === '#9a4b1d' );
 [ $status, $body ] = themesCall( $site, 'themes/preview', [ 'mix' => [ 'parts' => [] ], 'brand' => $own( [ 'tone' => 'warm' ] ) ] );

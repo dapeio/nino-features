@@ -1836,11 +1836,16 @@
 			list.appendChild( pairs );
 		} );
 
+		// The colours written on the first and on the second colour, the fills of the weights "main" and "second colour" of a button
 		if( palette.contrast.primary !== undefined ) {
 
 			const primary = el( 'ul', 'themes-pairs' );
 
 			primary.appendChild( pairItem( word('role/on-primary'), palette.contrast.primary, colors['on-color-1'], colors['color-1'] ) );
+
+			if( palette.contrast.second !== undefined )
+				primary.appendChild( pairItem( word('role/on-second'), palette.contrast.second, colors['on-color-2'], colors['color-2'] ) );
+
 			list.appendChild( primary );
 		}
 

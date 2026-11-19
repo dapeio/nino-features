@@ -349,7 +349,7 @@ namespace Nino\Modules\Themes {
 			$palette['color-1'] = $hex( $tokens['--brand-color-1'] ?? '' );
 			$palette['color-2'] = $hex( $tokens['--brand-color-2'] ?? '' );
 
-			foreach( array_merge( array_values( $palette['light'] ), array_values( $palette['dark'] ), [ $palette['on-color-1'], $palette['color-1'] ] ) as $color )
+			foreach( array_merge( array_values( $palette['light'] ), array_values( $palette['dark'] ), [ $palette['on-color-1'], $palette['color-1'], $palette['on-color-2'], $palette['color-2'] ] ) as $color )
 				if( Palette::color( $color ) === null )
 					return [];
 

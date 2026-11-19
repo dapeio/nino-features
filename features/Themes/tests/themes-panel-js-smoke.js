@@ -143,7 +143,7 @@ const CHANGED = '\u25CF '+ W('state/changed');
 
 	// The keys put together from a name or read by the panel of the shell: the sections of the page, the three widths, the two states, the plurals of a summary, the failure of a load
 	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button' ]
-		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary' ].map( function( role ) { return 'role/'+ role } ) )
+		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary', 'on-second' ].map( function( role ) { return 'role/'+ role } ) )
 		.forEach( function( key ) { asked.add( key ) } );
 
 	// The reasons the API gives by code: each code of the reader has its words
@@ -233,6 +233,7 @@ function paletteOf( source, weak, adjusted ) {
 	} );
 
 	contrast.primary = 6.34;
+	contrast.second = 7.8;
 
 	if( weak === true )
 		contrast['light quiet/tint'] = 4.2;
@@ -1905,11 +1906,12 @@ function type( node, value ) {
 	const pairs = w.byClass( w.theme, 'themes-pair' );
 	const weak = pairs.filter( function( pair ) { return pair.dataset.state === 'error' } );
 
-	check( 'O. the palette is every pair a part reads for the light and the dark mode - 24 with the colour on the first - each with its swatch, its name, the number and the word', pairs.length === 24 && w.byClass( w.theme, 'themes-roles' ).length === 2 && w.byClass( w.theme, 'themes-role' ).length === 16 && w.byClass( w.theme, 'themes-palette-mode' ).map( function( node ) { return node.textContent } ).join() === [ 'light', 'dark', 'light', 'dark' ].map( function( mode ) { return W( 'word/mode-'+ mode ) } ).join() && w.byClass( w.theme, 'themes-allpairs' )[0].open === true );
+	check( 'O. the palette is every pair a part reads for the light and the dark mode - 25 with the colours on the first and on the second colour - each with its swatch, its name, the number and the word', pairs.length === 25 && w.byClass( w.theme, 'themes-roles' ).length === 2 && w.byClass( w.theme, 'themes-role' ).length === 16 && w.byClass( w.theme, 'themes-palette-mode' ).map( function( node ) { return node.textContent } ).join() === [ 'light', 'dark', 'light', 'dark' ].map( function( mode ) { return W( 'word/mode-'+ mode ) } ).join() && w.byClass( w.theme, 'themes-allpairs' )[0].open === true );
 	check( 'O. the number is the one the API gave, cut to two decimals and written as the language writes it, a pair on the very limit reaches, and the pair under 4.5 : 1 says that it falls short in a word and in a mark, which the colour does not say alone', weak.length === 1 && w.text( weak[0] ).indexOf( Wp( 'msg/ratio', 4.2 ) ) !== -1 && w.text( weak[0] ).indexOf( W('word/falls-short') ) !== -1 && w.text( weak[0] ).indexOf('✕') !== -1 && w.text( pairs[0] ).indexOf( Wp( 'msg/ratio', 12.5 ) ) !== -1 && w.text( pairs[0] ).indexOf( W('word/reaches') ) !== -1 && w.text( pairs[0] ).indexOf('✓') !== -1 );
 	check( 'O. the name of a pair is the text on its ground, in the words of the panel, and the dark mode has the picture under a section as a ground', w.text( pairs[0] ).indexOf( Wp( 'msg/pair', W('role/ink'), W('role/base') ) ) !== -1 && w.text( w.byClass( w.theme, 'themes-pairs' )[1] ).indexOf( Wp( 'msg/pair', W('role/accent'), W('role/picture') ) ) !== -1 && w.text( w.byClass( w.theme, 'themes-pairs' )[0] ).indexOf( W('role/picture') ) === -1 );
 	check( 'O. a swatch shows the colours of its pair - the text on its ground - and is no information for a screen reader', pairs[0].children[0].style.color === '#1b1b1b' && pairs[0].children[0].style.backgroundColor === '#ffffff' && pairs[0].children[0].attributes['aria-hidden'] === 'true'
 		&& w.byClass( w.theme, 'themes-pair-swatch' ).filter( function( node ) { return node.style.backgroundColor === '#404040' } ).length === 3 );
+	check( 'O. the colour written on the second colour is a pair of its own, the last of the list, with the colours of the second colour and the number the API gave', pairs[24].children[0].style.color === '#ffffff' && pairs[24].children[0].style.backgroundColor === '#17233a' && w.text( pairs[24] ).indexOf( W('role/on-second') ) !== -1 && w.text( pairs[24] ).indexOf( Wp( 'msg/ratio', 7.8 ) ) !== -1 );
 	check( 'O. the smallest contrast is told in a line of its own, with the word', w.text( w.byClass( w.theme, 'themes-least' )[0] ) === Wp( 'msg/palette-bad', 1, 4.2 ), w.text( w.byClass( w.theme, 'themes-least' )[0] ) );
 	check( 'O. a brand that names no colour has the colours of the reset, and the section says so, where the palette is', w.byClass( w.theme, 'nino-admin-notice' ).filter( function( node ) { return node.textContent.indexOf( W('msg/palette-reset') ) !== -1 } ).length === 1 );
 
@@ -1918,7 +1920,7 @@ function type( node, value ) {
 	w.tick();
 	w.serve();
 
-	check( 'O. the palette is made again with every answer of the preview: with a colour of the project\'s own the notice that the reset stands is gone, and the contrast line of the field is told the colour that is written on it', w.byClass( w.theme, 'nino-admin-notice' ).filter( function( node ) { return node.textContent.indexOf( W('msg/palette-reset') ) !== -1 } ).length === 0 && w.byClass( w.theme, 'themes-pair' ).length === 24 );
+	check( 'O. the palette is made again with every answer of the preview: with a colour of the project\'s own the notice that the reset stands is gone, and the contrast line of the field is told the colour that is written on it', w.byClass( w.theme, 'nino-admin-notice' ).filter( function( node ) { return node.textContent.indexOf( W('msg/palette-reset') ) !== -1 } ).length === 0 && w.byClass( w.theme, 'themes-pair' ).length === 25 );
 }
 
 {
@@ -1927,7 +1929,7 @@ function type( node, value ) {
 
 	w.at( '#themes/nino/brand/colours' );
 
-	check( 'O. where every pair holds its contrast the list of them starts closed and one sentence says that they hold, with the smallest number; the eight colours of each mode are seen', w.byClass( w.theme, 'themes-allpairs' )[0].open === false && w.text( w.byClass( w.theme, 'themes-least' )[0] ) === Wp( 'msg/palette-ok', 4.5 ) && w.byClass( w.theme, 'themes-role' ).length === 16 && w.text( w.byTag( w.byClass( w.theme, 'themes-allpairs' )[0], 'summary' )[0] ) === Wp( 'label/all-pairs', 24 ) );
+	check( 'O. where every pair holds its contrast the list of them starts closed and one sentence says that they hold, with the smallest number; the eight colours of each mode are seen', w.byClass( w.theme, 'themes-allpairs' )[0].open === false && w.text( w.byClass( w.theme, 'themes-least' )[0] ) === Wp( 'msg/palette-ok', 4.5 ) && w.byClass( w.theme, 'themes-role' ).length === 16 && w.text( w.byTag( w.byClass( w.theme, 'themes-allpairs' )[0], 'summary' )[0] ) === Wp( 'label/all-pairs', 25 ) );
 }
 
 {

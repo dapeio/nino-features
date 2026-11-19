@@ -125,14 +125,16 @@ namespace Nino\Modules\Themes {
 
 		/**
 		 *	Every pair a part reads, with its contrast: the ink, the quiet ink and the accent on each ground of each mode (the
-		 *	dark mode on the picture under the veil too), the colour on the accent and the colour on the first colour
+		 *	dark mode on the picture under the veil too), the colour on the accent, the colour on the first colour and the colour on the second one (the
+		 *	fill of a button of the weight "second colour" in the light scheme, which the kernel mixes with white in the dark one)
 		 *
 		 *	@param		array			$palette			As make() answers it
 		 *	@param		string		$color1				The first colour, #rrggbb
+		 *	@param		string		$color2				The second colour, #rrggbb
 		 *
-		 *	@return 	array											'<mode> <ink|quiet|accent>/<ground>', '<mode> button', 'primary' => contrast
+		 *	@return 	array											'<mode> <ink|quiet|accent>/<ground>', '<mode> button', 'primary', 'second' => contrast
 		 */
-		public static function pairs( array $palette, string $color1 ): array {
+		public static function pairs( array $palette, string $color1, string $color2 ): array {
 
 			$pairs = [];
 
@@ -148,6 +150,7 @@ namespace Nino\Modules\Themes {
 			}
 
 			$pairs['primary'] = self::contrast( $palette['on-color-1'], $color1 );
+			$pairs['second'] = self::contrast( $palette['on-color-2'], $color2 );
 
 			return $pairs;
 		}

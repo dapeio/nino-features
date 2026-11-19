@@ -530,6 +530,7 @@ namespace Nino\Modules\Themes {
 				$source = 'brand';
 				$palette = Palette::make( $values['color-1'], $values['color-2'], $values['tone'] );
 				$palette['color-1'] = $values['color-1'];
+				$palette['color-2'] = $values['color-2'];
 			}
 			else {
 				$source = 'reset';
@@ -543,7 +544,7 @@ namespace Nino\Modules\Themes {
 			return [
 				'groups'	=> $groups,
 				'brand'		=> [ 'stored' => $brand, 'effective' => $values, 'named' => $plan['named'], 'suggested' => $plan['page']['brand'], 'defaults' => Brand::DEFAULTS, 'unavailable' => $unavailable, 'fonts' => array_keys( $fonts ) ],
-				'palette'	=> [ 'source' => $source, 'veil' => Palette::VEIL, 'colors' => $palette, 'contrast' => $palette === [] ? [] : array_map( static fn( float $ratio ): float => floor( $ratio * 100 + 1e-9 ) / 100, Palette::pairs( $palette, $palette['color-1'] ) ) ],
+				'palette'	=> [ 'source' => $source, 'veil' => Palette::VEIL, 'colors' => $palette, 'contrast' => $palette === [] ? [] : array_map( static fn( float $ratio ): float => floor( $ratio * 100 + 1e-9 ) / 100, Palette::pairs( $palette, $palette['color-1'], $palette['color-2'] ) ) ],
 				'notes'		=> $plan['notes'],
 			];
 		}

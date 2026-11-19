@@ -190,6 +190,7 @@ return [
 	'[[/_admin/themes/role/on]]'	=> 'Text on the accent',
 	'[[/_admin/themes/role/picture]]'	=> 'Picture under a section',
 	'[[/_admin/themes/role/on-primary]]'	=> 'Text on colour 1',
+	'[[/_admin/themes/role/on-second]]'	=> 'Text on colour 2',
 	'[[/_admin/themes/chip/own-value]]'	=> 'Own value',
 	'[[/_admin/themes/chip/from-theme]]'	=> 'From the theme %s',
 	'[[/_admin/themes/chip/from-standard]]'	=> 'Standard value',
