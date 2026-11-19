@@ -112,7 +112,7 @@ $asked = array_unique( $asked[1] );
 $dynamic = [ 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'details/ph-landscape', 'details/ph-mark', 'error/load', 'frames/header', 'frames/footer', 'import/result-written', 'import/result-copied', 'import/result-replaced', 'import/result-skipped', 'import/result-left', 'import/result-failed', 'import/result-untried', 'error/export', 'error/import' ];
 $lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'frames/' && $key !== 'details/ph-' && $key !== 'import/result-' && isset( $words['de_DE']['[[/_admin/blocks/'. $key. ']]'], $words['en_US']['[[/_admin/blocks/'. $key. ']]'] ) === false );
 $sentence = static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/'. $code. ']]'], $words['en_US']['[[/_admin/error/'. $code. ']]'] );
-$codes = [ 'blocks_language', 'blocks_shell', 'blocks_unknown', 'blocks_name', 'blocks_category', 'blocks_taken', 'blocks_invalid', 'blocks_refused', 'blocks_tree', 'blocks_place', 'blocks_preview', 'blocks_write', 'blocks_key', 'blocks_block', 'blocks_id', 'blocks_locked', 'blocks_html', 'blocks_foreign', 'blocks_loop', 'blocks_frame', 'blocks_address', 'blocks_picture', 'blocks_empty', 'blocks_long', 'blocks_export_key', 'blocks_export_version', 'blocks_export_name', 'blocks_export_description', 'blocks_export_none', 'blocks_export_unknown', 'blocks_export_read', 'blocks_export_archive', 'blocks_export_large', 'blocks_import_large', 'blocks_import_empty', 'blocks_import_unknown', 'blocks_package_loop', 'blocks_package_block', 'blocks_package_refused', 'blocks_import_archive_gzip', 'blocks_import_archive_name', 'blocks_import_archive_refused' ];
+$codes = [ 'blocks_changed', 'blocks_language', 'blocks_shell', 'blocks_unknown', 'blocks_name', 'blocks_category', 'blocks_taken', 'blocks_invalid', 'blocks_refused', 'blocks_tree', 'blocks_place', 'blocks_preview', 'blocks_write', 'blocks_key', 'blocks_block', 'blocks_id', 'blocks_locked', 'blocks_html', 'blocks_foreign', 'blocks_loop', 'blocks_frame', 'blocks_address', 'blocks_picture', 'blocks_empty', 'blocks_long', 'blocks_export_key', 'blocks_export_version', 'blocks_export_name', 'blocks_export_description', 'blocks_export_none', 'blocks_export_unknown', 'blocks_export_read', 'blocks_export_archive', 'blocks_export_large', 'blocks_import_large', 'blocks_import_empty', 'blocks_import_unknown', 'blocks_package_loop', 'blocks_package_block', 'blocks_package_refused', 'blocks_import_archive_gzip', 'blocks_import_archive_name', 'blocks_import_archive_refused' ];
 
 check( 'every word the script asks for and every failure code the API answers has its sentence in both interface languages, and the two files have the same keys',
 	$lacking === [] && array_filter( $codes, static fn( string $code ): bool => $sentence( $code ) === false ) === [] && array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) );
@@ -167,6 +167,8 @@ $every = [
 	'blocks/notation'	=> [ 'tree' => [] ],
 	'blocks/keys'			=> [ 'kind' => 'types' ],
 	'blocks/tile'			=> [ 'key' => 'hero-full' ],
+	'blocks/picture'	=> [ 'key' => 'karten', 'name' => 'bild' ],
+	'blocks/picture-drop'	=> [ 'key' => 'karten', 'files' => [] ],
 	'blocks/frames'		=> [],
 	'blocks/adopt'		=> [ 'template' => 'page-home', 'tree' => [], 'at' => '0', 'key' => 'neu', 'name' => 'Neu', 'category' => 'content' ],
 	'blocks/export'		=> [ 'keys' => [ 'hero-full' ], 'key' => 'x', 'version' => '1.0.0', 'name' => 'X' ],
@@ -182,7 +184,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = blocksCall( $site, $action, $data )[0];
 
-check( 'an account that has the rights of the Builder and not /_admin/blocks/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 31 && array_keys( $every ) === array_keys( \Nino\Modules\Blocks\Admin::actions() ) && blocksSnapshot( $site ) === $before );
+check( 'an account that has the rights of the Builder and not /_admin/blocks/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 33 && array_keys( $every ) === array_keys( \Nino\Modules\Blocks\Admin::actions() ) && blocksSnapshot( $site ) === $before );
 
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
 $answers = [];
@@ -395,7 +397,7 @@ $beforeConflict = blocksSnapshot( $site );
 unset( $site['./nino/blocks/state'] );
 
 check( 'a block that was changed since the sheet was opened - by another session - is not written over: 409 with the code of the conflict the workbench asks about, and nothing is written; with force it is written',
-	$conflict === 409 && ( $conflicted['code'] ?? '' ) === 'builder_changed' && $beforeConflict === $beforeConflict && $forced === 200 && str_contains( (string) \Nino\Blocks::get( $site, 'mein-block' )['source'], '~claim' ) === false );
+	$conflict === 409 && ( $conflicted['code'] ?? '' ) === 'blocks_changed' && $beforeConflict === $beforeConflict && $forced === 200 && str_contains( (string) \Nino\Blocks::get( $site, 'mein-block' )['source'], '~claim' ) === false );
 
 // what the rule of the kernel refuses is not written, and the reason is the answer
 [ , $reopened ] = blocksCall( $site, 'blocks/open', [ 'key' => 'mein-block' ] );

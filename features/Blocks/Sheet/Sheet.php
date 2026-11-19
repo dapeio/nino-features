@@ -141,6 +141,26 @@ namespace Nino\Modules\Blocks {
 		public const array BEGIN = [ 'section-wrap' => [ 'ground' => 'base' ], 'section-row' => [ 'width' => 'narrow' ], 'section-col' => [] ];
 
 		/**
+		 *	The pictures a block of the project has of its own, by the place they are for
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$block				As Library::block() answers it
+		 *
+		 *	@return 	array|\stdClass							place => 'png', 'jpg', 'webp' or 'svg'
+		 */
+		public static function own( array &$appData, array $block ): array|\stdClass {
+
+			$list = [];
+			$held = \Nino\Blocks::get( $appData, (string) ( $block['key'] ?? '' ) );
+
+			foreach( (array) ( $held['pictures'] ?? [] ) as $relative )
+				if( preg_match( '/^([a-z0-9]+(?:-[a-z0-9]+)*)\.(svg|webp|png|jpg)$/D', basename( (string) $relative ), $found ) === 1 )
+					$list[$found[1]] = $found[2];
+
+			return $list === [] ? new \stdClass() : $list;
+		}
+
+		/**
 		 *	A block with a root of a section, a row and a column and nothing in them, as Library::block() answers a block
 		 *
 		 *	@param		string		$id						The id of the root
@@ -386,6 +406,7 @@ namespace Nino\Modules\Blocks {
 				'known'				=> Tree::known( $nodes, $registry ),
 				'slots'				=> array_keys( $state['slots'] ),
 				'images'			=> Pictures::shown( $appData, $state['slots'] ),
+				'own'					=> self::own( $appData, $block ),
 				'address'			=> $shell['address'],
 				'last'				=> 0,
 				'unback'			=> '',

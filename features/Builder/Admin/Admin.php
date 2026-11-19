@@ -601,7 +601,12 @@ namespace Nino\Modules\Builder {
 			'button-group'		=> 'groups',
 			'tabs'						=> 'groups',
 			'accordion'				=> 'groups',
+			'collection-filter'	=> 'loops',
 		];
+
+		// The order of the tiles in a part of the dialog, the common ones first: this is the one place that says it, as DIALOG says the parts. What is not named stands behind them
+		// in the order the register has it, and the filter, which holds loops and is none, is the last of the loops
+		private const array DIALOG_ORDER = [ 'section-title', 'section-subtitle', 'section-row', 'section-col', 'card', 'card-title', 'card-subtitle', 'card-text', 'card-image', 'text', 'button', 'image', 'logo', 'spacer', 'scroll-hint', 'html', 'button-group', 'tabs', 'accordion', 'collection', 'collection-list', 'collection-table', 'collection-filter' ];
 
 		/**
 		 *	The part of the dialog a component is in
@@ -616,7 +621,7 @@ namespace Nino\Modules\Builder {
 
 			$owner = $appData[\Nino\Components::OWNERS]['names'][$name] ?? null;
 			$feature = is_string( $owner ) === true && $owner !== 'basis' ? $owner : null;
-			$section = $loop === true ? 'loops' : ( self::DIALOG[$name] ?? ( $feature !== null ? 'features' : 'general' ) );
+			$section = self::DIALOG[$name] ?? ( $loop === true ? 'loops' : ( $feature !== null ? 'features' : 'general' ) );
 
 			// A feature is told by its name where it brings a component of its own: the loops are the loops whoever brings them
 			$manifest = $feature === null || $section !== 'features' ? null : \Nino\Features::get( $appData, $feature );
@@ -681,6 +686,40 @@ namespace Nino\Modules\Builder {
 					'why'					=> $answer === true ? '' : (string) $answer,
 					'node'				=> [ 'n' => (string) $name, 's' => '', 'a' => [], 'c' => isset( $schema['offers'] ) === true ? [] : null ],
 				];
+			}
+
+			// The tiles of a part stand in the order of DIALOG_ORDER, and a tile that is named like another says what it is a part of
+			$rank = static function( string $name ) use ( $entries ): int {
+
+				$at = array_search( $name, self::DIALOG_ORDER, true );
+
+				return $at === false ? 1000 + (int) array_search( $name, array_column( $entries, 'name' ), true ) : (int) $at;
+			};
+			usort( $entries, static fn( array $one, array $other ): int => $rank( $one['name'] ) <=> $rank( $other['name'] ) );
+
+			// Of two tiles with one name the one a feature brings says what it is a part of; where no feature is in it, both do
+			$named = $entries;
+
+			foreach( $named as $index => $entry ) {
+
+				$same = array_filter( $named, static fn( array $other ): bool => $other['name'] !== $entry['name'] && $other['label'] == $entry['label'] );
+				$mine = ( $appData[\Nino\Components::OWNERS]['names'][$entry['name']] ?? 'basis' ) !== 'basis';
+				$theirs = array_filter( $same, static fn( array $other ): bool => ( $appData[\Nino\Components::OWNERS]['names'][$other['name']] ?? 'basis' ) !== 'basis' );
+
+				if( $same === [] || ( $mine === false && $theirs !== [] ) )
+					continue;
+
+				$parent = null;
+
+				foreach( (array) ( $registry[$entry['name']]['in'] ?? [] ) as $above )
+					if( isset( $registry[$above] ) === true ) {
+						$parent = $registry[$above]['label'];
+						break;
+					}
+
+				if( is_array( $parent ) === true && is_array( $entry['label'] ) === true )
+					foreach( $entry['label'] as $locale => $text )
+						$entries[$index]['label'][$locale] = $text. ' ('. ( $parent[$locale] ?? reset( $parent ) ). ')';
 			}
 
 			// What stands between two calls at this depth, as the kernel writes a template: the blanks of a new call come from there

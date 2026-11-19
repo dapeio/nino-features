@@ -133,6 +133,11 @@ const words = {
 	[ 'main', 'footer', 'legal' ].forEach( function( key ) { asked.add( 'page/menu-'+ key ) } );
 	// The lengths a sample of a place in a block of the library has
 	[ 'short', 'line', 'paragraph', 'long', 'own' ].forEach( function( key ) { asked.add( 'place/len-'+ key ) } );
+	[ '1', 'n' ].forEach( function( key ) { asked.add( 'place/words-'+ key ) } );
+	// The own picture of a place: what it says of it and the three things done to it
+	[ 'none', 'has', 'chosen', 'taken', 'upload', 'replace', 'remove' ].forEach( function( key ) { asked.add( 'place/own-'+ key ) } );
+	// A page that has lost the call of its head or of its foot, and the way to put it back
+	[ 'header', 'footer' ].forEach( function( key ) { [ 'missing-', 'restore-', 'restored-' ].forEach( function( kind ) { asked.add( 'frame/'+ kind+ key ) } ) } );
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
 	asked.add('new/copy');
@@ -418,6 +423,31 @@ check( 'B. the build of a page is the design step\'s: for the content step there
 	S.level = 2;
 	return before > 0 && none === true && same === true && builder.builds() === true && builder.points().length === before;
 } )() );
+check( 'B. a page that has no call of its foot says so quietly in the outline - "No footer", no word of a fault - for the one who designs, with the way to put it back at its end, once; the one who changes the content is told nothing and has no way',
+	( function() {
+		fresh();
+		const wasFoot = S.top.findIndex( function( node ) { return node.n === 'template' && node.s === '/templates/html-footer' } );
+		S.top.splice( wasFoot, 2 );
+		S.sheet = 'page';
+
+		const says = function() { return builder.outlineItems().filter( function( row ) { return row.id === '@missing-footer' } ).length };
+		const quiet = builder.missingFrames().join() === 'footer' && says() === 1 && builder.outlineItems()[builder.outlineItems().length - 1].id === '@missing-footer';
+		S.level = 1;
+		const none = builder.missingFrames().length === 0 && says() === 0;
+		builder.restoreFrame( 'footer' );
+		const refused = S.top.some( function( node ) { return node.s === '/templates/html-footer' } ) === false;
+		S.level = 2;
+		builder.restoreFrame( 'footer' );
+		builder.restoreFrame( 'footer' );
+		const back = S.top.filter( function( node ) { return node.s === '/templates/html-footer' } ).length === 1 && S.top[S.top.length - 2].s === '/templates/html-footer';
+
+		const whole = quiet === true && none === true && refused === true && back === true && builder.missingFrames().length === 0 && S.undo.length === 1;
+
+		const said = ( function() { S.top.splice( S.top.findIndex( function( node ) { return node.s === '/templates/html-footer' } ), 2 ); return builder.outlineItems().filter( function( row ) { return row.id === '@missing-footer' } )[0] } )();
+		const quietly = said !== undefined && said.actions.length === 1 && [ 'en', 'de' ].every( function( lang ) { return [ 'missing-header', 'missing-footer' ].every( function( key ) { return words[lang]['/_admin/builder/frame/'+ key] !== undefined && /missing|fehlt|error|wrong|fehler/i.test( words[lang]['/_admin/builder/frame/'+ key] ) === false } ) } ) && /^(?:No|Kein)/.test( words.en['/_admin/builder/frame/missing-footer'] ) === true;
+
+		return whole === true && quietly === true;
+	} )() );
 check( 'B. what the call of html holds is the account\'s that may develop: for the others the block that holds text in it is locked, for that account it is a block like any other - and the words of a new text are the ones of the language of the page', ( function() {
 	fresh();
 	const html = { n : 'html', s : '', a : {}, c : [ { t : '<p>x</p>' } ] };

@@ -56,6 +56,8 @@ namespace Nino\Modules\Blocks {
 				'blocks/notation'	=> [ self::class, 'apiNotation' ],
 				'blocks/keys'			=> [ self::class, 'apiKeys' ],
 				'blocks/tile'			=> [ self::class, 'apiTile' ],
+				'blocks/picture'	=> [ self::class, 'apiPicture' ],
+				'blocks/picture-drop'	=> [ self::class, 'apiPictureDrop' ],
 				'blocks/frames'		=> [ self::class, 'apiFrames' ],
 				'blocks/adopt'		=> [ self::class, 'apiAdopt' ],
 				'blocks/export'		=> [ self::class, 'apiExport' ],
@@ -105,6 +107,7 @@ namespace Nino\Modules\Blocks {
 
 			return match( $action ) {
 				'blocks/save'			=> 'Save Block '. $key( 'key' ),
+				'blocks/picture'	=> 'Upload Block Picture '. $key( 'key' ),
 				'blocks/saveas'		=> 'Save Block As '. $key( 'name' ),
 				'blocks/create'		=> 'Create Block '. $key( 'name' ),
 				'blocks/duplicate'	=> 'Duplicate Block '. $key( 'key' ),
@@ -127,8 +130,11 @@ namespace Nino\Modules\Blocks {
 			$allowed = \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() );
 
 			// The bytes of a package that was shown and left are let go of when their time is out, whatever the next request of the session is
-			if( $allowed === true )
+			if( $allowed === true ) {
+
 				Package::sweep();
+				self::_sweepStaged( $appData );
+			}
 
 			return $allowed;
 		}
@@ -660,6 +666,20 @@ namespace Nino\Modules\Blocks {
 		private static function _parts( array &$appData, array &$request, array $sheet, array $block, string $key, array $names, array $descriptions, string $category ): ?array {
 
 			$data = \Nino\Admin\Admin::postData();
+
+			// A place has one call: two calls that read the same place of the block would show one set of words, and a name given to one of them would take the words from the other
+			$reads = [];
+
+			foreach( Tree::sources( $sheet['nodes'], $sheet['registry'], $sheet['template'] ) as $entry )
+				if( is_string( $entry['key'] ?? null ) === true && str_starts_with( $entry['key'], '/template/'. $sheet['template']. '/' ) === true )
+					$reads[$entry['key']] = ( $reads[$entry['key']] ?? 0 ) + 1;
+
+			foreach( $reads as $place => $number )
+				if( $number > 1 ) {
+					self::_fail( $request, 400, 'two components read one place of the block', 'blocks_place_twice', [ substr( $place, (int) strrpos( $place, '/' ) + 1 ) ], 'tree' );
+					return null;
+				}
+
 			$state = Sheet::state( $block, $sheet['template'], \Nino\Admin\Admin::postString( $data, 'locale' ) );
 			$pictures = self::_pictured( $appData, $sheet, $state, is_array( $data['pictures'] ?? null ) === true ? $data['pictures'] : [] );
 			$input = [
@@ -739,7 +759,7 @@ namespace Nino\Modules\Blocks {
 
 			// Another session changed the block since it was opened: it is not written over unless force says so
 			if( ( $data['force'] ?? false ) !== true && ( is_string( $data['base'] ?? null ) === false || hash_equals( Sheet::stamp( $appData, $key ), $data['base'] ) === false ) ) {
-				self::_fail( $request, 409, 'the block was changed since it was opened', 'builder_changed', [], 'key' );
+				self::_fail( $request, 409, 'the block was changed since it was opened', 'blocks_changed', [], 'key' );
 				return;
 			}
 
@@ -770,8 +790,55 @@ namespace Nino\Modules\Blocks {
 
 			$made['parts']['json'] = json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n";
 
+			// A block that is saved as it is stays as it is, to the byte: the file that a hand or an older version wrote is not made over for the order of its languages or the way
+			// it writes an empty set
+			$raw = (string) @file_get_contents( (string) ( $appData['./nino/filesystem/contentpath'] ?? '' ). \Nino\Blocks::OWN. '/'. $key. '/block.json' );
+
+			if( $raw !== '' && json_decode( $raw, true ) !== null && json_decode( $made['parts']['json'], true ) == json_decode( $raw, true ) )
+				$made['parts']['json'] = $raw;
+
 			// The pictures the block has of its own stay, for the slots that are still there: a save does not take them away
 			$made['parts']['pictures'] = array_filter( is_array( $old ) === true ? (array) $old['pictures'] : [], static fn( string $file ): bool => isset( $meta['images'][(string) preg_replace( '/\.[a-z]+$/D', '', $file )] ), ARRAY_FILTER_USE_KEY );
+
+			// The picture a person chose for a place, or took away: a staged file becomes the place's own picture - one at a time, whatever it was - and "none" takes it away
+			$chosen = is_array( $data['own'] ?? null ) === true ? $data['own'] : [];
+
+			foreach( $chosen as $place => $token ) {
+
+				$place = (string) $place;
+
+				// A name is the form the places have - never a path - and a token is the form apiPicture() gives
+				if( preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D', $place ) !== 1 || strlen( $place ) > \Nino\Components::NAME_LENGTH ) {
+					self::_fail( $request, 400, 'the name of the place is none', 'blocks_picture_name', [], 'own' );
+					return;
+				}
+
+				if( isset( $meta['images'][$place] ) === false || ( $token !== null && $token !== '' && ( is_string( $token ) === false || preg_match( '/^[a-f0-9]{32}\.(?:svg|webp|png|jpg)$/D', $token ) !== 1 ) ) ) {
+					self::_fail( $request, 400, 'the picture of the place is none', 'blocks_picture_own', [ $place ], 'own' );
+					return;
+				}
+
+				// A file that was put aside is the session's that did it and the block's it was for
+				if( is_string( $token ) === true && $token !== '' && ( $_SESSION[self::STAGED][$token]['key'] ?? null ) !== $key ) {
+					self::_fail( $request, 403, 'the picture was put aside for another', 'blocks_picture_own', [ $place ], 'own' );
+					return;
+				}
+
+				foreach( [ 'svg', 'webp', 'png', 'jpg' ] as $kind )
+					unset( $made['parts']['pictures'][$place. '.'. $kind] );
+
+				if( is_string( $token ) === true && $token !== '' ) {
+
+					$bytes = @file_get_contents( self::_staged( $appData ). $token );
+
+					if( is_string( $bytes ) === false ) {
+						self::_fail( $request, 400, 'the picture of the place is gone', 'blocks_picture_own', [ $place ], 'own' );
+						return;
+					}
+
+					$made['parts']['pictures'][$place. '.'. substr( $token, 33 )] = $bytes;
+				}
+			}
 
 			if( self::_checked( $appData, $request, $key, $made['parts'] ) === null )
 				return;
@@ -783,7 +850,163 @@ namespace Nino\Modules\Blocks {
 				return;
 			}
 
+			foreach( $chosen as $token )
+				if( is_string( $token ) === true && preg_match( '/^[a-f0-9]{32}\.(?:svg|webp|png|jpg)$/D', $token ) === 1 )
+					self::_letGo( $appData, $token );
+
 			self::_answer( $appData, $request, $key, $locale, true );
+		}
+
+		// Where the session keeps what it put aside: token => [ the block it was for, until when ]
+		private const string STAGED = 'nino_blocks_pictures';
+
+		/**
+		 *	The folder the pictures are in that a person chose for a place and did not save: files of an hour or less, made by apiPicture()
+		 */
+		private static function _staged( array &$appData ): string {
+			return (string) ( $appData['./nino/filesystem/contentpath'] ?? '' ). '/data/.preview/blocks-picture/';
+		}
+
+		/**
+		 *	A file that was put aside is let go of: the file and the session's note of it
+		 */
+		private static function _letGo( array &$appData, string $token ): void {
+
+			unset( $_SESSION[self::STAGED][$token] );
+
+			if( preg_match( '/^[a-f0-9]{32}\.(?:svg|webp|png|jpg)$/D', $token ) === 1 )
+				@unlink( self::_staged( $appData ). $token );
+		}
+
+		/**
+		 *	What was put aside and is old goes, whichever action of the panel is asked: the notes of the session that ran out, and the files of any session that nobody asked for in an hour
+		 */
+		private static function _sweepStaged( array &$appData ): void {
+
+			foreach( (array) ( $_SESSION[self::STAGED] ?? [] ) as $token => $note )
+				if( is_array( $note ) === false || (int) ( $note['until'] ?? 0 ) < time() )
+					self::_letGo( $appData, (string) $token );
+
+			foreach( (array) glob( self::_staged( $appData ). '*' ) as $old )
+				if( is_file( $old ) === true && filemtime( $old ) < time() - 3600 )
+					@unlink( $old );
+		}
+
+		/**
+		 *	A picture for the place of a block: the file is looked at as the kernel looks at a picture, and a raster picture is written anew by the kernel - nothing that was
+		 *	appended to it, no foreign data of it is kept - a svg is cleaned, and any other kind is refused here and not when the block is saved. It is kept apart, for this session and
+		 *	this block, until the block is saved. Nothing of the block is written; the answer is the name the save asks for
+		 */
+		public static function apiPicture( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$key = self::_own( $appData, $request, \Nino\Admin\Admin::postString( $data, 'key' ) );
+
+			if( $key === null )
+				return;
+
+			$failure = \Nino\Admin\Admin::uploadError( $_FILES['file'] ?? null );
+
+			if( $failure !== null ) {
+				\Nino\Http::fail( $request, $failure['status'], $failure['error'], $failure['code'], $failure['params'] );
+				return;
+			}
+
+			$bytes = is_string( $_FILES['file']['tmp_name'] ?? null ) === true ? file_get_contents( $_FILES['file']['tmp_name'] ) : false;
+
+			if( $bytes === false ) {
+				\Nino\Http::fail( $request, 500, 'could not read upload', 'upload_server' );
+				return;
+			}
+
+			if( $bytes === '' ) {
+				\Nino\Http::fail( $request, 400, 'the file is empty', 'blocks_picture_empty' );
+				return;
+			}
+
+			if( str_starts_with( ltrim( $bytes ), '<' ) === true ) {
+
+				$bytes = \Nino\Images::cleanSvg( $bytes );
+
+				if( $bytes === null ) {
+					\Nino\Http::fail( $request, 400, 'the image was refused: svg', 'image_unreadable' );
+					return;
+				}
+
+				$kind = 'svg';
+			}
+			else {
+
+				$rejection = \Nino\Images::reject( $bytes );
+
+				if( $rejection !== null ) {
+					\Nino\Http::fail( $request, 400, 'the image was refused: '. $rejection['code'], $rejection['code'], $rejection['params'] );
+					return;
+				}
+
+				$size = \Nino\Images::size( $bytes );
+
+				// A block carries a png, a jpeg, a webp or a svg: another kind - a gif - is told so at once
+				if( $size === false || in_array( $size['type'], [ IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP ], true ) === false ) {
+					\Nino\Http::fail( $request, 400, 'a block takes no picture of that kind', 'blocks_picture_type' );
+					return;
+				}
+
+				// Written anew by the kernel, as every picture it is given is: the whole picture, upright, never larger than it was
+				$made = \Nino\Images::fit( $appData, $bytes, \Nino\Modules\Builder\Pictures::MAX_SIDE, \Nino\Modules\Builder\Pictures::MAX_SIDE, 'blocks-picture/'. bin2hex( random_bytes( 8 ) ) );
+				$again = $made === false ? false : \Nino\Images::read( $appData, $made );
+
+				if( $made !== false )
+					\Nino\Images::delete( $appData, $made );
+
+				if( $again === false || $again === '' ) {
+					\Nino\Http::fail( $request, 400, 'the image could not be processed', 'image_unreadable' );
+					return;
+				}
+
+				$bytes = $again;
+				$kind = str_starts_with( $bytes, "\x89PNG" ) === true ? 'png' : ( str_starts_with( $bytes, 'RIFF' ) === true ? 'webp' : 'jpg' );
+			}
+
+			$dir = self::_staged( $appData );
+			$token = bin2hex( random_bytes( 16 ) ). '.'. $kind;
+
+			if( ( is_dir( $dir ) === false && @mkdir( $dir, 0755, true ) === false && is_dir( $dir ) === false ) || file_put_contents( $dir. $token, $bytes ) === false ) {
+				\Nino\Http::fail( $request, 500, 'could not keep the picture', 'blocks_write' );
+				return;
+			}
+
+			$_SESSION[self::STAGED][$token] = [ 'key' => $key, 'until' => time() + 3600 ];
+
+			\Nino\Http::ok( $request, [ 'file' => $token, 'type' => $kind ] );
+		}
+
+		/**
+		 *	Pictures that were put aside and are not wanted - the draft was given up, the editor was left, another picture came for the place: let go of, those of this session and this block
+		 */
+		public static function apiPictureDrop( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$key = self::_own( $appData, $request, \Nino\Admin\Admin::postString( $data, 'key' ) );
+
+			if( $key === null )
+				return;
+
+			$gone = 0;
+
+			foreach( is_array( $data['files'] ?? null ) === true ? array_slice( $data['files'], 0, 64 ) : [] as $token )
+				if( is_string( $token ) === true && ( $_SESSION[self::STAGED][$token]['key'] ?? null ) === $key ) {
+					self::_letGo( $appData, $token );
+					$gone++;
+				}
+
+			\Nino\Http::ok( $request, [ 'dropped' => $gone ] );
 		}
 
 		/**

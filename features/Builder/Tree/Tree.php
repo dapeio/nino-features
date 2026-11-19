@@ -824,6 +824,13 @@ namespace Nino\Modules\Builder {
 			if( self::twice( $new, $registry ) !== null )
 				return 'ids';
 
+			// The calls of the head and of the foot of the site are the page's frame: no step leaves them out, and where one is missing it is put back - once, and where it belongs
+			$put = self::_framed( $old, $new );
+
+			if( $put === null )
+				return 'frame';
+
+			$new = $put;
 			$was = [];
 			$now = [];
 			$wasUnits = [];
@@ -894,6 +901,82 @@ namespace Nino\Modules\Builder {
 					return 'id';
 
 			return null;
+		}
+
+		// The calls a page has for the head and the foot of the site, by the template they name
+		public const array FRAME_CALLS = [ '/templates/html-header', '/templates/html-footer' ];
+
+		/**
+		 *	The frame of a page - the call of its head and the call of its foot - as a person who designs leaves it: every call of the frame that the old tree has is in the new one,
+		 *	and a call that the old tree has not may be put in, once: the head before everything but the words of the page, the foot behind everything. What was put in is taken out of
+		 *	the tree that is returned, so that the rest of the rule is asked of what the person made and not of what the frame is
+		 *
+		 *	@param		array			$old
+		 *	@param		array			$new
+		 *
+		 *	@return 	array|null								The new tree without the calls that were put back; null where a call of the frame is left out or put in where it does not belong
+		 */
+		private static function _framed( array $old, array $new ): ?array {
+
+			$count = static function( array $nodes ): array {
+
+				$list = [];
+
+				foreach( $nodes as $node )
+					if( ( $node['n'] ?? '' ) === 'template' && in_array( $node['s'] ?? '', self::FRAME_CALLS, true ) === true )
+						$list[$node['s']] = ( $list[$node['s']] ?? 0 ) + 1;
+
+				return $list;
+			};
+			$was = $count( $old );
+			$now = $count( $new );
+
+			foreach( $was as $call => $number )
+				if( ( $now[$call] ?? 0 ) < $number )
+					return null;
+
+			foreach( $now as $call => $number )
+				if( $number > max( 1, $was[$call] ?? 0 ) )
+					return null;
+
+			// The head stays the first call of the page and the foot the last, wherever they stand now: a page that has them elsewhere is saved as it is, and a page that has them in
+			// their place keeps them there - between the blocks of a page there is no foot
+			$stands = static function( array $nodes, string $call ): ?bool {
+
+				foreach( $nodes as $at => $node )
+					if( ( $node['n'] ?? '' ) === 'template' && ( $node['s'] ?? '' ) === $call ) {
+
+						foreach( $nodes as $other => $between )
+							if( isset( $between['n'] ) === true && ( $call === self::FRAME_CALLS[0] ? $other < $at : $other > $at ) )
+								return false;
+
+						return true;
+					}
+
+				return null;
+			};
+
+			foreach( array_keys( $was ) as $call )
+				if( $stands( $old, $call ) === true && $stands( $new, $call ) !== true )
+					return null;
+
+			$out = [];
+			$last = null;
+
+			foreach( $new as $at => $node )
+				if( ( $node['n'] ?? '' ) === 'template' && in_array( $node['s'] ?? '', self::FRAME_CALLS, true ) === true && isset( $was[$node['s']] ) === false ) {
+
+					// The head stands before every call of the page, the foot behind them
+					foreach( $new as $other => $between )
+						if( ( $node['s'] === self::FRAME_CALLS[0] && $other < $at && isset( $between['n'] ) === true ) || ( $node['s'] === self::FRAME_CALLS[1] && $other > $at && isset( $between['n'] ) === true ) )
+							return null;
+
+					$last = $at;
+				}
+				else
+					$out[] = $node;
+
+			return $last === null ? $new : $out;
 		}
 
 		/**

@@ -678,6 +678,77 @@ const sheetOf = function( hash, extra ) {
 	const chosen = sheet.tree.get().selected;
 	const holder = sheet.tree.el.querySelector('[data-id="'+ column+ '"]');
 
+	// the dialog of the components lists what the place does not take as well, grey and with its reason - it does not leave it out
+	fire( dialogOf( w ), 'close' );
+	model.openOffer( column, element('button') );
+
+	const offerAsk = request( w, 'blocks/offer' );
+
+	answerOf( offerAsk, 200, { offers : [
+		{ name : 'section-title', label : { de_DE : 'Titel', en_US : 'Title' }, icon : 'heading', group : 'section', groupLabel : null, section : 'section', feature : null, featureLabel : null, ok : true, why : '', node : { n : 'section-title', s : '', a : [], c : null } },
+		{ name : 'section-col', label : { de_DE : 'Spalte', en_US : 'Column' }, icon : 'columns-3', group : 'section', groupLabel : null, section : 'section', feature : null, featureLabel : null, ok : false, why : 'place', node : { n : 'section-col', s : '', a : [], c : [] } },
+	], blank : '\n\t', schemas : {}, container : 'section-col' } );
+
+	const tiles = findAll( dialogOf( w ), function( el ) { return el.tagName === 'BUTTON' && el.dataset !== undefined && el.dataset.name !== undefined } );
+	const grey = tiles.find( function( el ) { return el.dataset.name === 'section-col' } );
+
+	check( 'D. the dialog of the components lists what the place does not take as well - a tile that is grey, with the reason as its title - and a tile that can be used is not grey',
+		tiles.length === 2 && grey !== undefined && grey.disabled === true && String( grey.title ).indexOf( String( words.en['/_admin/builder/offer/why-place'] ) ) === 0 && tiles.find( function( el ) { return el.dataset.name === 'section-title' } ).disabled !== true );
+
+	fire( dialogOf( w ), 'close' );
+
+	// a loop that is put in is complete at once: the placeholder type and a pattern of its own - and the headings of the columns of a table are words of the block
+	[ 'collection-list', 'collection-table', 'collection' ].forEach( function( name ) { sheet.schemas[name] = Object.assign( schema( name, 'table', 'none', { container : true } ), { loop : true } ) } );
+	[ 'collection-list', 'collection-table', 'collection', 'collection-col', 'text', 'section-col', 'section-title' ].forEach( function( name ) { sheet.known[name] = sheet.known[name] ?? { label : name, id : '', source : 'none' } } );
+	[ 'collection-col' ].forEach( function( name ) { sheet.schemas[name] = sheet.schemas[name] ?? schema( name, 'columns-2', 'text', {} ) } );
+	model.addComponent( column, { name : 'collection-table', node : { n : 'collection-table', s : '', a : {}, c : [] } }, '\n\t' );
+	model.addComponent( column, { name : 'collection-list', node : { n : 'collection-list', s : '', a : {}, c : [] } }, '\n\t' );
+	model.addComponent( column, { name : 'collection', node : { n : 'collection', s : '', a : {}, c : [] } }, '\n\t' );
+
+	const holds = function( name ) { const found = []; const walk = function( nodes ) { ( Array.isArray( nodes ) === true ? nodes : [] ).forEach( function( node ) { if( node.n === name && node.s === '/_placeholder' ) found.push( node ); walk( node.c ) } ) }; walk( sheet.top ); return found[0] };
+	const headingKey = function( name ) { return Object.keys( sheet.texts ).filter( function( key ) { return key.slice( -name.length - 1 ) === '/'+ name } )[0] };
+	const table = holds( 'collection-table' );
+	const list = holds( 'collection-list' );
+	const cards = holds( 'collection' );
+
+	check( 'D. a loop that is put into a block is complete at once - the placeholder type of the kernel and a pattern for its elements: a table of two columns with headings that are words of the block, a list with the title of an element, a collection with a card of a title and a text',
+		table.s === '/_placeholder' && table.c.map( function( node ) { return node.s } ).join() === '.title,.text' && table.c[0].a.title === '~heading-title' && sheet.texts[headingKey( 'heading-title' )].de_DE === 'Titel' && sheet.texts[headingKey( 'heading-text' )].en_US === 'Text'
+		&& list.s === '/_placeholder' && list.c[0].s === '.title' && list.a.sort === 'title' && cards.s === '/_placeholder' && cards.c[0].n === 'section-col' && cards.c[0].c.map( function( node ) { return node.s } ).join() === '.title,.text' );
+
+	// the place of a loop: how many elements the block shows as examples - one to twelve - and the field each component of an element reads
+	sheet.schemas['collection-list'].attributes = { sort : { type : 'text', label : 'Sort', hint : '', default : '' }, limit : { type : 'int', label : 'At most', hint : '', default : 0, min : 0, max : 99 }, offset : { type : 'int', label : 'From', hint : '', default : 0 }, query : { type : 'text', label : 'Query', hint : '', default : '' } };
+
+	const relOf = function( target, nodes, prefix ) {
+
+		for( let at = 0; at < nodes.length; at++ ) {
+
+			if( nodes[at] === target )
+				return prefix+ at;
+
+			const deeper = Array.isArray( nodes[at].c ) === true ? relOf( target, nodes[at].c, prefix+ at+ '.' ) : null;
+
+			if( deeper !== null )
+				return deeper;
+		}
+
+		return null;
+	};
+	const rootAt = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
+	const loopRel = relOf( list, sheet.top[rootAt].c, '' );
+
+	model.state.box = null;
+	w.builder.editor.properties( rootAt, loopRel, element('button'), function() {} );
+
+	const examples = findAll( dialogOf( w ), function( el ) { return el.tagName === 'SELECT' && el.dataset !== undefined && el.dataset.key === loopRel+ ':examples' } )[0];
+
+	examples.value = '5';
+	fire( examples, 'change' );
+
+	check( 'D. the place of a loop in a block says how many elements the block shows as examples - a choice of one to twelve that writes the attribute for "at most" - and has no source, no sort and no query',
+		examples !== undefined && findAll( examples, function( el ) { return el.tagName === 'OPTION' } ).length === 12 && list.a.limit === '5' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/box/source'] ) ) === -1 );
+
+	fire( dialogOf( w ), 'close' );
+
 	check( 'D. a component that is put into a column with nothing in it opens the column and is the chosen entry - not a column folded over it',
 		chosen.indexOf( column+ '.' ) === 0 && holder.attributes['aria-expanded'] === 'true' && sheet.tree.el.querySelector('[data-id="'+ chosen+ '"]') !== null );
 }
@@ -787,6 +858,13 @@ const sheetOf = function( hash, extra ) {
 		&& model.loremOf( 'title', 8, { title : true, button : false, rich : false } ).slice( -1 ) !== '.' && model.loremOf( 'x', 80, { title : false, button : true, rich : false } ).split( ' ' ).length === 2
 		&& model.loremOf( 'a', 30, { title : false, button : false, rich : false } ) !== model.loremOf( 'b', 30, { title : false, button : false, rich : false } ) );
 
+	// a button holds one word or two, and its lengths say so
+	const buttonLengths = model.lengthsOf( { title : false, button : true, rich : false } );
+
+	check( 'D. the lengths of a button are one word and two words - named so, "1 word" and "2 words" - and the sample of each has that many words; the other places have the four lengths, and a button the first time has two',
+		buttonLengths.map( function( entry ) { return entry[0]+ ':'+ entry[1] } ).join() === 'short:1,line:2' && model.loremOf( 'b', 1, { title : false, button : true, rich : false } ).split( ' ' ).length === 1 && model.loremOf( 'b', 2, { title : false, button : true, rich : false } ).split( ' ' ).length === 2
+		&& model.lengthsOf( { title : false, button : false, rich : false } ).length === 4 && String( words.en['/_admin/builder/place/words-1'] ) === '1 word' && /%d/.test( String( words.en['/_admin/builder/place/words-n'] ) ) === true );
+
 	select.value = 'line';
 	fire( select, 'change' );
 
@@ -817,8 +895,8 @@ const sheetOf = function( hash, extra ) {
 	fourth.value = 'other';
 	fire( fourth, 'change' );
 
-	check( 'D. an id that another place of the block has is refused at the field with the sentence "taken", and the place keeps its id and its words',
-		node().s === '~headline' && fourth.value === 'headline' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/source/taken'] ) ) !== -1 && sheet.texts['/template/page-home/karten/headline'] !== undefined );
+	check( 'D. an id that another place of the block has is refused at the field with the sentence "taken" - in the words of a block - and the place keeps its id and its words',
+		node().s === '~headline' && fourth.value === 'headline' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/source/taken-block'] ) ) !== -1 && /block/i.test( String( words.en['/_admin/builder/source/taken-block'] ) ) === true && /section|page/i.test( String( words.en['/_admin/builder/source/taken-block'] ) ) === false && sheet.texts['/template/page-home/karten/headline'] !== undefined );
 
 	delete sheet.texts['/template/page-home/karten/other'];
 
@@ -849,6 +927,47 @@ const sheetOf = function( hash, extra ) {
 	fire( wide, 'change' );
 
 	check( 'D. a size beyond what the kernel takes is cut to its limit: 4096', picSheet.extra.details.images.bild.width === 4096 );
+
+	// a picture place that was just put in has its format at once - before anything is saved - and the place for an own picture
+	fire( dialogOf( pic ), 'close' );
+	pic.builder.model.addComponent( 'root', { name : 'image', node : { n : 'image', s : '', a : {}, c : null } }, '\n\t' );
+
+	const fresh = picSheet.top[picRoot].c.map( function( node, at ) { return node.n === 'image' && node.s !== '~bild' ? String( at ) : null } ).filter( function( at ) { return at !== null } )[0];
+
+	pic.builder.editor.properties( picRoot, fresh, element('button'), function() {} );
+
+	const freshBox = dialogOf( pic );
+	const hasKey = function( key ) { return findAll( freshBox, function( el ) { return el.dataset !== undefined && el.dataset.key === key } ).length > 0 };
+	const placed = picSheet.top[picRoot].c[Number( fresh )].s.slice( 1 );
+	const made = picSheet.pictures['/template/page-home/karten/'+ placed];
+
+	check( 'D. a picture place that has just been put in has its format before anything is saved - the size, 800 by 600, what the page shows until a picture is chosen - and the way to give it an own picture',
+		placed === 'bild-2' && made !== undefined && made.width === 800 && made.height === 600 && made.placeholder === '/nino/placeholder/landscape' && hasKey( fresh+ ':width:'+ placed ) && hasKey( fresh+ ':placeholder:'+ placed ) && hasKey( 'own:'+ placed ) );
+
+	const chooser = findAll( freshBox, function( el ) { return el.tagName === 'INPUT' && el.type === 'file' } )[0];
+
+	chooser.files = [ { name : 'a.png' } ];
+	fire( chooser, 'change' );
+	answerOf( request( pic, 'blocks/picture' ), 200, { file : 'a'.repeat( 32 )+ '.png', type : 'png' } );
+
+	check( 'D. an own picture that is given to a place is a change of the draft - it stands in what the save sends, as the name of the staged file - and a place that has none is told so',
+		picSheet.extra.ownChosen[placed] === 'a'.repeat( 32 )+ '.png' && pic.builder.model.isDirty() === true && request( pic, 'blocks/picture' ).payload.name === placed && request( pic, 'blocks/picture' ).payload.key !== undefined );
+
+	// a picture that was put aside and is not wanted - another one came for the place, the draft is given up - is let go of at the server
+	pic.requests.length = 0;
+	chooser.files = [ { name : 'b.png' } ];
+	fire( chooser, 'change' );
+	answerOf( request( pic, 'blocks/picture' ), 200, { file : 'b'.repeat( 32 )+ '.png', type : 'png' } );
+
+	const replaced = request( pic, 'blocks/picture-drop' );
+
+	pic.requests.length = 0;
+	pic.builder.model.discard();
+
+	const given = request( pic, 'blocks/picture-drop' );
+
+	check( 'D. a picture that was put aside is let go of when another comes for the place and when the draft is given up: the server is asked to drop the file that is not wanted, and the draft has none chosen after',
+		replaced !== undefined && replaced.payload.files.join() === 'a'.repeat( 32 )+ '.png' && given !== undefined && given.payload.files.join() === 'b'.repeat( 32 )+ '.png' && Object.keys( picSheet.extra.ownChosen ).length === 0 );
 }
 
 

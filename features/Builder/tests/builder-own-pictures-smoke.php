@@ -111,6 +111,13 @@ foreach( $names as $at => [ $de, $en ] ) {
 	$keys[$at] = (string) ( $made['key'] ?? '' );
 }
 
+// The pictures are made with gd, as the pictures of the kernel's own suites are: a php without it leaves everything that needs a picture out and says so
+if( function_exists( 'imagecreatetruecolor' ) === false ) {
+
+	echo "  note  - gd is not there: the checks about the pictures of a block are left out\n";
+	ninoDone( $site );
+}
+
 $image = imagecreatetruecolor( 120, 90 );
 imagefill( $image, 0, 0, (int) imagecolorallocate( $image, 200, 30, 30 ) );
 ob_start();

@@ -263,7 +263,7 @@ namespace Nino\Modules\Builder {
 
 					$width = max( 16, min( 4096, $width ) );
 					$height = max( 16, min( 4096, $height ) );
-					$images[$flat] = [ 'placeholder' => $width >= $height * 1.25 ? '/nino/placeholder/landscape' : '/nino/placeholder/mark', 'width' => $width, 'height' => $height, 'label' => self::_labels( $locales, $label === '' ? $flat : $label, is_array( $slot['labels'] ?? null ) === true ? $slot['labels'] : [] ) ];
+					$images[$flat] = [ 'placeholder' => is_string( $slot['placeholder'] ?? null ) === true && isset( \Nino\Images::PLACEHOLDERS[$slot['placeholder']] ) === true ? $slot['placeholder'] : ( $width >= $height * 1.25 ? '/nino/placeholder/landscape' : '/nino/placeholder/mark' ), 'width' => $width, 'height' => $height, 'label' => self::_labels( $locales, $label === '' ? $flat : $label, is_array( $slot['labels'] ?? null ) === true ? $slot['labels'] : [] ) ];
 					continue;
 				}
 

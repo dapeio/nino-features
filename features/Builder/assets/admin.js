@@ -1295,7 +1295,12 @@
 		const rows = items();
 		const spots = points();
 
-		return rows.map( function( item, index ) {
+		// The call of the head or of the foot that the page has lost: a row says so where it stood, for the one who designs, with the button that puts it back
+		const lost = missingFrames().map( function( which ) {
+			return { id : '@missing-'+ which, label : word( 'frame/missing-'+ which ), detail : '', icon : which === 'footer' ? 'panel-bottom' : 'panel-top', locked : false, actions : [ { key : 'restore-'+ which, icon : ACTION_ICONS.insert, name : word( 'frame/restore-'+ which ) } ] };
+		} );
+
+		const listed = rows.map( function( item, index ) {
 
 			const row = rowOf( item );
 			const actions = [];
@@ -1323,6 +1328,37 @@
 
 			return { id : row.key, label : row.label, detail : named === undefined ? row.detail : localized( named[1] ), icon : row.icon, locked : row.locked, actions : actions };
 		} );
+
+		return lost.filter( function( entry ) { return entry.id === '@missing-header' } ).concat( listed, lost.filter( function( entry ) { return entry.id === '@missing-footer' } ) );
+	};
+
+	// The frames of the page that it has not: the call of the head and the call of the foot, by the template each names. Only a page, and only for the one who designs
+	const missingFrames = function() {
+
+		if( S.sheet !== 'page' || S.frame === true || builds() === false || Array.isArray( S.top ) === false )
+			return [];
+
+		return [ [ 'header', FRAME_CALLS[0] ], [ 'footer', FRAME_CALLS[1] ] ].filter( function( pair ) {
+			return S.top.some( function( node ) { return node.n === 'template' && node.s === pair[1] } ) === false;
+		} ).map( function( pair ) { return pair[0] } );
+	};
+
+	// The call of the head or of the foot is put back where it belongs: the head behind the note of the page, the foot at its end
+	const restoreFrame = function( which ) {
+
+		if( builds() === false || S.frame === true || missingFrames().indexOf( which ) === -1 )
+			return;
+
+		const call = { n : 'template', s : FRAME_CALLS[which === 'header' ? 0 : 1], a : {}, c : null };
+
+		change( function() {
+
+			if( which === 'footer' )
+				S.top = normalize( S.top.concat( [ { t : '\n' }, call, { t : '\n' } ] ) );
+			else
+				S.top = normalize( S.top.slice( 0, S.top[0] !== undefined && S.top[0].t !== undefined ? 1 : 0 ).concat( [ call, { t : '\n' } ], S.top.slice( S.top[0] !== undefined && S.top[0].t !== undefined ? 1 : 0 ) ) );
+		} );
+		told( word( 'frame/restored-'+ which ) );
 	};
 
 	// The full name of a block is the hint of its row: the tree has the id in it, and a long id its own
@@ -1348,6 +1384,11 @@
 
 	// A press on a button of a row: the block it is on is chosen, and what the button says is done to it
 	const rowAction = function( key, id, opener ) {
+
+		if( key === 'restore-header' || key === 'restore-footer' ) {
+			restoreFrame( key.slice( 8 ) );
+			return;
+		}
 
 		const at = atOf( id );
 
@@ -3815,6 +3856,9 @@
 		Object.keys( S.pictures ).forEach( function( uri ) {
 			out[uri] = { label : S.pictures[uri].label, width : S.pictures[uri].width, height : S.pictures[uri].height };
 
+			if( typeof S.pictures[uri].placeholder === 'string' )
+				out[uri].placeholder = S.pictures[uri].placeholder;
+
 			if( typeof S.pictures[uri].file === 'string' )
 				out[uri].file = S.pictures[uri].file;
 		} );
@@ -3949,7 +3993,7 @@
 				return;
 			}
 
-			if( status === 409 && ( response ?? {} ).code === 'builder_changed' ) {
+			if( status === 409 && /^(?:builder|blocks)_changed$/.test( ( response ?? {} ).code ) === true ) {
 
 				done( false );
 				Nino.adminUi.conflict( {
@@ -4006,7 +4050,7 @@
 				return;
 			}
 
-			if( status === 409 && ( response ?? {} ).code === 'builder_changed' ) {
+			if( status === 409 && /^(?:builder|blocks)_changed$/.test( ( response ?? {} ).code ) === true ) {
 
 				Nino.adminUi.conflict( {
 					message			: Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/save' ),
@@ -4430,10 +4474,28 @@
 	};
 
 	// The work is dropped: the page as it is saved
+	// The pictures that were put aside for the places of a block and are not wanted - the draft is given up, the sheet is left, another one came for the place - are let go of
+	const dropStaged = function( tokens ) {
+
+		const files = tokens.filter( function( token ) { return typeof token === 'string' && token !== '' } );
+
+		if( files.length === 0 || S.sheet !== 'block' || S.frame === true || S.adapter.readOnly === true )
+			return;
+
+		api( 'picture-drop', { files : files }, function() {} );
+	};
+
+	// What a sheet has put aside and not saved
+	const stagedNow = function() {
+		return S.extra !== undefined && S.extra !== null && S.extra.ownChosen !== undefined ? Object.keys( S.extra.ownChosen ).map( function( place ) { return S.extra.ownChosen[place] } ) : [];
+	};
+
 	const discard = function() {
 
 		if( S.ready === false )
 			return;
+
+		dropStaged( stagedNow() );
 
 		// The draft goes back to what was saved: its tree, its words and what a sheet keeps beside them - the variants of a block, its details - from the copy made when it was
 		// saved, since the form the question is asked in is only that: a sheet whose variants were changed is no more changed once they are given up
@@ -4535,6 +4597,7 @@
 		if( S.sheet === 'page' )
 			return;
 
+		dropStaged( stagedNow() );
 		leaveView();
 		release();
 
@@ -5301,8 +5364,22 @@
 
 	// Where a part of a block begins in the library: what the blocks of the basis write there - the same as Blocks\Sheet::BEGIN, which makes the first of them
 	const PLACE_BEGIN = { 'section-row' : { width : 'narrow' } };
+	// The templates the calls of the head and of the foot of a page name: the same as Tree::FRAME_CALLS
+	const FRAME_CALLS = [ '/templates/html-header', '/templates/html-footer' ];
+	// A loop that is put into a block of the library is complete at once: the placeholder type of the kernel and a pattern that shows its elements - what the blocks of the collections
+	// have as theirs: a list with the title of an element, a table with two columns, a collection with a card of a title and a text. The headings of the columns are words of the block
+	const LOOP_PATTERNS = {
+		'collection-list'		: { a : { sort : 'title' }, c : [ { n : 'text', s : '.title', a : {}, c : null } ], words : {} },
+		'collection-table'	: { a : {}, c : [ { n : 'collection-col', s : '.title', a : { title : '~heading-title', rowhead : true }, c : null }, { n : 'collection-col', s : '.text', a : { title : '~heading-text' }, c : null } ], words : { 'heading-title' : 'Titel', 'heading-text' : 'Text' } },
+		'collection'				: { a : {}, c : [ { n : 'section-col', s : '', a : { size : '100 m:50', variant : 'card' }, c : [ { n : 'section-title', s : '.title', a : { tag : 'h3', size : 's' }, c : null }, { n : 'text', s : '.text', a : {}, c : null } ] } ], words : {} },
+	};
 	const LENGTHS = [ [ 'short', 3 ], [ 'line', 8 ], [ 'paragraph', 30 ], [ 'long', 80 ] ];
 	const LOREM = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum'.split( ' ' );
+
+	// The lengths a sample may have: a button holds one word or two, and says so - the others are the four lengths
+	const lengthsOf = function( kind ) {
+		return kind.button === true ? [ [ 'short', 1 ], [ 'line', 2 ] ] : LENGTHS;
+	};
 
 	// Whether the sheet is the one of a block of the library: the frames of the site and the pages are none
 	const placing = function() {
@@ -5396,7 +5473,7 @@
 		if( held === undefined || held === null )
 			return null;
 
-		const found = LENGTHS.find( function( entry ) {
+		const found = lengthsOf( kind ).find( function( entry ) {
 
 			const sample = loremOf( name, entry[1], kind );
 
@@ -5421,13 +5498,16 @@
 		return component.replace( /^.*-/, '' );
 	};
 
-	// The length a sample has when the place is made: a title is short, a subtitle a line, a text a paragraph
+	// The length a sample has when the place is made: a title is short, a subtitle a line, a text a paragraph, a button two words
 	const firstLength = function( component ) {
+
+		if( component === 'button' )
+			return 'line';
 
 		if( /subtitle$/.test( component ) )
 			return 'line';
 
-		if( /title$/.test( component ) || component === 'button' )
+		if( /title$/.test( component ) )
 			return 'short';
 
 		return /text|paragraph|copy/.test( component ) === true ? 'paragraph' : 'line';
@@ -5488,7 +5568,27 @@
 
 		fresh.a = placing() === true && PLACE_BEGIN[offer.name] !== undefined ? clone( PLACE_BEGIN[offer.name] ) : {};
 
+		// A loop of a block of the library shows placeholder elements: its type is the kernel's, and it has a pattern for them
+		if( placing() === true && LOOP_PATTERNS[offer.name] !== undefined && schema.loop === true ) {
+
+			fresh.s = '/_placeholder';
+			fresh.a = clone( LOOP_PATTERNS[offer.name].a );
+			fresh.c = clone( LOOP_PATTERNS[offer.name].c );
+		}
+
 		change( function() {
+
+			if( placing() === true && LOOP_PATTERNS[offer.name] !== undefined && schema.loop === true && scope !== '' )
+				Object.keys( LOOP_PATTERNS[offer.name].words ).forEach( function( heading ) {
+
+					const name = freeName( heading, scope );
+					const was = JSON.stringify( fresh.c );
+
+					fresh.c = JSON.parse( was.split( '~'+ heading ).join( '~'+ name ) );
+
+					S.texts[ '/template/'+ S.template+ '/'+ scope+ '/'+ name ] = {};
+					sampleLocales().forEach( function( locale ) { S.texts[ '/template/'+ S.template+ '/'+ scope+ '/'+ name ][locale] = LOOP_PATTERNS[offer.name].words[heading] } );
+				} );
 
 			if( schema.source !== 'none' && schema.source !== 'link' && scope !== '' ) {
 
@@ -5510,6 +5610,9 @@
 					else
 						S.texts[key] = { [S.locale] : freshText() };
 				}
+				// A picture place of a block of the library has its format from the start: the placeholder and the size are the person's to change at once
+				else if( schema.source === 'image' && placing() === true )
+					S.pictures[ '/template/'+ S.template+ '/'+ scope+ '/'+ name ] = { label : name, width : 800, height : 600, placeholder : '/nino/placeholder/landscape' };
 			}
 			else if( schema.source === 'text' )
 				fresh.a.text = word('new/text');
@@ -5620,7 +5723,10 @@
 
 					button.type = 'button';
 					button.dataset.name = offer.name;
-					button.appendChild( glyph( offer.icon === '' || offer.icon === undefined ? 'box' : offer.icon, 16 ) );
+					const icon = el( 'span', 'builder-offer-icon' );
+
+					icon.appendChild( glyph( offer.icon === '' || offer.icon === undefined ? 'box' : offer.icon, 16 ) );
+					button.appendChild( icon );
 					button.appendChild( el( 'span', '', localized( offer.label ) ) );
 
 					if( offer.ok === true )
@@ -6124,7 +6230,7 @@
 					return error( problem, word('source/bad-name') );
 
 				if( namesIn( scope ).has( now ) === true )
-					return error( problem, word('source/taken') );
+					return error( problem, word( ownWord( 'source/taken', 'source/taken-block' ) ) );
 
 				if( spec.kind === 'image' )
 					return finish( { form : 'new', name : now, label : label.querySelector('input').value.trim() === '' ? now : label.querySelector('input').value.trim(), width : Number( width.querySelector('input').value ), height : Number( height.querySelector('input').value ) } );
@@ -7869,7 +7975,7 @@
 				if( NAME.test( now ) === false || now.length > 40 )
 					problem.textContent = word('source/bad-name');
 				else if( namesIn( scope ).has( now ) === true )
-					problem.textContent = word('source/taken');
+					problem.textContent = word( ownWord( 'source/taken', 'source/taken-block' ) );
 				else {
 					renamePlace( rel, read, now );
 					return;
@@ -7886,13 +7992,13 @@
 
 				const format = read.form === 'first' ? read.source.format : 'plain';
 				const kind = kindOfPlace( node, format );
-				const lengths = LENGTHS.map( function( entry ) { return { value : entry[0], label : word( 'place/len-'+ entry[0], kind.button === true ? 2 : entry[1] ) } } ).concat( [ { value : 'own', label : word('place/len-own') } ] );
+				const lengths = lengthsOf( kind ).map( function( entry ) { return { value : entry[0], label : kind.button === true ? ( entry[1] === 1 ? word('place/words-1') : word( 'place/words-n', entry[1] ) ) : word( 'place/len-'+ entry[0], entry[1] ) } } ).concat( [ { value : 'own', label : word('place/len-own') } ] );
 				const current = lengthOf( name, key, kind ) ?? 'own';
 				const select = Nino.adminUi.selectField( { key : rel+ ':length:'+ name, label : word('place/length'), help : word('place/length-help'), options : lengths, value : current } );
 
 				select.querySelector('select').addEventListener( 'change', function( event ) {
 
-					const chosen = LENGTHS.find( function( entry ) { return entry[0] === event.target.value } );
+					const chosen = lengthsOf( kind ).find( function( entry ) { return entry[0] === event.target.value } );
 
 					if( chosen === undefined ) {
 						redrawBox();
@@ -7946,8 +8052,8 @@
 						} } ).el );
 
 					// What the page shows until a picture is chosen: one of the placeholders of the kernel
-					if( placeholders.length > 0 && held.placeholder !== undefined )
-						sizes.appendChild( Nino.adminUi.selectField( { key : rel+ ':placeholder:'+ name, label : word('place/placeholder'), help : word('place/placeholder-help'), options : placeholders.map( function( one ) { return { value : one, label : Nino.content.getText( '/_admin/blocks/details/ph-'+ one.slice( one.lastIndexOf('/') + 1 ) ) } } ), value : held.placeholder, onChange : function( value ) {
+					if( placeholders.length > 0 )
+						sizes.appendChild( Nino.adminUi.selectField( { key : rel+ ':placeholder:'+ name, label : word('place/placeholder'), help : word('place/placeholder-help'), options : placeholders.map( function( one ) { return { value : one, label : Nino.content.getText( '/_admin/blocks/details/ph-'+ one.slice( one.lastIndexOf('/') + 1 ) ) } } ), value : held.placeholder ?? ( held.width >= held.height * 1.25 ? '/nino/placeholder/landscape' : '/nino/placeholder/mark' ), onChange : function( value ) {
 							change( function() { held.placeholder = value } );
 						} } ) );
 
@@ -7966,6 +8072,68 @@
 					} );
 					group.appendChild( sizes );
 				}
+
+				// The own picture of the place: what the block gives the page when it is put in, instead of the placeholder - chosen here, kept when the block is saved
+				const keep = S.extra !== undefined && S.extra !== null && S.extra.own !== undefined ? S.extra : null;
+
+				if( keep !== null && S.adapter.readOnly !== true ) {
+
+					const chosen = keep.ownChosen ?? ( keep.ownChosen = {} );
+					const spot = detailKey( scope, name );
+					const has = chosen[spot] !== undefined ? chosen[spot] !== '' : keep.own[spot] !== undefined;
+					const holder = el( 'div', 'builder-place-own-picture' );
+					const line = el( 'p', 'nino-admin-hint', chosen[spot] === '' ? word('place/own-taken') : ( chosen[spot] !== undefined ? word('place/own-chosen') : ( keep.own[spot] !== undefined ? word( 'place/own-has', keep.own[spot] ) : word('place/own-none') ) ) );
+					const input = el( 'input', 'builder-picture-file' );
+					const upload = Nino.adminUi.button( word( has === true ? 'place/own-replace' : 'place/own-upload' ), function() { input.click() }, { className : 'nino-admin-btn--small' } );
+					const status = el( 'p', 'nino-admin-hint', '' );
+
+					input.type = 'file';
+					input.accept = 'image/*';
+					input.hidden = true;
+					input.tabIndex = -1;
+					upload.dataset.key = 'own:'+ spot;
+					status.setAttribute( 'role', 'status' );
+					input.addEventListener( 'change', function() {
+
+						if( input.files.length === 0 )
+							return;
+
+						status.textContent = word('picture/sending');
+
+						api( 'picture', { name : spot }, function( state, response ) {
+
+							if( state !== 200 ) {
+								status.textContent = Nino.adminUi.api.errorText( state, response, '/_admin/builder/error/upload' );
+								return;
+							}
+
+							dropStaged( [ chosen[spot] ] );
+							change( function() { chosen[spot] = response.file } );
+							redrawBox();
+						}, { file : input.files[0] } );
+					} );
+					holder.appendChild( line );
+					holder.appendChild( upload );
+					holder.appendChild( input );
+
+					if( has === true )
+						holder.appendChild( Nino.adminUi.button( word('place/own-remove'), function() {
+
+							dropStaged( [ chosen[spot] ] );
+
+							change( function() {
+
+								if( keep.own[spot] === undefined )
+									delete chosen[spot];
+								else
+									chosen[spot] = '';
+							} );
+							redrawBox();
+						}, { className : 'nino-admin-btn--small', kind : 'danger' } ) );
+
+					holder.appendChild( status );
+					group.appendChild( holder );
+				}
 			}
 
 			rows.push( group );
@@ -7983,10 +8151,17 @@
 		const schema = S.schemas[node.n];
 		const rows = [];
 
-		if( schema.attributes.limit !== undefined )
-			rows.push( attributeField( rel, 'limit', schema.attributes.limit ) );
-
 		const count = loopElements( node, rel );
+
+		// How many elements the block shows as examples: one to twelve, a choice - the attribute that says at most how many the loop shows
+		if( schema.attributes.limit !== undefined ) {
+
+			const set = Number( ( node.a ?? {} ).limit );
+			const now = Number.isInteger( set ) === true && set >= 1 ? Math.min( 12, set ) : Math.max( 1, Math.min( 12, count ?? 3 ) );
+			const options = Array.from( { length : 12 }, function( _, at ) { return { value : String( at + 1 ), label : String( at + 1 ) } } );
+
+			rows.push( Nino.adminUi.selectField( { key : rel+ ':examples', label : word('place/examples'), help : word('place/examples-help'), options : options, value : String( now ), onChange : function( value ) { setAttr( rel, 'limit', value ) } } ) );
+		}
 
 		if( count !== null ) {
 
@@ -9216,7 +9391,7 @@
 
 		// The model, for what drives it without a page
 		model : {
-			state : S, builds : builds, discard : discard, snap : snap, loremOf : loremOf, lengthOf : lengthOf, kindOfPlace : kindOfPlace, placeName : placeName, normalize : normalize, kindOf : kindOf, neighbour : neighbour, move : move, duplicate : duplicate, remove : remove,
+			state : S, builds : builds, lengthsOf : lengthsOf, restoreFrame : restoreFrame, missingFrames : missingFrames, dropStaged : dropStaged, openOffer : openOffer, discard : discard, snap : snap, loremOf : loremOf, lengthOf : lengthOf, kindOfPlace : kindOfPlace, placeName : placeName, normalize : normalize, kindOf : kindOf, neighbour : neighbour, move : move, duplicate : duplicate, remove : remove,
 			undo : undo, redo : redo, isDirty : isDirty, nodeAt : nodeAt, templateOf : templateOf, addressOf : addressOf,
 			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,

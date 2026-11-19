@@ -537,6 +537,23 @@
 	white-space: normal;
 }
 
+.builder-offer-pick {
+	color: var(--editor-text);
+}
+
+.builder-offer-icon {
+	display: inline-flex;
+	flex: none;
+	color: var(--editor-blue);
+}
+
+.builder-place-own > summary {
+	display: flex;
+	align-items: center;
+	min-height: 1.75rem;
+	cursor: pointer;
+}
+
 .builder-offer-pick:disabled {
 	opacity: .5;
 }

@@ -223,6 +223,11 @@ function builderAt( array $tree, string $id ): int {
 }
 
 
+/** The source of the page the suites work on, as it is written now */
+function builderTreeSource( array &$appData ): string {
+	return (string) file_get_contents( builderFile( $appData, 'page-home' ) );
+}
+
 /** The position of the first node a test says yes to, depth first - '2.1.1', the blanks counted - or null */
 function builderFind( array $nodes, callable $test, string $prefix = '' ): ?string {
 
@@ -1102,7 +1107,10 @@ $swapped = $page['tree'];
 $left = $page['tree'];
 array_splice( $left, $start - 1, 2 );
 $word = [ '/template/page-home/hero/title' => [ 'de_DE' => 'Ein Wort des Inhalts' ] ];
+$renamed = $page['tree'];
+$renamed[$hero]['a']['id'] = 'held';
 $builds = [
+	'a block with another id' => [ 'tree' => $renamed, 'texts' => $word ],
 	'a block put in'	=> [ 'tree' => $put['tree'], 'texts' => $put['texts'] + $word, 'inserted' => $put['inserted'] ],
 	'a block put in, unsaid' => [ 'tree' => $put['tree'], 'texts' => $put['texts'] + $word ],
 	'a block copied'	=> [ 'tree' => $copy['tree'], 'texts' => $copy['texts'] + $word, 'slots' => $copy['slots'] ],
@@ -1125,7 +1133,7 @@ $unchanged = builderSnapshot( $site ) === $snapshot;
 [ $kept ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $page['tree'], 'texts' => $word, 'base' => $page['stamp'] ] );
 
 check( 'the content step puts no block in, copies none, moves none and leaves none out - saved or drawn, with the block said to be one or not, with a word of its own in the same request - and nothing is written',
-	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && $unchanged === true && count( $answers ) === 10 );
+	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && $unchanged === true && count( $answers ) === 12 );
 // the words of a block put in or copied are not a way in either: the same page with the same blocks and a block said to be put in - or a slot said to be a copy - is no content
 \Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
 $snapshot = builderSnapshot( $site );
@@ -1624,6 +1632,83 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 	$firsts[$who] = [ $answers, $kept, $between, trim( (string) file_get_contents( builderFile( $site, 'page-home' ) ) ) === trim( $empty ) ];
 }
 
+// the frame of a page - the call of its head and of its foot - stays for every step, and where one is missing it is put back once and where it belongs
+$frames = [];
+
+foreach( [ 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 'blanket' => [ '/*' ], 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' ] ] as $who => $perms ) {
+
+	builderAccount( $site, 'frame-'. $who. '@example.com', $perms );
+	\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $empty );
+	[ , $whole ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+	$calls = array_keys( array_filter( $whole['tree'], static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'template' ) );
+	$withoutFoot = $whole['tree'];
+	array_splice( $withoutFoot, $calls[1], 2 );
+	$withoutHead = $whole['tree'];
+	array_splice( $withoutHead, $calls[0], 2 );
+	$save = static fn( array $tree, string $stamp ): int => builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $tree, 'texts' => [], 'base' => $stamp, 'force' => true ] )[0];
+	$before = builderSnapshot( $site );
+	$frames[$who]['foot out'] = $save( $withoutFoot, $whole['stamp'] );
+	$frames[$who]['head out'] = $save( $withoutHead, $whole['stamp'] );
+	$frames[$who]['kept'] = builderSnapshot( $site ) === $before;
+
+	// a page that has lost its foot - written by hand - has it put back at its end, once, and nowhere else
+	\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', "<!-- nino:template-name Home -->\n[template /templates/html-header]\n" );
+	[ , $short ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+	$foot = [ 'n' => 'template', 's' => '/templates/html-footer', 'a' => [], 'c' => null ];
+	$back = array_merge( $short['tree'], [ $foot, [ 't' => "\n" ] ] );
+	$twice = array_merge( $back, [ $foot, [ 't' => "\n" ] ] );
+	$before = builderTreeSource( $site );
+	$frames[$who]['put back'] = $save( $back, $short['stamp'] );
+	$frames[$who]['has it'] = str_contains( builderTreeSource( $site ), 'html-footer' ) === true;
+	\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', "<!-- nino:template-name Home -->\n[template /templates/html-header]\n" );
+	[ , $short ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+	$frames[$who]['twice'] = $save( $twice, $short['stamp'] );
+	$frames[$who]['twice by'] = (string) ( builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $twice, 'texts' => [], 'base' => $short['stamp'], 'force' => true ] )[1]['code'] ?? '' );
+	$ahead = $short['tree'];
+	array_splice( $ahead, 1, 0, [ $foot, [ 't' => "\n" ] ] );
+	$frames[$who]['before the head'] = $save( $ahead, $short['stamp'] );
+}
+
+check( 'the call of the head and the call of the foot are left out by no step - 403 and nothing is written - and a page that has lost its foot has it put back at its end by the design step and the blanket: once, never twice, never before the head; the content step is refused it as a change of the build',
+	array_map( static fn( array $row ): array => array_values( $row ), array_intersect_key( $frames, [ 'design' => 1, 'blanket' => 1 ] ) ) === [ 'design' => [ 403, 403, true, 200, true, 403, 'builder_refused_frame', 403 ], 'blanket' => [ 403, 403, true, 200, true, 403, 'builder_refused_frame', 403 ] ]
+	&& ( $frames['content']['foot out'] ?? 0 ) === 403 && ( $frames['content']['put back'] ?? 0 ) === 403 && $frames['content']['has it'] === false );
+
+// where the frame stands: the head is the first call of the page and the foot the last - a call that stands there stays there, a page that has it elsewhere is saved as it is, and a foot
+// that is put back goes behind the blocks and nowhere else
+$block = "[section-wrap id=\"late\" ground=\"base\"]\n\t[section-row]\n\t\t[section-col][/section-col]\n\t[/section-row]\n[/section-wrap]\n";
+$where = [];
+
+foreach( [ 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 'blanket' => [ '/*' ] ] as $who => $perms ) {
+
+	builderAccount( $site, 'where-'. $who. '@example.com', $perms );
+	$head = "<!-- nino:template-name Home -->\n[template /templates/html-header]\n";
+	$foot = "[template /templates/html-footer]\n";
+	$try = static function( string $from, string $to ) use ( &$site ): array {
+
+		\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $to );
+		[ , $target ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+		\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $from );
+		[ , $now ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+		$answer = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $target['tree'], 'texts' => [], 'base' => $now['stamp'], 'force' => true ] );
+
+		return [ $answer[0], (string) ( $answer[1]['code'] ?? '' ), $answer[1]['changed'] ?? null ];
+	};
+	$comment = "<!-- nino:template-name Home -->\n";
+	$headCall = "[template /templates/html-header]\n";
+	$where[$who]['foot moved in front of the block'] = $try( $head. $block. $foot, $head. $foot. $block );
+	$where[$who]['head moved behind the block'] = $try( $head. $block. $foot, $comment. $block. $headCall. $foot );
+	$where[$who]['a foot that stands elsewhere, as it is'] = $try( $head. $foot. $block, $head. $foot. $block );
+	$where[$who]['a foot put back in front of the block'] = $try( $head. $block, $head. $foot. $block );
+	$where[$who]['a foot put back behind the block'] = $try( $head. $block, $head. $block. $foot );
+}
+
+check( 'the head stays the first call of the page and the foot the last: moved between the blocks they are refused - 403 - for the design step and the blanket; a page that has the foot elsewhere is saved as it is; a foot that is put back goes behind the blocks and not in front of them',
+	array_values( array_unique( array_map( 'json_encode', array_column( $where, 'foot moved in front of the block' ) ) ) ) === [ json_encode( [ 403, 'builder_refused_frame', null ] ) ]
+	&& array_values( array_unique( array_map( 'json_encode', array_column( $where, 'head moved behind the block' ) ) ) ) === [ json_encode( [ 403, 'builder_refused_frame', null ] ) ]
+	&& array_values( array_unique( array_map( 'json_encode', array_column( $where, 'a foot that stands elsewhere, as it is' ) ) ) ) === [ json_encode( [ 200, '', false ] ) ]
+	&& array_values( array_unique( array_map( 'json_encode', array_column( $where, 'a foot put back in front of the block' ) ) ) ) === [ json_encode( [ 403, 'builder_refused_frame', null ] ) ]
+	&& array_values( array_unique( array_map( 'json_encode', array_column( $where, 'a foot put back behind the block' ) ) ) ) === [ json_encode( [ 200, '', true ] ) ] );
+
 foreach( $firsts as $who => $got )
 	check( 'the first block of a page that has none is put in by the account of the '. $who. ' step '. ( $who === 'content' ? '- it is refused, and the page stays as empty as it was -' : '- drawn, saved between the calls of the header and the footer - and the last one is taken out;' ). ' free markup and a second header are a 403 and nothing is written',
 		$got === ( $who === 'content' ? [ [ 'free' => 403, 'twice' => 403, 'preview' => 403, 'first' => 403 ], true, false, true ] : [ [ 'free' => 403, 'twice' => 403, 'preview' => 200, 'first' => 200, 'last' => 200 ], true, true, true ] ) );
@@ -1842,7 +1927,7 @@ builderAccount( $site, 'developer@example.com', [ '/*' ] );
 [ , $withHtml ] = builderOffered( $site, $tree, $column );
 
 check( 'a place offers what the register says for it, and the call of html to nobody here - not to the account of the whole site either: the column offers the components of the flow - none of them a row or a column -, what the register would not have there is grey with its reason, a call that holds nothing offers nothing, and the blanks are those of the depth',
-	$status === 200 && $names === array_keys( array_filter( $register, static fn( mixed $answer ): bool => $answer === true ) ) && in_array( 'section-col', $names, true ) === false && in_array( 'section-row', $names, true ) === false
+	$status === 200 && ( static function( array $one, array $two ): bool { sort( $one ); sort( $two ); return $one === $two; } )( $names, array_keys( array_filter( $register, static fn( mixed $answer ): bool => $answer === true ) ) ) && in_array( 'section-col', $names, true ) === false && in_array( 'section-row', $names, true ) === false
 	&& array_column( array_filter( $rowOffer['offers'], static fn( array $entry ): bool => $entry['why'] !== 'place' ), 'name' ) === array_keys( \Nino\Components::offer( $site, Tree::route( $tree, $row ) ?? [], Tree::at( $tree, $row )['c'] ) ) && $nowhere === 400
 	&& in_array( 'html', array_column( $offer['offers'], 'name' ), true ) === false && in_array( 'html', array_column( $withHtml['offers'], 'name' ), true ) === false && $offer['blank'] === "\n". str_repeat( "\t", count( $route ) ) );
 
@@ -1859,6 +1944,12 @@ check( 'every component of the dialog is in one part of it - the title of a sect
 	&& ( $byName['button-group']['section'] ?? '' ) === 'groups' && ( $loop === [] || $loopSections === [ 'loops' ] )
 	&& array_filter( $grey, static fn( array $entry ): bool => $entry['why'] === 'place' && $entry['name'] !== '' ) !== [] && ( $offer['offers'][0]['icon'] ?? null ) !== null
 	&& \Nino\Modules\Builder\Admin::dialogGroup( $site, 'section-title', false )['section'] === 'section' && \Nino\Modules\Builder\Admin::dialogGroup( $site, 'no-such-one', false )['section'] === 'general' && \Nino\Modules\Builder\Admin::dialogGroup( $site, 'whatever', true )['section'] === 'loops' );
+
+// the order of the tiles of a part is the same one for every place: the title stands before the subtitle
+$order = array_column( $offer['offers'], 'name' );
+
+check( 'the title stands before the subtitle in the dialog, whatever the register gives first: the order of the tiles of a part is the dialog\'s own',
+	array_search( 'section-title', $order, true ) !== false && array_search( 'section-title', $order, true ) < array_search( 'section-subtitle', $order, true ) );
 
 // a new component goes in as the panel puts it, laid out like its neighbours, and is the one line of the diff - the words it reads are its own
 builderAccount( $site, 'designer3@example.com', [ '/_admin/builder/manage' ] );

@@ -231,12 +231,14 @@ check( 'an id with foreign characters and a picture of a size the kernel does no
 
 // two places with one id are one place: the second call reads the words of the first, and the block says so as a draft it cannot keep
 $twice = placesEdit( $draft['tree'], (string) placesFind( $draft['tree'], static fn( array $node ): bool => $node['n'] === 'text' ), static fn( array $node ): array => array_replace( $node, [ 's' => '~titel' ] ) );
-[ $reading ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $twice, 'texts' => $draft['texts'], 'base' => $draft['stamp'], 'force' => true ] );
+$beforeTwice = placesSnapshot( $site );
+[ $reading, $readingBody ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $twice, 'texts' => $draft['texts'], 'base' => $draft['stamp'], 'force' => true ] );
+$readingCode = (string) ( $readingBody['code'] ?? '' );
+$readingParams = (array) ( $readingBody['params'] ?? [] );
 unset( $site['./nino/blocks/state'] );
-$source = (string) \Nino\Blocks::get( $site, $key )['source'];
 
-check( 'two places with one id are one place for the server - the text reads the id of the title, there is one key for both and no second one - and it is the editor that keeps the ids of a block apart, at the field',
-	$reading === 200 && substr_count( $source, '~titel' ) === 2 );
+check( 'two components that read one place of the block are refused with a sentence of their own - 400, and nothing is written - and the id of the place is in it',
+	$reading === 400 && $readingCode === 'blocks_place_twice' && ( $readingParams[0] ?? '' ) === 'titel' && placesSnapshot( $site ) === $beforeTwice );
 
 // markup in the sample of a place is text: no tag is kept, the words of the block are the words
 [ , $draft ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
@@ -250,6 +252,145 @@ $found = json_encode( $words );
 check( 'markup in the sample of a place is no markup in the files of the block: a tag is not kept - a request that carries one is refused or its words are cleaned - and a script never stands in them',
 	( $markup === 200 && str_contains( (string) $found, '<script' ) === false && str_contains( (string) $found, '<b>' ) === false ) || $markup === 400 || $markup === 403 );
 
+echo "\nB2. A block that is saved as it is\n";
+
+// a block.json that a hand or an older version wrote - the languages the other way round, an empty set as a list - is the same to the byte after a save that changes nothing
+[ , $draft ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
+$file = $sandbox. '/private/blocks/'. $key. '/block.json';
+$meta = json_decode( (string) file_get_contents( $file ), true );
+$meta['name'] = array_reverse( $meta['name'] );
+$meta['description'] = array_reverse( (array) $meta['description'] );
+$meta['variants'] = [ 'standard' => [ 'label' => [ 'en_US' => 'Standard', 'de_DE' => 'Standard' ], 'set' => [] ], 'quiet' => [ 'label' => [ 'en_US' => 'Quiet', 'de_DE' => 'Ruhig' ], 'set' => [ 'root' => [ 'ground' => 'alt' ] ] ] ];
+file_put_contents( $file, json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n" );
+unset( $site['./nino/blocks/state'] );
+[ , $draft ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
+$was = (string) file_get_contents( $file );
+$variants = array_map( static fn( array $variant ): array => [ 'name' => $variant['name'], 'label' => $variant['label'], 'set' => $variant['set'] ], $draft['alternatives'] ?? [] );
+[ $unchanged ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'variants' => $variants, 'details' => $draft['details'], 'base' => $draft['stamp'] ] );
+
+check( 'a block that is saved without a change keeps its block.json to the byte - the file of an older version, with the languages the other way round and an empty set as a list, is not made over - and a change is written',
+	$unchanged === 200 && count( $variants ) === 2 && hash( 'sha256', (string) file_get_contents( $file ) ) === hash( 'sha256', $was ) );
+
+[ , $draft ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
+$details = $draft['details'];
+$details['rank'] = 7;
+[ $changed ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'variants' => $variants, 'details' => $details, 'base' => $draft['stamp'] ] );
+
+check( 'and a change of the block is written: the rank is the new one', $changed === 200 && ( json_decode( (string) file_get_contents( $file ), true )['rank'] ?? 0 ) === 7 );
+
+echo "\nB3. The picture of a place\n";
+$key = $one['key'] ?? 'platz-block';
+
+// The kernel writes a picture anew with gd: a php without it leaves this part out and says so
+if( function_exists( 'imagecreatetruecolor' ) === false )
+	echo "  note  - gd is not there: the part about the picture of a place is left out\n";
+else {
+
+
+// a picture for a place: looked at, written anew by the kernel and kept apart for this session and this block until the block is saved; a svg is cleaned, any other kind is refused at once
+$pngBytes = (string) base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' );
+$gifBytes = (string) base64_decode( 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' );
+$uploadAs = static function( array &$appData, string $bytes, string $name, string $block = 'platz-block' ) use ( $sandbox ): array {
+
+	$path = $sandbox. '/upload-'. bin2hex( random_bytes( 4 ) );
+	file_put_contents( $path, $bytes );
+	$_FILES['file'] = [ 'name' => $name, 'type' => 'application/octet-stream', 'tmp_name' => $path, 'error' => UPLOAD_ERR_OK, 'size' => strlen( $bytes ) ];
+	$answer = placesCall( $appData, 'blocks/picture', [ 'key' => $block, 'name' => 'bild' ] );
+	unset( $_FILES['file'] );
+
+	return $answer;
+};
+$staging = $sandbox. '/private/data/.preview/blocks-picture/';
+$ownFiles = static fn( string $block ): array => array_map( 'basename', (array) glob( $sandbox. '/private/blocks/'. $block. '/images/bild.*' ) );
+[ $sent, $staged ] = $uploadAs( $site, $pngBytes. '<?php echo 1; ?>', 'a.png', $key );
+[ $hostile, $hostileStaged ] = $uploadAs( $site, '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(1)</script><rect width="9" height="9"/></svg>', 'b.svg', $key );
+[ $nothing ] = $uploadAs( $site, 'this is no picture', 'c.txt', $key );
+[ $gif, $gifBody ] = $uploadAs( $site, $gifBytes, 'd.gif', $key );
+[ $empty, $emptyBody ] = $uploadAs( $site, '', 'e.png', $key );
+[ , $draft ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
+
+check( 'a picture for a place is looked at and written anew - a png with a script appended to it is kept without it -, a svg with a script comes out cleaned, and a file that is no picture, a gif and an empty file are refused with a sentence of their own at once; nothing of the block is written',
+	$sent === 200 && in_array( $staged['type'] ?? '', [ 'png', 'webp', 'jpg' ], true ) === true && str_contains( (string) file_get_contents( $staging. $staged['file'] ), '<?php' ) === false && $hostile === 200 && ( $hostileStaged['type'] ?? '' ) === 'svg'
+	&& $nothing >= 400 && $gif === 400 && ( $gifBody['code'] ?? '' ) === 'blocks_picture_type' && $empty === 400 && ( $emptyBody['code'] ?? '' ) === 'blocks_picture_empty' && $ownFiles( $key ) === []
+	&& str_contains( (string) file_get_contents( $staging. $hostileStaged['file'] ), 'script' ) === false );
+
+// the file is the session's and the block's: another block, or another session, puts nothing of it in
+[ , $other ] = placesCall( $site, 'blocks/create', [ 'name' => 'Anderer Block', 'category' => 'content', 'from' => '' ] );
+[ , $otherDraft ] = placesCall( $site, 'blocks/open', [ 'key' => $other['key'] ] );
+$otherBase = '/template/'. $otherDraft['template']. '/'. (string) ( $otherDraft['tree'][array_key_first( array_filter( $otherDraft['tree'], static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-wrap' ) )]['a']['id'] ?? '' ). '/';
+$otherCol = placesFind( $otherDraft['tree'], static fn( array $node ): bool => $node['n'] === 'section-col' ) ?? '';
+$otherTree = placesEdit( $otherDraft['tree'], $otherCol, static function( array $node ): array { $node['c'] = [ [ 'n' => 'image', 's' => '~bild', 'a' => [], 'c' => null ] ]; return $node; } );
+$beforeOther = placesSnapshot( $site );
+[ $elsewhere ] = placesCall( $site, 'blocks/save', [ 'key' => $other['key'], 'tree' => $otherTree, 'texts' => $otherDraft['texts'], 'pictures' => [ $otherBase. 'bild' => [ 'label' => 'Bild', 'width' => 800, 'height' => 600 ] ], 'own' => [ 'bild' => $staged['file'] ], 'base' => $otherDraft['stamp'] ] );
+$sessionWas = $_SESSION;
+$_SESSION = [];
+[ $strange ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'own' => [ 'bild' => $staged['file'] ], 'base' => $draft['stamp'] ] );
+$_SESSION = $sessionWas;
+
+check( 'a picture that was put aside for one block is put in no other block, and a session that did not put it aside puts it in none: 403, and nothing is written',
+	$elsewhere === 403 && $strange === 403 && placesSnapshot( $site ) === $beforeOther && is_file( $staging. $staged['file'] ) === true );
+
+// a save that fails keeps the file for the next save
+$beforeFailing = placesSnapshot( $site );
+$broken = placesEdit( $draft['tree'], (string) placesFind( $draft['tree'], static fn( array $node ): bool => $node['n'] === 'section-title' ), static fn( array $node ): array => array_replace( $node, [ 's' => '~Titel' ] ) );
+[ $failed ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $broken, 'texts' => $draft['texts'], 'own' => [ 'bild' => $staged['file'] ], 'base' => $draft['stamp'], 'force' => true ] );
+
+check( 'a save that fails - 400 or 403 - keeps the picture that was put aside: it is there for the next save, and nothing is written',
+	in_array( $failed, [ 400, 403 ], true ) && is_file( $staging. $staged['file'] ) === true && placesSnapshot( $site ) === $beforeFailing );
+
+// and so does one that fails when the kernel looks at the picture - the file is there, a bad picture the kernel refuses, and the one that is good takes its place
+$token = str_repeat( 'c', 32 ). '.png';
+file_put_contents( $staging. $token, 'this is no png' );
+$_SESSION['nino_blocks_pictures'][$token] = [ 'key' => $key, 'until' => time() + 3600 ];
+$beforeBad = placesSnapshot( $site );
+[ $bad ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'own' => [ 'bild' => $token ], 'base' => $draft['stamp'], 'force' => true ] );
+
+check( 'a save that the kernel refuses for the picture - 400 - keeps the file that was put aside for the next save, and nothing is written',
+	$bad === 400 && is_file( $staging. $token ) === true && placesSnapshot( $site ) === $beforeBad );
+
+@unlink( $staging. $token );
+unset( $_SESSION['nino_blocks_pictures'][$token] );
+
+[ $made ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'own' => [ 'bild' => $staged['file'] ], 'base' => $draft['stamp'] ] );
+[ , $after ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
+$kind = (string) substr( (string) $staged['file'], 33 );
+$pictureFile = $sandbox. '/private/blocks/'. $key. '/images/bild.'. $kind;
+
+check( 'the save makes the picture the own picture of the place - the file, which is the kernel\'s writing of it and holds nothing that was appended, stands in the folder of the block, the draft says which places have one, and the file that was put aside is gone',
+	$made === 200 && is_file( $pictureFile ) === true && str_contains( (string) file_get_contents( $pictureFile ), '<?php' ) === false && ( (array) ( $after['own'] ?? [] ) ) === [ 'bild' => $kind ] && is_file( $staging. $staged['file'] ) === false );
+
+$refusals = [];
+
+foreach( [ 'a place that is none' => [ [ 'nope' => $hostileStaged['file'] ], 'blocks_picture_own' ], 'a name that is no name' => [ [ '../x' => $hostileStaged['file'] ], 'blocks_picture_name' ], 'a name that is a path to a picture' => [ [ '../../../blocks/'. $key. '/images/bild' => '' ], 'blocks_picture_name' ], 'a token that is a path' => [ [ 'bild' => '../../x.png' ], 'blocks_picture_own' ], 'a token that is gone' => [ [ 'bild' => str_repeat( 'a', 32 ). '.png' ], 'blocks_picture_own' ] ] as $label => [ $own, $code ] ) {
+
+	$before = placesSnapshot( $site );
+	[ $status, $body ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $after['tree'], 'texts' => $after['texts'], 'own' => $own, 'base' => $after['stamp'], 'force' => true ] );
+	$refusals[$label] = in_array( $status, [ 400, 403 ], true ) && ( $body['code'] ?? '' ) === $code && placesSnapshot( $site ) === $before;
+}
+
+check( 'a place that is none, a name that is no name - never a path -, a token that is a path and one that is gone are refused with the sentence for each - and nothing is written',
+	array_filter( $refusals, static fn( bool $ok ): bool => $ok === false ) === [] );
+
+[ $gone ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $after['tree'], 'texts' => $after['texts'], 'own' => [ 'bild' => '' ], 'base' => $after['stamp'], 'force' => true ] );
+[ , $last ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
+
+check( 'a place that is told "none" has no picture of its own any more: the file is gone and the draft says so', $gone === 200 && $ownFiles( $key ) === [] && ( (array) ( $last['own'] ?? [ 'x' => 1 ] ) ) === [] );
+
+// what was put aside and is not wanted goes: the draft that is given up lets go of it - of this block, of this session - and whatever is old goes at the next action of the panel, whichever it is
+[ , $again ] = $uploadAs( $site, $pngBytes, 'f.png', $key );
+[ $dropElsewhere ] = placesCall( $site, 'blocks/picture-drop', [ 'key' => $other['key'], 'files' => [ $again['file'] ] ] );
+$keptElsewhere = is_file( $staging. $again['file'] ) === true;
+[ $dropped, $droppedBody ] = placesCall( $site, 'blocks/picture-drop', [ 'key' => $key, 'files' => [ $again['file'], '../x', 7 ] ] );
+$old = $staging. str_repeat( 'b', 32 ). '.png';
+file_put_contents( $old, 'old' );
+touch( $old, time() - 4 * 3600 );
+placesCall( $site, 'blocks/list' );
+
+check( 'a picture that was put aside and is not wanted is let go of by the draft that is given up - only by the block and the session it was for - and a file that is old goes at the next action of the panel, whichever it is',
+	$dropElsewhere === 200 && $keptElsewhere === true && $dropped === 200 && ( $droppedBody['dropped'] ?? 0 ) === 1 && is_file( $staging. $again['file'] ) === false && is_file( $old ) === false );
+
+}
+
 echo "\nC. The loops\n";
 
 [ $offered, $offer ] = placesCall( $site, 'blocks/offer', [ 'tree' => $draft['tree'], 'at' => (string) placesFind( $draft['tree'], static fn( array $node ): bool => $node['n'] === 'section-col' ) ] );
@@ -258,15 +399,25 @@ $loops = array_values( array_filter( $offer['offers'] ?? [], static fn( array $e
 check( 'the dialog of the components offers the loops - the lists, the tables, the collection - and every one of them stands in the part of the dialog that is the loops, whatever group the register gives it',
 	$offered === 200 && count( $loops ) > 0 && array_unique( array_column( $loops, 'section' ) ) === [ 'loops' ] && in_array( 'collection-list', array_column( $loops, 'name' ), true ) === true );
 
+// the filter holds loops and is none: it is the last of the loops - and the two columns the register has, of a section and of a table, are told apart by what they are a part of
+$inLoops = array_values( array_filter( $offer['offers'] ?? [], static fn( array $entry ): bool => $entry['section'] === 'loops' ) );
+$columns = array_filter( array_column( $offer['offers'] ?? [], 'label', 'name' ), static fn( mixed $label, string $name ): bool => in_array( $name, [ 'section-col', 'collection-col' ], true ), ARRAY_FILTER_USE_BOTH );
+
+check( 'the filter is a tile of the loops and the last of them, and the column of a table is not named like the column of a section: it says "(Table)" - the dialog never has two tiles of one name',
+	end( $inLoops )['name'] === 'collection-filter' && count( $columns ) === 2 && ( $columns['section-col']['en_US'] ?? '' ) !== ( $columns['collection-col']['en_US'] ?? '' ) && str_ends_with( (string) ( $columns['collection-col']['en_US'] ?? '' ), '(Table)' ) === true
+	&& count( array_unique( array_map( static fn( array $entry ): string => json_encode( $entry['label'] ), $offer['offers'] ) ) ) === count( $offer['offers'] ) );
+
 [ , $draft ] = placesCall( $site, 'blocks/open', [ 'key' => $key ] );
 $loopTree = placesEdit( $draft['tree'], (string) placesFind( $draft['tree'], static fn( array $node ): bool => $node['n'] === 'section-col' ), static function( array $node ): array {
 
 	$node['c'][] = [ 'n' => 'collection-list', 's' => '/_placeholder', 'a' => [], 'c' => [ [ 't' => "\n" ], [ 'n' => 'text', 's' => '.title', 'a' => [], 'c' => null ], [ 't' => "\n" ] ] ];
 	$node['c'][] = [ 't' => "\n" ];
+	$node['c'][] = [ 'n' => 'collection-table', 's' => '/_placeholder', 'a' => [], 'c' => [ [ 'n' => 'collection-col', 's' => '.title', 'a' => [ 'title' => '~heading-title', 'rowhead' => true ], 'c' => null ], [ 'n' => 'collection-col', 's' => '.text', 'a' => [ 'title' => '~heading-text' ], 'c' => null ] ] ];
+	$node['c'][] = [ 't' => "\n" ];
 
 	return $node;
 } );
-[ $loopSaved ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $loopTree, 'texts' => $draft['texts'], 'pictures' => [], 'base' => $draft['stamp'] ] );
+[ $loopSaved ] = placesCall( $site, 'blocks/save', [ 'key' => $key, 'tree' => $loopTree, 'texts' => $draft['texts'] + [ $base. 'heading-title' => [ 'de_DE' => 'Titel', 'en_US' => 'Titel' ], $base. 'heading-text' => [ 'de_DE' => 'Text', 'en_US' => 'Text' ] ], 'pictures' => [], 'base' => $draft['stamp'] ] );
 unset( $site['./nino/blocks/state'] );
 
 [ $third, $thirdId ] = $put( 3 );
@@ -277,6 +428,6 @@ $real = placesEdit( $page['tree'], $loopAt, static fn( array $node ): array => a
 [ $unknown ] = placesCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => placesEdit( $page['tree'], $loopAt, static fn( array $node ): array => array_replace( $node, [ 's' => '/nope' ] ) ), 'texts' => [], 'base' => $page['stamp'], 'force' => true ] );
 
 check( 'a block that holds a loop is saved with the placeholder type, is put into a page, and the page shows a type of the project in it - a type the project has is taken and one it has not is refused',
-	$loopSaved === 200 && $third === 200 && $loopAt !== '' && $filled === 200 && $unknown === 403 && str_contains( (string) file_get_contents( $sandbox. '/private/templates/page-home.tpl' ), '[collection-list /services' ) === true );
+	$loopSaved === 200 && $third === 200 && $loopAt !== '' && $filled === 200 && $unknown === 403 && str_contains( (string) file_get_contents( $sandbox. '/private/templates/page-home.tpl' ), '[collection-list /services' ) === true && str_contains( (string) file_get_contents( $sandbox. '/private/templates/page-home.tpl' ), '[collection-table /_placeholder' ) === true );
 
 ninoDone( $site );

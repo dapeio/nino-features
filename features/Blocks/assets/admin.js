@@ -951,7 +951,7 @@
 
 	// What of the draft is the draft: the tree as the template has it, the variants with their sets, the details - and nothing of which variant is looked at
 	const canon = function( top, x ) {
-		return { tree : top.map( function( node ) { return cloned( node, true ) } ), variants : setsOut( top, x ), more : { vars : ( x.vars ?? [] ).map( function( variant ) { return [ variant.name, variant.label ] } ), details : x.details ?? null } };
+		return { tree : top.map( function( node ) { return cloned( node, true ) } ), variants : setsOut( top, x ), more : { vars : ( x.vars ?? [] ).map( function( variant ) { return [ variant.name, variant.label ] } ), details : x.details ?? null, own : x.ownChosen ?? null } };
 	};
 
 	// The attributes of the calls are those of the variant that is edited
@@ -1032,6 +1032,10 @@
 			body.variants = setsOut( stateOf().top, x );
 			body.details = x.details;
 		}
+
+		// The pictures that were chosen for a place, or taken away: what the save makes of the staged files
+		if( action === 'save' && x.ownChosen !== undefined && Object.keys( x.ownChosen ).length > 0 )
+			body.own = x.ownChosen;
 	};
 
 	// What is made of an answer of the server: the variants and the details as they are saved, the variant that was edited kept where it is still there
@@ -1042,6 +1046,8 @@
 
 		x.vars = list.map( function( variant ) { return { name : variant.name, label : Object.assign( {}, variant.label ) } } );
 		x.details = response.details === undefined ? undefined : JSON.parse( JSON.stringify( response.details ) );
+		x.own = response.own === undefined || Array.isArray( response.own ) === true ? {} : Object.assign( {}, response.own );
+		x.ownChosen = {};
 		x.edited = x.vars.some( function( variant ) { return variant.name === previous.edited } ) === true ? previous.edited : firstOf( x );
 		attach( stateOf().top, list );
 		materialize( stateOf().top, x.edited );
