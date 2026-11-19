@@ -77,9 +77,9 @@ check( 'C2. the pencil has its field at the right of every component, in its mar
 check( 'C3. the pencil and the plus change their ground and their edge on the pointer and nothing else - no growth, no shadow ring - with a soft change that the setting for reduced motion takes away',
 	/button\.pen:hover\{border-color:var\(--b-blue\);background:var\(--b-soft\)\}/.test( script ) === true && /button\.insert:hover,button\.insert:focus-visible\{border-color:var\(--b-blue\);background:var\(--b-soft\)\}/.test( script ) === true
 	&& /box-shadow:0 0 0 3px var\(--b-soft\)/.test( script ) === false && /transition:opacity \.12s,visibility 0s \.12s,background-color \.12s,border-color \.12s/.test( script ) === true && /@media \(prefers-reduced-motion:reduce\)\{button\.pen,\.mark\{transition:none\}\}/.test( script ) === true );
-check( 'C4. the pictures of the devices stand in the middle of their buttons, both ways, and the phone, the tablet and the desktop differ in shape: narrow, square, wide with a foot',
-	/\.builder-step-glyph,\s*\.builder-step-glyph > span \{\s*display: inline-flex;\s*align-items: center;\s*justify-content: center;/.test( sheet ) === true
-	&& has( /smartphone\t\t: \[ \[ 'rect', 7, 2, 10, 20, 2 \]/ ) === true && has( /tablet\t\t\t\t: \[ \[ 'rect', 3, 3, 18, 18, 2 \]/ ) === true && has( /monitor\t\t\t\t: \[ \[ 'rect', 2, 3, 20, 14, 2 \], \[ 'line', 8, 21, 16, 21 \]/ ) === true );
+check( 'C4. the pictures of the devices, the alignments and the directions are the workbench\'s: no strokes of the panel, steps() with an icon in the lightbox, the face of the workbench in the bar of the preview, one table that says which picture a value has - and the stretch is the tall bars',
+	has( /GLYPHS/ ) === false && has( /createElementNS/ ) === false && /builder-step-glyph/.test( sheet ) === false && has( /icon : pictured_ === true \? pictures\[at\] : undefined/ ) === true && has( /icon : device\.glyph/ ) === true
+	&& has( /label\.className = 'nino-admin-steps-icon';/ ) === true && has( /valign\s*: \{ stretch : 'stretch-vertical'/ ) === true && has( /smartphone/ ) === true && has( /monitor/ ) === true );
 check( 'C5. a section has the place above it as well as the one below: where the page has none above it of its own, the plus is the one below the block before',
 	has( /const earlier = index > 0 \? blocks\[index - 1\] : undefined;/ ) === true && has( /spot\.block === earlier\.at && spot\.carry === 'after'/ ) === true );
 check( 'C6. the pencil belongs to the component under a pointer that stands still when the page is rolled: the roll asks what is under the pointer again, and a pointer that left the page asks nothing',
@@ -104,10 +104,8 @@ check( 'C10. the picture of a section whose place is written and not made yet is
 
 console.log( '\nD. The lightbox' );
 
-check( 'D1. a press in the dimmed area closes the lightbox like "Close" - only one that began there and ended there - and no dialog with a form is given this',
-	has( /dimmedClose\( holder\.closest\('dialog'\), box \)/ ) === true && has( /began = event\.target === dialog && outside\( event \)/ ) === true && has( /closes = began === true && event\.target === dialog && outside\( event \)/ ) === true
-	&& ( script.match( /dimmedClose\(/g ) ?? [] ).length === 1
-	&& has( /open\[open\.length - 1\] === dialog/ ) === true );
+check( 'D1. a press in the dimmed area closes the lightbox like "Close" by the dismiss of the workbench - it asks the top dialog only and no dialog with a form is given it - and the panel has no listener of its own for it',
+	has( /dismiss\s*: true,/ ) === true && ( script.match( /dismiss\s*: true/g ) ?? [] ).length === 1 && has( /dimmedClose/ ) === false && has( /outside\( event \)/ ) === false );
 check( 'D2. the width that is chosen in the lightbox is the width of the preview, and the choice in the bar of the preview is the same choice',
 	has( /const showWidth = function\( device \)/ ) === true && has( /S\.view\.preview\.width\( device\.width \)/ ) === true && has( /S\.tools\.setWidth\( device\.width \)/ ) === true && has( /showWidth\( DEVICES\.find\( function\( device \) \{ return device\.width === value \} \) \)/ ) === true );
 check( 'D3. the row of the devices has no caption on the screen and keeps its name for a screen reader, the devices stand at its right; the inputs that the width switches share one quiet surface with it - and so does a setting that has one value for each width',
@@ -115,8 +113,7 @@ check( 'D3. the row of the devices has no caption on the screen and keeps its na
 	&& /\.builder-lightbox \.builder-widths-box \{[^}]*background: var\(--editor-bg\);/.test( sheet ) === true && /\.builder-lightbox \.builder-width-pick \{[^}]*justify-content: flex-end/.test( sheet ) === true );
 check( 'D4. the notation of a component is no part of a page: the button behind the code is for a sheet of the editor of the blocks and for the one who designs',
 	has( /S\.level >= 2 && only === undefined && S\.sheet === 'block'/ ) === true );
-// the notices are the catalogue's own file: where the features stand in a kernel of their own the file there is the kernel's, and says nothing of them
-check( 'D5. the icons of the Builder are named in the notices of the third party: the devices, the alignments and the directions are Lucide geometry',
-	/The catalogue's own code/.test( notices ) === false || ( /GLYPHS/.test( notices ) === true && /features\/Builder\/assets\/admin\.js/.test( notices ) === true ) );
+check( 'D5. the notices of the third party name no strokes of the Builder: it draws no icon of its own',
+	/The catalogue's own code/.test( notices ) === false || /GLYPHS/.test( notices ) === false );
 
 done();

@@ -105,7 +105,8 @@
 	display: contents;
 }
 
-:is( #builder-app, #blocks-app ) .builder-rail-button {
+/* The resting colour is not given to a button that is lit: the mark of the workbench for it (the accent, in its strip) is the one that shows */
+:is( #builder-app, #blocks-app ) .builder-rail-button:not(.is-lit) {
 	color: var(--editor-text-secondary);
 }
 
@@ -113,32 +114,6 @@
 	border-color: var(--editor-blue);
 	background: var(--editor-blue-soft);
 	color: var(--editor-text);
-}
-
-/* What the other views point at - the pointer over a block, the component the pencil is for - is marked in the strip and in the rows of the outline in the colour of the accent:
-   its own line round the button or the row, over a tint, so that it is seen at a glance and not as a shade of the ground */
-:is( #builder-app, #blocks-app ) .builder-rail-button.is-lit {
-	border-color: var(--editor-blue);
-	background: var(--editor-blue-soft);
-	box-shadow: inset 0 0 0 1px var(--editor-blue);
-	color: var(--editor-blue);
-}
-
-:is( #builder-app, #blocks-app ) .builder-outline .is-lit:not(.builder-rail-button) {
-	background: var(--editor-blue-soft);
-	box-shadow: inset 0 0 0 2px var(--editor-blue);
-}
-
-/* The name of the panel above the way back is told to a screen reader and not shown: the head of the pane gives way to the bar, and the bar needs no second title */
-:is( #builder-app, #blocks-app ) .nino-admin-contextbar-panel {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	margin: -1px;
-	padding: 0;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
 }
 
 :is( #builder-app, #blocks-app ) .builder-rail-button.is-quiet + .builder-rail-button:not(.is-quiet),
@@ -320,12 +295,6 @@
 	justify-self: start;
 }
 
-/* The steps that are pictures: the picture stands in the middle of its step, the word is for the tooltip and a screen reader */
-.builder-step-glyph > span:first-child {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-}
 
 .builder-lightbox .builder-field-label {
 	display: block;
@@ -610,12 +579,4 @@
 }
 
 
-}
-
-/* A step that is a picture - the devices, the alignments - has it in the middle of its button, both ways: the button is taller than the line of its word */
-.builder-step-glyph,
-.builder-step-glyph > span {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 }

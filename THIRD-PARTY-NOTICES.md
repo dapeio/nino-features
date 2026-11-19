@@ -4,9 +4,7 @@ The catalogue's own code is released under the [MIT License](LICENSE). It
 bundles no third-party library, but its features draw icons from one: the
 `icon()` of every feature's workbench panel (`features/*/Admin/Admin.php`),
 the Builder's panel (`features/Builder/templates/panel.tpl`), the `ICONS` of
-Design's panel script (`features/Design/assets/admin.js`), the `GLYPHS` of the Builder's
-panel script (`features/Builder/assets/admin.js`: the devices of a width, the alignments and
-the directions) and the `icon` of every
+Design's panel script (`features/Design/assets/admin.js`) and the `icon` of every
 component a manifest declares (`features/*/feature.php`) carry the geometry of inline SVG icons
 from [Lucide](https://lucide.dev), but for `tracking` in that script, which is drawn
 for the panel and is the catalogue's own. Lucide is released under the ISC License; the

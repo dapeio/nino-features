@@ -196,32 +196,12 @@
 
 	/**
 	 *	The pictures of the knobs that are pictures: the devices of a width, the alignments, the direction. ONE place says which picture a value has - GLYPH_OF, by the name of the
-	 *	attribute and the value, where a name or a value that is not in it is a word - and one place draws them: the workbench's own set (Nino.adminUi.icon()) where it has the
-	 *	name, else the strokes here, which are drawn as that set draws: 24 by 24, a line of two, round ends
+	 *	attribute and the value, where a name or a value that is not in it is a word - and the workbench draws them: its set (Nino.adminUi.icon(), steps() with an icon) holds each of them
 	 */
-	const GLYPHS = {
-		smartphone		: [ [ 'rect', 7, 2, 10, 20, 2 ], [ 'line', 12, 18, 12.01, 18 ] ],
-		tablet				: [ [ 'rect', 3, 3, 18, 18, 2 ], [ 'line', 12, 17.5, 12.01, 17.5 ] ],
-		monitor				: [ [ 'rect', 2, 3, 20, 14, 2 ], [ 'line', 8, 21, 16, 21 ], [ 'line', 12, 17, 12, 21 ] ],
-		'align-left'	: [ [ 'path', 'M21 6H3' ], [ 'path', 'M15 12H3' ], [ 'path', 'M17 18H3' ] ],
-		'align-center'	: [ [ 'path', 'M21 6H3' ], [ 'path', 'M17 12H7' ], [ 'path', 'M19 18H5' ] ],
-		'align-right'	: [ [ 'path', 'M21 6H3' ], [ 'path', 'M21 12H9' ], [ 'path', 'M21 18H7' ] ],
-		'align-start-horizontal'	: [ [ 'path', 'M3 3h18' ], [ 'rect', 5, 6, 5, 14, 1 ], [ 'rect', 14, 6, 5, 9, 1 ] ],
-		'align-center-horizontal'	: [ [ 'path', 'M3 12h18' ], [ 'rect', 5, 4, 5, 16, 1 ], [ 'rect', 14, 7, 5, 10, 1 ] ],
-		'align-end-horizontal'		: [ [ 'path', 'M3 21h18' ], [ 'rect', 5, 4, 5, 14, 1 ], [ 'rect', 14, 9, 5, 9, 1 ] ],
-		'stretch-horizontal'			: [ [ 'rect', 5, 4, 5, 16, 1 ], [ 'rect', 14, 4, 5, 16, 1 ] ],
-		'align-start-vertical'		: [ [ 'path', 'M3 3v18' ], [ 'rect', 6, 5, 14, 5, 1 ], [ 'rect', 6, 14, 9, 5, 1 ] ],
-		'align-center-vertical'		: [ [ 'path', 'M12 3v18' ], [ 'rect', 5, 5, 14, 5, 1 ], [ 'rect', 7, 14, 10, 5, 1 ] ],
-		'align-end-vertical'			: [ [ 'path', 'M21 3v18' ], [ 'rect', 4, 5, 14, 5, 1 ], [ 'rect', 9, 14, 9, 5, 1 ] ],
-		'align-horizontal-space-between'	: [ [ 'path', 'M3 3v18' ], [ 'path', 'M21 3v18' ], [ 'rect', 7, 7, 4, 10, 1 ], [ 'rect', 13, 7, 4, 10, 1 ] ],
-		'arrow-right'	: [ [ 'path', 'M5 12h14' ], [ 'path', 'm12 5 7 7-7 7' ] ],
-		'arrow-left'	: [ [ 'path', 'M19 12H5' ], [ 'path', 'm12 19-7-7 7-7' ] ],
-	};
-
-	// Which picture a value of an attribute has: the width of the page, the alignment of a text, of the columns and of the rows, the direction, hidden or shown
+	// Which picture a value of an attribute has: the alignment of a text, of the columns and of the rows, the direction, hidden or shown
 	const GLYPH_OF = {
 		align		: { start : 'align-left', center : 'align-center', end : 'align-right' },
-		valign	: { stretch : 'stretch-horizontal', start : 'align-start-horizontal', center : 'align-center-horizontal', end : 'align-end-horizontal' },
+		valign	: { stretch : 'stretch-vertical', start : 'align-start-horizontal', center : 'align-center-horizontal', end : 'align-end-horizontal' },
 		halign	: { start : 'align-start-vertical', center : 'align-center-vertical', end : 'align-end-vertical', between : 'align-horizontal-space-between' },
 		reverse	: { off : 'arrow-right', on : 'arrow-left' },
 		hide		: { off : 'eye', on : 'eye-off' },
@@ -231,36 +211,7 @@
 	const DEVICES = [ { width : 'mobile', part : '', glyph : 'smartphone' }, { width : 'tablet', part : 'm', glyph : 'tablet' }, { width : 'desktop', part : 'l', glyph : 'monitor' } ];
 
 	const glyph = function( name, size ) {
-
-		const own = GLYPHS[name];
-
-		if( own === undefined )
-			return Nino.adminUi.icon( name, { size : size ?? 16 } );
-
-		// Drawn as the workbench draws its own: 24 by 24, a line of two in the colour of the text, round ends, a decoration for the word beside it
-		const svg = dc.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
-
-		Object.keys( { class : 'nino-admin-icon', width : String( size ?? 16 ), height : String( size ?? 16 ), viewBox : '0 0 24 24', fill : 'none', stroke : 'currentColor', 'stroke-width' : '2', 'stroke-linecap' : 'round', 'stroke-linejoin' : 'round', focusable : 'false', 'aria-hidden' : 'true' } ).forEach( function( attribute ) {
-			svg.setAttribute( attribute, { class : 'nino-admin-icon', width : String( size ?? 16 ), height : String( size ?? 16 ), viewBox : '0 0 24 24', fill : 'none', stroke : 'currentColor', 'stroke-width' : '2', 'stroke-linecap' : 'round', 'stroke-linejoin' : 'round', focusable : 'false', 'aria-hidden' : 'true' }[attribute] );
-		} );
-
-		own.forEach( function( part ) {
-
-			const shape = dc.createElementNS( 'http://www.w3.org/2000/svg', part[0] );
-
-			if( part[0] === 'path' )
-				shape.setAttribute( 'd', part[1] );
-			else if( part[0] === 'line' ) {
-				[ 'x1', 'y1', 'x2', 'y2' ].forEach( function( attribute, at ) { shape.setAttribute( attribute, String( part[at + 1] ) ) } );
-			}
-			else {
-				[ 'x', 'y', 'width', 'height', 'rx' ].forEach( function( attribute, at ) { shape.setAttribute( attribute, String( part[at + 1] ) ) } );
-			}
-
-			svg.appendChild( shape );
-		} );
-
-		return svg;
+		return Nino.adminUi.icon( name, { size : size ?? 16 } );
 	};
 
 	// The picture of a value of an attribute, or null where there is none: the knob is then a word
@@ -268,7 +219,8 @@
 		return Object.hasOwn( GLYPH_OF, name ) === true && Object.hasOwn( GLYPH_OF[name], value ) === true ? GLYPH_OF[name][value] : null;
 	};
 
-	// A strip of steps of the workbench with a picture in each step in place of the word: the word stays as the name of the step and in its tooltip, said for a screen reader
+	// The strip of steps that the workbench draws for a tool of its own - the widths of the preview bar - gets the picture in each step as steps() of the workbench gives one, in
+	// its face: the workbench's preview tools take no pictures yet, and this is the face they would have
 	const pictured = function( strip, names ) {
 
 		Array.from( strip.querySelectorAll('.nino-admin-steps-step') ).forEach( function( button, at ) {
@@ -278,13 +230,19 @@
 			if( label === null || names[at] === null || names[at] === undefined )
 				return;
 
+			const picture = glyph( names[at], 16 );
+
+			// A workbench whose set does not have the picture yet draws nothing for it: the word stays the face of the step
+			if( !picture || ( picture.childNodes !== undefined && picture.childNodes.length === 0 ) )
+				return;
+
 			const text = label.textContent;
 
 			label.textContent = '';
-			label.appendChild( glyph( names[at], 16 ) );
+			label.className = 'nino-admin-steps-icon';
+			label.appendChild( picture );
 			label.appendChild( el( 'span', 'nino-admin-sr-only', text ) );
 			button.title = button.title !== '' && button.title !== undefined ? button.title : text;
-			button.classList.add('builder-step-glyph');
 		} );
 
 		return strip;
@@ -4164,6 +4122,7 @@
 
 		const context = Nino.adminUi.contextBar( {
 			panel	: Nino.adminUi.panelName( level ),
+			panelLabel	: false,
 			title	: S.sheet === 'block' ? S.name : ( advanced === true ? blockTitle() : S.name ),
 			code	: S.sheet === 'block' ? ( S.adapter.code ?? '' ) : ( advanced === true ? '' : S.template+ '.tpl' ),
 			back	: {
@@ -6829,7 +6788,7 @@
 
 		const strip = Nino.adminUi.steps( {
 			labelledby	: caption.id,
-			steps				: DEVICES.map( function( device ) { return { value : device.width, label : deviceWord( device ), title : deviceWord( device ) } } ),
+			steps				: DEVICES.map( function( device ) { return { value : device.width, label : deviceWord( device ), title : deviceWord( device ), icon : device.glyph } } ),
 			value				: box.width,
 			onChange		: function( value ) {
 
@@ -6838,8 +6797,6 @@
 				fill();
 			},
 		} );
-
-		pictured( strip.el, DEVICES.map( function( device ) { return device.glyph } ) );
 
 		// The dots: one at each device where something is written
 		Array.from( strip.el.querySelectorAll('.nino-admin-steps-step') ).forEach( function( button, at ) {
@@ -6944,10 +6901,7 @@
 
 			const box = el( 'div', 'nino-admin-field builder-steps-field' );
 			const caption = el( 'span', 'builder-field-label', label );
-			const steps = Nino.adminUi.steps( { labelledby : 'builder-steps-'+ rel.replace( /\./g, '-' )+ '-'+ name, steps : options.map( function( option ) { return { value : option.value, label : option.label, title : option.label } } ), value : current, standard : standard, onChange : set } );
-
-			if( pictured_ === true )
-				pictured( steps.el, pictures );
+			const steps = Nino.adminUi.steps( { labelledby : 'builder-steps-'+ rel.replace( /\./g, '-' )+ '-'+ name, steps : options.map( function( option, at ) { return { value : option.value, label : option.label, title : option.label, icon : pictured_ === true ? pictures[at] : undefined } } ), value : current, standard : standard, onChange : set } );
 
 			// The strip is drawn again with the page of the settings: the focus finds its way back to it by this
 			box.dataset.stepKey = key;
@@ -7962,13 +7916,14 @@
 			content		: holder,
 			size			: 'form',
 			className	: 'builder-lightbox',
+			// A press in the dimmed area beside it closes it like "Close": the workbench asks that of the one that is on top and of no dialog with a form
+			dismiss		: true,
 			opener		: opener,
 			focus			: first ?? undefined,
 			choices		: [ { value : 'close', label : Nino.adminUi.text('/_admin/common/label/close'), kind : 'secondary' } ],
 			onOpen		: function( handle ) {
 
 				box.close = function() { handle.close('close') };
-				dimmedClose( holder.closest('dialog'), box );
 
 				if( box.code !== null )
 					notationButton( handle, box );
@@ -8059,36 +8014,6 @@
 
 	const openBackground = function( at, opener ) {
 		return openProperties( at, 'root', opener, undefined, BACKGROUND );
-	};
-
-	// A press in the dimmed area beside the lightbox closes it like "Close" does - and only a press that began there and ended there: text that is marked in the dialog and let go of
-	// outside it closes nothing. The dialogs with a form - the source among them - are not given this: what is typed in them is not thrown away by a click beside them
-	const dimmedClose = function( dialog, box ) {
-
-		if( dialog === null )
-			return;
-
-		const outside = function( event ) {
-
-			const rect = dialog.getBoundingClientRect();
-
-			return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
-		};
-
-		let began = false;
-
-		dialog.addEventListener( 'mousedown', function( event ) { began = event.target === dialog && outside( event ) } );
-		dialog.addEventListener( 'click', function( event ) {
-
-			// Only the dialog that is on top is asked: with another on it - the source of a value, a question - a press beside them closes none
-			const open = dc.querySelectorAll('dialog[open]');
-			const closes = began === true && event.target === dialog && outside( event ) && open[open.length - 1] === dialog;
-
-			began = false;
-
-			if( closes === true && typeof box.close === 'function' )
-				box.close();
-		} );
 	};
 
 	// --- the extended view: the tree of a block ---
@@ -8710,16 +8635,6 @@
 				Nino.admin.router.set( 'builder', [] );
 
 				Nino.adminUi.showLevel( 'builder-list', { focus : from === true && N.button !== null && N.button.isConnected === true ? N.button : nameOfPanel() } );
-
-				// The levels that are left hold nothing: a bar of theirs with the name of the panel in it gives the head of the pane - its name and its tabs - way for as long as it is
-				// in the page, and the list would stand without them
-				[ 'builder-page', 'builder-new' ].forEach( function( id ) {
-
-					const left = dc.getElementById( id );
-
-					if( left !== null )
-						left.innerHTML = '';
-				} );
 
 				return;
 			}

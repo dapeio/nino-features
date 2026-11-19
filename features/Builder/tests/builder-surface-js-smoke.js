@@ -850,8 +850,8 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return /const button = pill\( '', word\(/.test( script ) === true && /button\.insert\{min-width:44px;min-height:32px;[^']*border-style:dashed/.test( script ) === true && /pill\.style\.left = Math\.max\( box\.left, box\.left \+ \( box\.width - pill\.offsetWidth \* back \) \/ 2 \)/.test( script ) === true;
 	} )() );
 
-	check( 'I. 1, 2 and 8: the name of the panel above the way back is not shown - only said to a screen reader -, what the other views point at is drawn in the colour of the accent with a line of its own, and the origin of a block and the language of a field are quiet words and no labels with a ground of their own', ( function() {
-		return /nino-admin-contextbar-panel\s*\{[^}]*clip-path:\s*inset\(50%\)/.test( sheet ) === true && /\.builder-rail-button\.is-lit\s*\{[^}]*border-color:\s*var\(--editor-blue\)[^}]*box-shadow/.test( sheet ) === true && /\.builder-outline \.is-lit[^{]*\{[^}]*box-shadow:\s*inset 0 0 0 2px var\(--editor-blue\)/.test( sheet ) === true
+	check( 'I. 1, 2 and 8: the bar asks the workbench for no name of the panel above the way back (panelLabel false), what the other views point at is drawn by the workbench - the style of this panel has no rule for it - and the origin of a block and the language of a field are quiet words and no labels with a ground of their own', ( function() {
+		return /panelLabel\s*:\s*false/.test( script ) === true && /nino-admin-contextbar-panel/.test( sheet ) === false && /is-lit\s*\{/.test( sheet ) === false && /\.is-lit\b/.test( sheet.replace( /\.builder-rail-button:not\(\.is-lit\)/g, '' ) ) === false
 			&& /builder-tile-origin/.test( script ) === true && /builder-field-lang/.test( script ) === true && /nino-admin-badge builder-field-chip/.test( script ) === false && /builder-tile-chips/.test( script ) === false;
 	} )() );
 }
@@ -861,7 +861,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 {
 	const w = world();
-	const regions = function() { return JSON.stringify( [ w.list.children.map( function( child ) { return child.className.split(' ')[0] } ), w.view.children.length, w.form.children.length ] ) };
+	const regions = function() { return JSON.stringify( [ w.list.children.map( function( child ) { return child.className.split(' ')[0] } ) ] ) };
 
 	w.title.textContent = 'Builder';
 	w.open('#builder');
@@ -874,8 +874,8 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 	w.open('#builder');
 
-	check( 'H. the way back from a page to the list leaves the list with the regions it had when it was opened the first time and the levels that were left with nothing in them: a bar of a level that is shown no more, with the name of the panel in it, takes the head of the pane - its name and its tabs - away for good',
-		during === true && regions() === first && w.view.children.length === 0 && w.form.children.length === 0 );
+	check( 'H. the way back from a page to the list leaves the list with the regions it had when it was opened the first time, and the bar of the page that is left is one that asks for no name of the panel - the head of the pane, its name and its tabs, is there with the list, as the workbench lets a hidden level be',
+		during === true && regions() === first && /panelLabel\s*:\s*false/.test( script ) === true && /\[ 'builder-page', 'builder-new' \]\.forEach/.test( script ) === false );
 }
 
 // --- F. the tree of the extended view -------------------------------------------------------------------------------
