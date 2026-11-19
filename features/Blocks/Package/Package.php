@@ -105,6 +105,10 @@ namespace Nino\Modules\Blocks {
 			$known = [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-map', 'block', 'preview' ];
 			$shown = static fn( string $text ): string => mb_substr( (string) preg_replace( '/[^\P{C}]+/u', ' ', $text ), 0, 120 );
 
+			// A name or a description with markup is said in the words of the import, whichever of the two checks finds it: the kernel's or the one of the import itself
+			if( $code === 'file-markup' )
+				return self::_fail( 400, 'import_words', [ (string) ( $problem['params'][0] ?? '' ) ], 'file' );
+
 			if( in_array( $code, $known, true ) === false )
 				$code = 'refused';
 
