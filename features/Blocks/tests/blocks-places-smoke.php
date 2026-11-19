@@ -386,6 +386,16 @@ file_put_contents( $old, 'old' );
 touch( $old, time() - 4 * 3600 );
 placesCall( $site, 'blocks/list' );
 
+[ , $shown ] = $uploadAs( $site, $pngBytes, 'g.png', $key );
+[ $show, $showBody ] = placesCall( $site, 'blocks/picture-show', [ 'key' => $key, 'file' => $shown['file'] ] );
+[ $showElsewhere ] = placesCall( $site, 'blocks/picture-show', [ 'key' => $other['key'], 'file' => $shown['file'] ] );
+[ $showNone ] = placesCall( $site, 'blocks/picture-show', [ 'key' => $key, 'file' => '../x' ] );
+[ $showGone ] = placesCall( $site, 'blocks/picture-show', [ 'key' => $key, 'file' => str_repeat( 'c', 32 ). '.png' ] );
+placesCall( $site, 'blocks/picture-drop', [ 'key' => $key, 'files' => [ $shown['file'] ] ] );
+
+check( 'the picture that was put aside is shown to the preview of the editor as an address of data - for the session and the block it was for only: another block 403, a name that is none 400, a file nobody put aside 403 - and the site has no address for it',
+	$show === 200 && str_starts_with( (string) ( $showBody['url'] ?? '' ), 'data:image/' ) === true && base64_decode( substr( (string) $showBody['url'], strpos( (string) $showBody['url'], ',' ) + 1 ) ) !== '' && $showElsewhere === 403 && $showNone === 400 && $showGone === 403 && is_dir( \Nino\Filesystem::path( $site, '/images/blocks-picture' ) ) === false );
+
 check( 'a picture that was put aside and is not wanted is let go of by the draft that is given up - only by the block and the session it was for - and a file that is old goes at the next action of the panel, whichever it is',
 	$dropElsewhere === 200 && $keptElsewhere === true && $dropped === 200 && ( $droppedBody['dropped'] ?? 0 ) === 1 && is_file( $staging. $again['file'] ) === false && is_file( $old ) === false );
 

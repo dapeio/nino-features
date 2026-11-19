@@ -1664,6 +1664,8 @@
 			badge		: theme === true ? { text : word('readonly/badge'), reason : word('readonly/reason') } : undefined,
 			sources	: 'block',
 			uploads	: false,
+			// The properties of a component open in the column beside the preview, not in a lightbox
+			props		: 'panel',
 			call		: function( action, payload, done, extra ) { Nino.admin.blocks.call( action, payload, done, extra ) },
 			code		: key,
 			// The key and the language every request of the sheet names, and the sentence the preview puts in a column that has nothing in it
@@ -1763,6 +1765,7 @@
 			dir			: response.dir,
 			restore	: true,
 			sources	: 'block',
+			props		: 'panel',
 			call		: function( action, payload, done, extra ) { Nino.admin.blocks.call( 'frame-'+ action, payload, done, extra ) },
 			code		: template,
 			base		: function() { return { template : template, locale : editor().state().locale, hint : word('preview/place') } },
@@ -1980,6 +1983,7 @@
 			return;
 
 		Nino.admin.dirty.guard( [ 'blocks' ], function() {
+			editor().hold();
 			Nino.admin.blocks.reload( function() { Nino.admin.blocks.follow() } );
 		}, function() {
 			Nino.admin.workLocale.set( editor().state().locale );

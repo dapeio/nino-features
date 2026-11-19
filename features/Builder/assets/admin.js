@@ -90,6 +90,9 @@
 		known			: {},
 		slots			: [],
 		sources		: [],
+		hold			: null,
+		ownUrls		: {},
+		ownAsked	: {},
 		pending		: null,
 		address		: '/',
 		dir				: '',
@@ -3188,6 +3191,7 @@
 	const pageDrawn = function( found ) {
 
 		S.found = found;
+		paintOwn();
 
 		if( S.mode === 'advanced' && S.tree !== null )
 			S.tree.update( itemsNow() );
@@ -3815,7 +3819,7 @@
 	 *
 	 *	@return		{Object}									{ panel, level, call( action, payload, done, extra ), base(), go( parts, options ), href( parts ), set( parts ), show(), back( advanced ), fail( level, status, response ), restore } - and, for a sheet that is
 	 *														not a page: readOnly (nothing of it is changed), sources: 'block' (the dialog of a source offers what a block can carry), uploads: false (a picture
-	 *														is no file here),																																			badge ({ text, reason }: a quiet badge beside the state in the bar, for a sheet that is only looked at), buttons ([ { key, label, name, onPress } ] more of the bar), reload() (what the conflict of a save does to load the sheet again), code (what stands quietly behind the name in the title: the key of the block)
+	 *														is no file here), props: 'panel' (the properties of a component open in the column beside the preview of the extended view, not in a lightbox),																																			badge ({ text, reason }: a quiet badge beside the state in the bar, for a sheet that is only looked at), buttons ([ { key, label, name, onPress } ] more of the bar), reload() (what the conflict of a save does to load the sheet again), code (what stands quietly behind the name in the title: the key of the block)
 	 */
 	const pageAdapter = {
 		panel		: 'builder',
@@ -4003,7 +4007,16 @@
 						S.force = true;
 						S.view.bar.press();
 					},
-					onReload		: function() { typeof S.adapter.reload === 'function' ? S.adapter.reload() : openPage( S.target, S.origin, function() {} ) },
+					onReload		: function() {
+
+						if( typeof S.adapter.reload !== 'function' ) {
+							openPage( S.target, S.origin, function() {} );
+							return;
+						}
+
+						holdProperties();
+						S.adapter.reload();
+					},
 					onCancel		: function() { S.view.bar.line.dirty() },
 				} );
 				return;
@@ -4485,6 +4498,67 @@
 		api( 'picture-drop', { files : files }, function() {} );
 	};
 
+	// The picture that a person chose for a place of a block and did not save is drawn in the page where the place is: from the file that was put aside, which the panel gives as an
+	// address of data to the session and the block it was put aside for - the page the server draws has the placeholder of the kernel, and no address of the site is made for the file
+	const paintOwn = function() {
+
+		if( S.sheet !== 'block' || S.frame === true || S.found === null || S.extra === undefined || S.extra === null || S.extra.ownChosen === undefined )
+			return;
+
+		Object.keys( S.extra.ownChosen ).forEach( function( spot ) {
+
+			const token = S.extra.ownChosen[spot];
+
+			if( typeof token !== 'string' || token === '' )
+				return;
+
+			const url = S.ownUrls[token];
+
+			if( url === undefined ) {
+
+				if( S.ownAsked[token] === true )
+					return;
+
+				S.ownAsked[token] = true;
+				api( 'picture-show', { file : token }, function( status, response ) {
+
+					if( status === 200 && typeof response.url === 'string' ) {
+						S.ownUrls[token] = response.url;
+						paintOwn();
+					}
+				} );
+
+				return;
+			}
+
+			( S.sources ?? [] ).forEach( function( entry ) {
+
+				if( entry.kind !== 'image' || typeof entry.key !== 'string' )
+					return;
+
+				const parts = entry.key.split('/');
+
+				if( parts.length !== 5 || detailKey( parts[3], parts[4] ) !== spot )
+					return;
+
+				const found = S.found.all.find( function( candidate ) { return candidate.path === entry.path } );
+
+				if( found === undefined )
+					return;
+
+				found.elements.forEach( function( element ) {
+
+					const picture = element.matches !== undefined && element.matches('img') === true ? element : ( element.querySelector === undefined ? null : element.querySelector('img') );
+
+					if( picture !== null ) {
+						picture.removeAttribute('srcset');
+						picture.setAttribute( 'src', url );
+					}
+				} );
+			} );
+		} );
+	};
+
 	// What a sheet has put aside and not saved
 	const stagedNow = function() {
 		return S.extra !== undefined && S.extra !== null && S.extra.ownChosen !== undefined ? Object.keys( S.extra.ownChosen ).map( function( place ) { return S.extra.ownChosen[place] } ) : [];
@@ -4536,6 +4610,17 @@
 	 */
 	const openSheet = function( adapter, draft ) {
 
+		// The same sheet drawn anew - the working language moved, and the panel that follows it asked to hold the place - keeps the properties open that were open in the column: the same
+		// component, in the new language. What was held is used once, by the sheet of the same template, and goes stale after ten seconds
+		const held = S.hold;
+		const kept = held !== null && held.template === adapter.template && Date.now() - held.at < 10000 ? held : null;
+
+		S.hold = null;
+
+		if( S.box !== null && S.box.panel === true && S.box.left !== true )
+			S.box.unlisten();
+
+		S.box = null;
 		leaveView();
 		release();
 
@@ -4567,7 +4652,7 @@
 		S.undo = [];
 		S.redo = [];
 		S.name = adapter.name ?? '';
-		S.extra = {};
+		S.extra = kept !== null && kept.edited !== undefined ? { edited : kept.edited } : {};
 		take( draft );
 
 		const block = S.top.find( function( node ) { return kindOf( node ) === 'block' } );
@@ -4588,7 +4673,20 @@
 		S.at = partsOf();
 		adapter.set( S.at );
 
+		if( kept !== null && kept.rel !== null && relNode( kept.rel ) !== null && openProperties( rootAt(), kept.rel, null ) === true && kept.advancedOpen === true && S.box !== null ) {
+			S.box.advancedOpen = true;
+			S.box.draw();
+		}
+
 		return true;
+	};
+
+	// The sheet is about to be drawn anew - the working language moved, a conflict is answered with "Reload": the variant that is edited is the one that is edited then, and the component whose
+	// properties are open in the column is the one that is open again
+	const holdProperties = function() {
+		const open = S.box !== null && S.box.panel === true && S.box.left !== true;
+
+		S.hold = S.sheet === 'block' ? { template : S.template, rel : open === true ? S.box.rel : null, advancedOpen : open === true ? S.box.advancedOpen : false, edited : ( S.extra ?? {} ).edited, at : Date.now() } : null;
 	};
 
 	// The sheet is left: the editor is the page panel's again, with nothing open
@@ -4596,6 +4694,9 @@
 
 		if( S.sheet === 'page' )
 			return;
+
+		if( S.box !== null && S.box.panel === true )
+			S.box.unlisten();
 
 		dropStaged( stagedNow() );
 		leaveView();
@@ -7143,8 +7244,74 @@
 		return head;
 	};
 
+	// A setting that is off or on
+	const isSwitchSetting = function( declared ) {
+		return declared.options.length === 2 && declared.options.indexOf('off') !== -1 && declared.options.indexOf('on') !== -1;
+	};
+
+	// A setting that is off or on for each width, in ONE row: its name, and at the right the three devices as the heads of three small switches. A switch that writes nothing is quiet and
+	// shows what it has from the width below - that is said by its name for a screen reader and by its tooltip, in no sentence of the row -, one that writes a value is drawn full, its device
+	// has a dot, and a small button gives it back to the width below
+	const switchRow = function( rel, name, declared ) {
+
+		const label = localized( declared.label );
+		const row = el( 'div', 'nino-admin-field builder-switch-row' );
+		const caption = el( 'span', 'builder-field-label', label );
+		const cells = el( 'div', 'builder-switch-cells' );
+		const widths = widthsOf( ( relNode( rel ).a ?? {} )[name] ?? declared.default );
+
+		caption.id = 'builder-switch-'+ rel.replace( /\./g, '-' )+ '-'+ name;
+		row.setAttribute( 'role', 'group' );
+		row.setAttribute( 'aria-labelledby', caption.id );
+		row.appendChild( caption );
+
+		DEVICES.forEach( function( device ) {
+
+			const part = device.part;
+			const own = widths[part];
+			const written = part === '' ? own !== String( declared.default ) : own !== '';
+			const inherited = part !== '' && own === '';
+			const effective = inherited === true ? inheritedOf( widths, part ) : own;
+			const below = part === 'm' ? word('rows/below-tablet') : word('rows/below-desktop');
+			const name_ = label+ ' - '+ deviceWord( device )+ ( inherited === true ? ' - '+ word( effective === 'on' ? 'rows/shows-on' : 'rows/shows-off', below ) : '' );
+			const cell = el( 'div', 'builder-switch-cell' );
+			const field = Nino.adminUi.switchField( { key : rel+ ':'+ name+ ':'+ part, checked : effective === 'on', label : name_ } );
+
+			field.title = name_;
+			field.classList.add('builder-switch');
+
+			if( inherited === true )
+				field.classList.add('builder-width-inherited');
+
+			field.querySelector('input').addEventListener( 'change', function( event ) {
+
+				setPart( rel, name, declared, part, event.target.checked === true ? 'on' : 'off' );
+				redrawBox();
+			} );
+
+			cell.appendChild( deviceHead( device, written ) );
+
+			const control = el( 'div', 'builder-switch-control' );
+
+			control.appendChild( field );
+
+			if( part !== '' && written === true )
+				control.appendChild( Nino.adminUi.iconButton( 'undo-2', below, function() { setPart( rel, name, declared, part, '' ); redrawBox() }, { className : 'builder-width-back' } ) );
+
+			cell.appendChild( control );
+			cells.appendChild( cell );
+		} );
+
+		row.appendChild( cells );
+
+		return withHelp( row, caption, row, declared, label );
+	};
+
 	// A setting with a value for each width, alone in its section: the name, a row of the three devices as the heads of the columns and under each its choice
 	const widthSingle = function( rel, name, declared, options ) {
+
+		if( isSwitchSetting( declared ) === true )
+			return switchRow( rel, name, declared );
 
 		const label = localized( declared.label );
 		const group = el( 'div', 'nino-admin-field builder-widths-set builder-widths-box' );
@@ -8362,7 +8529,7 @@
 		const shown = Object.keys( schema.attributes ).filter( function( name ) {
 			return [ 'text', 'link', 'image', 'id' ].indexOf( schema.attributes[name].type ) === -1 && ( schema.loop !== true || LOOP_ATTRIBUTES.indexOf( name ) === -1 ) && isLinkTarget( schema, name ) === false;
 		} );
-		const widthy = shown.filter( function( name ) { return schema.attributes[name].type === 'choice' && schema.attributes[name].responsive === true } );
+		const widthy = shown.filter( function( name ) { return schema.attributes[name].type === 'choice' && schema.attributes[name].responsive === true && isSwitchSetting( schema.attributes[name] ) === false } );
 
 		// The choice of the width that the settings of one section share: it begins at the width of the preview
 		if( widthy.length > 1 && S.box !== null && S.box.width === undefined )
@@ -8515,9 +8682,9 @@
 
 	// The button <> in the foot of the lightbox, at the left on the height of "Close": a small window over it with the notation of the component as the template has it - to read,
 	// to mark and to copy. The Escape key closes the window and nothing else; the focus goes back to the button
-	const notationButton = function( handle, box ) {
+	const notationButton = function( handle, box, place ) {
 
-		const actions = handle.el.querySelector('.nino-admin-dialog-actions');
+		const actions = place ?? handle.el.querySelector('.nino-admin-dialog-actions');
 
 		if( actions === null )
 			return;
@@ -8559,7 +8726,10 @@
 		pop.appendChild( copy );
 		wrap.appendChild( button );
 		wrap.appendChild( pop );
-		actions.insertBefore( wrap, actions.firstChild );
+		if( place === undefined )
+			actions.insertBefore( wrap, actions.firstChild );
+		else
+			actions.appendChild( wrap );
 
 		// Escape closes the window and not the lightbox: the key is taken before the dialog sees it
 		handle.el.addEventListener( 'keydown', function( event ) {
@@ -8582,6 +8752,142 @@
 		} );
 	};
 
+	// The way to a component in its block, as the head of the column says it: "Section > Row > Column" - the names of the ones it stands in, from the block down
+	const pathOfRel = function( rel ) {
+
+		if( rel === 'root' )
+			return '';
+
+		const steps = rel.split('.');
+		const names = [ titleOfRel( 'root' ) ];
+
+		for( let at = 1; at < steps.length; at++ )
+			names.push( titleOfRel( steps.slice( 0, at ).join('.') ) );
+
+		return names.join(' \u203a ');
+	};
+
+	// The properties in the column beside the preview, in place of the outline: a head with the way back, the name of the component, where it stands and - for the account that designs -
+	// the notation; under it the groups of rows that the lightbox has, one under the other. The outline stays where it is, out of sight, and is told of what changes as before
+	const mountProperties = function( box, holder, rel, name ) {
+
+		const settings = S.view.split.settings;
+		const panel = el( 'section', 'builder-props builder-lightbox' );
+		const head = el( 'div', 'builder-props-head' );
+		// A button in the style of the back link, and no link: the workbench reads a link to an address as a way out of the editor and asks about unsaved work first - this is a change
+		// of what the column shows, and nothing is left
+		const link = el( 'button', 'nino-admin-back-link builder-props-back', word('props/back') );
+		const line = el( 'div', 'builder-props-line' );
+		const title = el( 'h2', 'builder-props-title', word( 'label/edit-component', name ) );
+		const tools = el( 'div', 'builder-props-tools' );
+		const where = pathOfRel( rel );
+
+		title.id = 'builder-props-title';
+		title.tabIndex = -1;
+		panel.setAttribute( 'aria-labelledby', title.id );
+		link.type = 'button';
+		link.addEventListener( 'click', function( event ) {
+			event.preventDefault();
+			box.leave( true );
+		} );
+
+		line.appendChild( title );
+		line.appendChild( tools );
+		head.appendChild( link );
+		head.appendChild( line );
+
+		if( where !== '' )
+			head.appendChild( el( 'p', 'builder-props-path', where ) );
+
+		panel.appendChild( head );
+		panel.appendChild( holder );
+		settings.classList.add('builder-props-open');
+		settings.appendChild( panel );
+		settings.scrollTop = 0;
+
+		// In a narrow window the view is one of two - the column or the preview - and the change that is made is not seen: a low strip of the preview stands over the column, it stays where it
+		// is when the column scrolls, and a press on it is the way to the preview
+		const split = S.view.split;
+		const peek = el( 'button', 'builder-props-peek' );
+
+		peek.type = 'button';
+		peek.setAttribute( 'aria-label', word('props/peek') );
+		peek.addEventListener( 'click', function() { split.show('preview') } );
+
+		if( split.preview !== null && split.preview !== undefined ) {
+
+			split.preview.appendChild( peek );
+			split.el.classList.add('builder-props-live');
+
+			if( S.chosen === false && split.el.getBoundingClientRect().width < NARROW && S.width !== 'mobile' ) {
+				S.width = 'mobile';
+				if( S.tools !== null && typeof S.tools.setWidth === 'function' )
+					S.tools.setWidth( 'mobile' );
+
+				S.view.preview.width( 'mobile' );
+			}
+
+			wn.setTimeout( function() { if( S.mark !== null ) S.mark( true ) }, 0 );
+		}
+
+		box.title = title;
+		box.panelEl = panel;
+		box.close = function() { box.leave( true ) };
+
+		// Leaving the column: the outline is back - on the row of the component that was open, which is the one that is chosen, in view and has the focus - or, where the component is gone
+		// or another one is asked for, as it is
+		box.leave = function( toTree ) {
+
+			if( box.left === true )
+				return;
+
+			box.left = true;
+			S.box = null;
+			box.unlisten();
+			split.el.classList.remove('builder-props-live');
+			peek.parentNode === null || peek.parentNode.removeChild( peek );
+			panel.parentNode === null || panel.parentNode.removeChild( panel );
+			settings.classList.remove('builder-props-open');
+
+			if( toTree === true ) {
+
+				if( box.gone === true )
+					focusWork();
+				else {
+					chooseRow( rel, true );
+
+					if( S.tree !== null )
+						S.tree.focus( rel );
+				}
+			}
+
+			if( box.then === 'own' )
+				openBlockSave( link );
+			else if( box.then === 'edit' )
+				editInBlocks( S.own[box.block] );
+		};
+
+		// Escape is the way back from wherever in the view the focus is - the column, the bar under it - unless a control took the key for itself
+		const escape = function( event ) {
+
+			if( event.key === 'Escape' && event.defaultPrevented !== true && box.left !== true && S.box === box ) {
+				event.preventDefault();
+				box.leave( true );
+			}
+		};
+
+		S.view.level.addEventListener( 'keydown', escape );
+		box.unlisten = function() { S.view !== null && S.view.level.removeEventListener( 'keydown', escape ) };
+
+		if( box.code !== null )
+			notationButton( { el : panel }, box, tools );
+
+		chooseRow( rel, false );
+
+		// The panel is not a dialog: the focus goes to the name of what is open, which is the heading of the view that was drawn (docs/admin-ui.md), and the rows are one Tab away
+		title.focus();
+	};
+
 	/**
 	 *	The properties of one component of a page - the one form of them in the whole Builder, whoever opens it: the pencil at the component in the page, its row in the tree of the
 	 *	extended view, the row of a block in the outline. A modal dialog of the workbench in the size of a form, its sections in a fixed order - the source where the content comes
@@ -8599,10 +8905,22 @@
 
 		const root = S.top[at];
 
+		// Where the properties open: in a lightbox - the page, and every sheet that does not say otherwise - or, where the sheet says so, in the column beside the preview, in place of
+		// the outline. The rows are the same in both; a column that is open is given another component by the one that is asked for
+		const inPanel = only === undefined && S.adapter.props === 'panel' && S.mode === 'advanced' && S.view !== null && S.view.split !== undefined && S.view.split.settings !== undefined && S.view.split.settings !== null;
+
+		if( inPanel === true && S.box !== null && S.box.panel === true ) {
+
+			if( S.box.rel === rel )
+				return true;
+
+			S.box.leave( false );
+		}
+
 		if( S.box !== null || root === undefined || kindOf( root ) !== 'block' || idOf( root ) === '' )
 			return false;
 
-		const box = { block : idOf( root ), rel : rel, width : undefined, open : '', code : null, notationOn : false, asked : 0, then : '', draw : null, close : null, gone : false, recount : null };
+		const box = { panel : inPanel, leave : null, block : idOf( root ), rel : rel, width : undefined, open : '', code : null, notationOn : false, asked : 0, then : '', draw : null, close : null, gone : false, recount : null };
 
 		// The notation is read and copied from a small window of its own, for the account that designs: the one that writes content has no such button
 		if( S.level >= 2 && only === undefined && S.sheet === 'block' ) {
@@ -8654,6 +8972,10 @@
 
 			const inside = holder.contains( dc.activeElement ) === true;
 			const held = dc.activeElement !== null && dc.activeElement.dataset !== undefined ? dc.activeElement.dataset.key : undefined;
+			// A strip of choices has its stops one by one: the one that has the focus is told by the strip and its place in it
+			const strip = inside === true && dc.activeElement.closest !== undefined ? dc.activeElement.closest('[data-step-key]') : null;
+			const stripKey = strip === null ? undefined : strip.dataset.stepKey;
+			const stripAt = strip === null ? -1 : Array.from( strip.querySelectorAll('button') ).indexOf( dc.activeElement );
 			const reads = readsOf( rel );
 			const plan = contentPlan( rel, reads );
 			const sections = [];
@@ -8701,6 +9023,53 @@
 			if( finding !== undefined )
 				holder.appendChild( Nino.adminUi.notice( finding.text ) );
 
+			if( inPanel === true ) {
+
+				// In the column the sections stand one under the other, each with its heading; only the advanced part folds
+				sections.forEach( function( section ) {
+
+					const group = el( 'section', 'builder-props-group' );
+					const head = el( 'h3', 'builder-props-heading', section.label );
+
+					group.dataset.section = section.key;
+
+					if( section.key === 'advanced' ) {
+
+						const fold = Nino.adminUi.accordion( {
+							id					: 'builder-props-advanced',
+							level				: 3,
+							collapsible	: true,
+							open				: box.advancedOpen === true ? 'advanced' : [],
+							sections		: [ { key : 'advanced', label : section.label, content : section.content } ],
+							onToggle		: function( open ) { box.advancedOpen = open.indexOf('advanced') !== -1 },
+						} );
+
+						group.appendChild( fold.el );
+					}
+					else {
+
+						group.appendChild( head );
+
+						if( typeof section.summary === 'string' && section.summary !== '' )
+							head.appendChild( el( 'span', 'builder-props-summary', section.summary ) );
+
+						group.appendChild( section.content() );
+					}
+
+					holder.appendChild( group );
+				} );
+
+				const kept = held === undefined ? null : holder.querySelector( '[data-key="'+ held+ '"]' );
+				const stops = stripKey === undefined ? null : holder.querySelector( '[data-step-key="'+ stripKey+ '"]' );
+
+				if( kept !== null )
+					kept.focus();
+				else if( stops !== null && stops.querySelectorAll('button')[stripAt] !== undefined )
+					stops.querySelectorAll('button')[stripAt].focus();
+
+				return;
+			}
+
 			accordion = Nino.adminUi.accordion( {
 				id			: 'builder-box-acc',
 				level		: 3,
@@ -8740,8 +9109,16 @@
 			askFields( redrawBox );
 		}
 
-		const first = accordion.body( box.open ).querySelector('input, textarea, select, button');
 		const name = titleOfRel( rel );
+
+		if( inPanel === true ) {
+
+			mountProperties( box, holder, rel, name, back, opener );
+
+			return true;
+		}
+
+		const first = accordion.body( box.open ).querySelector('input, textarea, select, button');
 
 		Nino.adminUi.choiceDialog( {
 			title			: word( 'label/edit-component', name ),
@@ -9070,6 +9447,20 @@
 			S.mark( false );
 	};
 
+	// A press on a component in the page of the extended view chooses its row; the column of the properties that is open is given that component
+	const pickComponent = function( rel ) {
+
+		const node = relNode( rel );
+
+		if( node === null || S.schemas[node.n] === undefined )
+			return;
+
+		chooseRow( rel, false );
+
+		if( S.box !== null && S.box.panel === true && S.box.rel !== rel )
+			openProperties( rootAt(), rel, S.tree === null ? null : S.tree.el );
+	};
+
 	// The page in the frame of the extended view: the components of the block are marked by the switchboard of the views, and a click on one of them - on any repetition of a
 	// pattern of a loop - chooses the one row of the pattern. Nothing is written in the frame here
 	const instrumentAdvanced = function( frame, doc ) {
@@ -9099,10 +9490,7 @@
 			if( rel === null || S.stale === true )
 				return;
 
-			const node = relNode( rel );
-
-			if( node !== null && S.schemas[node.n] !== undefined )
-				chooseRow( rel, false );
+			pickComponent( rel );
 		}, true );
 
 		S.mark( true );
@@ -9420,7 +9808,7 @@
 		 *		state()												the model of the sheet, for the tests of the panel
 		 */
 		editor : {
-			open : openSheet, close : closeSheet, view : build, properties : openProperties, source : openSource, change : change, undo : undo, redo : redo, save : save,
+			open : openSheet, close : closeSheet, view : build, properties : openProperties, pick : pickComponent, hold : holdProperties, paintOwn : paintOwn, source : openSource, change : change, undo : undo, redo : redo, save : save,
 			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, replace : replaceFrame, reshape : reshape, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
 		},
 

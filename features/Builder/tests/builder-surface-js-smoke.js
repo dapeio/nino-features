@@ -671,6 +671,18 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return aside !== null && aside.collapsed() === true && /aside\s*:[^}]*collapsed\s*:\s*true/.test( script ) === true;
 	} )() );
 
+	check( 'I. 6: the page keeps the lightbox for the properties of a component: its adapter does not ask for the column, the properties open in a dialog of the workbench, and no column of properties is drawn in the page - the sheet of a block is the one that says where they open', ( function() {
+		const x = make( 3 );
+		const before = x.w.dialogs.length;
+		const row = lightbox( x, '3' );
+		const made = x.w.dialogs.length === before + 1 && row.dialog !== undefined && String( row.dialog.className ).indexOf('builder-lightbox') !== -1;
+		const none = findAll( x.w.view, function( el ) { return String( el.className ).split(' ').indexOf('builder-props') !== -1 } ).length === 0 && x.S.box.panel === false;
+
+		row.close();
+
+		return made === true && none === true && x.S.adapter.props === undefined;
+	} )() );
+
 	check( 'I. 7: the width of the preview is chosen by the devices - the phone, the tablet, the desktop - each a picture with its word for the tooltip and for a screen reader', ( function() {
 		const x = make( 3 );
 		const steps = findAll( x.w.view, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-steps-step') !== -1 && el.attributes.role === 'radio' } );
@@ -749,7 +761,8 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return picker.length === 1 && radios.length === 3 && picture( picker[0] ) === 3 && atTablet === '3.1:size:m,3.1:align:m' && written === true && shown === '010' && atDesktop === '3.1:size:l,3.1:align:l' && coupled === true && x.S.top[2].c[3].c[1].a.size === undefined;
 	} )() );
 
-	check( 'I. 14: in a column the alignment is a strip of pictures for each width - with a first step that gives the width the value of the one below - and hiding is a switch for each width: on is what that width does, a width that writes nothing is quiet and shows the value it has from below in words, a width that writes one has the button that gives it back', ( function() {
+	check( 'I. 14: in a column the alignment is a strip of pictures for each width - with a first step that gives the width the value of the one below - and hiding is ONE row with three small switches, one under each device: a width that writes nothing is quiet (dimmed) and its row has no sentence - what it inherits is its name and tooltip -, a width that writes a value is drawn full, its device has a dot, and a small icon button gives it back to the one below',
+		( function() {
 		const x = make( 3 );
 
 		x.S.width = 'tablet';
@@ -757,13 +770,15 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const col = lightbox( x, '3.1' );
 		const strip = findAll( col.dialog, function( el ) { return el.dataset !== undefined && el.dataset.stepKey === '3.1:align:m' } )[0];
 		const hide = function() { return findAll( col.dialog, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === '3.1:hide:m' } )[0] };
-		const quiet = withClass( col.dialog, 'builder-width-inherited' ).length === 1 && textOf( col.dialog ).indexOf( W('rows/below-tablet') ) !== -1;
+		const rows = withClass( col.dialog, 'builder-switch-row' );
+		const switches = findAll( rows[0], function( el ) { return el.tagName === 'INPUT' && /^3\.1:hide:/.test( el.dataset.key ?? '' ) } );
+		const quiet = rows.length === 1 && switches.length === 3 && withClass( rows[0], 'builder-device' ).length === 3 && withClass( col.dialog, 'builder-width-inherited' ).length === 2 && withClass( rows[0], 'nino-admin-hint' ).length === 0 && findAll( rows[0], function( el ) { return el.tagName === 'SMALL' } ).length === 0 && withClass( rows[0], 'builder-device-dot' ).length === 0;
 		const none = findAll( col.dialog, function( el ) { return el.tagName === 'SELECT' && /^3\.1:(?:align|hide):/.test( el.dataset.key ?? '' ) } ).length === 0;
 
 		hide().checked = true;
 		fire( hide(), 'change' );
 
-		const written = x.S.top[2].c[3].c[1].a.hide === 'off m:on' && withClass( col.dialog, 'builder-width-inherited' ).length === 0 && findAll( col.dialog, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-width-back') !== -1 } ).length === 1;
+		const written = x.S.top[2].c[3].c[1].a.hide === 'off m:on' && withClass( col.dialog, 'builder-width-inherited' ).length === 1 && withClass( withClass( col.dialog, 'builder-switch-row' )[0], 'builder-device-dot' ).length === 1 && findAll( col.dialog, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-width-back') !== -1 && el.attributes['aria-label'] === W('rows/below-tablet') } ).length === 1;
 		const back = findAll( col.dialog, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-width-back') !== -1 } )[0];
 
 		fire( back, 'click' );

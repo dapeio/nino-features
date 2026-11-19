@@ -176,6 +176,8 @@ return [
 	'[[/_admin/builder/label/remove-comp]]'	=> '„%s“ löschen',
 	'[[/_admin/builder/adv/tree]]'	=> 'Baum',
 	'[[/_admin/builder/adv/tree-label]]'	=> 'Die Komponenten des Blocks',
+	'[[/_admin/builder/props/back]]'	=> 'Zurück zur Übersicht',
+	'[[/_admin/builder/props/peek]]'	=> 'Vorschau zeigen',
 	'[[/_admin/builder/adv/defaults]]'	=> 'Vorgaben',
 	'[[/_admin/builder/adv/given]]'	=> '%d angegeben',
 	'[[/_admin/builder/field/variant]]'	=> 'Variante',

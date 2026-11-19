@@ -169,6 +169,7 @@ $every = [
 	'blocks/tile'			=> [ 'key' => 'hero-full' ],
 	'blocks/picture'	=> [ 'key' => 'karten', 'name' => 'bild' ],
 	'blocks/picture-drop'	=> [ 'key' => 'karten', 'files' => [] ],
+	'blocks/picture-show'	=> [ 'key' => 'karten', 'file' => 'x' ],
 	'blocks/frames'		=> [],
 	'blocks/adopt'		=> [ 'template' => 'page-home', 'tree' => [], 'at' => '0', 'key' => 'neu', 'name' => 'Neu', 'category' => 'content' ],
 	'blocks/export'		=> [ 'keys' => [ 'hero-full' ], 'key' => 'x', 'version' => '1.0.0', 'name' => 'X' ],
@@ -184,7 +185,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = blocksCall( $site, $action, $data )[0];
 
-check( 'an account that has the rights of the Builder and not /_admin/blocks/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 33 && array_keys( $every ) === array_keys( \Nino\Modules\Blocks\Admin::actions() ) && blocksSnapshot( $site ) === $before );
+check( 'an account that has the rights of the Builder and not /_admin/blocks/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 34 && array_keys( $every ) === array_keys( \Nino\Modules\Blocks\Admin::actions() ) && blocksSnapshot( $site ) === $before );
 
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
 $answers = [];

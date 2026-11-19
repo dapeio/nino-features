@@ -58,6 +58,7 @@ namespace Nino\Modules\Blocks {
 				'blocks/tile'			=> [ self::class, 'apiTile' ],
 				'blocks/picture'	=> [ self::class, 'apiPicture' ],
 				'blocks/picture-drop'	=> [ self::class, 'apiPictureDrop' ],
+				'blocks/picture-show'	=> [ self::class, 'apiPictureShow' ],
 				'blocks/frames'		=> [ self::class, 'apiFrames' ],
 				'blocks/adopt'		=> [ self::class, 'apiAdopt' ],
 				'blocks/export'		=> [ self::class, 'apiExport' ],
@@ -962,6 +963,9 @@ namespace Nino\Modules\Blocks {
 				if( $made !== false )
 					\Nino\Images::delete( $appData, $made );
 
+				// fit() makes the folder it writes into and the file only passes through it: the folder is not left behind empty (rmdir takes nothing that has a file in it)
+				@rmdir( \Nino\Filesystem::path( $appData, '/images/blocks-picture' ) );
+
 				if( $again === false || $again === '' ) {
 					\Nino\Http::fail( $request, 400, 'the image could not be processed', 'image_unreadable' );
 					return;
@@ -982,6 +986,45 @@ namespace Nino\Modules\Blocks {
 			$_SESSION[self::STAGED][$token] = [ 'key' => $key, 'until' => time() + 3600 ];
 
 			\Nino\Http::ok( $request, [ 'file' => $token, 'type' => $kind ] );
+		}
+
+		/**
+		 *	The picture that was put aside, for the preview of the editor: the bytes of the file as an address of data, to the session that put it aside and for the block it was for - no
+		 *	address of the site is made for it, and nothing is written
+		 */
+		public static function apiPictureShow( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$key = self::_own( $appData, $request, \Nino\Admin\Admin::postString( $data, 'key' ) );
+
+			if( $key === null )
+				return;
+
+			$token = \Nino\Admin\Admin::postString( $data, 'file' );
+
+			if( preg_match( '/^[a-f0-9]{32}\.(?:svg|webp|png|jpg)$/D', $token ) !== 1 ) {
+				self::_fail( $request, 400, 'the picture of the place is none', 'blocks_picture_own', [ '' ], 'own' );
+				return;
+			}
+
+			if( ( $_SESSION[self::STAGED][$token]['key'] ?? null ) !== $key ) {
+				self::_fail( $request, 403, 'the picture was put aside for another', 'blocks_picture_own', [ '' ], 'own' );
+				return;
+			}
+
+			$bytes = @file_get_contents( self::_staged( $appData ). $token );
+
+			if( is_string( $bytes ) === false ) {
+				self::_fail( $request, 400, 'the picture of the place is gone', 'blocks_picture_own', [ '' ], 'own' );
+				return;
+			}
+
+			$mime = [ 'svg' => 'image/svg+xml', 'webp' => 'image/webp', 'png' => 'image/png', 'jpg' => 'image/jpeg' ][substr( $token, 33 )];
+
+			\Nino\Http::ok( $request, [ 'url' => 'data:'. $mime. ';base64,'. base64_encode( $bytes ) ] );
 		}
 
 		/**

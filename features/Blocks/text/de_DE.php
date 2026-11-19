@@ -112,7 +112,7 @@ return [
 	'[[/_admin/error/blocks_loop]]'	=> 'Ein Block der Bibliothek zeigt Platzhalter-Elemente; den Typ wählst Du nach dem Einfügen auf der Seite.',
 	'[[/_admin/error/blocks_frame]]'	=> 'Das ist kein Rahmen der Website.',
 	'[[/_admin/error/blocks_address]]'	=> 'Ein Link eines Blocks muss auf eine Seite, einen Anker, eine Mail-Adresse, eine Telefonnummer oder eine gesicherte Adresse führen.',
-	'[[/_admin/error/blocks_picture]]'	=> 'Ein Bildplatz des Blocks hat noch keine Größe. Lege den Platz in der Lightbox des Bildes neu an und gib Breite und Höhe an.',
+	'[[/_admin/error/blocks_picture]]'	=> 'Ein Bildplatz des Blocks hat noch keine Größe. Lege den Platz in den Eigenschaften des Bildes neu an und gib Breite und Höhe an.',
 	'[[/_admin/error/blocks_empty]]'	=> 'Jeder Text eines Blocks braucht Worte.',
 	'[[/_admin/error/blocks_long]]'	=> 'Ein Text eines Blocks hat höchstens %s Zeichen.',
 	'[[/_admin/blocks/details/button]]'	=> 'Angaben',

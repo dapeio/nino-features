@@ -365,6 +365,8 @@ const labelsOf = function( node ) { return findAll( node, function( el ) { retur
 const tabsOf = function( w ) { return findAll( w.page, function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).map( textOf ) };
 const request = function( w, action ) { return w.requests.filter( function( entry ) { return entry.action === action } )[0] };
 const answerOf = function( entry, status, body ) { entry.callback( { status : status, responseJSON : body, getAllResponseHeaders : function() { return 'x' } } ) };
+const boxOf = function( w ) { return findAll( w.page, function( el ) { return el.tagName === 'SECTION' && /(^| )builder-props( |$)/.test( String( el.className ) ) } )[0] };
+const leaveBox = function( w ) { const open = w.builder.editor.state().box; if( open !== null && open.panel === true ) open.leave( true ) };
 const dialogOf = function( w ) { return w.dialogs[w.dialogs.length - 1] };
 const pressed = function( dialog, label ) { fire( findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === label } )[0], 'click' ) };
 const typed = function( dialog, values ) {
@@ -536,14 +538,14 @@ const sheetOf = function( hash, extra ) {
 	check( 'C. the lightbox of the root of a block has no way to keep it as a block of the project - the block is one - in the advanced part where the page has it', ( function() {
 		w.builder.editor.properties( sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } ), 'root', element('button'), function() {} );
 
-		const box = dialogOf( w );
+		const box = boxOf( w );
 		const advanced = findAll( box, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && textOf( el ).indexOf( String( words.en['/_admin/builder/box/advanced'] ) ) !== -1 } )[0];
 
 		fire( advanced, 'click' );
 
 		const none = findAll( box, function( el ) { return el.dataset !== undefined && el.dataset.key === 'block:own' } ).length === 0 && textOf( box ).indexOf( String( words.en['/_admin/builder/own/open'] ) ) === -1;
 
-		fire( box, 'close' );
+		leaveBox( w );
 
 		return none;
 	} )() );
@@ -574,10 +576,7 @@ const sheetOf = function( hash, extra ) {
 	// the properties of a component are looked at, and nothing in them is changed
 	w.builder.editor.properties( sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } ), 'root', element('button'), function() {} );
 
-	const box = dialogOf( w );
-	const look = findAll( box, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && textOf( el ).indexOf( String( words.en['/_admin/builder/box/look'] ) ) !== -1 } )[0];
-
-	fire( look, 'click' );
+	const box = boxOf( w );
 
 	const controls = findAll( box, function( el ) { return /^(INPUT|SELECT|TEXTAREA)$/.test( el.tagName ) || ( el.tagName === 'BUTTON' && el.attributes['role'] === 'radio' ) } );
 
@@ -592,6 +591,157 @@ const sheetOf = function( hash, extra ) {
 			return badge !== undefined && badge.dataset.state === 'muted' && badge.title === W('readonly/reason') && textOf( badge ).indexOf( W('readonly/badge') ) !== -1 && String( badge.className ).indexOf('nino-admin-badge') !== -1 && textOf( sheet.view.buttons.saveas ).trim() === W('saveas/button-theme');
 		} )() && sheet.view.bar.save.hidden === true && sheet.view.buttons.saveas !== undefined && JSON.stringify( sheet.top ) === before && sheet.undo.length === 0
 		&& controls.length > 0 && controls.every( function( control ) { return control.disabled === true } ) && ( function( link ) { return link.attributes.href ?? link.href } )( findAll( w.page, function( el ) { return String( el.className ).indexOf('nino-admin-back-link') !== -1 } )[0] ) === '#blocks/theme' );
+}
+
+// --- C2. the properties of a component in the column beside the preview ---------------------------------------------------------
+
+{
+	const w = sheetOf('#blocks/karten');
+	const sheet = w.builder.editor.state();
+	const rootAt = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
+	const model = w.builder.model;
+	const keysOf = function( node ) { return findAll( node, function( el ) { return el.dataset !== undefined && el.dataset.key !== undefined && el.dataset.key !== '' } ).map( function( el ) { return el.dataset.key } ).sort().join() };
+	const shownBefore = w.dialogs.length;
+	const opened = w.builder.editor.properties( rootAt, '1', element('button'), function() {} );
+	const panel = boxOf( w );
+	const heading = panel === undefined ? undefined : findAll( panel, function( el ) { return el.tagName === 'H2' } )[0];
+
+	check( 'C2. the properties of a component in the block editor open in the column beside the preview and not in a dialog: no dialog is made, the column is a named region with the heading "<kind> edit", and the focus is on that heading (the panel is no dialog: docs/admin-ui.md - after a change of the view the focus goes to the heading)',
+		opened === true && w.dialogs.length === shownBefore && panel !== undefined && panel.attributes['aria-labelledby'] === heading.id && heading.id !== '' && heading.tabIndex === -1 && heading.focused === true
+		&& textOf( heading ) === String( words.en['/_admin/builder/label/edit-component'] ).replace( '%s', 'Title' ) && panel.attributes.role === undefined && panel.tagName === 'SECTION' );
+
+	const panelKeys = keysOf( panel );
+	const rowsIn = function( rel, lightbox ) {
+
+		leaveBox( w );
+		sheet.adapter.props = lightbox === true ? undefined : 'panel';
+		w.builder.editor.properties( rootAt, rel, element('button'), function() {} );
+
+		const holder = lightbox === true ? dialogOf( w ) : boxOf( w );
+		const keys = keysOf( holder )+ '#'+ ( lightbox === true ? findAll( holder, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-accordion-button') !== -1 } ).length : findAll( holder, function( el ) { return el.dataset !== undefined && el.dataset.section !== undefined } ).length );
+
+		if( lightbox === true )
+			fire( dialogOf( w ), 'close' );
+
+		sheet.adapter.props = 'panel';
+
+		return keys;
+	};
+
+	// the rows are the same where the sheet has no column: the lightbox of the page is the other container of the same code
+	const sameRows = [ 'root', '1' ].map( function( rel ) { return [ rowsIn( rel, false ), rowsIn( rel, true ) ] } );
+
+	check( 'C2. the rows of a component are one code in two containers: the column and the lightbox hold the same sections and rows - for the block itself and for a component in it -, each key once, and none of them is drawn twice',
+		panelKeys !== '' && sameRows.every( function( pair ) { return pair[0] !== '' && pair[0] === pair[1] && pair[0].split('#')[0].split(',').length === new Set( pair[0].split('#')[0].split(',') ).size } ) && sameRows[0][0] !== sameRows[1][0] );
+
+	leaveBox( w );
+
+	// the way back is a change of what the column shows: with work that is not saved it asks nothing, drops nothing and leaves the steps of the undo as they are
+	w.builder.editor.properties( rootAt, '1', element('button'), function() {} );
+	model.setAttr( 'root', 'ground', 'dark' );
+
+	const steps = sheet.undo.length;
+	const draft = JSON.stringify( sheet.top );
+	const asked = w.dialogs.length;
+	const back = findAll( boxOf( w ), function( el ) { return String( el.className ).indexOf('nino-admin-back-link') !== -1 } )[0];
+
+	sheet.tree.select( 'root' );
+	fire( back, 'click' );
+
+	const row = sheet.tree.el.querySelector('[data-id="1"]');
+
+	check( 'C2. "Back to the overview" is a button and no link - the workbench reads a link as a way out of the editor and asks about unsaved work -: with a change in the draft it opens no dialog, keeps the draft and every step of the undo, and the column is gone, the outline is there',
+		back.tagName === 'BUTTON' && back.type === 'button'
+		&& boxOf( w ) === undefined && sheet.box === null && w.dialogs.length === asked && sheet.undo.length === steps && steps > 0 && JSON.stringify( sheet.top ) === draft && String( sheet.view.split.settings.className ).indexOf('builder-props-open') === -1 );
+	check( 'C2. the way back chooses the row of the component that was open - the chosen one by the tree itself, apart from the focus - and gives it the focus and the mark in the preview',
+		sheet.marked === '1' && sheet.tree.get().selected === '1' && row !== null && row.focused === true && String( row.attributes['aria-selected'] ) === 'true' );
+
+	w.builder.editor.properties( rootAt, '1', element('button'), function() {} );
+	sheet.tree.select( 'root' );
+	fire( sheet.view.level, 'keydown', { key : 'Escape' } );
+
+	check( 'C2. Escape is the way back as well, from wherever in the view the focus is, with the same: no dialog, the draft and the undo as they were, the row of the component chosen and focused',
+		boxOf( w ) === undefined && sheet.box === null && w.dialogs.length === asked && sheet.undo.length === steps && JSON.stringify( sheet.top ) === draft && sheet.marked === '1' && sheet.tree.get().selected === '1' && sheet.tree.el.querySelector('[data-id="1"]').focused === true );
+
+	w.builder.editor.properties( rootAt, '1', element('button'), function() {} );
+	const kept = w.dialogs.length;
+
+	w.builder.editor.pick( '3' );
+
+	check( 'C2. a press on another component in the preview gives the column that component at once - no dialog, no way back through the overview - and that component is the chosen and the marked one',
+		sheet.box !== null && sheet.box.rel === '3' && boxOf( w ) !== undefined && findAll( boxOf( w ), function( el ) { return el.tagName === 'H2' } ).length === 1 && sheet.marked === '3' && w.dialogs.length === kept );
+
+	leaveBox( w );
+
+	// the component that is open is taken away by a step of the undo or the redo: the column is gone, the overview is there
+	const count = JSON.stringify( sheet.top[rootAt] );
+
+	model.removeComponent( '3' );
+	model.undo();
+	w.builder.editor.properties( rootAt, '3', element('button'), function() {} );
+	model.redo();
+
+	check( 'C2. a step of the undo or the redo that takes the component away that is open closes the column: the overview, with the focus on the work - and no dialog is left',
+		JSON.stringify( sheet.top[rootAt] ) !== count && boxOf( w ) === undefined && sheet.box === null && String( sheet.view.split.settings.className ).indexOf('builder-props-open') === -1 );
+}
+
+check( 'C2. the panel holds the place of the column before it draws the sheet anew for a language that moved: the choice of the language asks the editor to hold the open component, and only then loads the block again',
+	/dirty\.guard\( \[ 'blocks' \], function\(\) \{\s*editor\(\)\.hold\(\);\s*Nino\.admin\.blocks\.reload\(/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true );
+
+// A narrow window shows the column or the preview: with the properties open a strip of the preview stands over the column, a press on it goes to the preview, and it is gone with the column
+{
+	const w = sheetOf('#blocks/karten');
+	const sheet = w.builder.editor.state();
+	const rootAt = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
+	const peeks = function() { return findAll( sheet.view.split.preview, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-props-peek') !== -1 } ) };
+
+	w.builder.editor.properties( rootAt, '1', element('button'), function() {} );
+
+	const there = peeks();
+	const live = String( sheet.view.split.el.className ).indexOf('builder-props-live') !== -1;
+
+	sheet.view.split.show('settings');
+	fire( there[0], 'click' );
+
+	const went = sheet.view.split.view() === 'preview';
+
+	leaveBox( w );
+
+	check( 'C2. with the properties open the preview has a strip over the column of a narrow window - a button named for it, marked live on the view - and a press on it is the way to the preview; leaving the column takes the strip and the mark away',
+		there.length === 1 && there[0].attributes['aria-label'] === String( words.en['/_admin/builder/props/peek'] ) && live === true && went === true && peeks().length === 0 && String( sheet.view.split.el.className ).indexOf('builder-props-live') === -1 );
+}
+
+// The working language moves while the properties are open in the column: the block is drawn anew in the new language and the same component is open again - held by the panel
+{
+	const w = sheetOf('#blocks/karten');
+	const rootAt = w.builder.editor.state().top.findIndex( function( node ) { return node.n === 'section-wrap' } );
+
+	w.builder.editor.properties( rootAt, '1', element('button'), function() {} );
+	w.builder.editor.hold();
+	w.builder.editor.close();
+
+	check( 'C2. the sheet that is closed for the new language has no column open - and the one that was held is open again when the block comes in the new language: the same component, the column and no dialog',
+		boxOf( w ) === undefined && ( function() {
+
+			w.requests.length = 0;
+			w.panel.follow();
+			answerOf( request( w, 'blocks/open' ), 200, SHEET() );
+
+			const state = w.builder.editor.state();
+
+			return state.box !== null && state.box.panel === true && state.box.rel === '1' && boxOf( w ) !== undefined;
+		} )() );
+
+	check( 'C2. what the panel holds is used once and only for the block it was held for: the same block opened again later has no column open',
+		( function() {
+
+			w.builder.editor.close();
+			w.requests.length = 0;
+			w.panel.follow();
+			answerOf( request( w, 'blocks/open' ), 200, SHEET() );
+
+			return w.builder.editor.state().box === null && boxOf( w ) === undefined;
+		} )() );
 }
 
 // --- D. the fixes of the first round --------------------------------------------------------------------------------------------
@@ -739,15 +889,15 @@ const sheetOf = function( hash, extra ) {
 	model.state.box = null;
 	w.builder.editor.properties( rootAt, loopRel, element('button'), function() {} );
 
-	const examples = findAll( dialogOf( w ), function( el ) { return el.tagName === 'SELECT' && el.dataset !== undefined && el.dataset.key === loopRel+ ':examples' } )[0];
+	const examples = findAll( boxOf( w ), function( el ) { return el.tagName === 'SELECT' && el.dataset !== undefined && el.dataset.key === loopRel+ ':examples' } )[0];
 
 	examples.value = '5';
 	fire( examples, 'change' );
 
 	check( 'D. the place of a loop in a block says how many elements the block shows as examples - a choice of one to twelve that writes the attribute for "at most" - and has no source, no sort and no query',
-		examples !== undefined && findAll( examples, function( el ) { return el.tagName === 'OPTION' } ).length === 12 && list.a.limit === '5' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/box/source'] ) ) === -1 );
+		examples !== undefined && findAll( examples, function( el ) { return el.tagName === 'OPTION' } ).length === 12 && list.a.limit === '5' && textOf( boxOf( w ) ).indexOf( String( words.en['/_admin/builder/box/source'] ) ) === -1 );
 
-	fire( dialogOf( w ), 'close' );
+	leaveBox( w );
 
 	check( 'D. a component that is put into a column with nothing in it opens the column and is the chosen entry - not a column folded over it',
 		chosen.indexOf( column+ '.' ) === 0 && holder.attributes['aria-expanded'] === 'true' && sheet.tree.el.querySelector('[data-id="'+ chosen+ '"]') !== null );
@@ -835,7 +985,7 @@ const sheetOf = function( hash, extra ) {
 
 	w.builder.editor.properties( root, '1', element('button'), function() {} );
 
-	const box = dialogOf( w );
+	const box = boxOf( w );
 
 	fire( findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === String( words.en['/_admin/builder/source/change'] ) } )[0], 'click' );
 
@@ -871,7 +1021,7 @@ const sheetOf = function( hash, extra ) {
 	check( 'D. a length that is chosen writes its sample into the words of the place in each language of the site, as one step of the undo',
 		[ 'de_DE', 'en_US' ].every( function( locale ) { return sheet.texts['/template/page-home/karten/title'][locale] === model.loremOf( 'title', 8, model.kindOfPlace( node(), 'plain' ) ) } ) && sheet.undo.length > 0 );
 
-	const again = findAll( dialogOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
+	const again = findAll( boxOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
 
 	again.value = 'headline';
 	fire( again, 'change' );
@@ -879,24 +1029,24 @@ const sheetOf = function( hash, extra ) {
 	check( 'D. the id of a place is changed with its words: the call reads the new id and the words stand under it, the old id has none - and an id that is taken or is no id is refused at the field',
 		node().s === '~headline' && sheet.texts['/template/page-home/karten/headline'] !== undefined && sheet.texts['/template/page-home/karten/title'] === undefined );
 
-	const third = findAll( dialogOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
+	const third = findAll( boxOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
 
 	third.value = 'Bad Name';
 	fire( third, 'change' );
 
 	check( 'D. an id with a capital or a space, or longer than forty letters, is no id of a place: it is refused at the field with the sentence of the source dialog, and the place is as it was',
-		node().s === '~headline' && third.value === 'headline' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/source/bad-name'] ) ) !== -1 );
+		node().s === '~headline' && third.value === 'headline' && textOf( boxOf( w ) ).indexOf( String( words.en['/_admin/builder/source/bad-name'] ) ) !== -1 );
 
 	// a second place of the block - its words are the block's, and its id is taken
 	sheet.texts['/template/page-home/karten/other'] = { de_DE : 'Other', en_US : 'Other' };
 
-	const fourth = findAll( dialogOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
+	const fourth = findAll( boxOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
 
 	fourth.value = 'other';
 	fire( fourth, 'change' );
 
 	check( 'D. an id that another place of the block has is refused at the field with the sentence "taken" - in the words of a block - and the place keeps its id and its words',
-		node().s === '~headline' && fourth.value === 'headline' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/source/taken-block'] ) ) !== -1 && /block/i.test( String( words.en['/_admin/builder/source/taken-block'] ) ) === true && /section|page/i.test( String( words.en['/_admin/builder/source/taken-block'] ) ) === false && sheet.texts['/template/page-home/karten/headline'] !== undefined );
+		node().s === '~headline' && fourth.value === 'headline' && textOf( boxOf( w ) ).indexOf( String( words.en['/_admin/builder/source/taken-block'] ) ) !== -1 && /block/i.test( String( words.en['/_admin/builder/source/taken-block'] ) ) === true && /section|page/i.test( String( words.en['/_admin/builder/source/taken-block'] ) ) === false && sheet.texts['/template/page-home/karten/headline'] !== undefined );
 
 	delete sheet.texts['/template/page-home/karten/other'];
 
@@ -913,7 +1063,7 @@ const sheetOf = function( hash, extra ) {
 
 	pic.builder.editor.properties( picRoot, '3', element('button'), function() {} );
 
-	const picBox = dialogOf( pic );
+	const picBox = boxOf( pic );
 	const wide = findAll( picBox, function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '3:width:bild' } )[0];
 
 	wide.value = '1200';
@@ -929,14 +1079,14 @@ const sheetOf = function( hash, extra ) {
 	check( 'D. a size beyond what the kernel takes is cut to its limit: 4096', picSheet.extra.details.images.bild.width === 4096 );
 
 	// a picture place that was just put in has its format at once - before anything is saved - and the place for an own picture
-	fire( dialogOf( pic ), 'close' );
+	leaveBox( pic );
 	pic.builder.model.addComponent( 'root', { name : 'image', node : { n : 'image', s : '', a : {}, c : null } }, '\n\t' );
 
 	const fresh = picSheet.top[picRoot].c.map( function( node, at ) { return node.n === 'image' && node.s !== '~bild' ? String( at ) : null } ).filter( function( at ) { return at !== null } )[0];
 
 	pic.builder.editor.properties( picRoot, fresh, element('button'), function() {} );
 
-	const freshBox = dialogOf( pic );
+	const freshBox = boxOf( pic );
 	const hasKey = function( key ) { return findAll( freshBox, function( el ) { return el.dataset !== undefined && el.dataset.key === key } ).length > 0 };
 	const placed = picSheet.top[picRoot].c[Number( fresh )].s.slice( 1 );
 	const made = picSheet.pictures['/template/page-home/karten/'+ placed];
@@ -952,6 +1102,22 @@ const sheetOf = function( hash, extra ) {
 
 	check( 'D. an own picture that is given to a place is a change of the draft - it stands in what the save sends, as the name of the staged file - and a place that has none is told so',
 		picSheet.extra.ownChosen[placed] === 'a'.repeat( 32 )+ '.png' && pic.builder.model.isDirty() === true && request( pic, 'blocks/picture' ).payload.name === placed && request( pic, 'blocks/picture' ).payload.key !== undefined );
+
+	// the picture that was chosen is drawn in the page where the place is - from the file that was put aside, asked of the panel for this block - and the page the server drew is not touched
+	const picture = { attributes : { srcset : 'x 2x' }, setAttribute : function( name, value ) { this.attributes[name] = value }, removeAttribute : function( name ) { delete this.attributes[name] }, matches : function() { return true } };
+
+	picSheet.found = { all : [ { path : String( picRoot )+ '.'+ fresh, elements : [ picture ] } ], blocks : [] };
+	picSheet.sources = [ { kind : 'image', key : '/template/page-home/karten/'+ placed, path : String( picRoot )+ '.'+ fresh, attribute : 'picture' } ];
+	pic.requests.length = 0;
+	pic.builder.editor.paintOwn();
+	pic.builder.editor.paintOwn();
+
+	const asked = pic.requests.filter( function( entry ) { return entry.action === 'blocks/picture-show' } );
+
+	answerOf( asked[0], 200, { url : 'data:image/png;base64,AAAA' } );
+
+	check( 'D. the own picture that was chosen for a place is shown by the page where the place is, from the file that was put aside for this block: the panel asks for it once - by its name and the key of the block - and the image of the place has it as its source, with no srcset; the picture the server drew for the draft is only the placeholder',
+		asked.length === 1 && asked[0].payload.file === 'a'.repeat( 32 )+ '.png' && asked[0].payload.key !== undefined && picture.attributes.src === 'data:image/png;base64,AAAA' && picture.attributes.srcset === undefined );
 
 	// a picture that was put aside and is not wanted - another one came for the place, the draft is given up - is let go of at the server
 	pic.requests.length = 0;
@@ -1012,6 +1178,32 @@ const sheetOf = function( hash, extra ) {
 
 	check( 'E. another variant is looked at by the menu of the bar: the attributes of the calls are its own, the bar says which it is, and that is no change of the draft - nothing is unsaved and nothing is on the undo',
 		sheet.extra.edited === 'right' && row().a.reverse === 'on' && model.isDirty() === false && sheet.undo.length === 0 && textOf( sheet.view.bar.buttons.variant ).indexOf( W( 'variants/button', 'Rechts' ) ) !== -1 );
+
+	// the working language moves - and a conflict answered with "Reload" is the same - and the block is drawn anew: the variant that was edited is the one that is edited then, so that a
+	// change goes where the person meant it and not into the template
+	check( 'C2. a block that is drawn anew for the language keeps the variant that is edited - the bar says it, the attributes are its own - and a sheet that was not held for it begins with the first',
+		( function() {
+
+			w.builder.editor.hold();
+			w.builder.editor.close();
+			w.requests.length = 0;
+			w.panel.follow();
+			answerOf( request( w, 'blocks/open' ), 200, SHEET( VARIED() ) );
+
+			const kept = sheet.extra.edited === 'right' && row().a.reverse === 'on' && textOf( sheet.view.bar.buttons.variant ).indexOf( W( 'variants/button', 'Rechts' ) ) !== -1;
+
+			w.builder.editor.close();
+			w.requests.length = 0;
+			w.panel.follow();
+			answerOf( request( w, 'blocks/open' ), 200, SHEET( VARIED() ) );
+
+			return kept === true && sheet.extra.edited === 'standard';
+		} )() );
+
+	check( 'C2. "Reload" in the conflict of a save holds the place as the language does: the variant that is edited and the component that is open are asked to be held before the sheet is loaded anew',
+		/onReload\s*: function\(\) \{[\s\S]*?holdProperties\(\);\s*S\.adapter\.reload\(\);/.test( fs.readFileSync( builderPath, 'utf8' ) ) === true );
+
+	chooseVariant( 'Rechts' );
 
 	const inContext = function( node ) { for( let up = node; up !== null && up !== undefined; up = up.parentNode ) if( String( up.className ?? '' ).split(' ').indexOf('nino-admin-contextbar') !== -1 ) return true; return false };
 
@@ -1143,13 +1335,9 @@ const sheetOf = function( hash, extra ) {
 
 	const opener = sheet.view.bar.buttons.variant;
 	const shownBox = w.builder.editor.properties( root, '3', opener );
-	const boxDialog = dialogOf( w );
-	const headerOf = function( word ) { return findAll( boxDialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && textOf( el ).trim().indexOf( word ) === 0 } )[0] };
-
-	fire( headerOf( words.en['/_admin/builder/box/look'] ), 'click' );
-
-	const bodies = findAll( boxDialog, function( el ) { return String( el.className ).indexOf('builder-box-body') !== -1 } );
-	const lookBody = bodies.filter( function( body ) { return findAll( body, function( el ) { return String( el.className ).indexOf('nino-admin-field') !== -1 } ).length > 0 } )[0];
+	const boxDialog = boxOf( w );
+	const bodies = findAll( findAll( boxDialog, function( el ) { return el.dataset !== undefined && el.dataset.section === 'look' } )[0], function( el ) { return String( el.className ).indexOf('builder-box-body') !== -1 } );
+	const lookBody = bodies[0];
 	const countOf = function( node, name ) { return findAll( node, function( el ) { return String( el.className ).split(' ').indexOf( name ) !== -1 } ).length };
 	const fieldRows = lookBody.children.filter( function( child ) { return String( child.className ).indexOf('builder-var-note') === -1 } );
 	const marks = fieldRows.map( function( one ) { return countOf( one, 'builder-var-dot' ) } );
@@ -1184,7 +1372,7 @@ const sheetOf = function( hash, extra ) {
 		row().a.variant === 'card' && row().o.variant === undefined && row().a.gap === '1' && row().o.gap === undefined && Object.keys( ( row().v ?? {} ).right ?? {} ).join() === ''
 		&& canon().tree[root].c[3].a.variant === 'card' && canon().tree[root].c[3].a.gap === '1' );
 
-	fire( boxDialog, 'close' );
+	leaveBox( w );
 
 	// a step back that lands in the variant its change was made in says which variant is edited
 	chooseVariant( 'Standard' );

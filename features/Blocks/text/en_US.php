@@ -112,7 +112,7 @@ return [
 	'[[/_admin/error/blocks_loop]]'	=> 'A block of the library shows placeholder elements; you choose the type after putting it in on the page.',
 	'[[/_admin/error/blocks_frame]]'	=> 'That is no frame of the site.',
 	'[[/_admin/error/blocks_address]]'	=> 'A link of a block must lead to a page, an anchor, a mail address, a phone number or a secure address.',
-	'[[/_admin/error/blocks_picture]]'	=> 'A picture slot of the block has no size yet. Make the slot new in the lightbox of the picture and give a width and a height.',
+	'[[/_admin/error/blocks_picture]]'	=> 'A picture slot of the block has no size yet. Make the slot new in the properties of the picture and give a width and a height.',
 	'[[/_admin/error/blocks_empty]]'	=> 'Every text of a block needs words.',
 	'[[/_admin/error/blocks_long]]'	=> 'A text of a block is at most %s characters.',
 	'[[/_admin/blocks/details/button]]'	=> 'Details',

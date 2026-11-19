@@ -4,8 +4,8 @@ return [
 	'key'					=> 'blocks',
 	'name'				=> [ 'en_US' => 'Blocks', 'de_DE' => 'Blocks' ],
 	'description'	=> [
-		'en_US' => 'Blocks lists the blocks of the project and of the theme in use, and opens each in an editor. A block is made of the components the register has - a section with its rows and columns, texts and picture places - and is kept as a block of the project, ready for the Builder to put into a page. It needs the Builder, whose tree view and lightbox it works with.',
-		'de_DE' => 'Blocks listet die Blocks des Projekts und des angewandten Themes und öffnet jeden in einem Editor. Ein Block besteht aus den Komponenten, die das Register hat – einer Sektion mit Zeilen und Spalten, Texten und Bildplätzen – und wird als Block des Projekts abgelegt, damit der Builder ihn in eine Seite setzen kann. Es setzt den Builder voraus, mit dessen Baum-Ansicht und Lightbox es arbeitet.',
+		'en_US' => 'Blocks lists the blocks of the project and of the theme in use, and opens each in an editor. A block is made of the components the register has - a section with its rows and columns, texts and picture places - and is kept as a block of the project, ready for the Builder to put into a page. It needs the Builder, whose tree view and properties column it works with.',
+		'de_DE' => 'Blocks listet die Blocks des Projekts und des angewandten Themes und öffnet jeden in einem Editor. Ein Block besteht aus den Komponenten, die das Register hat – einer Sektion mit Zeilen und Spalten, Texten und Bildplätzen – und wird als Block des Projekts abgelegt, damit der Builder ihn in eine Seite setzen kann. Es setzt den Builder voraus, mit dessen Baum-Ansicht und Eigenschaften-Spalte es arbeitet.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -32,8 +32,8 @@ return [
 				'de_DE' => 'Der dritte Reiter schreibt Header und Footer im selben Editor, gespeichert in frame-header und frame-footer; nur hier wird ein Rahmen oder der Aufruf html geschrieben.',
 			],
 			'Block editor' => [
-				'en_US' => 'The tree of a block, its picture drawn by the site and the lightbox of each component - in the views of the Builder - with Save, Save as and the steps of Undo.',
-				'de_DE' => 'Der Baum eines Blocks, sein Bild von der Website und die Lightbox jeder Komponente – in den Ansichten des Builders – mit Speichern, Speichern unter und den Schritten von Rückgängig.',
+				'en_US' => 'The tree of a block, its picture drawn by the site and the properties of each component beside the preview - with Save, Save as and the steps of Undo.',
+				'de_DE' => 'Der Baum eines Blocks, sein Bild von der Website und die Eigenschaften jeder Komponente neben der Vorschau – mit Speichern, Speichern unter und den Schritten von Rückgängig.',
 			],
 		],
 		'callbacks' => [],

@@ -35,6 +35,8 @@ console.log( '\nB. The sheet of a frame' );
 
 check( 'B1. the sheet of a frame is opened by the editor of the Builder with the adapter of the frame: frame true, the template of the frame as every request\'s base, the stamp restore, the way back to the tab of the frames',
 	has( /frame\s*: true,/ ) === true && has( /base\s*: function\(\) \{ return \{ template : template,/ ) === true && has( /restore\s*: true,/ ) === true && has( /back\s*: function\(\) \{ return \{ parts : tabParts\( 'frames' \)/ ) === true );
+check( 'B3. the properties of a component open in the column beside the preview - in the editor of a block of the library and in the editor of a frame alike: both adapters say props : \'panel\', and no other adapter of this panel does',
+	script.match( /props\s*:\s*'panel'/g ) !== null && script.match( /props\s*:\s*'panel'/g ).length === 2 && has( /frame\s*: true,[\s\S]*?props\s*: 'panel',/ ) === true );
 check( 'B2. every request of the sheet of a frame is the action of a frame - blocks/frame-<action> - of this panel, and the open of one asks for the frame by its template',
 	has( /Nino\.admin\.blocks\.call\( 'frame-'\+ action, payload, done, extra \)/ ) === true && has( /Nino\.admin\.blocks\.call\( 'frame-open', \{ template : 'frame-'\+ frame,/ ) === true );
 

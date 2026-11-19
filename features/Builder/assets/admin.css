@@ -668,3 +668,234 @@
 
 
 }
+
+/* --- The properties of a component in the column beside the preview (the Blocks editor) -------------------------------------------------------------------------------- */
+
+/* The column of the block editors is 480 px wide where the view has the room - narrower in step with the view, half of it at the most. The workbench's split() has no
+   option for the width of its settings column: this is the one place the rule is made, and the kernel is asked for the option (settingsWidth) */
+#blocks-app .nino-admin-split--fill > .nino-admin-split-grid {
+	grid-template-columns: minmax(18rem, min(480px, 50cqw)) minmax(0, 1fr);
+}
+
+@container nino-split (max-width: 44rem) {
+
+	#blocks-app .nino-admin-split--fill > .nino-admin-split-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* With the properties open the outline is out of sight - it stays in the page, told of every change - and the column is the properties' own: no padding, the head sticks */
+#blocks-app .nino-admin-split-settings.builder-props-open {
+	padding: 0;
+}
+
+#blocks-app .nino-admin-split-settings.builder-props-open > :not(.builder-props) {
+	display: none;
+}
+
+.builder-props {
+	container: builder-props / inline-size;
+	box-sizing: border-box;
+	min-width: 0;
+	padding: 0 var(--nino-admin-space-5) var(--nino-admin-space-7, 2rem);
+}
+
+.builder-props-head {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	display: grid;
+	gap: var(--nino-admin-space-1);
+	margin: 0 calc(var(--nino-admin-space-5) * -1) var(--nino-admin-space-4);
+	padding: var(--nino-admin-space-3) var(--nino-admin-space-5) var(--nino-admin-space-4);
+	border-bottom: 1px solid var(--editor-separator);
+	background: var(--editor-bg-elevated);
+}
+
+.nino-admin .builder-props .builder-props-back {
+	margin-left: calc(var(--nino-admin-space-3) * -1);
+	border: 0;
+	border-radius: var(--editor-radius-sm);
+	background: transparent;
+	box-shadow: none;
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.nino-admin .builder-props .builder-props-back:hover {
+	background: transparent;
+	text-decoration: underline;
+}
+
+.builder-props-line {
+	display: flex;
+	align-items: center;
+	gap: var(--nino-admin-space-3);
+	min-width: 0;
+}
+
+.builder-props-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 0;
+	font-size: var(--nino-admin-text-xl);
+	line-height: 1.2;
+	overflow-wrap: anywhere;
+}
+
+.builder-props-title:focus-visible {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: 2px;
+}
+
+.builder-props-tools {
+	flex: none;
+}
+
+.builder-props-tools:empty {
+	display: none;
+}
+
+.builder-props-path {
+	margin: 0;
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
+	overflow-wrap: anywhere;
+}
+
+.builder-props .builder-notation {
+	margin-right: 0;
+}
+
+.builder-props .builder-notation-pop {
+	top: calc(100% + var(--nino-admin-space-3));
+	right: 0;
+	bottom: auto;
+	left: auto;
+	width: min(28rem, 86vw);
+}
+
+.builder-props-group {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	margin: 0 0 var(--nino-admin-space-6);
+	min-width: 0;
+}
+
+.builder-props-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--nino-admin-space-3);
+	margin: 0;
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
+	font-weight: var(--nino-admin-weight-strong);
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+
+.builder-props-summary {
+	color: var(--editor-text-secondary);
+	font-weight: normal;
+	letter-spacing: 0;
+	text-transform: none;
+	overflow-wrap: anywhere;
+}
+
+/* A label at the left and the field at the right where the column is wide enough for both - the grid of the workbench's dialog of a form, which is no dialog here; narrower, one under the other */
+@container builder-props (min-width: 30rem) {
+
+	.builder-props .nino-admin-dialog-fields > .nino-admin-field {
+		display: grid;
+		grid-template-columns: minmax(6.5rem, 9.5rem) minmax(0, 1fr);
+		align-items: center;
+		gap: var(--nino-admin-space-4);
+	}
+
+	.builder-props .nino-admin-dialog-fields > .nino-admin-field > span {
+		margin: 0;
+	}
+
+	.builder-props .nino-admin-dialog-fields > .nino-admin-field-error {
+		margin-left: calc(9.5rem + var(--nino-admin-space-4));
+	}
+}
+
+/* A setting that is off or on for each width: ONE row, its name and at the right three small switches under the three devices. The words of a switch are for a screen reader and its tooltip
+   only; one that writes nothing is dimmed and shows what the width below has, one that writes a value is drawn full and its device has a dot */
+.builder-lightbox .builder-switch-cells {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--nino-admin-space-3);
+	min-width: 0;
+}
+
+.builder-lightbox .builder-switch-cell {
+	display: grid;
+	justify-items: center;
+	gap: var(--nino-admin-space-2);
+	min-width: 0;
+}
+
+.builder-lightbox .builder-switch-control {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--nino-admin-space-2);
+	min-height: 2rem;
+}
+
+.builder-lightbox .builder-switch .nino-admin-switch-copy,
+.builder-lightbox .builder-switch .nino-admin-switch-state {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.builder-lightbox .builder-switch.builder-width-inherited {
+	opacity: .55;
+}
+
+.builder-lightbox .builder-width-back {
+	flex: none;
+}
+
+/* A narrow window shows the column or the preview, not both: with the properties open a low strip of the preview stands over the column - fixed while the column scrolls, a press on it
+   goes to the preview. The workbench's split() has no such view yet (the kernel is asked for one) */
+.builder-props-peek {
+	display: none;
+}
+
+@container nino-split (max-width: 44rem) {
+
+	#blocks-app .nino-admin-split--fill.builder-props-live[data-view="settings"] > .nino-admin-split-grid {
+		grid-template-rows: 9rem minmax(0, 1fr);
+	}
+
+	#blocks-app .nino-admin-split--fill.builder-props-live[data-view="settings"] > .nino-admin-split-grid > .nino-admin-split-preview {
+		display: flex;
+		order: -1;
+		position: relative;
+		border-bottom: 1px solid var(--editor-separator);
+	}
+
+	#blocks-app .builder-props-live[data-view="settings"] .builder-props-peek {
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		display: block;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	#blocks-app .builder-props-live[data-view="settings"] .builder-props-peek:focus-visible {
+		outline: 2px solid var(--editor-blue);
+		outline-offset: -2px;
+	}
+}
