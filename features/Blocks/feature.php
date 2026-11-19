@@ -24,8 +24,8 @@ return [
 		],
 		'panel' => [
 			'Blocks' => [
-				'en_US' => 'The list of the blocks of the project and of the theme in use, with a new block, a copy, a new name and the removal of a block; the right is /_admin/blocks/manage.',
-				'de_DE' => 'Die Liste der Blocks des Projekts und des angewandten Themes, mit neuem Block, Kopie, neuem Namen und Löschen; das Recht: /_admin/blocks/manage.',
+				'en_US' => 'The blocks of the project and of the theme in use: new block, copy, new name, removal, and the export and import of own blocks as a package; the right is /_admin/blocks/manage.',
+				'de_DE' => 'Die Blocks des Projekts und des angewandten Themes: neuer Block, Kopie, neuer Name, Löschen sowie Export und Import eigener Blocks als Paket; das Recht: /_admin/blocks/manage.',
 			],
 			'Frames' => [
 				'en_US' => 'The third tab writes the header and the footer in the same editor, saved in frame-header and frame-footer; it is the only place that writes a frame or the call of html.',

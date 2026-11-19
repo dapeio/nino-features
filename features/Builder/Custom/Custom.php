@@ -356,6 +356,8 @@ namespace Nino\Modules\Builder {
 			foreach( $parts['texts'] as $locale => $json )
 				$made = $made === true && file_put_contents( $temp. '/text/'. $locale. '.json', $json ) !== false;
 
+			$made = $made === true && self::_pictures( $temp, (array) ( $parts['pictures'] ?? [] ) );
+
 			// Moved into its place only where nobody has made one there meanwhile: a folder that is there and holds something is not replaced
 			if( $made === true && file_exists( $folder. '/'. $key ) === false && @rename( $temp, $folder. '/'. $key ) === true )
 				return [ 'key' => $key ];
@@ -403,6 +405,8 @@ namespace Nino\Modules\Builder {
 			foreach( (array) $parts['texts'] as $locale => $json )
 				$made = $made === true && file_put_contents( $temp. '/text/'. $locale. '.json', (string) $json ) !== false;
 
+			$made = $made === true && self::_pictures( $temp, (array) ( $parts['pictures'] ?? [] ) );
+
 			$aside = $folder. '/.old-'. bin2hex( random_bytes( 6 ) );
 
 			if( $made === true && @rename( $dir, $aside ) === true ) {
@@ -418,6 +422,39 @@ namespace Nino\Modules\Builder {
 			self::_remove( $temp );
 
 			return self::_fail( 500, 'write' );
+		}
+
+		/**
+		 *	The pictures a block has of its own, written into the folder that is made beside its place: images/<slot>.<type>, the names \Nino\Blocks::validate() has read them under; a svg as the picture that \Nino\Images::cleanSvg() rebuilds of it. The
+		 *	parts of the editor bring none; a package that is imported does
+		 *
+		 *	@param		string		$temp					The folder
+		 *	@param		array			$pictures			slot.type => bytes
+		 *
+		 *	@return 	bool											Whether all of them were written
+		 */
+		private static function _pictures( string $temp, array $pictures ): bool {
+
+			if( $pictures === [] )
+				return true;
+
+			if( @mkdir( $temp. '/images', 0755, true ) === false && is_dir( $temp. '/images' ) === false )
+				return false;
+
+			foreach( $pictures as $file => $bytes ) {
+
+				if( preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)$/D', (string) $file ) !== 1 || is_string( $bytes ) === false )
+					return false;
+
+				// A svg is written as the picture cleanSvg() rebuilds, never as it came
+				if( str_ends_with( (string) $file, '.svg' ) === true && ( $bytes = \Nino\Images::cleanSvg( $bytes ) ) === null )
+					return false;
+
+				if( file_put_contents( $temp. '/images/'. $file, $bytes ) === false )
+					return false;
+			}
+
+			return true;
 		}
 
 		/**
@@ -457,7 +494,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Take away a folder of the files of a block: its files, text/ and what it holds, and the folder - nothing of a link, nothing deeper
+		 *	Take away a folder of the files of a block: its files, text/ and images/ and what they hold, and the folder - nothing of a link, nothing deeper
 		 *
 		 *	@param		string		$dir
 		 *
@@ -475,7 +512,7 @@ namespace Nino\Modules\Builder {
 
 				$path = $dir. '/'. $entry;
 
-				if( is_link( $path ) === true || ( is_dir( $path ) === true && $entry !== 'text' ) )
+				if( is_link( $path ) === true || ( is_dir( $path ) === true && $entry !== 'text' && $entry !== 'images' ) )
 					return false;
 
 				if( is_dir( $path ) === true )

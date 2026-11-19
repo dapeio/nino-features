@@ -176,6 +176,325 @@
 		return [ copy, rename, drop ];
 	};
 
+	// --- the export and the import of own blocks ----------------------------------------------------------------------------
+
+	// The key a package has from its name: lower case letters, digits and hyphens, beginning with a letter
+	const packKeyOf = function( text ) {
+
+		const key = String( text ).normalize('NFKD').replace( /[̀-ͯ]/g, '' ).toLowerCase().replace( /ß/g, 'ss' ).replace( /[^a-z0-9]+/g, '-' ).replace( /^[^a-z]+/, '' ).slice( 0, 32 ).replace( /-+$/, '' );
+
+		return key === '' ? 'blocks' : key;
+	};
+
+	// The blocks that are ticked for the export: only blocks of the project that the list has
+	const pickedNow = function() {
+
+		const have = new Set( ( N.data.blocks ?? [] ).map( function( block ) { return block.key } ) );
+
+		return Array.from( N.picked ?? [] ).filter( function( key ) { return have.has( key ) } );
+	};
+
+	const paintExport = function() {
+
+		if( N.exportButton === null || N.exportButton === undefined )
+			return;
+
+		const count = pickedNow().length;
+
+		N.exportButton.disabled = count === 0;
+		N.exportButton.textContent = count === 0 ? word('export/button') : word( 'export/button-n', count );
+	};
+
+	// The tick of a row for the export: a box with the name of the block for a screen reader
+	const pickCell = function( value, row ) {
+
+		const label = el( 'label', 'blocks-pick' );
+		const input = dc.createElement('input');
+
+		input.type = 'checkbox';
+		input.checked = ( N.picked ?? new Set() ).has( row.key );
+		input.dataset.key = 'pick:'+ row.key;
+		input.setAttribute( 'aria-label', word( 'list/pick', row.name ) );
+		input.addEventListener( 'change', function() {
+
+			if( input.checked === true )
+				N.picked.add( row.key );
+			else
+				N.picked.delete( row.key );
+
+			paintExport();
+		} );
+		label.appendChild( input );
+
+		return label;
+	};
+
+	// The file is asked of the server by a form that posts into a frame nobody sees: a file that is saved does not load, so what loads there is the refusal
+	const download = function( body ) {
+
+		let frame = dc.getElementById('blocks-download');
+
+		if( frame === null ) {
+			frame = dc.createElement('iframe');
+			frame.id = 'blocks-download';
+			frame.name = 'blocks-download';
+			frame.hidden = true;
+			frame.setAttribute( 'title', word('export/button') );
+			frame.setAttribute( 'tabindex', '-1' );
+			dc.body.appendChild( frame );
+		}
+
+		const fields = { action : 'blocks/export', data : JSON.stringify( body ) };
+		const csrf = dc.querySelector( 'input[name="_csrf"]' );
+
+		if( csrf !== null )
+			fields._csrf = csrf.value;
+
+		const form = dc.createElement('form');
+
+		form.method = 'post';
+		// Where every panel posts: the directory of the project and the workbench's own address, with its slash
+		form.action = ( typeof Nino.dir === 'string' ? Nino.dir : '' )+ '/_admin'+ '/';
+		form.target = 'blocks-download';
+		form.hidden = true;
+
+		Object.keys( fields ).forEach( function( name ) {
+
+			const input = dc.createElement('input');
+
+			input.type = 'hidden';
+			input.name = name;
+			input.value = fields[name];
+			form.appendChild( input );
+		} );
+
+		dc.body.appendChild( form );
+		form.submit();
+		dc.body.removeChild( form );
+	};
+
+	const askExport = function( opener ) {
+
+		clearFail();
+
+		const keys = pickedNow();
+
+		if( keys.length === 0 )
+			return;
+
+		const work = Nino.admin.workLocale.current;
+		const one = keys.length === 1 ? ( N.data.blocks.find( function( block ) { return block.key === keys[0] } ) ?? null ) : null;
+		const name = one !== null ? nameIn( one.name, work ) : String( ( N.data.package.name ?? {} )[work] ?? '' ).replace( '%s', N.data.site );
+
+		Nino.adminUi.formDialog( {
+			title		: word('export/title'),
+			message	: word('export/note'),
+			fields	: [
+				{ key : 'name', type : 'text', label : word('export/name'), value : name, required : true, maxLength : 80 },
+				{ key : 'key', type : 'text', label : word('export/key'), value : packKeyOf( name ), required : true, maxLength : 32, help : word('export/key-help') },
+				{ key : 'version', type : 'text', label : word('export/version'), value : N.data.package.version, required : true, maxLength : 14 },
+				{ key : 'description', type : 'text', label : word('export/description'), value : '', maxLength : 240 },
+			],
+			submit	: word('export/submit'),
+			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
+			opener	: opener,
+			onSubmit	: function( values, ctl ) {
+
+				const body = { keys : keys, key : String( values.key ).trim(), version : String( values.version ).trim(), name : String( values.name ).trim(), description : String( values.description ?? '' ).trim(), locale : work };
+
+				// Asked first, so that a refusal is said here at its field; the file that follows is the one that was asked about
+				Nino.admin.blocks.call( 'export', Object.assign( { check : true }, body ), function( status, response ) {
+
+					if( status !== 200 ) {
+						refused( ctl, status, response, '/_admin/blocks/error/export' );
+						return;
+					}
+
+					ctl.close();
+					download( body );
+					Nino.adminUi.say( word( 'export/done', response.file ) );
+				} );
+			},
+		} );
+	};
+
+	// What a package holds, one line for each block: the box before its name, and quietly what it is; where its key is taken, the choice of what is done with it under it
+	const importRows = function( preview, picks ) {
+
+		const holder = el( 'div', 'blocks-import' );
+
+		holder.appendChild( el( 'p', 'nino-admin-hint', word( 'import/pack', preview.pack.name, preview.pack.version ) ) );
+
+		preview.blocks.forEach( function( block ) {
+
+			const row = el( 'div', 'blocks-import-row' );
+			const pick = { take : true, how : 'skip' };
+			const line = el( 'div', 'blocks-import-line' );
+			const tick = Nino.adminUi.checkField( { key : 'take:'+ block.key, label : block.name, checked : true, className : 'nino-admin-field blocks-import-take', onChange : function( on ) { pick.take = on } } );
+			const facts = el( 'small', 'nino-admin-hint blocks-import-facts', [ categoryWord( block.category ), word( 'import/col-variants' )+ ': '+ block.variants.length, word( 'import/col-pictures' )+ ': '+ block.images ].join( ' · ' ) );
+			const names = block.variants.filter( function( label ) { return label !== '' } ).join( ', ' );
+
+			if( names !== '' )
+				facts.title = names;
+
+			picks[block.key] = pick;
+			line.appendChild( tick );
+			line.appendChild( facts );
+			row.appendChild( line );
+
+			if( block.state === 'taken' ) {
+
+				const options = [ { value : 'skip', label : word('import/how-skip') }, { value : 'copy', label : word('import/how-copy') } ];
+
+				if( block.replace === true )
+					options.push( { value : 'replace', label : word('import/how-replace') } );
+
+				const note = el( 'p', 'nino-admin-hint blocks-import-warn', word('import/replace-note') );
+				const choice = Nino.adminUi.selectField( { key : 'how:'+ block.key, label : word('import/exists'), options : options, value : 'skip', className : 'nino-admin-field blocks-import-how', onChange : function( value ) {
+
+					pick.how = value;
+					note.hidden = value !== 'replace';
+					choice.classList.toggle( 'is-replace', value === 'replace' );
+				} } );
+
+				note.hidden = true;
+				row.appendChild( choice );
+				row.appendChild( note );
+			}
+
+			holder.appendChild( row );
+		} );
+
+		return holder;
+	};
+
+	// The result of an import: a line for each block, and where one was missing, which and why
+	const askImportResult = function( results, opener ) {
+
+		const holder = el( 'div', 'blocks-import' );
+		const list = el( 'ul', 'blocks-import-results' );
+		const failed = results.find( function( result ) { return result.result === 'failed' } );
+
+		results.forEach( function( result ) {
+
+			const line = el( 'li', result.result === 'failed' ? 'is-failed' : '', word( 'import/result-'+ result.result, result.name, result.result === 'failed' ? ( result.message ?? '' ) : ( result.as ?? '' ) ) );
+
+			list.appendChild( line );
+		} );
+
+		if( failed !== undefined )
+			holder.appendChild( el( 'p', 'nino-admin-error', word( 'import/stopped', failed.name ) ) );
+
+		holder.appendChild( list );
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('import/done-title'),
+			content	: holder,
+			opener	: opener,
+			choices	: [ { value : 'close', label : word('import/close'), kind : 'primary' } ],
+			onChoose	: function() { Nino.admin.blocks.go( [] ) },
+		} );
+	};
+
+	const askImportPreview = function( preview, opener ) {
+
+		const picks = {};
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('import/title'),
+			content	: importRows( preview, picks ),
+			size		: 'form',
+			opener	: opener,
+			choices	: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'import', label : word('import/submit'), kind : 'primary' } ],
+			guard		: function( value ) {
+
+				if( value !== 'import' || Object.keys( picks ).some( function( key ) { return picks[key].take === true } ) === true )
+					return true;
+
+				Nino.adminUi.say( word('import/none'), { kind : 'info' } );
+
+				return false;
+			},
+			onChoose	: function( value ) {
+
+				// A preview that is left lets go of the bytes that are held for it
+				if( value !== 'import' ) {
+					Nino.admin.blocks.call( 'import-drop', { id : preview.id, locale : Nino.admin.workLocale.current }, function() {} );
+					return;
+				}
+
+				Nino.admin.blocks.call( 'import', { id : preview.id, items : picks, locale : Nino.admin.workLocale.current }, function( status, response ) {
+
+					if( status !== 200 ) {
+						fail( status, response, '/_admin/blocks/error/import' );
+						return;
+					}
+
+					askImportResult( response.results, opener );
+				} );
+			},
+		} );
+	};
+
+	const askImport = function( opener ) {
+
+		clearFail();
+
+		const holder = el( 'div', 'blocks-import' );
+		const file = Nino.adminUi.fileField( { key : 'file', label : word('import/file'), accept : '.gz,.tgz,application/gzip', maxBytes : N.data.package.bytes, note : word( 'import/limits', Math.round( N.data.package.bytes / 1024 )+ ' KiB' ), button : word('import/file-button') } );
+		let preview = null;
+
+		holder.appendChild( el( 'p', '', word('import/note') ) );
+		holder.appendChild( file.el );
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('import/title'),
+			content	: holder,
+			size		: 'form',
+			focus		: file.button,
+			opener	: opener,
+			choices	: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'check', label : word('import/check'), kind : 'primary' } ],
+			guard		: function( value, handle ) {
+
+				if( value !== 'check' )
+					return true;
+
+				if( preview !== null )
+					return true;
+
+				const chosen = file.value();
+
+				if( chosen === null ) {
+					file.error( word('import/no-file') );
+					return false;
+				}
+
+				handle.buttons.check.disabled = true;
+				file.clearError();
+
+				Nino.admin.blocks.call( 'import-check', { locale : Nino.admin.workLocale.current }, function( status, response ) {
+
+					handle.buttons.check.disabled = false;
+
+					if( status !== 200 ) {
+						file.error( Nino.adminUi.api.errorText( status, response, '/_admin/blocks/error/import' ) );
+						return;
+					}
+
+					preview = response;
+					handle.close( 'check' );
+				}, { file : chosen } );
+
+				return false;
+			},
+			onChoose	: function( value ) {
+
+				if( value === 'check' && preview !== null )
+					askImportPreview( preview, opener );
+			},
+		} );
+	};
+
 	const render = function( data ) {
 
 		if( editor().state().sheet === 'block' )
@@ -183,6 +502,7 @@
 
 		N.data = data;
 		N.tab = data.tab;
+		N.picked = N.picked ?? new Set();
 
 		const mount = dc.getElementById('blocks-list');
 		const holder = el( 'div', '' );
@@ -236,13 +556,13 @@
 			Nino.adminUi.table( {
 				mount			: holder,
 				rowKey		: 'key',
-				columns		: [
+				columns		: ( N.tab === 'project' ? [ { key : 'pick', label : word('list/pick-head'), type : 'string', render : pickCell, sortable : false } ] : [] ).concat( [
 					{ key : 'tile', label : word('list/preview'), type : 'string', render : tileCell, sortable : false },
 					{ key : 'name', label : word('list/name'), type : 'string', render : nameCell },
 					{ key : 'category', label : word('list/category'), type : 'string', render : function( value ) { return categoryWord( value ) } },
 					{ key : 'variants', label : word('list/variants'), type : 'integer', render : variantCell },
-				],
-				rows			: data.blocks.map( function( block ) { return { key : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ) } } ),
+				] ),
+				rows			: data.blocks.map( function( block ) { return { key : block.key, pick : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ) } } ),
 				actions		: rowButtons,
 				labels		: { search : word('list/search'), empty : word('msg/none-project'), noMatch : word('list/no-match') },
 				search		: true,
@@ -251,7 +571,21 @@
 			} );
 
 		N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'blocks-new' } );
-		mount.appendChild( Nino.adminUi.actionBar( { list : true, primary : N.button } ).el );
+
+		// The own blocks are handed out and taken in: the ticked ones go into a package, and a package comes in beside the button of a new block
+		const beside = [];
+
+		N.exportButton = null;
+
+		if( N.tab === 'project' ) {
+
+			N.exportButton = Nino.adminUi.button( word('export/button'), function() { askExport( N.exportButton ) }, { kind : 'secondary', id : 'blocks-export' } );
+			beside.push( N.exportButton );
+			beside.push( Nino.adminUi.button( word('import/button'), function( event ) { askImport( event.currentTarget ) }, { kind : 'secondary', id : 'blocks-import' } ) );
+			paintExport();
+		}
+
+		mount.appendChild( Nino.adminUi.actionBar( { list : true, secondary : beside, primary : N.button } ).el );
 	};
 
 	// --- the forms and the questions ----------------------------------------------------------------------------------------
@@ -262,7 +596,7 @@
 		const text = Nino.adminUi.api.errorText( status, response, fallback );
 		const field = ( response ?? {} ).field;
 
-		ctl.fail( [ 'name', 'category', 'from' ].indexOf( field ) !== -1 ? field : null, text );
+		ctl.fail( [ 'name', 'category', 'from', 'key', 'version', 'description', 'file' ].indexOf( field ) !== -1 ? field : null, text );
 	};
 
 	// The name of a block in each language of the site, in a dialog: the working language is the one that is required - the others stand folded below it and a language
@@ -786,14 +1120,8 @@
 		return true;
 	};
 
-	const quiet = function( text, className ) {
-
-		const note = el( 'small', 'nino-admin-hint '+ className, text );
-
-		return note;
-	};
-
-	// What a row of the look says in a variant: that it is the variant's - a dot and the way back - or that it is the template's, for every variant
+	// What a row of the look says in a variant: a row that writes the set of the variant has a dot before its name - filled where the set has a value for it, a ring where it could - and,
+	// where it has one, the way back to the template as a small button. A row that writes the template carries nothing
 	const decorateOf = function( row, rel, names ) {
 
 		if( inVariant() === false )
@@ -806,30 +1134,24 @@
 			return;
 
 		const kinds = names.map( function( name ) { return ( ( ( s.schemas[node.n] ?? {} ).attributes ?? {} )[name] ?? {} ).class === true } );
+
+		if( kinds.every( function( looks ) { return looks === false } ) === true )
+			return;
+
 		const own = ( node.v ?? {} )[s.extra.edited] ?? {};
 		const set = names.filter( function( name ) { return Object.hasOwn( own, name ) } );
+		const dot = el( 'span', 'builder-var-dot'+ ( set.length > 0 ? ' is-set' : '' ) );
 
-		if( kinds.every( function( looks ) { return looks === false } ) === true ) {
-			row.appendChild( quiet( word('variants/note-all'), 'builder-var-all' ) );
-			return;
-		}
-
-		// A row of a look writes the set of this variant: it says so, quietly, and where the set has a value for it, with a dot and the way back to the template
-		const mark = quiet( word('variants/here'), 'builder-var-here' );
-
-		row.appendChild( mark );
+		dot.appendChild( el( 'span', 'nino-admin-sr-only', word( set.length > 0 ? 'variants/dot-set' : 'variants/dot-free' ) ) );
+		row.classList.add('builder-var-look');
+		row.insertBefore( dot, row.firstChild );
 
 		if( set.length === 0 )
 			return;
 
-		const dot = el( 'span', 'builder-device-dot builder-var-dot' );
-
-		dot.title = word('variants/set-dot');
-		dot.setAttribute( 'aria-hidden', 'true' );
 		row.classList.add('builder-var-set');
-		row.appendChild( dot );
 
-		const reset = Nino.adminUi.button( word('variants/reset'), function() {
+		row.appendChild( Nino.adminUi.iconButton( 'undo-2', word('variants/reset'), function() {
 
 			editor().change( function() {
 
@@ -856,21 +1178,21 @@
 			} );
 
 			wn.setTimeout( function() { if( s.box !== null && typeof s.box.draw === 'function' ) s.box.draw() }, 0 );
-		}, { small : true, className : 'builder-var-reset' } );
-
-		row.appendChild( reset );
+		}, { small : true, className : 'builder-var-reset' } ) );
 	};
 
-	// The sections that are not a look say once that they are the template's; the rows of a look say it of themselves, each where it writes
-	const noteOf = function( kind ) {
+	// The head of a section of a component in a variant says which variant is edited, and behind a (?) what the dot is: one sentence for the whole lightbox
+	const noteOf = function() {
 
-		if( inVariant() === false || kind === 'look' )
+		if( inVariant() === false )
 			return null;
 
+		const s = stateOf();
+		const now = ( s.extra.vars ?? [] ).find( function( variant ) { return variant.name === s.extra.edited } );
 		const note = el( 'p', 'nino-admin-hint builder-var-note' );
 
-		note.appendChild( document.createTextNode( word('variants/note-all') ) );
-		note.appendChild( Nino.adminUi.fieldHelp( word('variants/note-help'), { field : note, name : word('variants/note-all') } ) );
+		note.appendChild( document.createTextNode( word( 'variants/button', now === undefined ? word('variants/standard') : labelOf( now ) ) ) );
+		note.appendChild( Nino.adminUi.fieldHelp( word('variants/note-help'), { field : note, name : word('variants/note-name') } ) );
 
 		return note;
 	};

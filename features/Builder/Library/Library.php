@@ -187,8 +187,8 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	Which block of the catalogue a block of a page is, for a block that has variants: a block that \Nino\Blocks offers for a page that has variants, whose places the tree has and
 		 *	whose calls it is - the rule of the Tree for a block that was put in, with the attributes left out. It is told from the tree; a request may only name which of the blocks of
-		 *	that form it put in, and only one of them is taken. Where several blocks have the form - the ids inside them are then the same - the one put in this session is it, else the one whose variant the
-		 *	calls are in; where that does not decide and the blocks have variants of their own there is no
+		 *	that form it put in, and only one of them is taken. Where several blocks have the form, the one put in this session is it, else the one whose root has the id of the block of the page - with the number of a copy - else the one whose
+		 *	variant the calls are in; where that does not decide and the blocks have variants of their own there is no
 		 *	answer, never the variants of a block the page does not have. A block with a call put in, taken out or named another, or another source, is none
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -223,14 +223,14 @@ namespace Nino\Modules\Builder {
 				if( Tree::likeBlock( self::_shape( $node, $registry ), self::_shape( $own['tree'][0], $registry ), $registry ) === false )
 					continue;
 
-				$found[(string) $key] = [ 'block' => $block ];
+				$found[(string) $key] = [ 'block' => $block, 'id' => (string) $own['id'] ];
 			}
 
 			if( $found === [] )
 				return null;
 
-			// Blocks of one form are told apart by their ids first - the ids inside a block put in are the id of its root and what follows it, so a block is only the block whose ids the calls
-			// have - then by the block that was put in this very session, then by the one whose variant the calls are in. Where that does not decide and the blocks have variants of
+			// Blocks of one form are told apart by the block that was put in this very session, then by the id of the root - the one a block that is put in has, with the number of a copy -
+			// then by the one whose variant the calls are in. Where that does not decide and the blocks have variants of
 			// their own, no block is chosen: the variants of a block that the page does not have are worse than none
 			if( count( $found ) > 1 ) {
 
@@ -238,6 +238,16 @@ namespace Nino\Modules\Builder {
 
 				if( $hinted !== '' && isset( $found[$hinted] ) === true )
 					$found = [ $hinted => $found[$hinted] ];
+				else {
+
+					// A block that is put in has the id of its root, or that with the number a copy has: the block whose root is the id itself comes first, then the one whose root it
+					// is with a number
+					$exact = array_filter( $found, static fn( array $one ): bool => $page !== '' && $page === $one['id'] );
+					$by = $exact !== [] ? $exact : array_filter( $found, static fn( array $one ): bool => $page !== '' && preg_match( '/^'. preg_quote( (string) preg_replace( '/-\d+$/', '', $one['id'] ), '/' ). '-\d+$/D', $page ) === 1 );
+
+					if( $by !== [] )
+						$found = $by;
+				}
 			}
 
 			if( count( $found ) > 1 ) {

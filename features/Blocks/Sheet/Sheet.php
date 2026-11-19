@@ -167,30 +167,10 @@ namespace Nino\Modules\Blocks {
 
 			$registry = \Nino\Components::components( $appData );
 			$fits = true;
-			$walk = static function( array $node ) use ( &$walk, $registry, $was, $id, &$fits ): array {
+			$tree = [];
 
-				$name = isset( $node['n'] ) === true && isset( $registry[$node['n']] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
-
-				if( $name !== '' && is_string( $node['a'][$name] ?? null ) === true && $node['a'][$name] !== '' ) {
-
-					$node['a'][$name] = $node['a'][$name] === $was ? $id : Tree::inner( $node['a'][$name], $was, $id );
-
-					if( strlen( $node['a'][$name] ) > 32 || Tree::isId( $node['a'][$name] ) === false )
-						$fits = false;
-				}
-
-				// A link to a place of the block goes to the new id
-				foreach( (array) ( $node['a'] ?? [] ) as $attribute => $value )
-					if( is_string( $value ) === true && ( $value === '#'. $was || str_starts_with( $value, '#'. $was. '-' ) ) )
-						$node['a'][$attribute] = '#'. ( $value === '#'. $was ? $id : Tree::inner( substr( $value, 1 ), $was, $id ) );
-
-				if( is_array( $node['c'] ?? null ) === true )
-					$node['c'] = array_map( static fn( array $child ): array => $walk( $child ), $node['c'] );
-
-				return $node;
-			};
-
-			$tree = array_map( static fn( array $node ): array => $walk( $node ), (array) $block['tree'] );
+			foreach( (array) $block['tree'] as $node )
+				$tree[] = self::_renamed( $node, $registry, $was, $id, $fits );
 
 			if( $fits === false )
 				return $block;
@@ -199,6 +179,76 @@ namespace Nino\Modules\Blocks {
 			$block['id'] = $id;
 
 			return $block;
+		}
+
+		/**
+		 *	The parts of a block with the id of its root and every id inside it made new, as reid() does it for a block as the library has it: the template is read, renamed and written
+		 *	back - the words and the slots are named from the root and need nothing. Parts whose new ids would not be ids are given back as they are
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$parts				json, tpl, texts, pictures
+		 *	@param		string		$id						The new id of the root
+		 *
+		 *	@return 	array
+		 */
+		public static function reidParts( array &$appData, array $parts, string $id ): array {
+
+			if( strlen( $id ) > 32 || Tree::isId( $id ) === false )
+				return $parts;
+
+			$nodes = Tree::read( $appData, (string) $parts['tpl'] );
+			$at = null;
+
+			foreach( $nodes as $index => $node )
+				if( isset( $node['n'] ) === true && $at === null )
+					$at = $index;
+
+			if( $at === null )
+				return $parts;
+
+			$registry = \Nino\Components::components( $appData );
+			$name = isset( $registry[$nodes[$at]['n']] ) === true ? Tree::idAttribute( $registry[$nodes[$at]['n']] ) : '';
+			$was = $name === '' ? '' : (string) ( $nodes[$at]['a'][$name] ?? '' );
+
+			if( $was === '' || $was === $id )
+				return $parts;
+
+			$fits = true;
+			$root = self::_renamed( $nodes[$at], $registry, $was, $id, $fits );
+
+			if( $fits === false )
+				return $parts;
+
+			$nodes[$at] = $root;
+			$parts['tpl'] = rtrim( \Nino\Markup::write( $nodes, \Nino\Components::containers( $appData ) ) ). "\n";
+
+			return $parts;
+		}
+
+		/**
+		 *	A node and what is below it with the ids made new: the id of the root is the new one, an id inside it follows it, and a link to a place of the block goes to the new id
+		 */
+		private static function _renamed( array $node, array $registry, string $was, string $id, bool &$fits ): array {
+
+			$name = isset( $node['n'] ) === true && isset( $registry[$node['n']] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
+
+			if( $name !== '' && is_string( $node['a'][$name] ?? null ) === true && $node['a'][$name] !== '' ) {
+
+				$node['a'][$name] = $node['a'][$name] === $was ? $id : Tree::inner( $node['a'][$name], $was, $id );
+
+				if( strlen( $node['a'][$name] ) > 32 || Tree::isId( $node['a'][$name] ) === false )
+					$fits = false;
+			}
+
+			foreach( (array) ( $node['a'] ?? [] ) as $attribute => $value )
+				if( is_string( $value ) === true && ( $value === '#'. $was || str_starts_with( $value, '#'. $was. '-' ) ) )
+					$node['a'][$attribute] = '#'. ( $value === '#'. $was ? $id : Tree::inner( substr( $value, 1 ), $was, $id ) );
+
+			if( is_array( $node['c'] ?? null ) === true )
+				foreach( $node['c'] as $at => $child )
+					$node['c'][$at] = self::_renamed( $child, $registry, $was, $id, $fits );
+
+			return $node;
 		}
 
 		/**
@@ -440,7 +490,7 @@ namespace Nino\Modules\Blocks {
 		 *	@param		array 		&$appData
 		 *	@param		string		$key
 		 *
-		 *	@return 	array|null								[ 'json', 'tpl', 'texts' => locale => json ]; null for a key that is no block with a template
+		 *	@return 	array|null								[ 'json', 'tpl', 'texts' => locale => json, 'pictures' => file => bytes ]; null for a key that is no block with a template
 		 */
 		public static function partsOf( array &$appData, string $key ): ?array {
 
@@ -463,7 +513,21 @@ namespace Nino\Modules\Blocks {
 			}
 
 			$flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
-			$parts = [ 'json' => json_encode( $meta, $flags ). "\n", 'tpl' => rtrim( $block['source'] ). "\n", 'texts' => [] ];
+			$parts = [ 'json' => json_encode( $meta, $flags ). "\n", 'tpl' => rtrim( $block['source'] ). "\n", 'texts' => [], 'pictures' => [] ];
+
+			// The pictures a block of the project has of its own - one that came in with a package - are part of it: what writes the block anew writes them with it
+			if( ( $block['pictures'] ?? [] ) !== [] && (string) ( $block['origin'] ?? '' ) === 'project' ) {
+
+				$dir = (string) ( $appData['./nino/filesystem/contentpath'] ?? '' ). \Nino\Blocks::OWN. '/'. $key. '/images/';
+
+				foreach( (array) $block['pictures'] as $relative ) {
+
+					$file = basename( (string) $relative );
+
+					if( preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)$/D', $file ) === 1 && is_file( $dir. $file ) === true && is_link( $dir. $file ) === false && is_string( $bytes = @file_get_contents( $dir. $file ) ) === true )
+						$parts['pictures'][$file] = $bytes;
+				}
+			}
 
 			foreach( (array) $block['texts'] as $locale => $words )
 				$parts['texts'][(string) $locale] = ( (array) $words === [] ? '{}' : json_encode( $words, $flags ) ). "\n";
@@ -483,7 +547,13 @@ namespace Nino\Modules\Blocks {
 
 			$parts = self::partsOf( $appData, $key );
 
-			return $parts === null ? '' : hash( 'sha256', (string) json_encode( $parts ) );
+			if( $parts === null )
+				return '';
+
+			// The pictures are bytes: they are told by their hashes, which a json text can hold
+			$parts['pictures'] = array_map( static fn( string $bytes ): string => hash( 'sha256', $bytes ), (array) $parts['pictures'] );
+
+			return hash( 'sha256', (string) json_encode( $parts ) );
 		}
 	}
 }

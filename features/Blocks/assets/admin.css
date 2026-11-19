@@ -49,26 +49,40 @@
 
 }
 
-/* The variants of a block: a row of the look that the edited variant sets has a dot and the way back to the template; a row that is the template's says so quietly */
-.builder-lightbox .builder-var-set {
+/* The variants of a block: a row of the look that the edited variant can set has a dot before its name - a ring, filled where the set has a value - and a small way back */
+.builder-lightbox .builder-var-look {
 	position: relative;
+	padding-left: var(--nino-admin-space-5);
+}
+
+.builder-lightbox .builder-var-set {
+	padding-right: calc( var(--nino-admin-space-5) + 24px );
 }
 
 .builder-lightbox .builder-var-dot {
-	top: .25rem;
-	right: .25rem;
+	position: absolute;
+	top: .9rem;
+	left: 0;
+	width: .5rem;
+	height: .5rem;
+	border: 1.5px solid var(--editor-blue);
+	border-radius: 50%;
+	box-sizing: border-box;
 }
 
-.builder-lightbox .builder-var-all,
-.builder-lightbox .builder-var-here,
-.builder-lightbox .builder-var-note {
-	display: block;
-	margin: 0;
-	grid-column: 1 / -1;
+.builder-lightbox .builder-var-dot.is-set {
+	background: var(--editor-blue);
 }
 
 .builder-lightbox .builder-var-reset {
-	justify-self: start;
+	position: absolute;
+	top: .35rem;
+	right: 0;
+}
+
+.builder-lightbox .builder-var-note {
+	display: block;
+	margin: 0;
 	grid-column: 1 / -1;
 }
 
@@ -114,4 +128,123 @@
 .nino-admin-contextbar-name .builder-context-button {
 	white-space: nowrap;
 	max-width: 100%;
+}
+
+/* Export and import: the tick of a row of the list, and the rows of what a package holds */
+#blocks-app .blocks-pick {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	min-height: 24px;
+}
+
+#blocks-app .blocks-pick input {
+	width: 24px;
+	height: 24px;
+	margin: 0;
+}
+
+#blocks-app .nino-admin-table thead th[data-key="pick"] {
+	padding: var(--nino-admin-space-3) var(--nino-admin-space-3);
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-xs);
+	font-weight: var(--nino-admin-weight-strong);
+	letter-spacing: .04em;
+	text-align: left;
+	text-transform: uppercase;
+}
+
+.blocks-import {
+	display: grid;
+	gap: var(--nino-admin-space-4);
+	min-width: 0;
+}
+
+.blocks-import-row {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	padding: var(--nino-admin-space-4);
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	min-width: 0;
+}
+
+.blocks-import-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--nino-admin-space-3);
+}
+
+.blocks-import-facts {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--nino-admin-space-3) var(--nino-admin-space-5);
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
+}
+
+/* Replacing is the one choice that takes something away: it is red where it is chosen */
+.blocks-import-how.is-replace select {
+	border-color: var(--editor-red-ink);
+	color: var(--editor-red-ink);
+}
+
+.blocks-import-warn {
+	margin: 0;
+	color: var(--editor-red-ink);
+}
+
+.blocks-import-results {
+	display: grid;
+	gap: var(--nino-admin-space-2);
+	margin: 0;
+	padding-left: var(--nino-admin-space-5);
+}
+
+.blocks-import-results .is-failed {
+	color: var(--editor-red-ink);
+	font-weight: var(--nino-admin-weight-strong);
+}
+
+/* The box that takes a block over stands before its name */
+.blocks-import-take {
+	display: inline-flex;
+	flex-direction: row-reverse;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--nino-admin-space-3);
+	margin: 0;
+}
+
+.blocks-import-take input {
+	width: 24px;
+	height: 24px;
+	margin: 0;
+	flex: none;
+}
+
+.blocks-import-take > span {
+	min-width: 0;
+	overflow: visible;
+	text-overflow: clip;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+/* One line for each block of a package: the box before the name, and quietly what the block is */
+.blocks-import-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--nino-admin-space-3) var(--nino-admin-space-5);
+}
+
+/* The column of the boxes has no head to read: its name is for a screen reader */
+#blocks-app .nino-admin-table thead th[data-key="pick"] {
+	overflow: hidden;
+	text-indent: -9999px;
+	white-space: nowrap;
 }

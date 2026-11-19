@@ -20,6 +20,10 @@ namespace Nino\Modules\Blocks {
 	//	blocks/duplicate	a block of the list as a new block of the project, with a name of its own
 	//	blocks/rename		the details of a block of the project - name and description in each language, category, rank - without the sheet; the key stays
 	//	blocks/remove		a block of the project taken away
+	//	blocks/export		own blocks as a package of the catalogue's form, checked by the rule of its packages, and handed over as a file to save
+	//	blocks/import-check	a package that was chosen, read and checked, and what is in it - nothing is written; the bytes are held for this session
+	//	blocks/import		the blocks of that package that were chosen, written as own blocks, each the way the editor saves one
+	//	blocks/import-drop	the bytes that are held for a preview that was left: let go of
 	//	blocks/offer		what the register offers at a place of the tree of the sheet
 	//	blocks/notation	the notation of the block and of a component, as the template has them written
 	//	blocks/keys			the fields and the types a loop of the sheet is told by - and nothing of the texts or the pictures of the site, which a block does not read
@@ -54,6 +58,10 @@ namespace Nino\Modules\Blocks {
 				'blocks/tile'			=> [ self::class, 'apiTile' ],
 				'blocks/frames'		=> [ self::class, 'apiFrames' ],
 				'blocks/adopt'		=> [ self::class, 'apiAdopt' ],
+				'blocks/export'		=> [ self::class, 'apiExport' ],
+				'blocks/import-check'	=> [ self::class, 'apiImportCheck' ],
+				'blocks/import'		=> [ self::class, 'apiImport' ],
+				'blocks/import-drop'	=> [ self::class, 'apiImportDrop' ],
 				'blocks/frame-open'	=> [ self::class, 'apiFrameOpen' ],
 				'blocks/frame-preview'	=> [ self::class, 'apiFramePreview' ],
 				'blocks/frame-save'	=> [ self::class, 'apiFrameSave' ],
@@ -102,6 +110,8 @@ namespace Nino\Modules\Blocks {
 				'blocks/duplicate'	=> 'Duplicate Block '. $key( 'key' ),
 				'blocks/rename'		=> 'Rename Block '. $key( 'key' ),
 				'blocks/remove'		=> 'Delete Block '. $key( 'key' ),
+				'blocks/export'		=> 'Export Blocks '. $key( 'key' ),
+				'blocks/import'		=> 'Import Blocks',
 				'blocks/adopt'		=> 'Adopt Block '. $key( 'key' ),
 				'blocks/frame-save'	=> 'Save Frame '. $key( 'template' ),
 				'blocks/frame-restore'	=> 'Restore Last Frame State '. $key( 'template' ),
@@ -113,7 +123,14 @@ namespace Nino\Modules\Blocks {
 		// --- the guard and the small things every action does ---------------------------------------------------------------
 
 		private static function _gate( array &$appData, array &$request ): bool {
-			return \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() );
+
+			$allowed = \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() );
+
+			// The bytes of a package that was shown and left are let go of when their time is out, whatever the next request of the session is
+			if( $allowed === true )
+				Package::sweep();
+
+			return $allowed;
 		}
 
 		private static function _fail( array &$request, int $status, string $message, string $code, array $params = [], string $field = '' ): void {
@@ -389,7 +406,20 @@ namespace Nino\Modules\Blocks {
 				// What the forms of a name begin with, in each language: a copy of "Hero" is "Hero Kopie" in German and "Hero copy" in English; a new block is "Neuer Block" and "New block"
 				'copy'			=> Sheet::words( \Nino\Locales::getTextLocales( $appData ), 'copy/suffix' ),
 				'fresh'			=> Sheet::words( \Nino\Locales::getTextLocales( $appData ), 'new/default-name' ),
+				// What the dialogs of the export and the import say of themselves: the host the site is served on, the largest package, the words for a package that has no name yet
+				'site'			=> self::_host( $request ),
+				'package'		=> [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::BLOCKS], 'version' => '1.0.0', 'name' => Sheet::words( \Nino\Locales::getTextLocales( $appData ), 'export/name-site' ) ],
 			] );
+		}
+
+		/**
+		 *	The host the request came to, as a name of a host: what the name of a package begins with where the project has no other
+		 */
+		private static function _host( array &$request ): string {
+
+			$host = (string) preg_replace( '/:\d+$/', '', strtolower( (string) ( $request['/nino/http/request']['header']['Host'] ?? '' ) ) );
+
+			return preg_match( '/^[a-z0-9][a-z0-9.-]{0,60}$/D', $host ) === 1 ? $host : 'nino';
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -740,6 +770,9 @@ namespace Nino\Modules\Blocks {
 
 			$made['parts']['json'] = json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n";
 
+			// The pictures the block has of its own stay, for the slots that are still there: a save does not take them away
+			$made['parts']['pictures'] = array_filter( is_array( $old ) === true ? (array) $old['pictures'] : [], static fn( string $file ): bool => isset( $meta['images'][(string) preg_replace( '/\.[a-z]+$/D', '', $file )] ), ARRAY_FILTER_USE_KEY );
+
 			if( self::_checked( $appData, $request, $key, $made['parts'] ) === null )
 				return;
 
@@ -825,6 +858,9 @@ namespace Nino\Modules\Blocks {
 			else
 				$made['parts'] = self::_varied( $appData, $made['parts'], $key, $from );
 
+			// A block that is saved under a key is its own block, and is told from the one it was made of by the id of its root: the id follows the key
+			$made['parts'] = Sheet::reidParts( $appData, $made['parts'], $key );
+
 			if( self::_checked( $appData, $request, $key, $made['parts'] ) === null )
 				return;
 
@@ -891,6 +927,172 @@ namespace Nino\Modules\Blocks {
 			$tried['json'] = json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n";
 
 			return is_string( \Nino\Blocks::validate( $appData, $key, $tried ) ) === true ? $parts : $tried;
+		}
+
+		/**
+		 *	Own blocks as a package, to save: the package is made and held to the rule of the catalogue's packages before it leaves, and an answer that says it is made (`check`) is
+		 *	what the panel asks first, so that a refusal is said in the dialog and the download that follows is the file. The name of the file is the key and the version - both
+		 *	checked, never the request's text - and nothing else of the request is in a header
+		 */
+		public static function apiExport( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$made = Package::export( $appData, is_array( $data['keys'] ?? null ) === true ? array_values( $data['keys'] ) : [], [
+				'key'					=> \Nino\Admin\Admin::postString( $data, 'key' ),
+				'version'			=> \Nino\Admin\Admin::postString( $data, 'version' ),
+				'name'				=> \Nino\Admin\Admin::postString( $data, 'name' ),
+				'description'	=> \Nino\Admin\Admin::postString( $data, 'description' ),
+			], $locale );
+
+			if( isset( $made['failure'] ) === true ) {
+				self::_failed( $request, $made['failure'] );
+				return;
+			}
+
+			if( ( $data['check'] ?? false ) === true ) {
+				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => strlen( $made['bytes'] ), 'blocks' => count( $made['blocks'] ) ] );
+				return;
+			}
+
+			$request['/nino/http/response']['body'] = $made['bytes'];
+			$request['/nino/http/response']['header']['Content-Type'] = 'application/gzip';
+			$request['/nino/http/response']['header']['Content-Disposition'] = 'attachment; filename="'. $made['file']. '"';
+			$request['/nino/http/response']['header']['Cache-Control'] = 'private, no-store';
+			$request['/nino/http/response']['header']['X-Content-Type-Options'] = 'nosniff';
+		}
+
+		/**
+		 *	A package that was chosen: read in memory, held to the rule of the catalogue's packages, and shown. Nothing is written and nothing of the file is kept but its bytes, which are held
+		 *	in the session of the one who sent them, for a quarter of an hour, under a key that is made here
+		 */
+		public static function apiImportCheck( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$failure = \Nino\Admin\Admin::uploadError( $_FILES['file'] ?? null );
+
+			if( $failure !== null ) {
+				self::_fail( $request, $failure['status'], $failure['error'], $failure['code'], $failure['params'], 'file' );
+				return;
+			}
+
+			$tmp = $_FILES['file']['tmp_name'] ?? null;
+			$size = is_string( $tmp ) === true ? (int) @filesize( $tmp ) : 0;
+
+			if( is_string( $tmp ) === true && $size < 1 ) {
+				self::_failed( $request, [ 400, 'the file is empty', 'blocks_import_nofile', [], 'file' ] );
+				return;
+			}
+
+			if( is_string( $tmp ) === false || $size > \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::BLOCKS] ) {
+				self::_failed( $request, [ 400, 'the file is none a package comes in', 'blocks_import_large', [ \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::BLOCKS] ], 'file' ] );
+				return;
+			}
+
+			// Read from where php put it, and never written: nothing of the file is left behind when the request ends, and no name of the request is a path
+			$bytes = (string) @file_get_contents( $tmp );
+			$read = Package::read( $appData, $bytes, $locale );
+
+			if( isset( $read['failure'] ) === true ) {
+				self::_failed( $request, $read['failure'] );
+				return;
+			}
+
+			$pack = $read['pack'];
+			$name = is_array( $pack['name'] ?? null ) === true ? (string) ( $pack['name'][$locale] ?? reset( $pack['name'] ) ) : (string) ( $pack['name'] ?? '' );
+
+			\Nino\Http::ok( $request, [
+				'id'			=> Package::hold( $bytes ),
+				'seconds'	=> Package::HOLD,
+				'pack'		=> [ 'key' => (string) $pack['key'], 'version' => (string) $pack['version'], 'name' => $name ],
+				'blocks'	=> Package::listed( $appData, $read, $locale ),
+			] );
+		}
+
+		/**
+		 *	A preview that was left - Cancel, Escape - lets go of the bytes that are held for it, when the key is the one that is held
+		 */
+		public static function apiImportDrop( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			if( Package::held( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'id' ) ) !== null )
+				Package::release();
+
+			\Nino\Http::ok( $request );
+		}
+
+		/**
+		 *	The blocks of a package that was shown, written as own blocks: the package is read and held to the rule AGAIN from the bytes that are held - what the request says of it is
+		 *	the key and the choices and nothing of the package - and each block is written the way the editor saves one. The first that cannot be written ends it
+		 */
+		public static function apiImport( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$bytes = Package::held( \Nino\Admin\Admin::postString( $data, 'id' ) );
+
+			if( $bytes === null ) {
+				self::_failed( $request, [ 403, 'there is no such package held for this session', 'blocks_import_unknown', [], 'id' ] );
+				return;
+			}
+
+			$read = Package::read( $appData, $bytes, $locale );
+
+			if( isset( $read['failure'] ) === true ) {
+				Package::release();
+				self::_failed( $request, $read['failure'] );
+				return;
+			}
+
+			$items = is_array( $data['items'] ?? null ) === true ? $data['items'] : [];
+			$choices = [];
+
+			foreach( $read['blocks'] as $key => $parts ) {
+
+				$item = is_array( $items[$key] ?? null ) === true ? $items[$key] : [];
+				$choices[(string) $key] = [ 'take' => ( $item['take'] ?? false ) === true, 'how' => is_string( $item['how'] ?? null ) === true ? $item['how'] : 'skip' ];
+			}
+
+			$names = [];
+
+			foreach( Package::listed( $appData, $read, $locale ) as $one )
+				$names[$one['key']] = $one['name'];
+
+			$results = Package::import( $appData, $read, $choices );
+			Package::release();
+
+			foreach( $results as $at => $result ) {
+
+				$results[$at]['name'] = $names[$result['key']] ?? $result['key'];
+
+				if( ( $result['result'] ?? '' ) === 'failed' )
+					$results[$at]['message'] = Sheet::words( [ $locale ], 'import/failed-'. ( in_array( $result['code'] ?? '', [ 'taken', 'invalid', 'write', 'key', 'block' ], true ) === true ? $result['code'] : 'unknown' ) )[$locale];
+			}
+
+			\Nino\Http::ok( $request, [ 'results' => $results ] );
 		}
 
 		/**

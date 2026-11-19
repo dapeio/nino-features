@@ -110,6 +110,7 @@ function world( options ) {
 	const dialogs = [];
 	const said = [];
 	const answers = [];
+	const posted = [];
 	const state = { hash : '#builder', pushed : [], discarded : 0, saved : [] };
 
 	page.id = 'page';
@@ -158,6 +159,9 @@ function world( options ) {
 		const created = element( tag );
 		created.scrollIntoView = function() {};
 		created.getBoundingClientRect = function() { return { top : 0, left : 0, width : 800, height : 600, right : 800, bottom : 600 } };
+		if( tag === 'form' )
+			created.submit = function() { posted.push( created ) };
+
 		if( tag === 'dialog' ) {
 			created.showModal = function() {};
 			created.close = function() {};
@@ -255,7 +259,7 @@ function world( options ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, posted : posted, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -337,7 +341,7 @@ const LIST = function( extra ) {
 		],
 		library : [ { key : 'hero-full', name : { en_US : 'Hero' }, origin : { en_US : 'Basis' }, own : false }, { key : 'karten', name : { en_US : 'Cards' }, origin : { en_US : 'Project' }, own : true } ],
 		categories : [ 'intro', 'content', 'trust', 'offer', 'action', 'contact' ],
-		contentLocale : 'de_DE', native : 'de_DE', locales : LOCALES, dir : '', shell : true, copy : { de_DE : ' Kopie', en_US : ' copy', fr_FR : ' copie' }, fresh : { de_DE : 'Neuer Block', en_US : 'New block', fr_FR : 'Nouveau bloc' },
+		contentLocale : 'de_DE', native : 'de_DE', locales : LOCALES, dir : '', shell : true, site : 'example.test', package : { bytes : 2097152, version : '1.0.0', name : { de_DE : 'Blocks von %s', en_US : 'Blocks of %s' } }, copy : { de_DE : ' Kopie', en_US : ' copy', fr_FR : ' copie' }, fresh : { de_DE : 'Neuer Block', en_US : 'New block', fr_FR : 'Nouveau bloc' },
 	}, extra ?? {} );
 };
 
@@ -926,18 +930,25 @@ const sheetOf = function( hash, extra ) {
 	const lookBody = bodies.filter( function( body ) { return findAll( body, function( el ) { return String( el.className ).indexOf('nino-admin-field') !== -1 } ).length > 0 } )[0];
 	const countOf = function( node, name ) { return findAll( node, function( el ) { return String( el.className ).split(' ').indexOf( name ) !== -1 } ).length };
 	const fieldRows = lookBody.children.filter( function( child ) { return String( child.className ).indexOf('builder-var-note') === -1 } );
-	const marks = fieldRows.map( function( one ) { return [ countOf( one, 'builder-var-all' ), countOf( one, 'builder-var-here' ) ] } );
+	const marks = fieldRows.map( function( one ) { return countOf( one, 'builder-var-dot' ) } );
+	const sentences = [ 'builder-var-here', 'builder-var-all' ].map( function( name ) { return countOf( lookBody, name ) } );
 
-	check( 'E. every row of the look of a component in another variant says where it writes - exactly one of "this variant" for a look and "all variants" for what is not one, the variant of the component among them - and the section has no sentence of its own over them',
-		shownBox === true && fieldRows.length === 3 && countOf( lookBody, 'builder-var-note' ) === 0 && marks.map( function( pair ) { return pair.join('') } ).join('|') === '10|01|10' );
+	check( 'E. in a variant the rows of the look that write its set - the reverse here - have a dot before their names, a ring where nothing is set, and the rows that write the template - the variant of the component, the gap - have nothing; no sentence stands under a row, and one note at the head of the section says which variant is edited, with a (?)',
+		shownBox === true && fieldRows.length === 3 && marks.join('|') === '0|1|0' && sentences.join() === '0,0' && countOf( lookBody, 'builder-var-note' ) === 1 && textOf( lookBody.children[0] ).indexOf( W( 'variants/button', 'Rechts' ) ) !== -1
+		&& findAll( lookBody.children[0], function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ).indexOf( W('variants/note-name') ) !== -1 } ).length === 1 );
 
-	const dots = fieldRows.map( function( one ) { return countOf( one, 'builder-var-dot' ) } );
-	const resets = fieldRows.map( function( one ) { return findAll( one, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('variants/reset') } ).length } );
+	const reversed = fieldRows[1];
+
+	check( 'E. the dot has words for a screen reader: where the set holds a value it says that it applies only to this block variant, where it holds none that it can be set',
+		textOf( reversed ).indexOf( W('variants/dot-set') ) !== -1 && countOf( reversed, 'is-set' ) === 1 );
+
+	const dots = fieldRows.map( function( one ) { return countOf( one, 'is-set' ) } );
+	const resets = fieldRows.map( function( one ) { return findAll( one, function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ) === W('variants/reset') } ).length } );
 	const steps = sheet.undo.length;
 
-	fire( findAll( fieldRows[1], function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('variants/reset') } )[0], 'click' );
+	fire( findAll( fieldRows[1], function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ) === W('variants/reset') } )[0], 'click' );
 
-	check( 'E. a row that has a value in the set of the variant has a dot and the way back to the template - "Reset to template" - a row that has none has neither; the way back takes the value out of the set, as one step of the undo',
+	check( 'E. a row that has a value in the set of the variant has a filled dot and the way back to the template - "Reset to template", a small button with its name - a row that has none has neither; the way back takes the value out of the set, as one step of the undo',
 		dots.join() === '0,1,0' && resets.join() === '0,1,0' && ( row().v ?? {} ).right === undefined && sheet.undo.length === steps + 1 && row().a.reverse === undefined );
 
 	model.undo();
@@ -1059,6 +1070,161 @@ const sheetOf = function( hash, extra ) {
 
 	check( 'E. a place of a picture that the draft does not read is marked unused at once and said to go with the save - the kernel holds no place that is not read - the button of the details carries a quiet dot and the words, the places that are read have neither',
 		gone === 'picture' && dropLost === 1 && dropKept === 0 && textOf( again ).indexOf( W('details/unused') ) !== -1 && sheet.view.bar.buttons.details.title === W( 'details/falls-away', 'picture' ) );
+}
+
+
+// --- F. the export and the import ---------------------------------------------------------------------------------------
+
+{
+	const { w } = shown('#blocks');
+	const boxes = findAll( w.page, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' } );
+	const button = function( id ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && el.id === id } )[0] };
+	const exportBar = button('blocks-export');
+	const importBar = button('blocks-import');
+	const on = shown( '#blocks', LIST( { tab : 'theme' } ) ).w;
+
+	check( 'F. the list of the own blocks has a box at each row, named for its block, and in its bar - beside "New block" - a button of the export, which is off until a block is ticked, and a quiet button of the import; the theme\'s list has none of them',
+		boxes.length === 2 && boxes[0].attributes['aria-label'] === W( 'list/pick', 'Cards' ) && exportBar !== undefined && exportBar.disabled === true && textOf( exportBar ).trim() === W('export/button') && importBar !== undefined && textOf( importBar ).trim() === W('import/button')
+		&& findAll( on.page, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' } ).length === 0 && findAll( on.page, function( el ) { return el.id === 'blocks-export' || el.id === 'blocks-import' } ).length === 0 );
+
+	boxes[0].checked = true;
+	fire( boxes[0], 'change' );
+	boxes[1].checked = true;
+	fire( boxes[1], 'change' );
+
+	check( 'F. ticking the rows turns the export on and counts them: "Export (2)"; a box that is taken away takes one off',
+		exportBar.disabled === false && textOf( exportBar ).trim() === W( 'export/button-n', 2 ) && ( function() { boxes[1].checked = false; fire( boxes[1], 'change' ); return textOf( exportBar ).trim() === W( 'export/button-n', 1 ) } )() );
+
+	// one block: its name and the key that comes of it
+	fire( exportBar, 'click' );
+
+	const box = dialogOf( w );
+	const inputs = findAll( box, function( el ) { return el.tagName === 'INPUT' && String( el.className ).indexOf('nino-admin-input') !== -1 } );
+
+	check( 'F. the dialog of the export asks for the name of the package - that of the one block, or "Blocks of <site>" for several -, a key made of it, the version 1.0.0 and a description that may stay empty',
+		inputs.length === 4 && inputs[0].value === 'Karten' && inputs[1].value === 'karten' && inputs[2].value === '1.0.0' && inputs[3].value === '' );
+
+	pressed( box, W('export/submit') );
+	const asked = request( w, 'blocks/export' );
+
+	check( 'F. the export is asked before the file: the keys, the key, the version and the name of the package, "check" - so that a refusal is said in the dialog',
+		asked !== undefined && asked.payload.check === true && asked.payload.keys.join() === 'karten' && asked.payload.key === 'karten' && asked.payload.version === '1.0.0' && asked.payload.name === 'Karten' && w.posted.length === 0 );
+
+	answerOf( asked, 400, { error : 'x', code : 'blocks_export_version', field : 'version' } );
+
+	check( 'F. a refusal of the export is said at its field and the dialog stays; no file is asked for', w.posted.length === 0 && textOf( box ).indexOf( W('export/version') ) !== -1 && box.open !== false );
+
+	w.requests.length = 0;
+	pressed( box, W('export/submit') );
+	answerOf( request( w, 'blocks/export' ), 200, { file : 'karten-1.0.0.tar.gz', size : 100, blocks : 1 } );
+
+	const form = w.posted[0];
+	const fields = form === undefined ? {} : Object.fromEntries( findAll( form, function( el ) { return el.tagName === 'INPUT' } ).map( function( el ) { return [ el.name, el.value ] } ) );
+
+	check( 'F. where it can be made the file is asked for by a form that posts into a frame nobody sees - the action, the data without "check", and the token of the page - and the dialog says that the package is being downloaded',
+		form !== undefined && form.method === 'post' && form.target === 'blocks-download' && fields.action === 'blocks/export' && JSON.parse( fields.data ).keys.join() === 'karten' && JSON.parse( fields.data ).check === undefined && w.said.indexOf( W( 'export/done', 'karten-1.0.0.tar.gz' ) ) !== -1 );
+}
+
+{
+	const { w } = shown('#blocks');
+	const importBar = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && el.id === 'blocks-import' } )[0];
+
+	fire( importBar, 'click' );
+
+	const first = dialogOf( w );
+
+	pressed( first, W('import/check') );
+
+	check( 'F. the import asks for a package: with none chosen it says so at the field and asks nothing of the server', textOf( first ).indexOf( W('import/no-file') ) !== -1 && request( w, 'blocks/import-check' ) === undefined );
+
+	const input = findAll( first, function( el ) { return el.tagName === 'INPUT' && el.type === 'file' } )[0];
+
+	input.files = [ { name : 'blocks.tar.gz', size : 100 } ];
+	fire( input, 'change' );
+	pressed( first, W('import/check') );
+
+	const checking = request( w, 'blocks/import-check' );
+	const preview = { id : 'a'.repeat( 32 ), seconds : 900, pack : { key : 'p', version : '1.0.0', name : 'Paket' }, blocks : [
+		{ key : 'aa', name : 'Aa', category : 'content', variants : [ 'Standard', 'Dunkel' ], images : 1, state : 'free', origin : '', replace : false },
+		{ key : 'bb', name : 'Bb', category : 'intro', variants : [], images : 0, state : 'taken', origin : 'project', replace : true },
+		{ key : 'cc', name : 'Cc', category : 'trust', variants : [], images : 0, state : 'taken', origin : 'basis', replace : false },
+	] };
+
+	check( 'F. the file that was chosen is sent with the request of the check, and nothing else of it', checking !== undefined && checking.payload.locale === 'de_DE' );
+
+	answerOf( checking, 200, preview );
+	fire( first, 'close' );
+
+	const shownBox = dialogOf( w );
+	const ticks = findAll( shownBox, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' } );
+	const selects = findAll( shownBox, function( el ) { return el.tagName === 'SELECT' } );
+	const optionsOf = function( select ) { return findAll( select, function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value } ).join() };
+
+	check( 'F. what the package holds is shown before anything is written: each block a row with a box that is ticked, its name and key, its category, its variants and picture places; where the key is taken the choice to skip - the default - or to take a copy with a key of its own, and to replace only where the block that has the key is an own one',
+		textOf( shownBox ).indexOf('Paket') !== -1 && ticks.length === 3 && ticks.every( function( tick ) { return tick.checked === true } ) && selects.length === 2 && optionsOf( selects[0] ) === 'skip,copy,replace' && optionsOf( selects[1] ) === 'skip,copy'
+		&& textOf( shownBox ).split( W('import/exists') ).length === 3 && textOf( shownBox ).indexOf( W('import/taken') ) === -1 && textOf( shownBox ).indexOf( 'Static content' ) !== -1 && textOf( shownBox ).indexOf( W('import/col-variants')+ ': 2' ) !== -1 );
+
+	selects[0].value = 'replace';
+	fire( selects[0], 'change' );
+
+	const warned = findAll( shownBox, function( el ) { return String( el.className ).indexOf('blocks-import-warn') !== -1 } ).filter( function( el ) { return el.hidden !== true } ).length;
+	const red = findAll( shownBox, function( el ) { return String( el.className ).split(' ').indexOf('is-replace') !== -1 } ).length;
+
+	check( 'F. the choice to replace is marked red and says what it does: it overwrites the files of the block', warned === 1 && red === 1 );
+
+	ticks.forEach( function( tick ) { tick.checked = false; fire( tick, 'change' ) } );
+	pressed( shownBox, W('import/submit') );
+
+	check( 'F. a package with no block ticked is not imported: the dialog says so and asks nothing', request( w, 'blocks/import' ) === undefined && w.said.indexOf( W('import/none') ) !== -1 );
+
+	ticks[0].checked = true;
+	fire( ticks[0], 'change' );
+	ticks[1].checked = true;
+	fire( ticks[1], 'change' );
+	pressed( shownBox, W('import/submit') );
+	fire( shownBox, 'close' );
+
+	const importing = request( w, 'blocks/import' );
+
+	check( 'F. what is sent is the key of the preview and the choices - which blocks and what is done where a key is taken - and nothing of the package itself',
+		importing !== undefined && importing.payload.id === 'a'.repeat( 32 ) && JSON.stringify( importing.payload.items ) === JSON.stringify( { aa : { take : true, how : 'skip' }, bb : { take : true, how : 'replace' }, cc : { take : false, how : 'skip' } } ) );
+
+	answerOf( importing, 200, { results : [ { key : 'aa', name : 'Aa', result : 'written', as : 'aa' }, { key : 'bb', name : 'Bb', result : 'failed', as : '', message : W('import/failed-invalid') }, { key : 'cc', name : 'Cc', result : 'left', as : '' } ] } );
+
+	const result = dialogOf( w );
+
+	check( 'F. the result says for each block what became of it, and where one failed which one and why - and that what was written before stays',
+		textOf( result ).indexOf( W( 'import/result-written', 'Aa' ) ) !== -1 && textOf( result ).indexOf( W( 'import/result-failed', 'Bb', W('import/failed-invalid') ) ) !== -1 && textOf( result ).indexOf( W( 'import/result-left', 'Cc' ) ) !== -1 && textOf( result ).indexOf( W( 'import/stopped', 'Bb' ) ) !== -1 );
+}
+
+
+{
+	const { w } = shown('#blocks');
+
+	fire( findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && el.id === 'blocks-import' } )[0], 'click' );
+
+	const first = dialogOf( w );
+	const input = findAll( first, function( el ) { return el.tagName === 'INPUT' && el.type === 'file' } )[0];
+
+	input.files = [ { name : 'blocks.tar.gz', size : 100 } ];
+	fire( input, 'change' );
+	pressed( first, W('import/check') );
+	answerOf( request( w, 'blocks/import-check' ), 200, { id : 'b'.repeat( 32 ), seconds : 900, pack : { key : 'p', version : '1.0.0', name : 'Paket' }, blocks : [ { key : 'aa', name : 'Aa', category : 'content', variants : [], images : 0, state : 'free', origin : '', replace : false } ] } );
+	fire( first, 'close' );
+
+	const preview = dialogOf( w );
+
+	pressed( preview, 'Cancel' );
+	fire( preview, 'close' );
+
+	const dropped = request( w, 'blocks/import-drop' );
+
+	check( 'F. a preview that is left - Cancel or Escape - lets go of the bytes that are held for it: the key of the preview is sent, and the title of the dialog is the one of the import',
+		dropped !== undefined && dropped.payload.id === 'b'.repeat( 32 ) && request( w, 'blocks/import' ) === undefined && textOf( preview ).indexOf( W('import/title') ) !== -1 );
+
+	const head = findAll( w.page, function( el ) { return el.tagName === 'TH' && el.dataset.key === 'pick' } )[0];
+
+	check( 'F. the column of the boxes has no head to read: its name for a screen reader is "Select"', head !== undefined && textOf( head ).trim() === W('list/pick-head') );
 }
 
 done();
