@@ -247,7 +247,7 @@ function world( options ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, served : options.page, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -337,15 +337,11 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		&& textOf( bar.querySelector('.nino-admin-contextbar-title') ) === 'Home' && textOf( bar.querySelector('.nino-admin-contextbar-code') ) === 'page-home.tpl' && bar.querySelector('.nino-admin-previewtools') !== null && bar.querySelector('.nino-admin-previewtools select') === null );
 	check( 'A. the split view has the outline at its left and no column of settings: two columns, the preview takes the rest', split.querySelector('.nino-admin-split-aside') !== null && split.querySelector('.nino-admin-split-settings') === null && split.dataset.bare === 'true' && split.querySelector('iframe') !== null );
 	check( 'A. the title, the tools and the way back are the context bar\'s and the preview tools\' of the workbench, and the frame of the page has no height of its own', /Nino\.adminUi\.contextBar\(/.test( script ) === true && /Nino\.adminUi\.previewTools\(/.test( script ) === true && /clamp\(\s*28rem/.test( sheet ) === false );
-	check( 'A. the icon beside the name opens the choice between the two frames of the site for whoever may design, and is not there for the one who may only write the content, nor in a frame', ( function() {
-		const names = function( node ) { return findAll( node, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-label'] === W('label/frames-edit') } ).length };
+	check( 'A. the page has no icon for the frames and no extended view: the frames are written in the editor of the blocks, and a frame is no view of this panel for anybody', ( function() {
+		const names = function( node ) { return findAll( node, function( el ) { return el.tagName === 'BUTTON' && ( el.id === 'builder-frames' || el.dataset.key === 'advanced' ) } ).length };
 		const poor = opened( { page : pageAnswer( { level : 1, schemas : undefined } ) } );
-		const frame = world( { page : pageAnswer( { template : 'frame-header', frame : true, tree : [ { n : 'header-wrap', s : '', a : { id : 'header' }, c : [] } ], known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' } } } ) } );
 
-		frame.title.textContent = 'Builder';
-		frame.open('#builder/@header');
-
-		return names( bar ) === 1 && names( poor.view ) === 0 && poor.view.querySelector('.nino-admin-contextbar') !== null && frame.panel.model.state.frame === true && names( frame.view ) === 0 && frame.view.querySelector('.nino-admin-contextbar') !== null;
+		return names( bar ) === 0 && names( poor.view ) === 0 && /openExtended|openFrames|builder-frames/.test( script ) === false && /Nino\.admin\.builder\.go\( *\[[^\]]*@header/.test( script ) === false;
 	} )() );
 }
 
@@ -379,11 +375,11 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const row = rowOf( w, 'hero' );
 		return textOf( row.querySelector('.nino-admin-tree-label') ) === 'hero' && textOf( row ).indexOf( W('kind/section-wrap') ) === -1 && row.querySelector('.nino-admin-tree-row').title === 'Section · Hallo';
 	} )() );
-	check( 'B. what can be done to a block is at the end of its row - put one in behind it, up, down, duplicate, delete in red, the extended view -, what cannot be done is shut, and the rows of the frames can only have a block put in behind them', ( function() {
+	check( 'B. what can be done to a block is at the end of its row - put one in behind it, up, down, duplicate, delete in red -, what cannot be done is shut, and the rows of the frames can have a block put in behind them and their texts opened', ( function() {
 		const keys = function( id ) { return buttonsOf( rowOf( w, id ) ).map( function( button ) { return button.dataset.key } ).join() };
 		const shut = function( id ) { return buttonsOf( rowOf( w, id ) ).filter( function( button ) { return button.disabled === true } ).map( function( button ) { return button.dataset.key } ).join() };
 		const remove = buttonsOf( rowOf( w, 'cards' ) ).find( function( button ) { return button.dataset.key === 'remove' } );
-		return keys( 'hero' ) === 'insert,up,down,copy,remove,advanced' && shut( 'hero' ) === 'up' && shut( 'team' ) === 'down' && shut( 'cards' ) === '' && keys( '@header' ) === 'insert' && keys( '@footer' ) === ''
+		return keys( 'hero' ) === 'insert,up,down,copy,remove' && shut( 'hero' ) === 'up' && shut( 'team' ) === 'down' && shut( 'cards' ) === '' && keys( '@header' ) === 'insert,texts' && keys( '@footer' ) === 'texts'
 			&& remove.classList.contains('nino-admin-tree-action--danger') === true && remove.attributes['aria-label'] === W('label/remove')+ ': Section \u00B7 Karten';
 	} )() );
 	check( 'B. the outline folds to a strip with the icon of each row, and a press on one chooses the block', ( function() {
@@ -393,40 +389,6 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 	} )() );
 }
 
-{
-	// The extended view and the way back: the block is the chosen one and the outline is as open as it was left
-	const back = function( folded ) {
-
-		const w = opened();
-		const model = w.panel.model;
-		const toggle = w.view.querySelector('.nino-admin-aside-toggle');
-
-		if( folded === true )
-			fire( toggle, 'click' );
-
-		const before = w.view.querySelector('.nino-admin-split').dataset.aside;
-
-		fire( buttonsOf( rowOf( w, 'cards' ) ).find( function( button ) { return button.dataset.key === 'advanced' } ), 'click' );
-		w.serve();
-
-		const there = w.state.hash;
-		const split = w.view.querySelector('.nino-admin-split');
-		const extended = split.querySelector('.nino-admin-split-aside') === null && split.querySelector('.nino-admin-split-settings') !== null;
-		const link = w.view.querySelector('.nino-admin-back-link');
-
-		model.state.selected = '';
-		fire( link, 'click' );
-		w.serve();
-
-		const again = w.view.querySelector('.nino-admin-split');
-		const chosen = findAll( w.view, function( el ) { return el.tagName === 'LI' && el.attributes['aria-selected'] === 'true' } ).map( function( row ) { return row.dataset.id } ).join();
-		const pressed = findAll( w.view, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('builder-rail-button') !== -1 && el.attributes['aria-pressed'] === 'true' } ).map( function( button ) { return button.dataset.key } ).join();
-
-		return there === '#builder/home/cards' && extended === true && textOf( link ) === 'Back to Home' && w.state.hash === '#builder/home' && again.dataset.aside === before && again.querySelector('.nino-admin-split-aside') !== null && chosen === 'cards' && pressed === 'cards' && model.state.selected === 'cards';
-	};
-
-	check( 'B. the extended view of a block is a surface of its own without the outline, its way back leads into the view it came from - the outline as open as it was left, the same block chosen - whether the outline was open or folded', back( false ) === true && back( true ) === true );
-}
 
 // --- C. what the views show of one another ----------------------------------------------------------------------
 
@@ -514,15 +476,12 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return asked.length === 1 && asked[0].payload.texts['/template/page-home/hero/title'].de_DE === 'Hallo X' && S.stale === true;
 	} )() );
-	check( 'D. the way into the extended view remembers where the page in the frame was rolled to, and a field with a source or a loop is opened at its source', ( function() {
-		S.view.split.frame.contentWindow = { scrollY : 412 };
-		model.openExtended( 2 );
-		const rolled = S.scroll;
+	check( 'D. a field with a source or a loop is opened at its source by its pencil, and a section is not', ( function() {
 		const text = model.penOf( '2.1', S.top[2].c[1] );
 		const wrap = model.penOf( '4.1', { n : 'section-wrap', s : '', a : { id : 'x' }, c : [] } );
 		const loop = model.penOf( '4.1', { n : 'collection', s : '/team', a : {}, c : [] } );
 
-		return rolled === 412 && text.source === true && loop.source === true && wrap.source === false;
+		return text.source === true && loop.source === true && wrap.source === false;
 	} )() );
 	check( 'D. the pencil at a component opens the lightbox of that component and no other view - the address stays where it is - for whoever may design, and for the one who may only write the content where the lightbox has a source to show or a text to write, and nowhere else', ( function() {
 		const text = model.penOf( '2.1', S.top[2].c[1] );
@@ -830,6 +789,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 	check( 'I. 11: the notation of a component is no row of "Advanced" but behind the button <> in the foot of the lightbox - for the account that designs and not for the one that writes the content; Escape closes the small window of it and not the lightbox', ( function() {
 		const x = make( 3 );
+		x.model.state.sheet = 'block';
 		const box = lightbox( x, '1' );
 		const button = findAll( box.dialog, function( el ) { return el.tagName === 'BUTTON' && el.dataset.key === 'notation' } )[0];
 		const inside = withClass( box.dialog, 'builder-code' ).every( function( code ) { return String( code.parentNode.className ).indexOf('builder-notation-pop') !== -1 } );
@@ -932,7 +892,21 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 			marks = options;
 			return { highlight : function( keys, extra ) { marksSeen.push( [ keys, extra ] ) }, refresh : function() {}, stop : function() {} };
 		};
-		w.open('#builder/home/team');
+		// The tree view is the view of a sheet of a block - the editor of the blocks brings one - and no view of a page: the sheet is opened with an adapter of its own
+		w.open('#builder/home');
+		w.serve();
+
+		const adapter = {
+			panel : 'blocks', level : 'builder-page', template : 'page-home', name : 'Team', slug : 'home', dir : 'ltr', restore : false, sources : 'block', uploads : false,
+			call : function( action, payload, done, extra ) { w.panel.call( action, payload, done, extra ) },
+			base : function() { return { template : 'page-home', locale : 'de_DE' } },
+			go : function() {}, href : function( parts ) { return w.Nino.admin.router.href( 'builder', parts ) },
+			set : function() { w.Nino.admin.router.set( 'builder', [ 'home', 'team' ] ) },
+			show : function() {}, fail : function() {},
+			back : function() { return { parts : [ 'home' ], name : 'Home', keep : true, block : true } },
+		};
+
+		w.panel.editor.open( adapter, JSON.parse( JSON.stringify( w.served ) ) );
 		w.serve();
 	};
 
@@ -1063,15 +1037,15 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 	const w = opened();
 	const model = w.panel.model;
 	const view = { top : 0, left : 0, width : 1000 };
-	const inside = function( spot, box ) { return spot.top >= box.top && spot.top + 26 <= box.top + box.height && spot.left >= box.left && spot.left + 26 <= box.left + box.width };
 
-	check( 'G. the pencil stands INSIDE the box of its component - in its top corner on the right, also where the component begins above the window or reaches past its right edge - so that the way from the component to it never leaves it; a loop has no box, its pencil touches the top of the repetitions', ( function() {
+	check( 'G. the pencil has its field at the right of EVERY component, in the mark of it - the mark is wider than the box by that field, the same for each - and goes inside, in the top corner, only where the window has no room for the field; a loop has no box, its pencil touches the top of the repetitions; a row that fills its column has it at its top left', ( function() {
 		const boxes = [ { top : 100, left : 50, width : 300, height : 80 }, { top : -200, left : 50, width : 300, height : 500 }, { top : 100, left : 900, width : 400, height : 80 } ];
 		const spots = boxes.map( function( box ) { return model.penSpot( box, 26, view, false ) } );
-		const placed = spots.every( function( spot, at ) { return inside( { top : spot.top + view.top, left : spot.left + view.left }, boxes[at] ) } );
 		const loop = model.penSpot( { top : 300, left : 50, width : 300, height : 400 }, 26, view, true );
+		const row = model.penSpot( boxes[0], 26, view, false, [], true );
 
-		return placed === true && spots[0].left + 26 + 2 === 350 && spots[1].top >= 2 && spots[2].left + 26 <= 1000 && loop.top + 26 === 300 && loop.left + 26 + 2 === 350;
+		return spots[0].side === 'right' && spots[0].left + view.left === 350 && spots[0].mark.width === 330 && spots[1].side === 'right' && spots[1].mark.width === 330 && spots[1].top >= 2
+			&& spots[2].side === 'inside' && spots[2].left + 26 <= 1000 && loop.top + 26 === 300 && loop.left + 26 + 2 === 350 && row.side === 'inside' && row.left + view.left === 52;
 	} )() );
 	check( 'G. the pencil covers no word: where a word is under the corner inside the box - a title that is as wide as its words - it stands flush against the box, at its right edge, above its right corner or at its left edge, wherever it is in the window; and the zone round it keeps the component for the pointer on the way to it', ( function() {
 		const box = { top : 100, left : 300, width : 200, height : 40 };
@@ -1083,7 +1057,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const zone = model.penZone( right, box, 26, view );
 
 		return right.side === 'right' && meets( right, words ) === false && right.left === 500 && edge.side !== 'inside' && edge.side !== 'right' && meets( edge, [ { top : 105, left : 805, width : 180, height : 30 } ] ) === false
-			&& none.side === 'inside' && model.penZone( none, box, 26, view ) === null && model.inZone( zone, 510, 140 ) === true && model.inZone( zone, 515, 100 ) === true && model.inZone( zone, 700, 100 ) === false;
+			&& none.side === 'right' && model.penZone( none, box, 26, view ) !== null && model.inZone( zone, 510, 140 ) === true && model.inZone( zone, 515, 100 ) === true && model.inZone( zone, 700, 100 ) === false;
 	} )() );
 	check( 'G. a loop is a stop of the Tab key of its own - it has no element to stand next to - with a pencil in front of its first repetition, and only where it has repetitions and a pencil for the account', ( function() {
 		const element = { id : 'a' };

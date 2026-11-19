@@ -145,7 +145,7 @@ $sandbox = ninoSandboxDir( $site );
 $site['./nino/filesystem/path'] = $root;
 $site['/nino/html/assets'] = [];
 $site['/nino/html/navs'] = [ 'main' ];
-$site['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Navigation', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Collections', '\\Nino\\Modules\\Builder' ];
+$site['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Navigation', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Collections', '\\Nino\\Modules\\Builder', '\\Nino\\Modules\\Blocks' ];
 \Nino\Html::init( $site );
 \Nino\Features::registerComponents( $site );
 \Nino\Modules::callModules( $site, 'init' );
@@ -330,9 +330,11 @@ foreach( [ 'de_DE' => 'Startseite', 'en_US' => 'Start page' ] as $language => $n
 $homeNames = array_column( array_filter( \Nino\Pages::all( $site ), static fn( array $page ): bool => $page['template'] === 'page-home' ), 'names' );
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $homeSource );
 \Nino\Filesystem::putFileContent( $site, '/templates/frame-header.tpl', "[header-wrap id=\"header\"]\n\t[header-logo]\n" );
-[ , $frameBroken ] = sourceCall( $site, 'builder/open', [ 'template' => 'frame-header' ] );
+ninoUser( $site, 'frame-blocks@example.com', [ '/_admin/blocks/manage' ] );
+[ , $frameBroken ] = sourceCall( $site, 'blocks/frame-open', [ 'template' => 'frame-header' ] );
+ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
 
-check( 'the sentence of a template that cannot be read names the page by the name it has in the language of the view - and a frame by its own word - and never by the file',
+check( 'the sentence of a template that cannot be read names the page by the name it has in the language of the view - and a frame, opened in the editor of the blocks, by its own word - and never by the file',
 	$homeNames !== [] && ( $named['params'][0] ?? '' ) === ( $homeNames[0][\Nino\Admin\Admin::contentLocale( $site )] ?? '' ) && ( $named['params'][0] ?? '' ) !== 'page-home' && ( $frameBroken['params'][0] ?? '' ) === 'Header' );
 
 
@@ -464,13 +466,13 @@ else {
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nC. The blocks of the project\n";
 
-ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+ninoUser( $site, 'designer-blocks@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage', '/_admin/blocks/manage' ] );
 [ , $home ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
 $cards = (string) array_search( 'start', array_map( static fn( array $node ): string => (string) ( $node['a']['id'] ?? '' ), $home['tree'] ), true );
 $hero = (string) array_search( 'hero', array_map( static fn( array $node ): string => (string) ( $node['a']['id'] ?? '' ), $home['tree'] ), true );
 $mine = static fn( array $with = [] ): array => $with + [ 'template' => 'page-home', 'tree' => $home['tree'], 'at' => $cards, 'key' => 'karten', 'name' => 'Vier Karten', 'description' => 'Eine Zeile über vier Karten', 'category' => 'content', 'texts' => $home['texts'], 'pictures' => [] ];
 $before = sourceSnapshot( $site );
-[ $status, $made ] = sourceCall( $site, 'builder/blocksave', $mine() );
+[ $status, $made ] = sourceCall( $site, 'blocks/adopt', $mine() );
 $after = sourceSnapshot( $site );
 unset( $site['./nino/blocks/state'] );
 $folder = $sandbox. '/private/blocks/karten';
@@ -490,6 +492,19 @@ $entries = array_column( $listed['blocks'], null, 'key' );
 
 check( 'it is in the dialog with the origin of the project, may be taken away there and is put in like any block: its tree and its words; a block of Basis is not the project\'s',
 	( $entries['karten']['own'] ?? false ) === true && $entries['karten']['origin']['kind'] === 'project' && ( $entries['hero-full']['own'] ?? true ) === false && $status === 200 && $block['id'] === 'start' && count( $block['slots'] ) === 8 );
+
+// the way from a page to the editor of the blocks: the page says which of its blocks is built like a block of the project - to the account that holds the right of that panel and to no other
+[ , $now ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+[ , $seen ] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-home', 'tree' => $now['tree'], 'texts' => [], 'look' => null, 'page' => '' ] );
+ninoUser( $site, 'designer-plain@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+[ , $plain ] = sourceCall( $site, 'builder/preview', [ 'template' => 'page-home', 'tree' => $now['tree'], 'texts' => [], 'look' => null, 'page' => '' ] );
+[ , $list ] = sourceCall( $site, 'builder/list' );
+ninoUser( $site, 'designer-blocks@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage', '/_admin/blocks/manage' ] );
+[ , $listed ] = sourceCall( $site, 'builder/list' );
+
+check( 'a block of the page that is built like a block of the project is told to the one who holds the right of the editor of the blocks - by its id, with the key of the block - and the list says the way is open to that account; for another account nothing of it is in any answer',
+	( $seen['own']['start'] ?? '' ) === 'karten' && isset( $plain['own'] ) === false && ( $listed['bridge'] ?? false ) === true && ( $list['bridge'] ?? true ) === false );
+
 
 // what is not made: free markup, what is not the block's own, a key that is taken or no key, a name, a category, a place that is no block, the account that may not design
 [ , $contact ] = sourceCall( $site, 'builder/open', [ 'template' => 'page-contact' ] );
@@ -519,7 +534,7 @@ $answers = [];
 $private = scandir( $sandbox. '/private' );
 
 foreach( $tries as $name => $with )
-	$answers[$name] = sourceCall( $site, 'builder/blocksave', $mine( $with ) );
+	$answers[$name] = sourceCall( $site, 'blocks/adopt', $mine( $with ) );
 
 $statuses = array_map( static fn( array $answer ): int => $answer[0], $answers );
 
@@ -529,9 +544,18 @@ check( 'what is not a block is not made, and nothing is written for it: free mar
 ninoUser( $site, 'content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
 $before = sourceSnapshot( $site );
 
-check( 'only the one who designs makes a block of the project or takes one away: the one who changes the content gets 403 and nothing is written', sourceCall( $site, 'builder/blocksave', $mine( [ 'key' => 'neu' ] ) )[0] === 403 && sourceCall( $site, 'builder/blockdrop', [ 'key' => 'karten' ] )[0] === 403 && sourceSnapshot( $site ) === $before );
+check( 'only the one who holds the right of the editor of the blocks makes a block of the project from a page or takes one away: the one who changes the content - and the one who designs without that right - gets 403 and nothing is written', sourceCall( $site, 'blocks/adopt', $mine( [ 'key' => 'neu' ] ) )[0] === 403 && sourceCall( $site, 'blocks/remove', [ 'key' => 'karten' ] )[0] === 403 && ( ninoUser( $site, 'designer0@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] ) || true ) && sourceCall( $site, 'blocks/adopt', $mine( [ 'key' => 'neu' ] ) )[0] === 403 && array_diff_key( sourceSnapshot( $site ), [ 'config' => 1 ] ) === array_diff_key( $before, [ 'config' => 1 ] ) );
 
-ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
+// the right of the editor of the blocks alone reads no page: the page is opened by the door and the step of the Builder, and a hand-made tree names no page that the account may not open
+ninoUser( $site, 'blocks-alone@example.com', [ '/_admin/blocks/manage' ] );
+$before = sourceSnapshot( $site );
+[ $alone, $leak ] = sourceCall( $site, 'blocks/adopt', $mine( [ 'key' => 'leck' ] ) );
+
+check( 'a block of a page is not taken over by an account that holds the right of the editor of the blocks and no right of the Builder: 403, no block is written and no text of the page is read',
+	$alone === 403 && is_dir( $sandbox. '/private/blocks/leck' ) === false && array_diff_key( sourceSnapshot( $site ), [ 'config' => 1 ] ) === array_diff_key( $before, [ 'config' => 1 ] ) && str_contains( json_encode( $leak ), 'Karten' ) === false );
+
+
+ninoUser( $site, 'designer-blocks2@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage', '/_admin/blocks/manage' ] );
 
 // a block is taken away only where it is the project's and listed: not one of Basis, not a path, not a folder that holds what is no block
 mkdir( $sandbox. '/private/blocks/kaputt', 0755 );
@@ -539,8 +563,8 @@ file_put_contents( $sandbox. '/private/blocks/kaputt/block.json', '{' );
 $kernelFile = $root. '/_nino/Nino/Modules/Basis/blocks/hero-full/block.json';
 $before = sourceSnapshot( $site );
 $homeBefore = (string) file_get_contents( $sandbox. '/private/templates/page-home.tpl' );
-$refused = array_map( static fn( string $key ): int => sourceCall( $site, 'builder/blockdrop', [ 'key' => $key ] )[0], [ 'hero-full', '../blocks/karten', 'kaputt', 'nothing', '' ] );
-[ $status ] = sourceCall( $site, 'builder/blockdrop', [ 'key' => 'karten' ] );
+$refused = array_map( static fn( string $key ): int => sourceCall( $site, 'blocks/remove', [ 'key' => $key ] )[0], [ 'hero-full', '../blocks/karten', 'kaputt', 'nothing', '' ] );
+[ $status ] = sourceCall( $site, 'blocks/remove', [ 'key' => 'karten' ] );
 unset( $site['./nino/blocks/state'] );
 
 check( 'a block of the project is taken away and no other: not one of Basis, not a path, not a folder the kernel does not list; the page that has the block keeps its copy',

@@ -22,6 +22,9 @@ namespace Nino\Modules\Blocks {
 	//	blocks/offer		what the register offers at a place of the tree of the sheet
 	//	blocks/notation	the notation of the block and of a component, as the template has them written
 	//	blocks/keys			the fields and the types a loop of the sheet is told by - and nothing of the texts or the pictures of the site, which a block does not read
+	//	blocks/frames		the frames of the site, header and footer
+	//	blocks/frame-<x>	the actions of the editor, for a frame: the code of the Builder, after the right of this panel
+	//	blocks/adopt		a block of a page as a block of the project, the page unchanged
 	//	blocks/tile			a draft of a page with one block in it, for the small picture of the block in the list
 	class Admin {
 
@@ -48,6 +51,20 @@ namespace Nino\Modules\Blocks {
 				'blocks/notation'	=> [ self::class, 'apiNotation' ],
 				'blocks/keys'			=> [ self::class, 'apiKeys' ],
 				'blocks/tile'			=> [ self::class, 'apiTile' ],
+				'blocks/frames'		=> [ self::class, 'apiFrames' ],
+				'blocks/adopt'		=> [ self::class, 'apiAdopt' ],
+				'blocks/frame-open'	=> [ self::class, 'apiFrameOpen' ],
+				'blocks/frame-preview'	=> [ self::class, 'apiFramePreview' ],
+				'blocks/frame-save'	=> [ self::class, 'apiFrameSave' ],
+				'blocks/frame-restore'	=> [ self::class, 'apiFrameRestore' ],
+				'blocks/frame-blocks'	=> [ self::class, 'apiFrameBlocks' ],
+				'blocks/frame-block'	=> [ self::class, 'apiFrameBlock' ],
+				'blocks/frame-keys'	=> [ self::class, 'apiFrameKeys' ],
+				'blocks/frame-variant'	=> [ self::class, 'apiFrameVariant' ],
+				'blocks/frame-offer'	=> [ self::class, 'apiFrameOffer' ],
+				'blocks/frame-notation'	=> [ self::class, 'apiFrameNotation' ],
+				'blocks/frame-upload'	=> [ self::class, 'apiFrameUpload' ],
+				'blocks/frame-unstage'	=> [ self::class, 'apiFrameUnstage' ],
 			];
 		}
 
@@ -84,6 +101,10 @@ namespace Nino\Modules\Blocks {
 				'blocks/duplicate'	=> 'Duplicate Block '. $key( 'key' ),
 				'blocks/rename'		=> 'Rename Block '. $key( 'key' ),
 				'blocks/remove'		=> 'Delete Block '. $key( 'key' ),
+				'blocks/adopt'		=> 'Adopt Block '. $key( 'key' ),
+				'blocks/frame-save'	=> 'Save Frame '. $key( 'template' ),
+				'blocks/frame-restore'	=> 'Restore Last Frame State '. $key( 'template' ),
+				'blocks/frame-upload'	=> 'Upload Frame Picture '. $key( 'uri' ),
 				default						=> '',
 			};
 		}
@@ -338,10 +359,11 @@ namespace Nino\Modules\Blocks {
 				return;
 
 			$theme = Sheet::theme( $appData );
-			$tab = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'tab' ) === 'theme' && $theme !== null ? 'theme' : 'project';
+			$asked = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'tab' );
+			$tab = $asked === 'frames' ? 'frames' : ( $asked === 'theme' && $theme !== null ? 'theme' : 'project' );
 			$blocks = [];
 
-			foreach( Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project' ) as $key => $block )
+			foreach( $tab === 'frames' ? [] : Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project' ) as $key => $block )
 				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'category' => (string) $block['category'],																																																																																																						'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'rank' => (int) $block['rank'] ];
 
 			usort( $blocks, static fn( array $one, array $other ): int => $one['rank'] <=> $other['rank'] ?: strcmp( $one['key'], $other['key'] ) );
@@ -355,6 +377,7 @@ namespace Nino\Modules\Blocks {
 				'tab'				=> $tab,
 				'theme'			=> $theme === null ? null : [ 'name' => $theme['name'] ],
 				'blocks'		=> $blocks,
+				'frames'		=> Frames::listed( $appData ),
 				'library'		=> $library,
 				'categories'	=> array_values( array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ) ),
 				'contentLocale'	=> $locale,
@@ -893,9 +916,102 @@ namespace Nino\Modules\Blocks {
 			if( $kind === 'fields' )
 				\Nino\Http::ok( $request, \Nino\Modules\Builder\Admin::fieldsOf( $appData, \Nino\Admin\Admin::postString( $data, 'type' ), $locale ) );
 			else if( $kind === 'types' )
-				\Nino\Http::ok( $request, [ 'types' => \Nino\Modules\Builder\Admin::typesOf( $appData ) ] );
+				\Nino\Http::ok( $request, [ 'types' => [ [ 'type' => '/_placeholder', 'title' => (string) \Nino\Elements::PLACEHOLDERS['/_placeholder']['title'] ] ] ] );
 			else
 				\Nino\Http::ok( $request, [ 'entries' => [], 'more' => false ] );
+		}
+
+		public static function apiFrameOpen( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiOpen' );
+		}
+
+		public static function apiFramePreview( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiPreview' );
+		}
+
+		public static function apiFrameSave( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiSave' );
+		}
+
+		public static function apiFrameRestore( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiRestore' );
+		}
+
+		public static function apiFrameBlocks( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiBlocks' );
+		}
+
+		public static function apiFrameBlock( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiBlock' );
+		}
+
+		public static function apiFrameKeys( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiKeys' );
+		}
+
+		public static function apiFrameVariant( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiVariant' );
+		}
+
+		public static function apiFrameOffer( array &$appData, array &$request ): void {
+
+			if( Frames::guard( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
+			$offered = $canonical === null ? null : \Nino\Modules\Builder\Admin::offered( $appData, $canonical[1], \Nino\Admin\Admin::postString( $data, 'at' ), \Nino\Modules\Builder::LEVEL_DEVELOP );
+
+			if( $offered === null ) {
+				self::_fail( $request, 400, 'there is no place for a component there', 'blocks_place', [], 'at' );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $offered );
+		}
+
+		public static function apiFrameNotation( array &$appData, array &$request ): void {
+
+			if( Frames::guard( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
+
+			if( $canonical === null ) {
+				self::_fail( $request, 400, 'the tree is none of a frame', 'blocks_tree', [], 'tree' );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'notation' => \Nino\Modules\Builder\Admin::notationOf( $appData, $canonical[1], $data['look'] ?? null ) ] );
+		}
+
+		public static function apiFrameUpload( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiUpload' );
+		}
+
+		public static function apiFrameUnstage( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiUnstage' );
+		}
+
+		public static function apiFrames( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			\Nino\Http::ok( $request, [ 'frames' => Frames::listed( $appData ) ] );
+		}
+
+		/**
+		 *	A block of a page as a block of the project - the page is not changed. The right of this panel is the whole of what it takes: an account that holds it is given the
+		 *	page's block to keep, without the door of the panel of the pages
+		 */
+		public static function apiAdopt( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			\Nino\Modules\Builder\Admin::adopt( $appData, $request );
 		}
 
 		public static function apiTile( array &$appData, array &$request ): void {

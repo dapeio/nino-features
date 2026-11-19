@@ -70,7 +70,6 @@ const answer = function( extra ) {
 			{ template : 'page-contact', name : 'Contact', path : '/contact', locales : [ 'de_DE', 'en_US' ], navs : [], complete : false, locked : '', blocks : 1, saved : 1763300000 },
 			{ template : 'page-about', name : 'About us', path : '/about', locales : [ 'de_DE', 'en_US' ], navs : [ 'main', 'footer' ], complete : true, locked : '', blocks : 0, saved : 1763200000 },
 		],
-		frames : [ { key : 'header', template : 'frame-header' }, { key : 'footer', template : 'frame-footer' } ],
 		create : true,
 		navs : [ 'main', 'footer' ],
 		native : 'de_DE',
@@ -334,10 +333,8 @@ function world( options ) {
 	w.open('#builder');
 
 	check( 'A. the page is opened by the row, and the table says so with its sign', w.rows().every( function( row ) { return findAll( row, function( el ) { return el.className === 'nino-admin-row-chev' } ).length === 1 } ) );
-	check( 'A. the frames are a short list under the table, each row a link to the frame that says it holds for every page', ( function() {
-		const group = w.list.querySelector('.nino-admin-list-group');
-		const links = findAll( group, function( el ) { return el.tagName === 'A' } );
-		return group !== null && links.length === 2 && links[0].href === '#builder/home/@header' && textOf( group ).indexOf( W('hint/frame-short') ) !== -1 && textOf( group ).indexOf( W('label/frames') ) !== -1;
+	check( 'A. the list of the pages has no list of the frames: they are written in the editor of the blocks', ( function() {
+		return findAll( w.list, function( el ) { return el.tagName === 'A' && /@(?:header|footer)/.test( String( el.href ) ) } ).length === 0 && textOf( w.list ).indexOf( W('hint/frame-short') ) === -1;
 	} )() );
 	check( 'A. the bar of the list has one main button - New page - and nothing else, and the button of the old place is gone', ( function() {
 		const buttons = findAll( bar ?? element('div'), function( el ) { return el.tagName === 'BUTTON' } );
@@ -355,7 +352,7 @@ function world( options ) {
 
 	check( 'A. the account that may not make a page has the list without the bar and without the buttons of a row', poor.list.querySelector('.nino-admin-list-actions') === null && poor.rows().length === 3 && findAll( poor.list, function( el ) { return el.className.indexOf('nino-admin-row-actions') !== -1 } ).length === 0 );
 
-	const empty = world( { list : answer( { pages : [], frames : [] } ) } );
+	const empty = world( { list : answer( { pages : [] } ) } );
 
 	empty.open('#builder');
 

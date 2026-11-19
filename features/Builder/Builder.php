@@ -33,21 +33,33 @@ namespace Nino\Modules {
 		// The right to work in the panel and through its API; the Editor role does not get it by itself
 		public const string PERM = '/_admin/builder/manage';
 
-		// What a person may do once inside, in three steps: the content (the blocks of a page and the words in them), the design (the components of a block, their
-		// settings and the frames) and the development (the rest, html among it). The scope is the panel's: an account that holds no permission below it - the door
-		// alone - is not described in detail and may design; one that is described holds what it is given, and the permission of a step is any that lies below it
+		// What a person may do once inside, in two steps: the content (the blocks of a page and the words in them) and the design (the components of a block and their
+		// settings). The scope is the panel's: an account that holds no permission below it - the door alone - is not described in detail and may design; one that is
+		// described holds what it is given, and the permission of a step is any that lies below it. The frames of the site and the call of html are no step of this panel:
+		// they are written in the editor of the blocks, with the right of that panel (see Blocks\Frames)
 		public const string SCOPE = '/_admin/builder/';
 		public const string CONTENT = '/_admin/builder/content/edit';
 		public const string DESIGN = '/_admin/builder/design/edit';
-		public const string DEVELOP = '/_admin/builder/develop/edit';
 
-		// The steps as numbers
+		// The step that was once "Development" and the permissions of it: they have no effect any more, and the update of the feature gives whoever held one the right of the
+		// panel Blocks (see upgrade())
+		public const string DEVELOPED = '/_admin/builder/develop/';
+
+		// The steps as numbers. The third is no step of an account: it is what a request has that the editor of the blocks passes on for a frame, which may be written down to its
+		// markup - html among it
 		public const int LEVEL_CONTENT = 1;
 		public const int LEVEL_DESIGN = 2;
 		public const int LEVEL_DEVELOP = 3;
 
-		// What the drafts of the previews are called in \Nino\Preview
+		// The right of the panel Blocks, by its name: the bridge from a page to it is shown to whoever holds it
+		public const string BRIDGE = '/_admin/blocks/manage';
+
+		// What the editor of the blocks tells the actions of this panel it runs for it: this request is for a frame of the site and the right of the editor was held
+		public const string AS = './nino/builder/as';
+
+		// What the drafts of the previews are called in \Nino\Preview - and the ones of a frame, which the editor of the blocks holds with the right of that panel
 		public const string KIND = 'builder';
+		public const string KIND_FRAME = 'builder-frame';
 
 		// The right of the panel Routes: a page is made with its routes, so whoever makes one holds it as well as the step of the design
 		public const string ROUTES = '/_admin/routes/manage';
@@ -76,8 +88,9 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The step of work the signed-in account may do, from the highest it holds down: 3 for the one who may do everything (the blanket of the panel, the whole
-		 *	site), 2 for the one who may design - the door without a description in detail, or the permission of the design -, 1 for the content, 0 for none of them
+			 *	The step of work the signed-in account may do: 2 for the one who may design - the door without a description in detail, the permission of the design, the blanket of the
+		 *	panel or of the site, and the step of the development of an older version, which is no more than the design here -, 1 for the content, 0 for none of them. 3 is no step
+		 *	of this panel: it is the step of the editor of the blocks, which that editor gives a request for a frame through the mark AS, and nothing a request brings gives it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -85,13 +98,93 @@ namespace Nino\Modules {
 		 */
 		public static function level( array &$appData ): int {
 
-			if( \Nino\Auth::checkPermission( $appData, self::DEVELOP ) === true )
-				return self::LEVEL_DEVELOP;
-
-			if( \Nino\Admin\Admin::scoped( $appData, self::SCOPE, self::DESIGN ) === true )
+			// What held the step of the development held that of the design too: it still does, until the update has written the design into the account
+			if( \Nino\Admin\Admin::scoped( $appData, self::SCOPE, self::DESIGN ) === true || \Nino\Auth::checkPermission( $appData, self::DEVELOPED. 'edit' ) === true )
 				return self::LEVEL_DESIGN;
 
 			return \Nino\Admin\Admin::scoped( $appData, self::SCOPE, self::CONTENT ) === true ? self::LEVEL_CONTENT : 0;
+		}
+
+		/**
+		 *	The step of the development is gone from this panel: what it was for - the markup of a component, the frames - is written in the editor of the blocks. The accounts that held
+		 *	it are given what that costs them, in plain sight and once: the right of the editor of the blocks - which is the whole of what the step could do, own blocks included - and
+		 *	the step of the design in place of the one that is gone. The blanket of the site and of the whole of the panel hold what they held; nobody holds more than before
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$fromVersion	The version that was installed
+		 *
+		 *	@return 	bool
+		 */
+		public static function upgrade( array &$appData, string $fromVersion ): bool {
+
+			// The move is made once, by the update that comes from a version before this one: a later update gives nobody the right - not back to one it was taken from, not to
+			// an account that was made after the move with the blanket of the panel
+			if( version_compare( $fromVersion, '1.1.0', '>=' ) === true )
+				return true;
+
+			// Who could develop: the door of the panel and the step held together, as the account holds them - by a permission of its own, by a blanket or by its role - the
+			// same reading of a list of permissions that gave the step to a request
+			$could = static fn( array $perms ): bool => \Nino\Auth::holds( $perms, self::PERM ) === true && \Nino\Auth::holds( $perms, self::DEVELOPED. 'edit' ) === true;
+			$dead = static fn( array $perms ): array => array_values( array_filter( $perms, static fn( string $perm ): bool => $perm !== self::DEVELOPED. 'edit' && $perm !== self::DEVELOPED. '*' ) );
+			$given = static function( array $perms ) use ( $dead ): array {
+
+				$perms = $dead( $perms );
+
+				if( \Nino\Auth::holds( $perms, self::BRIDGE ) === false )
+					$perms[] = self::BRIDGE;
+
+				if( \Nino\Auth::holds( $perms, self::DESIGN ) === false )
+					$perms[] = self::DESIGN;
+
+				return array_values( array_unique( $perms ) );
+			};
+			$roles = (array) ( $appData['/nino/auth/roles'] ?? [] );
+			$users = (array) ( $appData['/nino/auth/user'] ?? [] );
+			$strings = static fn( mixed $perms ): array => is_array( $perms ) === true ? array_values( array_filter( $perms, 'is_string' ) ) : [];
+			$grants = [];
+
+			// An account is given the right where it could develop as it stands - by its own permissions and its role together - and gets it among its own; what holds the step
+			// without the door never had a way in, and has nothing to move
+			foreach( $users as $mail => $user )
+				if( is_array( $user ) === true && $could( \Nino\Auth::permissions( $appData, $user ) ) === true )
+					$grants['user'][$mail] = true;
+
+			foreach( $roles as $id => $role )
+				if( is_array( $role ) === true && $could( $strings( $role['perms'] ?? null ) ) === true )
+					$grants['role'][$id] = true;
+
+			foreach( $roles as $id => $role )
+				if( is_array( $role ) === true && is_array( $role['perms'] ?? null ) === true )
+					$appData['/nino/auth/roles'][$id]['perms'] = isset( $grants['role'][$id] ) === true ? $given( $strings( $role['perms'] ) ) : $dead( $strings( $role['perms'] ) );
+
+			foreach( $users as $mail => $user ) {
+
+				if( is_array( $user ) === false || is_array( $user['perms'] ?? null ) === false )
+					continue;
+
+				$mine = $strings( $user['perms'] );
+				// Held through a role that was moved, the right is the role's; held any other way it is written into the account
+				$viaRole = \Nino\Auth::holds( \Nino\Auth::permissions( $appData, [ 'perms' => [], 'role' => (string) ( $user['role'] ?? '' ) ] ), self::BRIDGE ) === true && isset( $grants['user'][$mail] ) === true && $could( $mine ) === false;
+				$appData['/nino/auth/user'][$mail]['perms'] = isset( $grants['user'][$mail] ) === true && $viaRole === false ? $given( $mine ) : $dead( $mine );
+			}
+
+			// Nothing is written where nothing moved
+			if( ( $appData['/nino/auth/roles'] ?? [] ) !== $roles || ( $appData['/nino/auth/user'] ?? [] ) !== $users )
+				\Nino\AppData::writeContentData( $appData, [ '/nino/auth/roles', '/nino/auth/user' ] );
+
+			return true;
+		}
+
+		/**
+		 *	Whether the signed-in account may go from a page to the editor of the blocks: the right of that panel is held and the feature is on - what the bridge of a page shows
+		 *	and nothing more: the actions of the editor ask for the right themselves
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool
+		 */
+		public static function bridge( array &$appData ): bool {
+			return ( \Nino\Features::all( $appData )['blocks']['active'] ?? false ) === true && \Nino\Auth::checkPermission( $appData, self::BRIDGE ) === true;
 		}
 
 		/**
@@ -128,6 +221,13 @@ namespace Nino\Modules {
 
 				$held = \Nino\Preview::held( $appData, $request, \Nino\Modules\Builder\Library::KIND, self::PERM );
 				$tile = true;
+			}
+
+			// The draft of a frame is the editor of the blocks': it is held for the right of that panel, and drawn as a page's is
+			if( $held === null ) {
+
+				$held = \Nino\Preview::held( $appData, $request, self::KIND_FRAME, self::BRIDGE );
+				$tile = false;
 			}
 
 			if( $held === null )

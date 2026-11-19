@@ -16,8 +16,8 @@ return [
 				'de_DE' => 'Die Vorlage einer Seite wird als Folge von Blocks gelesen, je ein Aufruf auf oberster Ebene; freies HTML und Aufrufe ohne Schema stehen als gesperrte Blocks da.',
 			],
 			'frame-header.tpl' => [
-				'en_US' => 'The two frames of the site, the header and the footer, are listed beside the pages and open in the same view with their blocks fixed.',
-				'de_DE' => 'Die beiden Rahmen der Website, Header und Footer, stehen neben den Seiten und öffnen in derselben Ansicht mit festen Blocks.',
+				'en_US' => 'The header and the footer stand in every page as two quiet rows and are written in the panel Blocks, under Frames; their texts and pictures are written in the page.',
+				'de_DE' => 'Header und Footer stehen in jeder Seite als zwei leise Zeilen und werden im Panel Blocks unter Rahmen geschrieben; ihre Texte und Bilder schreibt man in der Seite.',
 			],
 		],
 		'routes' => [
@@ -41,11 +41,11 @@ return [
 			],
 			'Properties' => [
 				'en_US' => 'The pencil at a component and a row of the tree open its properties in one lightbox: the source, the content, how it looks and the advanced part, the last two for whoever designs.',
-				'de_DE' => 'Der Stift an einer Komponente und eine Zeile des Baums öffnen ihre Eigenschaften in einer Lightbox: Quelle, Inhalt, Aussehen und Erweitert, die letzten beiden für alle, die gestalten.',
+				'de_DE' => 'Der Stift an einer Komponente und eine Zeile des Baums öffnen ihre Eigenschaften in einer Lightbox: Quelle, Inhalt, Aussehen und Erweitert (die Kennung), die letzten beiden für alle, die gestalten.',
 			],
 			'/_admin/builder/*' => [
-				'en_US' => 'The door /_admin/builder/manage is needed by every role; content/*, design/* and develop/* below it make that blocks and texts, components and frames, or also the markup of html.',
-				'de_DE' => 'Die Tür /_admin/builder/manage braucht jede Rolle; content/*, design/* und develop/* darunter machen daraus Blocks und Texte, Komponenten und Rahmen oder auch das Markup von html.',
+				'en_US' => 'Every role needs the door /_admin/builder/manage; content/* and design/* below it allow blocks and texts, or also components, while frames and html belong to the panel Blocks.',
+				'de_DE' => 'Jede Rolle braucht die Tür /_admin/builder/manage; content/* und design/* darunter erlauben Blocks und Texte oder auch Komponenten, während Rahmen und html zum Panel Blocks gehören.',
 			],
 			'Variant' => [
 				'en_US' => 'A block of the catalogue with variants has a choice of them in its bar and in its look, for whoever designs; a variant sets looks and keeps the texts and pictures.',
@@ -55,9 +55,9 @@ return [
 				'en_US' => 'Where the text, the address or the picture of a component comes from: a text that is there or a new one, a fixed text, a page, an address, a picture slot or a field of the element of a loop.',
 				'de_DE' => 'Woher Text, Adresse oder Bild einer Komponente kommen: ein Text, der da ist, oder ein neuer, ein fester Text, eine Seite, eine Adresse, ein Bildplatz oder ein Feld des Elements einer Schleife.',
 			],
-			'Save as own block …' => [
-				'en_US' => 'Under Advanced in a block, for whoever designs: the block is kept as a block of the project, which then stands in the dialog Insert block and can be deleted there.',
-				'de_DE' => 'Unter Erweitert an einem Block, für alle, die gestalten: der Block wird als Block des Projekts abgelegt, steht danach im Dialog Block einfügen und lässt sich dort löschen.',
+			'Take over into Own blocks …' => [
+				'en_US' => 'In the lightbox of the block, for whoever holds the right of the panel Blocks: the block is kept as a block of the project and the page stays as it is; it is deleted in the panel Blocks.',
+				'de_DE' => 'In der Lightbox des Blocks, für alle, die das Recht des Panels Blocks haben: der Block wird als Block des Projekts abgelegt, die Seite bleibt, wie sie ist; gelöscht wird er im Panel Blocks.',
 			],
 			'New page …' => [
 				'en_US' => 'In the view #builder/@new, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',
@@ -84,8 +84,8 @@ return [
 		],
 		'install' => [
 			'blocks/<key>/' => [
-				'en_US' => 'The blocks of the project, one folder each with block.json, block.tpl and text/<language>.json, made by Save as own block and read by the kernel like every block.',
-				'de_DE' => 'Die Blocks des Projekts, je ein Ordner mit block.json, block.tpl und text/<Sprache>.json, angelegt von „Als eigenen Block speichern“ und vom Kernel wie jeder Block gelesen.',
+				'en_US' => 'The blocks of the project, one folder each with block.json, block.tpl and text/<language>.json, made by Take over into Own blocks and read by the kernel like every block.',
+				'de_DE' => 'Die Blocks des Projekts, je ein Ordner mit block.json, block.tpl und text/<Sprache>.json, angelegt von „In Eigene Blocks übernehmen“ und vom Kernel wie jeder Block gelesen.',
 			],
 			'data/builder/' => [
 				'en_US' => 'The last state of each page that was saved, one step back, which the backup carries, an update does not change and the removal of the page takes away.',
@@ -94,7 +94,7 @@ return [
 		],
 	],
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
+	'version'			=> '1.1.0',
 	'nino'				=> '^2.0',					// the kernel with the draft of a preview, the trace of the drawing, the words put in one step and the bars of the workbench
 	'php'					=> [],
 	'requires'		=> [],

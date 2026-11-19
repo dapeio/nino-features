@@ -376,10 +376,10 @@ const typed = function( dialog, values ) {
 	check( 'A. the panel asks for the list of the tab the address names, in the language of the workbench, and draws a row for each block: its preview, its name with its key quietly under it, its category in words, its number of variants',
 		asked.action === 'blocks/list' && asked.payload.tab === 'project' && asked.payload.locale === 'de_DE' && rows.length === 2 && textOf( rows[0] ).indexOf('Cards') !== -1 && textOf( rows[0] ).indexOf('karten') !== -1 && textOf( rows[0] ).indexOf( W('cat/content') ) !== -1 && textOf( rows[0] ).indexOf('2') !== -1
 		&& rows[0].querySelector('.blocks-tile') !== null );
-	check( 'A. the tabs are the project and the theme in use, with its name; the theme tab is not there without a theme in use', ( function() {
+	check( 'A. the tabs are the project, the theme in use with its name, and the frames - the third; the theme tab is not there without a theme in use', ( function() {
 		const none = shown( '#blocks', LIST( { theme : null } ) ).w;
 
-		return tabsOf( w ).join() === W('tab/project')+ ','+ W( 'tab/theme', 'Nino' ) && tabsOf( none ).join() === W('tab/project');
+		return tabsOf( w ).join() === W('tab/project')+ ','+ W( 'tab/theme', 'Nino' )+ ','+ W('tab/frames') && tabsOf( none ).join() === W('tab/project')+ ','+ W('tab/frames');
 	} )() );
 	check( 'A. a block of the project has three things to do in its row - duplicate, rename, delete - and each is named for the block; one of the theme has one: copy it as a block of the project', ( function() {
 		const theme = shown( '#blocks/theme', LIST( { tab : 'theme' } ) ).w;
@@ -721,7 +721,7 @@ const sheetOf = function( hash, extra ) {
 	const inHead = head === null ? [] : findAll( head, function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).map( textOf );
 	const inList = findAll( x.w.page.querySelector('#blocks-list'), function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).length;
 
-	check( 'D. the tabs of the list stand in the head of the pane - "Own blocks" and the theme - and none stands in the list itself', inHead.join() === W('tab/project')+ ','+ W( 'tab/theme', 'Nino' ) && inList === 0 && W('tab/project') === 'Own blocks' && String( words.de['/_admin/blocks/tab/project'] ) === 'Eigene Blocks' );
+	check( 'D. the tabs of the list stand in the head of the pane - "Own blocks", the theme and the frames - and none stands in the list itself', inHead.join() === W('tab/project')+ ','+ W( 'tab/theme', 'Nino' )+ ','+ W('tab/frames') && inList === 0 && W('tab/project') === 'Own blocks' && String( words.de['/_admin/blocks/tab/project'] ) === 'Eigene Blocks' );
 }
 
 // "Save as" in a block of one's own keeps its name and says what it does behind a (?); in a block of the theme it is "Save to own blocks" - and neither has a paragraph over its field

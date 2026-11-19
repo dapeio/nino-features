@@ -27,6 +27,10 @@ return [
 				'en_US' => 'The list of the blocks of the project and of the theme in use, with a new block, a copy, a new name and the removal of a block; the right is /_admin/blocks/manage.',
 				'de_DE' => 'Die Liste der Blocks des Projekts und des angewandten Themes, mit neuem Block, Kopie, neuem Namen und Löschen; das Recht: /_admin/blocks/manage.',
 			],
+			'Frames' => [
+				'en_US' => 'The third tab writes the header and the footer in the same editor, saved in frame-header and frame-footer; it is the only place that writes a frame or the call of html.',
+				'de_DE' => 'Der dritte Reiter schreibt Header und Footer im selben Editor, gespeichert in frame-header und frame-footer; nur hier wird ein Rahmen oder der Aufruf html geschrieben.',
+			],
 			'Block editor' => [
 				'en_US' => 'The tree of a block, its picture drawn by the site and the lightbox of each component - in the views of the Builder - with Save, Save as and the steps of Undo.',
 				'de_DE' => 'Der Baum eines Blocks, sein Bild von der Website und die Lightbox jeder Komponente – in den Ansichten des Builders – mit Speichern, Speichern unter und den Schritten von Rückgängig.',

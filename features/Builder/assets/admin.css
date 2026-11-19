@@ -347,6 +347,20 @@
 	letter-spacing: .06em;
 }
 
+/* The inputs that the choice of a width switches share one quiet surface with it: what sits in the box changes with the device, what sits outside does not */
+.builder-lightbox .builder-widths-box {
+	padding: var(--nino-admin-space-3);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg);
+}
+
+/* The devices stand at the right edge of their row */
+.builder-lightbox .builder-width-pick {
+	display: flex;
+	justify-content: flex-end;
+	margin: 0;
+}
+
 /* A setting that has a value for each width and is alone in its section: its name at the left, at the right the three devices as the heads of three columns and under each its choice */
 .builder-lightbox .builder-widths-grid {
 	display: grid;
@@ -595,8 +609,13 @@
 	border-radius: var(--editor-radius-sm);
 }
 
-.builder-tile-drop {
-	margin: 0 .5rem .5rem;
+
 }
 
+/* A step that is a picture - the devices, the alignments - has it in the middle of its button, both ways: the button is taller than the line of its word */
+.builder-step-glyph,
+.builder-step-glyph > span {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }

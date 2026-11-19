@@ -24,14 +24,14 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, own, variants, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
 		 */
-		public static function all( array &$appData ): array {
+		public static function all( array &$appData, string $wrap = self::PAGE ): array {
 
 			$features = \Nino\Features::all( $appData );
 			$list = [];
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $block ) {
 
-				if( $block['wrap'] !== self::PAGE || ( ( $block['missing'] ?? [] ) === [] && self::block( $appData, (string) $key ) === null ) )
+				if( $block['wrap'] !== $wrap || ( ( $block['missing'] ?? [] ) === [] && self::block( $appData, (string) $key, $wrap ) === null ) )
 					continue;
 
 				// A block that lacks the components of a feature that is off says which features: the entry is grey and is not put in
@@ -55,6 +55,21 @@ namespace Nino\Modules\Builder {
 			}
 
 			return [ 'blocks' => $list, 'categories' => self::GROUPS ];
+		}
+
+		/**
+		 *	The root a block must have to stand in a template: a section for a page, the header for the frame of the head, the footer for the frame of the foot
+		 *
+		 *	@param		string		$template
+		 *
+		 *	@return 	string
+		 */
+		public static function wrapOf( string $template ): string {
+
+			if( $template === Store::FRAMES['header'] )
+				return 'header-wrap';
+
+			return $template === Store::FRAMES['footer'] ? 'footer-wrap' : self::PAGE;
 		}
 
 		/**
@@ -96,14 +111,15 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key
+		 *	@param		string		$wrap				The root the block has: a section for a page, a header or a footer for a frame
 		 *
 		 *	@return 	array|null								[ 'key', 'id', 'tree', 'known', 'texts', 'slots' => [ [ name, scope, word, kind ] ], 'images' => name => [ placeholder, width, height, label ] ]; null for a key that \Nino\Blocks does not offer for a page
 		 */
-		public static function block( array &$appData, string $key ): ?array {
+		public static function block( array &$appData, string $key, string $wrap = self::PAGE ): ?array {
 
 			$block = \Nino\Blocks::get( $appData, $key );
 
-			if( $block === null || $block['wrap'] !== self::PAGE || ( $block['missing'] ?? [] ) !== [] )
+			if( $block === null || $block['wrap'] !== $wrap || ( $block['missing'] ?? [] ) !== [] )
 				return null;
 
 			$root = null;
@@ -209,6 +225,61 @@ namespace Nino\Modules\Builder {
 			}
 
 			return null;
+		}
+
+		/**
+		 *	Which block of the project a block of a page is built like: the first block of the project, by key, whose call is the call of the block - the attributes left out, what a
+		 *	look a person gave it is. It is told from the tree and from nothing a request names; null where no block of the project is it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$node					The root of a block of the page
+		 *	@param		array			$registry
+		 *
+		 *	@return 	string|null
+		 */
+		public static function sameAs( array &$appData, array $node, array $registry ): ?string {
+
+			if( ( $node['n'] ?? '' ) !== self::PAGE )
+				return null;
+
+			foreach( \Nino\Blocks::all( $appData ) as $key => $listed ) {
+
+				if( ( $listed['origin'] ?? '' ) !== 'project' || ( $listed['wrap'] ?? '' ) !== self::PAGE )
+					continue;
+
+				$own = self::block( $appData, (string) $key );
+
+				if( $own !== null && Tree::likeBlock( self::_shape( $node, $registry ), self::_shape( $own['tree'][0], $registry ), $registry ) === true )
+					return (string) $key;
+			}
+
+			return null;
+		}
+
+		/**
+		 *	The blocks of a page that are built like a block of the project, for the one who may go to the editor of the blocks: the id of each top-level block and the key of
+		 *	that block - what the bridge "open in the editor of the blocks" has
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$nodes				The tree of the page
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array											id => key
+		 */
+		public static function owned( array &$appData, array $nodes, array $registry ): array {
+
+			$owned = [];
+
+			foreach( $nodes as $node ) {
+
+				$id = isset( $node['n'] ) === true && isset( $registry[$node['n']] ) === true ? (string) ( $node['a'][Tree::idAttribute( $registry[$node['n']] )] ?? '' ) : '';
+				$key = $id === '' ? null : self::sameAs( $appData, $node, $registry );
+
+				if( $key !== null )
+					$owned[$id] = $key;
+			}
+
+			return $owned;
 		}
 
 		/**

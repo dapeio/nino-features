@@ -109,10 +109,10 @@ $script = (string) file_get_contents( $feature. '/assets/admin.js' );
 
 preg_match_all( "/word\\(\\s*'([a-z][a-z\\/-]*)'/", $script, $asked );
 $asked = array_unique( $asked[1] );
-$dynamic = [ 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'rename/title', 'rename/submit', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'error/load' ];
-$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && isset( $words['de_DE']['[[/_admin/blocks/'. $key. ']]'], $words['en_US']['[[/_admin/blocks/'. $key. ']]'] ) === false );
+$dynamic = [ 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'rename/title', 'rename/submit', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'error/load', 'frames/header', 'frames/footer' ];
+$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'frames/' && isset( $words['de_DE']['[[/_admin/blocks/'. $key. ']]'], $words['en_US']['[[/_admin/blocks/'. $key. ']]'] ) === false );
 $sentence = static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/'. $code. ']]'], $words['en_US']['[[/_admin/error/'. $code. ']]'] );
-$codes = [ 'blocks_language', 'blocks_shell', 'blocks_unknown', 'blocks_name', 'blocks_category', 'blocks_taken', 'blocks_invalid', 'blocks_refused', 'blocks_tree', 'blocks_place', 'blocks_preview', 'blocks_write', 'blocks_key', 'blocks_block', 'blocks_id', 'blocks_locked', 'blocks_html', 'blocks_foreign', 'blocks_address', 'blocks_picture', 'blocks_empty', 'blocks_long' ];
+$codes = [ 'blocks_language', 'blocks_shell', 'blocks_unknown', 'blocks_name', 'blocks_category', 'blocks_taken', 'blocks_invalid', 'blocks_refused', 'blocks_tree', 'blocks_place', 'blocks_preview', 'blocks_write', 'blocks_key', 'blocks_block', 'blocks_id', 'blocks_locked', 'blocks_html', 'blocks_foreign', 'blocks_loop', 'blocks_frame', 'blocks_address', 'blocks_picture', 'blocks_empty', 'blocks_long' ];
 
 check( 'every word the script asks for and every failure code the API answers has its sentence in both interface languages, and the two files have the same keys',
 	$lacking === [] && array_filter( $codes, static fn( string $code ): bool => $sentence( $code ) === false ) === [] && array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) );
@@ -167,7 +167,9 @@ $every = [
 	'blocks/notation'	=> [ 'tree' => [] ],
 	'blocks/keys'			=> [ 'kind' => 'types' ],
 	'blocks/tile'			=> [ 'key' => 'hero-full' ],
-];
+	'blocks/frames'		=> [],
+	'blocks/adopt'		=> [ 'template' => 'page-home', 'tree' => [], 'at' => '0', 'key' => 'neu', 'name' => 'Neu', 'category' => 'content' ],
+] + array_combine( array_map( static fn( string $act ): string => 'blocks/frame-'. $act, [ 'open', 'preview', 'save', 'restore', 'blocks', 'block', 'keys', 'variant', 'offer', 'notation', 'upload', 'unstage' ] ), array_fill( 0, 12, [ 'template' => 'frame-header', 'tree' => [], 'texts' => [], 'base' => 'x', 'key' => 'hero-full', 'kind' => 'types', 'uri' => 'x', 'files' => [] ] ) );
 
 ninoUser( $site, 'builder-only@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
 $before = blocksSnapshot( $site );
@@ -176,7 +178,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = blocksCall( $site, $action, $data )[0];
 
-check( 'an account that has the rights of the Builder and not /_admin/blocks/manage gets 403 on every action of the panel - the thirteen - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 13 && array_keys( $every ) === array_keys( \Nino\Modules\Blocks\Admin::actions() ) && blocksSnapshot( $site ) === $before );
+check( 'an account that has the rights of the Builder and not /_admin/blocks/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page  - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 27 && array_keys( $every ) === array_keys( \Nino\Modules\Blocks\Admin::actions() ) && blocksSnapshot( $site ) === $before );
 
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
 $answers = [];
@@ -677,17 +679,24 @@ $loose = \Nino\Modules\Builder\Custom::parts( $appData, 'page-home', [ 'source' 
 $builderSource = (string) file_get_contents( dirname( __DIR__, 2 ). '/Builder/Admin/Admin.php' );
 
 // a loop in a block shows the elements of a type of the project and reads fields of them: the type and the fields are sources of the elements - not of the page
-$looping = [ 'n' => 'section-wrap', 's' => '', 'a' => [ 'id' => 'schleife', 'ground' => 'base' ], 'c' => [ [ 't' => "\n" ], [ 'n' => 'collection-list', 's' => '/services', 'a' => [], 'c' => [ [ 't' => "\n" ], [ 'n' => 'text', 's' => '.title', 'a' => [], 'c' => null ], [ 't' => "\n" ] ] ], [ 't' => "\n" ] ] ];
+$looping = [ 'n' => 'section-wrap', 's' => '', 'a' => [ 'id' => 'schleife', 'ground' => 'base' ], 'c' => [ [ 't' => "\n" ], [ 'n' => 'collection-list', 's' => '/_placeholder', 'a' => [], 'c' => [ [ 't' => "\n" ], [ 'n' => 'text', 's' => '.title', 'a' => [], 'c' => null ], [ 't' => "\n" ] ] ], [ 't' => "\n" ] ] ];
 $appData = $site;
 $looped = \Nino\Modules\Builder\Custom::parts( $appData, 'page-home', [ 'source' => '', 'texts' => [], 'slots' => [] ], [ $looping ], [ 'at' => '0', 'key' => 'schleife', 'name' => 'Schleife', 'description' => 'Schleife', 'category' => 'content', 'texts' => [], 'pictures' => [] ] );
 $outside = [ 'n' => 'section-wrap', 's' => '', 'a' => [ 'id' => 'draussen', 'ground' => 'base' ], 'c' => [ [ 't' => "\n" ], [ 'n' => 'text', 's' => '.title', 'a' => [], 'c' => null ], [ 't' => "\n" ] ] ];
 $apart = \Nino\Modules\Builder\Custom::parts( $appData, 'page-home', [ 'source' => '', 'texts' => [], 'slots' => [] ], [ $outside ], [ 'at' => '0', 'key' => 'draussen', 'name' => 'Draussen', 'description' => 'Draussen', 'category' => 'content', 'texts' => [], 'pictures' => [] ] );
 
-check( 'a loop of a block keeps the type of its elements and the field it reads of them - and a field of the elements where no loop is above is no source of a block: refused as foreign',
-	isset( $looped['failure'] ) === false && str_contains( (string) ( $looped['parts']['tpl'] ?? '' ), '[collection-list /services' ) === true && str_contains( (string) $looped['parts']['tpl'], '[text .title]' ) === true && ( $apart['failure'][2] ?? '' ) === 'builder_own_foreign' );
+$real = \Nino\Modules\Builder\Custom::parts( $appData, 'page-home', [ 'source' => '', 'texts' => [], 'slots' => [] ], [ array_replace_recursive( $looping, [ 'c' => [ 1 => [ 's' => '/services' ] ] ] ) ], [ 'at' => '0', 'key' => 'echt', 'name' => 'Echt', 'description' => 'Echt', 'category' => 'content', 'texts' => [], 'pictures' => [] ] );
 
-check( 'the way of the pages stays strict: a link to a page the site has not is refused by Custom::parts - 400 - unless the caller says lenient, and the Builder\'s own action never reads that word from a request',
-	( $strict['failure'][0] ?? 0 ) === 400 && ( $strict['failure'][2] ?? '' ) === 'builder_own_address' && isset( $loose['failure'] ) === false && str_contains( $builderSource, 'lenient' ) === false );
+check( 'a loop of a block of the library shows the placeholder elements and reads fields of them, and a loop over a real type is refused with the sentence that the type is chosen after putting it in - 400 - and a field of the elements where no loop is above is no source of a block: refused as foreign',
+	isset( $looped['failure'] ) === false && ( $real['failure'][2] ?? '' ) === 'builder_own_loop' && str_contains( (string) ( $looped['parts']['tpl'] ?? '' ), '[collection-list /_placeholder' ) === true && str_contains( (string) $looped['parts']['tpl'], '[text .title]' ) === true && ( $apart['failure'][2] ?? '' ) === 'builder_own_foreign' );
+
+[ , $typesAsked ] = blocksCall( $site, 'blocks/keys', [ 'kind' => 'types' ] );
+
+check( 'the editor of the blocks offers one type for the loop of a block of the library - the placeholder elements - whatever types the project has, and the sentence that says why is in both languages',
+	array_column( $typesAsked['types'] ?? [], 'type' ) === [ '/_placeholder' ] && str_contains( (string) ( ( require $feature. '/text/de_DE.php' )['[[/_admin/error/blocks_loop]]'] ?? '' ), 'Platzhalter-Elemente' ) === true && isset( ( require $feature. '/text/en_US.php' )['[[/_admin/error/blocks_loop]]'] ) === true );
+
+check( 'the way of the pages stays strict: a link to a page the site has not is refused by Custom::parts - 400 - unless the caller says lenient, and no action reads that word from a request - the one that adopts a block of a page throws it away, and the word stands nowhere else in the Builder\'s API',
+	( $strict['failure'][0] ?? 0 ) === 400 && ( $strict['failure'][2] ?? '' ) === 'builder_own_address' && isset( $loose['failure'] ) === false && substr_count( $builderSource, 'lenient' ) === 1 && str_contains( $builderSource, "unset( \$data['lenient'] )" ) === true && str_contains( (string) file_get_contents( dirname( __DIR__ ). '/Admin/Admin.php' ), "'lenient' => true" ) === true );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nG. What the panel is built of\n";

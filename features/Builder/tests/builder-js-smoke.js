@@ -132,7 +132,7 @@ const words = {
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
 	asked.add('new/copy');
-	[ 'content', 'design', 'develop', 'content-edit', 'design-edit', 'develop-edit' ].forEach( function( key ) { asked.add( 'scope/'+ key ) } );
+	[ 'content', 'design', 'content-edit', 'design-edit' ].forEach( function( key ) { asked.add( 'scope/'+ key ) } );
 	// The failure of a load is the one the shell's panel() asks for by the name of the panel
 	asked.add('error/load');
 	Array.from( asked ).filter( function( key ) { return key.slice( -1 ) === '-' } ).forEach( function( key ) { asked.delete( key ) } );
@@ -273,7 +273,7 @@ check( 'B. a fresh page is not changed, a change is, and the undo goes back no f
 
 	return clean === true && S.undo.length <= 200;
 } )() );
-check( 'B. the address of a page is its template without page-, a frame has the name of its side, and a name that is none is no template', builder.addressOf( 'page-home' ) === 'home' && builder.addressOf( 'frame-footer' ) === '@footer' && builder.templateOf( '@header' ) === 'frame-header' && builder.templateOf( 'home' ) === 'page-home' && builder.templateOf( '../x' ) === '' );
+check( 'B. the address of a page is its template without page-, a frame has the name of its side but is no address of this panel, and a name that is none is no template', builder.addressOf( 'page-home' ) === 'home' && builder.addressOf( 'frame-footer' ) === '@footer' && builder.templateOf( '@header' ) === '' && builder.templateOf( 'home' ) === 'page-home' && builder.templateOf( '../x' ) === '' );
 
 check( 'B. a block is named by its kind and the first text it shows - in the language of the view -, the call of a frame is a line of its own, and the locked pieces that stand one after the other are one row', ( function() {
 	fresh();
@@ -417,46 +417,12 @@ context.window.Nino.admin.builder.call = function( name, data ) { went.calls.pus
 
 const listed = { pages : [ { template : 'page-home', name : 'Home', path : '/', locales : [] }, { template : 'page-contact', name : 'Contact', path : '/contact', locales : [] } ], frames : [ { template : 'frame-header', key : 'header' } ], level : 2 };
 
-// The address the panel is taken to, and what it keeps of where the person came from
-const opened = function( parts, options ) {
-	S.originNext = null;
-	context.window.Nino.admin.builder.go( parts, options );
-	S.frame = parts.some( function( part ) { return /^@(?:header|footer)$/.test( part ) } );
-	S.adv = { slug : parts[0] };
-};
-
-check( 'B. back from the extended view of a page keeps the draft and goes to the page, from a frame it goes to the page the frame was opened from and asks', ( function() {
+check( 'B. the page goes back to the list, keeping nothing of an extended view: the way back of a page is the list and it has no block in it', ( function() {
 	fresh();
 	S.list = listed;
-	S.adv = { slug : 'contact' };
 	S.template = 'page-contact';
-	const page = builder.backOf( true );
-	opened( [ 'contact', '@header' ] );
-	const frame = builder.backOf( true );
-	return page.parts.join() === 'contact' && page.keep === true && page.block === true && frame.parts.join() === 'contact' && frame.keep === false && builder.backOf( false ).parts.length === 0;
-} )() );
-check( 'B. a frame opened from the list goes back to the list - not to the first page it is shown on - and says so by the name of the list', ( function() {
-	fresh();
-	S.list = listed;
-	opened( [ 'home', '@header' ], { origin : [] } );
-	S.frame = true;
-	const way = builder.backOf( true );
-	return S.page === 'home' && way.parts.length === 0 && way.block === false;
-} )() );
-check( 'B. a frame opened from a page goes back to that page - not to the first one - and says its name', ( function() {
-	fresh();
-	S.list = listed;
-	opened( [ 'contact', '@footer' ] );
-	const way = builder.backOf( true );
-	return S.page === 'contact' && S.origin === null && way.parts.join() === 'contact' && way.name === 'Contact' && way.block === false;
-} )() );
-check( 'B. the extended view of a frame that was opened from the view of the frame goes back to that view, on the same block', ( function() {
-	fresh();
-	S.list = listed;
-	opened( [ 'home', '@header' ], { origin : [ '@header' ] } );
-	S.template = 'frame-header';
-	const way = builder.backOf( true );
-	return way.parts.join() === '@header' && way.block === true;
+	const way = builder.backOf( false );
+	return way.parts.length === 0 && way.keep === false && way.block === false && typeof builder.openExtended === 'undefined';
 } )() );
 check( 'B. a variant that a hint names is told by the label the register gives it, and a variant that has none has no word - never its key', ( function() {
 	const labelled = builder.hintWord( { variant : 'band', standard : 'soft', labels : { variant : null, standard : { en_US : 'Soft surface' } } }, 'standard' );
@@ -547,15 +513,14 @@ const extended = function() {
 	S.saved = JSON.stringify( [ S.top, S.texts, S.pictures ] );
 };
 
-check( 'C. an address names the page and the block: the properties of a component have no address, so more parts name the same view; a frame is named by the page it is shown on; what is none is the page', ( function() {
+check( 'C. an address names the page, and for the old address of the extended view - #builder/<page>/<block> - the block that is marked where the page opens: there is no extended view of a page, a frame is no address of this panel, and what is none is no page', ( function() {
 	const at = function( parts ) { return builder.targetOf( parts ) };
-	const tree = at( [ 'home', 'hero' ] );
+	const old = at( [ 'home', 'hero' ] );
 	const more = at( [ 'home', 'hero', '1.1', 'look' ] );
-	const frame = at( [ 'contact', '@header', '1' ] );
+	const header = at( [ 'home', '@header' ] );
 
-	return tree.mode === 'advanced' && tree.template === 'page-home' && tree.block === 'hero' && more.mode === 'advanced' && more.block === 'hero' && more.path === undefined && more.section === undefined
-		&& frame.template === 'frame-header' && frame.page === 'contact' && at( [ '@header' ] ).mode === 'basic' && at( [ '@header' ] ).template === 'frame-header'
-		&& at( [ 'home', 'Not A Block' ] ).mode === 'basic' && at( [ 'no_page' ] ) === null;
+	return old.mode === 'basic' && old.template === 'page-home' && old.block === 'hero' && more.mode === 'basic' && more.block === 'hero' && header.block === '@header' && header.template === 'page-home'
+		&& at( [ '@header' ] ) === null && at( [ 'contact', '@header', '1' ] ).template === 'page-contact' && at( [ 'home', 'Not A Block' ] ).block === '' && at( [ 'no_page' ] ) === null;
 } )() );
 
 check( 'C. the tree of a block is its components with their kind and first words, a locked entry for free markup, and the id of an entry is its place in the block', ( function() {

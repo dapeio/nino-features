@@ -64,7 +64,7 @@
 
 	// The address of the list of a tab, and of a block in it
 	const tabParts = function( tab ) {
-		return tab === 'theme' ? [ 'theme' ] : [];
+		return tab === 'theme' ? [ 'theme' ] : ( tab === 'frames' ? [ 'frames' ] : [] );
 	};
 
 	const partsOf = function( tab, key ) {
@@ -74,13 +74,14 @@
 	// What the address names: the tab and the key of the block, '' for the list
 	const targetOf = function( parts ) {
 
-		const theme = parts[0] === 'theme';
-		const rest = theme === true ? parts.slice( 1 ) : parts;
+		const tab = parts[0] === 'theme' ? 'theme' : ( parts[0] === 'frames' ? 'frames' : 'project' );
+		const rest = tab === 'project' ? parts : parts.slice( 1 );
 
 		if( rest.length === 0 )
-			return { tab : theme === true ? 'theme' : 'project', key : '' };
+			return { tab : tab, key : '' };
 
-		return rest.length === 1 && /^[a-z][a-z0-9-]{0,63}$/.test( rest[0] ) === true ? { tab : theme === true ? 'theme' : 'project', key : rest[0] } : null;
+		// A frame is the header or the footer; a block is any key of the form of a key
+		return rest.length === 1 && ( tab === 'frames' ? /^(?:header|footer)$/ : /^[a-z][a-z0-9-]{0,63}$/ ).test( rest[0] ) === true ? { tab : tab, key : rest[0] } : null;
 	};
 
 	const sheetOpen = function() {
@@ -183,6 +184,9 @@
 		if( data.theme !== null )
 			items.push( { key : 'theme', label : word( 'tab/theme', localized( data.theme.name ) ) } );
 
+		// The frames of the site - its header and its footer - are the third: they are written here and in no other panel
+		items.push( { key : 'frames', label : word('tab/frames') } );
+
 		const strip = Nino.adminUi.tabs( items, { active : data.tab, label : word('tab/label'), id : 'blocks-tabs', onSelect : function( key ) {
 
 			if( key !== N.tab )
@@ -198,6 +202,22 @@
 			mount.appendChild( strip.el );
 
 		mount.appendChild( holder );
+
+		if( data.tab === 'frames' ) {
+
+			holder.appendChild( Nino.adminUi.list( data.frames.map( function( frame ) {
+
+				return {
+					key		: frame.key,
+					title	: word( 'frames/'+ frame.key ),
+					detail	: word('frames/hint'),
+					href	: Nino.admin.router.href( 'blocks', partsOf( 'frames', frame.key ) ),
+					onOpen	: function() { Nino.admin.blocks.go( partsOf( 'frames', frame.key ) ) },
+				};
+			} ), { title : word('tab/frames'), level : 2 } ) );
+
+			return;
+		}
 
 		if( data.blocks.length === 0 )
 			holder.appendChild( Nino.adminUi.emptyState( word( data.tab === 'theme' ? 'msg/none-theme' : 'msg/none-project' ) ) );
@@ -474,6 +494,124 @@
 		return adapter;
 	};
 
+	// The block that takes the place of a frame: the frame is the block of its kind that stands in it, and a block that the project offers for it replaces it, after the question
+	const askFrameBlock = function( adapter ) {
+
+		const sheet = editor().state();
+
+		editor().call( 'blocks', {}, function( status, response ) {
+
+			if( status !== 200 ) {
+				sheet.view.bar.line.error( status, response );
+				return;
+			}
+
+			const items = response.blocks.map( function( entry ) { return { value : entry.key, label : localized( entry.name ), description : localized( entry.description ) } } );
+
+			if( items.length === 0 ) {
+				sheet.view.bar.line.idle( word('frames/no-blocks') );
+				return;
+			}
+
+			Nino.adminUi.pickDialog( {
+				title		: word('frames/insert'),
+				message	: word('frames/insert-note'),
+				items		: items,
+				cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
+				opener	: sheet.view.bar.buttons.frameblock,
+				onChoose	: function( key ) {
+
+					const entry = response.blocks.find( function( candidate ) { return candidate.key === key } );
+
+					// The whole frame goes: it is asked, and Undo brings it back
+					Nino.adminUi.confirm( 'destructive', {
+						title		: word('frames/confirm-title'),
+						message	: word( 'frames/confirm-message', adapter.name, localized( entry.name ) ),
+						yes			: word('frames/confirm-yes'),
+						no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+						kind		: 'danger',
+						opener	: sheet.view.bar.buttons.frameblock,
+						onChoose : function( ok ) {
+
+							if( ok === false )
+								return;
+
+							editor().call( 'block', { key : key }, function( code, block ) {
+
+								if( code !== 200 )
+									sheet.view.bar.line.error( code, block );
+								else if( editor().replace( block, entry.name ) === false )
+									sheet.view.bar.line.fail( word('frames/insert-fail') );
+							} );
+						},
+					} );
+				},
+			} );
+		} );
+	};
+
+	// The sheet of a frame: the requests are the code of the Builder for it, passed on after the right of this panel; the template is the one every request names
+	const frameAdapterOf = function( frame, response ) {
+
+		const title = word( 'frames/'+ frame );
+		const template = 'frame-'+ frame;
+
+		const adapter = {
+			panel		: 'blocks',
+			level		: 'blocks-sheet',
+			frame		: true,
+			template	: template,
+			name		: title,
+			slug		: '',
+			dir			: response.dir,
+			restore	: true,
+			sources	: 'block',
+			call		: function( action, payload, done, extra ) { Nino.admin.blocks.call( 'frame-'+ action, payload, done, extra ) },
+			code		: template,
+			base		: function() { return { template : template, locale : editor().state().locale, hint : word('preview/place') } },
+			go			: function( parts, options ) { Nino.admin.blocks.go( parts, options ) },
+			href		: function( parts ) { return Nino.admin.router.href( 'blocks', parts ) },
+			set			: function() { Nino.admin.router.set( 'blocks', partsOf( 'frames', frame ) ) },
+			show		: function() { Nino.adminUi.showLevel( 'blocks-sheet', { focus : false } ) },
+			fail		: function( level, status, answer ) { Nino.admin.blocks.fail( level, status, answer ) },
+			back		: function() { return { parts : tabParts( 'frames' ), name : word('title'), keep : false, block : false } },
+			reload	: function() { openFrame( frame ) },
+			buttons	: [ { key : 'frameblock', label : word('frames/insert'), name : word( 'frames/insert-of', title ), onPress : function() { askFrameBlock( adapter ) } } ],
+		};
+
+		return adapter;
+	};
+
+	const openFrame = function( frame ) {
+
+		const level = dc.getElementById('blocks-sheet');
+
+		clearFail();
+
+		Nino.admin.blocks.call( 'frame-open', { template : 'frame-'+ frame, locale : Nino.admin.workLocale.current }, function( status, response ) {
+
+			if( status !== 200 ) {
+				Nino.admin.blocks.fail( level, status, response );
+				Nino.adminUi.showLevel( 'blocks-sheet', { focus : false } );
+				return;
+			}
+
+			if( response.contentLocale !== Nino.admin.workLocale.current ) {
+				openFrame( frame );
+				return;
+			}
+
+			if( editor().open( frameAdapterOf( frame, response ), response ) === false ) {
+				Nino.admin.blocks.go( tabParts( 'frames' ) );
+				return;
+			}
+
+			N.open = { tab : 'frames', key : frame, names : word( 'frames/'+ frame ) };
+
+			unloadList();
+		} );
+	};
+
 	// The place of the first column of the block in its tree, as the tree names a place: the index of each level, joined by a point; '' where it has none
 	const columnOf = function() {
 
@@ -502,6 +640,15 @@
 		return root === undefined || Array.isArray( root.c ) === false ? '' : walk( root.c, '' );
 	};
 
+	// The list is left for the editor: its previews - a frame of the site each - are taken out of the page, and the list is drawn again where it is come back to
+	const unloadList = function() {
+
+		const list = dc.getElementById('blocks-list');
+
+		list.innerHTML = '';
+		N.button = null;
+	};
+
 	const openBlock = function( key, theme ) {
 
 		const level = dc.getElementById('blocks-sheet');
@@ -528,6 +675,8 @@
 			}
 
 			N.open = { tab : theme === true ? 'theme' : 'project', key : key, names : response.name };
+
+			unloadList();
 
 			// The block that was just made has a section, a row and a column and nothing in them: the column is the chosen entry, which has the plus
 			if( N.fresh === key ) {
@@ -596,7 +745,10 @@
 				return;
 			}
 
-			openBlock( target.key, target.tab === 'theme' );
+			if( target.tab === 'frames' )
+				openFrame( target.key );
+			else
+				openBlock( target.key, target.tab === 'theme' );
 		},
 
 		showCurrent : function() {

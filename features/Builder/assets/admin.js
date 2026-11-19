@@ -78,6 +78,8 @@
 		ready			: false,
 		saving		: false,
 		dropped		: null,
+		own			: {},
+		bridge		: false,
 		template	: '',
 		frame			: false,
 		top				: [],
@@ -198,8 +200,8 @@
 	 *	name, else the strokes here, which are drawn as that set draws: 24 by 24, a line of two, round ends
 	 */
 	const GLYPHS = {
-		smartphone		: [ [ 'rect', 5, 2, 14, 20, 2 ], [ 'line', 12, 18, 12.01, 18 ] ],
-		tablet				: [ [ 'rect', 4, 2, 16, 20, 2 ], [ 'line', 12, 18, 12.01, 18 ] ],
+		smartphone		: [ [ 'rect', 7, 2, 10, 20, 2 ], [ 'line', 12, 18, 12.01, 18 ] ],
+		tablet				: [ [ 'rect', 3, 3, 18, 18, 2 ], [ 'line', 12, 17.5, 12.01, 17.5 ] ],
 		monitor				: [ [ 'rect', 2, 3, 20, 14, 2 ], [ 'line', 8, 21, 16, 21 ], [ 'line', 12, 17, 12, 21 ] ],
 		'align-left'	: [ [ 'path', 'M21 6H3' ], [ 'path', 'M15 12H3' ], [ 'path', 'M17 18H3' ] ],
 		'align-center'	: [ [ 'path', 'M21 6H3' ], [ 'path', 'M17 12H7' ], [ 'path', 'M19 18H5' ] ],
@@ -779,6 +781,68 @@
 		return out;
 	};
 
+	// The words and the picture places of a block that is put in, under the id it has on the page now
+	const carry = function( block, now ) {
+
+		block.slots.forEach( function( slot ) {
+
+			const was = slot.scope === '' ? block.id : block.id+ '-'+ slot.scope;
+			const id = was === block.id ? now : innerId( was, block.id, now );
+			const key = '/template/'+ S.template+ '/'+ id+ '/'+ slot.word;
+
+			if( slot.kind === 'image' ) {
+
+				// The slot is made when the page is saved; until then the panel knows its label and size, so that a file can be chosen
+				const spec = ( block.images ?? {} )[slot.name];
+
+				if( spec !== undefined )
+					S.pictures[key] = { label : localized( spec.label ) || slot.word, width : spec.width, height : spec.height };
+
+				return;
+			}
+
+			const words = wordsOf( block, slot.name );
+
+			if( Object.keys( words ).length > 0 )
+				S.texts[key] = words;
+		} );
+	};
+
+	// The frame is the block that stands in it, and a block of its own kind takes its place: the root is the block as the dialog gave it, under an id no other block of the frame has
+	const replaceFrame = function( block, name ) {
+
+		if( S.frame !== true || rootAt() === -1 )
+			return false;
+
+		Object.assign( S.known, block.known );
+		Object.assign( S.schemas, block.schemas ?? {} );
+
+		const at = rootAt();
+		// The frame keeps the id it has where the block has the same: the words of the old one are the ones the new one is given and takes over
+		const now = idOf( S.top[at] ) === block.id ? block.id : freeId( block.id, idsOf( S.top.filter( function( node, index ) { return index !== at } ), new Set() ), true );
+
+		if( now === '' )
+			return false;
+
+		const map = {};
+		const copy = copied( block.tree[0], block.id, now, map );
+
+		if( idsOf( [ copy ], new Set() ).size !== Object.keys( map ).length )
+			return false;
+
+		change( function() {
+
+			S.top[at] = copy;
+			carry( block, now );
+			S.inserted[now] = block.key;
+
+			if( name !== undefined )
+				S.named[now] = name;
+		} );
+
+		return true;
+	};
+
 	/**
 	 *	Put a block in the page: its tree with free ids (its own id or the first number behind it; what is inside begins with it) and its texts under the keys
 	 *	of the new ids, each language with its own
@@ -820,28 +884,7 @@
 			// The focus is put on the new block before the page is drawn - the button that had it is gone with the drawing -, where the blanks that were joined left it
 			S.refocus = { at : normalize( S.top ).indexOf( copy ), action : 'copy', from : from ?? 'frame' };
 
-			block.slots.forEach( function( slot ) {
-
-				const was = slot.scope === '' ? block.id : block.id+ '-'+ slot.scope;
-				const id = was === block.id ? now : innerId( was, block.id, now );
-				const key = '/template/'+ S.template+ '/'+ id+ '/'+ slot.word;
-
-				if( slot.kind === 'image' ) {
-
-					// The slot is made when the page is saved; until then the panel knows its label and size, so that a file can be chosen
-					const spec = ( block.images ?? {} )[slot.name];
-
-					if( spec !== undefined )
-						S.pictures[key] = { label : localized( spec.label ) || slot.word, width : spec.width, height : spec.height };
-
-					return;
-				}
-
-				const words = wordsOf( block, slot.name );
-
-				if( Object.keys( words ).length > 0 )
-					S.texts[key] = words;
-			} );
+			carry( block, now );
 
 			S.inserted[now] = block.key;
 
@@ -1112,23 +1155,6 @@
 		return action === 'up' ? neighbour( at, -1 ) !== -1 : ( action === 'down' ? neighbour( at, 1 ) !== -1 : true );
 	};
 
-	// The address of the extended view of a block - a block of a page by its id, the block of a frame by the frame -, null where it has none: a frame is
-	// shown on the first page of the site
-	const advancedParts = function( node ) {
-
-		if( S.level < 2 )
-			return null;
-
-		if( S.frame === true ) {
-
-			const page = S.list.pages[0];
-
-			return page === undefined ? null : [ addressOf( page.template ), addressOf( S.template ) ];
-		}
-
-		return idOf( node ) === '' ? null : [ addressOf( S.template ), idOf( node ) ];
-	};
-
 	// --- the outline: the blocks of the page as the tree of the workbench, and as the strip it folds to ------------
 
 	// The key a block has in every view that shows it - the outline, its strip, the page in the frame -: its id, and where it has none the place it stands at. The
@@ -1250,8 +1276,8 @@
 		return 'square';
 	};
 
-	// The icons of the four things done to a block, and of the place to put one in and of the extended view
-	const ACTION_ICONS = { insert : 'plus', up : 'arrow-up', down : 'arrow-down', copy : 'copy', remove : 'trash-2', advanced : 'sliders-horizontal' };
+	// The icons of the four things done to a block, and of the place to put one in
+	const ACTION_ICONS = { insert : 'plus', up : 'arrow-up', down : 'arrow-down', copy : 'copy', remove : 'trash-2' };
 
 	// What a row of the outline is: its key, the word it shows - the id of a block, the name of a frame -, the full name for a hint, the icon and its type
 	const rowOf = function( item ) {
@@ -1295,8 +1321,13 @@
 					actions.push( { key : action, icon : ACTION_ICONS[action], name : word( 'label/'+ action )+ ': '+ title, disabled : possible( item.at, action ) === false, danger : action === 'remove' } );
 				} );
 
-			if( item.kind === 'block' && advancedParts( item.node ) !== null )
-				actions.push( { key : 'advanced', icon : ACTION_ICONS.advanced, name : word('label/advanced')+ ': '+ title } );
+			// The words of a frame are the content of the page, for every step: a button at the row opens them, the structure of the frame stays out of it
+			if( item.kind === 'frame' && ( row.key === '@header' || row.key === '@footer' ) )
+				actions.push( { key : 'texts', icon : 'pencil', name : word( 'frame/texts-of', row.label ) } );
+
+			// The frames are written in the editor of the blocks: the one who holds the right of that panel is taken there from the row
+			if( item.kind === 'frame' && S.bridge === true && ( row.key === '@header' || row.key === '@footer' ) )
+				actions.push( { key : 'blocks', icon : 'external-link', name : word( 'own/frame-edit', row.label ) } );
 
 			const held = item.kind === 'block' && S.frame === false ? variantOfBlock( item.at ) : undefined;
 			const named = held === undefined || held.current === null ? undefined : held.items.find( function( entry ) { return entry[0] === held.current } );
@@ -1334,6 +1365,16 @@
 		if( at === -1 )
 			return;
 
+		if( key === 'texts' ) {
+			openFrameTexts( id, opener );
+			return;
+		}
+
+		if( key === 'blocks' ) {
+			Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'blocks', [ 'frames', id === '@footer' ? 'footer' : 'header' ] ) } );
+			return;
+		}
+
 		if( key === 'insert' ) {
 			const index = items().findIndex( function( item ) { return keyAt( item.at ) === id } );
 			const spot = points().find( function( candidate ) { return candidate.b === index + 1 } );
@@ -1344,36 +1385,8 @@
 			return;
 		}
 
-		if( key === 'advanced' ) {
-			openExtended( at );
-			return;
-		}
-
 		selectBlock( id, false );
 		act( at, key, opener, 'outline' );
-	};
-
-	// Where the page in the frame is rolled to, for the way back from the extended view
-	const rememberScroll = function() {
-
-		try {
-			S.scroll = S.view.split.frame.contentWindow.scrollY;
-		} catch( error ) {
-			S.scroll = null;
-		}
-	};
-
-	// The extended view of a block: the block is the chosen one where the way back leads
-	const openExtended = function( at ) {
-
-		const parts = advancedParts( S.top[at] );
-
-		if( parts === null )
-			return;
-
-		S.selected = keyAt( at );
-		rememberScroll();
-		S.adapter.go( parts, { focus : 'back', origin : S.frame === true ? [ addressOf( S.template ) ] : null } );
 	};
 
 	// Roll the page in the frame to what a key names: the block, the head or the foot of the page
@@ -1493,18 +1506,9 @@
 
 		S.refocus = null;
 
-		// A move or a removal leaves the focus where the tree keeps it; a copy and the way back from the extended view name the row and the button
-		if( wanted.action === 'copy' || wanted.action === 'advanced' )
-			gl.tree.focus( keyAt( wanted.at ), wanted.action === 'copy' ? 'copy' : 'advanced' );
-
-		// The strip stands in the place of a column that is folded: its button takes the focus the row cannot have
-		if( gl.tree.el.contains( dc.activeElement ) === false && wanted.action === 'advanced' ) {
-
-			const button = gl.rail.querySelector( 'button[data-key="'+ keyAt( wanted.at ).replace( /["\\]/g, '\\$&' )+ '"]' );
-
-			if( button !== null )
-				button.focus();
-		}
+		// A move or a removal leaves the focus where the tree keeps it; a copy names the row and the button
+		if( wanted.action === 'copy' )
+			gl.tree.focus( keyAt( wanted.at ), 'copy' );
 	};
 
 	// --- the frame: bars over the blocks, the texts that are written where they stand ------------------------------
@@ -1557,18 +1561,18 @@
 		+ 'svg{flex:none;width:14px;height:14px}'
 		+ '.frame{position:absolute;display:none;pointer-events:none;box-sizing:border-box;border:2px solid var(--b-blue);border-radius:3px}'
 		+ '.frame[data-on]{display:block}'
-		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-shadow);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
+		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-shadow);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s}'
 		+ 'button.insert{min-width:44px;min-height:32px;padding:0 12px;border-width:2px;border-style:dashed;border-color:var(--b-blue);border-radius:var(--b-radius);color:var(--b-blue)}'
 		+ 'button.insert svg{width:18px;height:18px}'
-		+ 'button.insert:hover,button.insert:focus-visible{background:var(--b-soft);box-shadow:0 0 0 3px var(--b-soft),var(--b-shadow)}'
+		+ 'button.insert:hover,button.insert:focus-visible{border-color:var(--b-blue);background:var(--b-soft)}'
 		+ '@media (prefers-reduced-motion:reduce){.bar,button.insert{transition:none}}';
 
 	// The pencil stands in a shadow of its own, in the window of the page: it is moved in the page to stand next to the component the keyboard is on, so that the Tab key reaches it
 	// next to the component, and that place may lie in a box of the page that is positioned
 	const PEN_CSS = ':host{all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483000}'
-		+ 'button.pen{position:fixed;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:24px;min-height:24px;margin:0;padding:0;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-blue);box-shadow:var(--b-shadow);cursor:pointer;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
+		+ 'button.pen{position:fixed;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:24px;min-height:24px;margin:0;padding:0;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-blue);box-shadow:var(--b-shadow);cursor:pointer;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s}'
 		+ 'button.pen[data-on],button.pen:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
-		+ 'button.pen:hover{background:var(--b-soft)}button.pen:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}'
+		+ 'button.pen:hover{border-color:var(--b-blue);background:var(--b-soft)}button.pen:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}'
 		+ '.mark{display:none;position:fixed;box-sizing:border-box;pointer-events:none;border:1px solid var(--b-blue);border-radius:3px;opacity:.35;transition:opacity .12s}'
 		+ '.mark.main{opacity:.95}'
 		+ 'button.pen.loop{visibility:visible;pointer-events:none}button.pen.loop:focus-visible{opacity:1;pointer-events:auto}'
@@ -1928,12 +1932,14 @@
 	// the right, where no word of the component is under it. Where one is, the MARK of the component - the frame that shows what the pencil is for - grows to the right of the
 	// box by the width of the pencil, or above or below it, and the pencil stands in that: always inside its mark, never over a word, never in the open. A loop has no box of its own: its
 	// pencil is above the repetitions, inside its mark. `texts` are the boxes of the words in the component, `side` says where it stands and `mark` is the rectangle of the mark
-	const penSpot = function( box, size, view, loop, texts ) {
+	const penSpot = function( box, size, view, loop, texts, row ) {
 
 		const right = box.left + box.width;
 		const bottom = box.top + box.height;
 		const first = Math.min( Math.max( box.top + 2, view.top + 2 ), Math.max( box.top, bottom - size ) );
-		const inside = { side : 'inside', top : first, left : Math.max( box.left, Math.min( right, view.left + view.width ) - size - 2 ) };
+
+		// A row that fills its column has the pencil in its top left corner: the field at the right is the next column's
+		const inside = { side : 'inside', top : first, left : row === true ? box.left + 2 : Math.max( box.left, Math.min( right, view.left + view.width ) - size - 2 ) };
 		const sides = [
 			{ side : 'right', top : inside.top, left : right },
 			{ side : 'above', top : box.top - size, left : inside.left },
@@ -1947,7 +1953,9 @@
 			return ( texts ?? [] ).some( function( text ) { return spot.left < text.left + text.width + margin && spot.left + size > text.left - margin && spot.top < text.top + text.height + margin && spot.top + size > text.top - margin } );
 		};
 		const fits = function( spot ) { return spot.left >= view.left && spot.left + size <= view.left + view.width && spot.top >= view.top };
-		const found = ( loop === true ? [ sides[1], sides[2] ] : [ inside ].concat( sides ) ).find( function( spot ) { return fits( spot ) === true && covers( spot ) === false } ) ?? inside;
+		// The field of the pencil is at the right of every component, in its mark: the mark is wider than the component by it, the same for each, and it changes nothing of the
+		// page - where there is no room for the field in the window, the pencil goes inside, and above or below where a word is under it
+		const found = ( loop === true ? [ sides[1], sides[2] ] : ( row === true ? [ inside, sides[0], sides[1], sides[2] ] : [ sides[0], inside, sides[1], sides[2] ] ) ).find( function( spot ) { return fits( spot ) === true && covers( spot ) === false } ) ?? inside;
 		const mark = { top : box.top - 2, left : box.left - 2, right : right + 2, bottom : bottom + 2 };
 
 		if( found.side === 'right' )
@@ -2120,7 +2128,7 @@
 			return button;
 		};
 
-		blocks.forEach( function( block ) {
+		blocks.forEach( function( block, index ) {
 
 			const node = S.top[block.at];
 
@@ -2266,20 +2274,10 @@
 				bar.appendChild( box );
 			}
 
-			const parts = advancedParts( node );
-
-			if( parts !== null ) {
-
-				const name = word('label/advanced')+ ': '+ title;
-				const more = tool( ACTION_ICONS.advanced, wide === true ? word('label/advanced') : '', name, '' );
-
-				more.dataset.action = 'advanced';
-				more.dataset.at = String( block.at );
-				more.addEventListener( 'click', function() { openExtended( block.at ) } );
-				bar.appendChild( more );
-			}
-
-			const first = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'before' } );
+			// A section has the place above it as well as the one below: where the page has none above it of its own, it is the one below the block before it
+			const earlier = index > 0 ? blocks[index - 1] : undefined;
+			const first = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'before' } )
+				?? ( earlier === undefined ? undefined : spots.find( function( spot ) { return spot.block === earlier.at && spot.carry === 'after' } ) );
 			const last = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'after' } );
 			const pills = { before : first === undefined ? null : pillOf( first ), after : last === undefined ? null : pillOf( last ) };
 
@@ -2314,11 +2312,13 @@
 		// The picture a call reads as an attribute: a button in the foot corner of the call
 		behind.forEach( function( item ) {
 
-			const button = pill( word('picture/replace-title'), word( 'picture/replace-of', item.target.label ), function( opener ) {
+			// The one who designs has "Edit background" at every section, with or without a picture; the one who writes the content has the picture of it to exchange
+			const background = item.target.background === true;
+			const button = pill( background === true ? word('bg/edit') : word('picture/replace-title'), background === true ? word( 'bg/edit-of', item.target.label ) : word( 'picture/replace-of', item.target.label ), function( opener ) {
 
 				if( S.stale === false && S.editing === null )
-					openImage( item.target, opener );
-			}, 'image' );
+					background === true ? openBackground( Number( item.target.path ), opener ) : openImage( item.target, opener );
+			}, background === true ? 'sliders-horizontal' : 'image' );
 
 			button.dataset.image = item.target.key;
 			button.setAttribute( 'data-on', '' );
@@ -2469,7 +2469,7 @@
 				const above = S.found.all.find( function( entry ) { return entry.path === parts.slice( 0, depth ).join('.') && entry.elements.length > 0 } );
 				const around = above === undefined ? null : boxOf( above.elements, win );
 
-				if( around !== null )
+				if( around !== null && around.width > 0 && around.height > 0 )
 					rects.push( { box : { top : around.top - view.top - 1, left : around.left - view.left - 1, width : around.width + 2, height : around.height + 2 }, main : false } );
 			}
 
@@ -2524,7 +2524,7 @@
 			pen.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
 
 			// Inside the box of the component where no word is under it, else flush against the box; the zone round it counts for the component
-			const spot = penSpot( box, size, view, aimed.entry.loop === true, wordsOf( aimed.entry.elements, win ).concat( wordsNear( box, win ) ) );
+			const spot = penSpot( box, size, view, aimed.entry.loop === true, wordsOf( aimed.entry.elements, win ).concat( wordsNear( box, win ) ), ( nodeAt( aimed.entry.path ) ?? {} ).n === 'section-row' );
 
 			aimed.zone = penZone( spot );
 			drawMarks( spot, back, view );
@@ -2843,7 +2843,20 @@
 				anchorPen();
 			}
 		} );
+		// Where the pointer is in the page: what it is over after the page was rolled under it, which no movement tells
+		let pointerAt = null;
+		let outerAt = null;
+
+		doc.addEventListener( 'pointerleave', function() { pointerAt = null; outerAt = null } );
 		doc.addEventListener( 'pointermove', function( event ) {
+
+			pointerAt = { x : event.clientX, y : event.clientY };
+
+			// Where that is in the window of the workbench, for the roll of that window
+			const seat = frame.getBoundingClientRect();
+			const factor = win.innerWidth > 0 && seat.width > 0 ? seat.width / win.innerWidth : 1;
+
+			outerAt = { x : seat.left + event.clientX * factor, y : seat.top + event.clientY * factor };
 
 			const origin = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
 			const key = ownOf( origin ) === true ? S.overBar : ( keyInPage( event.target ) ?? '' );
@@ -3062,6 +3075,39 @@
 		win.addEventListener( 'resize', place );
 		win.addEventListener( 'load', place );
 
+		// The page was rolled under a pointer that stood still: the pencil belongs to the component that is under the pointer now, where it can be pressed - not to the one that
+		// was, which is on its way out of sight. What the pointer is over is the page's own bar or the pencil itself, nothing changes
+		const rollAim = function() {
+
+			if( pointerAt === null || S.editing !== null )
+				return;
+
+			const under = doc.elementFromPoint( pointerAt.x, pointerAt.y );
+
+			if( under === null || ownOf( under ) === true || under === penHost || under === host )
+				return;
+
+			aim( under );
+			anchorPen();
+		};
+
+		// The window of the workbench rolls under a pointer that stands still over the preview: the pointer in the page is where the pointer of the window falls on it now. The
+		// listener is the window's and goes with the page that is drawn
+		const outer = new AbortController();
+
+		win.addEventListener( 'pagehide', function() { outer.abort() } );
+		wn.addEventListener( 'scroll', function() {
+
+			if( outerAt === null )
+				return;
+
+			const rect = frame.getBoundingClientRect();
+			const scale = win.innerWidth > 0 && rect.width > 0 ? rect.width / win.innerWidth : 1;
+
+			pointerAt = { x : ( outerAt.x - rect.left ) / scale, y : ( outerAt.y - rect.top ) / scale };
+			win.requestAnimationFrame( rollAim );
+		}, { capture : true, passive : true, signal : outer.signal } );
+
 		// The bars keep to what is in sight: they follow the scrolling, once for the frames between
 		let waiting = false;
 
@@ -3074,6 +3120,7 @@
 			win.requestAnimationFrame( function() {
 				waiting = false;
 				place();
+				rollAim();
 			} );
 		} );
 
@@ -3083,8 +3130,7 @@
 
 			const target = shadow.querySelector( '[data-at="'+ wanted.at+ '"][data-action="'+ wanted.action+ '"]:not(:disabled)' ) ?? shadow.querySelector( 'button[data-at="'+ wanted.at+ '"]:not(:disabled)' );
 
-			// The way back from the extended view waits for the drawing that has the block: the page that is loaded first need not be that one
-			S.refocus = target === null && wanted.action === 'advanced' ? wanted : null;
+			S.refocus = null;
 
 			if( target !== null ) {
 				selectBlock( keyAt( wanted.at ), false );
@@ -3209,7 +3255,7 @@
 				return;
 
 			if( target.attribute === true ) {
-				behind.push( { target : target, element : element } );
+				behind.push( { target : Object.assign( {}, target, { background : S.level >= 2 && ( nodeAt( target.path ) ?? {} ).n === 'section-wrap' } ), element : element } );
 				return;
 			}
 
@@ -3255,6 +3301,18 @@
 		doc.addEventListener( 'submit', function( event ) { event.preventDefault() }, true );
 		doc.addEventListener( 'keydown', function( event ) { keys( event, found.blocks, doc ) } );
 
+		// Every section has "Edit background" for the one who designs, with or without a picture behind it
+		if( S.level >= 2 )
+			found.blocks.forEach( function( block ) {
+
+				const node = S.top[block.at];
+
+				if( node === undefined || node.n !== 'section-wrap' || behind.some( function( item ) { return item.target.background === true && item.target.path === String( block.at ) } ) === true || block.elements[0] === undefined )
+					return;
+
+				behind.push( { target : { path : String( block.at ), key : 'background:'+ block.at, attribute : true, background : true, alt : '', label : titleOf( node ) }, element : block.elements[0] } );
+			} );
+
 		bars( frame, found.blocks, behind );
 
 		if( S.penBack !== '' && S.penFocus !== null ) {
@@ -3265,11 +3323,6 @@
 			S.penFocus( path );
 		}
 
-		// The way back from the extended view shows the page where it was left
-		if( S.scroll !== null ) {
-			frame.contentWindow.scrollTo( { top : S.scroll } );
-			S.scroll = null;
-		}
 	};
 
 	// The keys of the page in the frame: the undo and the save as in the workbench, and Alt and an arrow moves the block the focus is in
@@ -3405,7 +3458,7 @@
 	 *	variant it names - the one it appears as. A block that is left out because a feature is off is no button: it says which one
 	 *
 	 */
-	const tileOf = function( entry, pick, drop ) {
+	const tileOf = function( entry, pick ) {
 
 		const item = el( 'li', 'builder-tile'+ ( entry.off === null ? '' : ' builder-tile--off' ) );
 		const thumb = el( 'span', 'builder-tile-thumb' );
@@ -3464,10 +3517,6 @@
 		button.appendChild( text );
 		item.appendChild( button );
 
-		// A block of the project is taken away from here, after the question
-		if( entry.own === true && S.level >= 2 )
-			item.appendChild( Nino.adminUi.button( word('insert/drop'), function() { drop( entry ) }, { className : 'nino-admin-btn--small builder-tile-drop', name : word( 'insert/drop-of', localized( entry.name ) ) } ) );
-
 		return item;
 	};
 
@@ -3517,7 +3566,7 @@
 
 			const list = el( 'ul', 'builder-tilelist' );
 
-			by[category].forEach( function( entry ) { list.appendChild( tileOf( entry, close, function( own ) { close( { drop : own } ) } ) ) } );
+			by[category].forEach( function( entry ) {																																													list.appendChild( tileOf( entry, close ) ) } );
 			panel.appendChild( list );
 
 			const boxes = Array.from( list.querySelectorAll('.builder-tile-thumb[data-block]') );
@@ -3585,9 +3634,7 @@
 				if( looking !== null )
 					looking.disconnect();
 
-				if( picked !== null && picked.drop !== undefined )
-					askDrop( picked.drop, place, opener, from );
-				else if( picked !== null )
+				if( picked !== null )
 					put( picked, place, from );
 			},
 		} );
@@ -3597,35 +3644,82 @@
 			buttons[S.category].focus();
 	};
 
-	// A block of the project is taken away after a question - a page that has it keeps its copy - and the dialog opens again without it
-	const askDrop = function( entry, place, opener, from ) {
+	/**
+	 *	The words of the header or the footer, in a dialog: the texts the frame holds as its own, in every language of the site, and nothing of how the frame is built. They are
+	 *	for every page, they are saved at once - not with the draft of this page - and the page in the frame is drawn again with them
+	 *
+	 *	@param		{string}		id						'@header' or '@footer', the key of the row
+	 *	@param		{Element}		opener
+	 */
+	const openFrameTexts = function( id, opener ) {
 
-		Nino.adminUi.confirm( 'destructive', {
-			title		: word('confirm/drop-title'),
-			message	: word( 'confirm/drop-message', localized( entry.name ) ),
-			yes			: word('confirm/drop-title'),
-			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
-			kind		: 'danger',
-			opener	: opener,
-			onChoose : function( ok ) {
+		const template = id === '@footer' ? 'frame-footer' : 'frame-header';
+		const name = word( id === '@footer' ? 'word/frame-footer' : 'word/frame-header' );
 
-				if( ok === false ) {
-					openInsert( place, opener, from );
-					return;
-				}
+		api( 'frametexts', { template : template }, function( status, response ) {
 
-				api( 'blockdrop', { key : entry.key }, function( status, response ) {
+			if( status !== 200 ) {
+				S.view.bar.line.error( status, response );
+				return;
+			}
 
-					if( status !== 200 )
-						S.view.bar.line.error( status, response );
-					else {
-						S.catalog.blocks = S.catalog.blocks.filter( function( block ) { return block.key !== entry.key } );
-						S.view.bar.line.idle( word( 'msg/dropped', localized( entry.name ) ) );
+			if( response.texts.length === 0 ) {
+				S.view.bar.line.idle( word( 'frame/no-texts', name ) );
+				return;
+			}
+
+			const locales = ( response.locales ?? S.locales ).map( function( entry ) { return entry.locale } );
+			const fields = response.texts.map( function( entry ) {
+				return { key : entry.key, type : 'locales', label : entry.label+ ' · '+ entry.key.slice( entry.key.lastIndexOf('/') + 1 ), locales : locales, work : Nino.admin.workLocale.current, values : Object.assign( {}, entry.values ), required : false, maxLength : 2000 };
+			} );
+
+			Nino.adminUi.formDialog( {
+				title			: word( 'frame/texts-of', name ),
+				message		: word('frame/texts-note'),
+				fields		: fields,
+				submit		: word('frame/texts-save'),
+				cancel		: Nino.adminUi.text('/_admin/common/label/cancel'),
+				opener		: opener,
+				onSubmit	: function( values, ctl ) {
+
+					const changed = {};
+
+					response.texts.forEach( function( entry ) {
+
+						const now = values[entry.key] ?? {};
+						const diff = {};
+
+						locales.forEach( function( locale ) {
+							if( String( now[locale] ?? '' ) !== String( entry.values[locale] ?? '' ) )
+								diff[locale] = String( now[locale] ?? '' );
+						} );
+
+						if( Object.keys( diff ).length > 0 )
+							changed[entry.key] = diff;
+					} );
+
+					if( Object.keys( changed ).length === 0 ) {
+						ctl.close();
+						return;
 					}
 
-					openInsert( place, opener, from );
-				} );
-			},
+					api( 'frametextssave', { template : template, texts : changed, base : response.stamp }, function( code, answer ) {
+
+						if( code !== 200 ) {
+							ctl.fail( null, Nino.adminUi.api.errorText( code, answer, '/_admin/builder/error/save' ) );
+							return;
+						}
+
+						ctl.close();
+						S.stale = true;
+
+						if( S.view !== null && S.view.preview !== undefined && S.view.preview !== null )
+							S.view.preview.schedule();
+
+						told( word( 'frame/texts-saved', name ) );
+					} );
+				},
+			} );
 		} );
 	};
 
@@ -3697,20 +3791,9 @@
 		show		: function() { Nino.adminUi.showLevel( 'builder-page', { focus : false } ) },
 		fail		: function( level, status, response ) { Nino.admin.builder.fail( level, status, response ) },
 
-		// Where "back" goes from the view, the name it says and whether it keeps the draft: the extended view of a page is one draft with the page; that of a frame
-		// goes to where it was opened from - the list, a page or the view of the frame itself, the address of which is S.origin - and, where it is not known (an
-		// address that was typed or reloaded), to the page the address shows the frame on. The page that is left is asked about first (go() guards it)
-		back		: function( advanced ) {
-
-			if( advanced === false )
-				return { parts : [], name : word('label/pages'), keep : false, block : false };
-
-			if( S.frame === false )
-				return { parts : [ S.adv.slug ], name : nameOfPage( S.template ), keep : true, block : true };
-
-			const parts = S.origin ?? [ S.page !== '' ? S.page : addressOf( S.template ) ];
-
-			return { parts : parts, name : parts.length === 0 ? word('label/pages') : nameOfPage( templateOf( parts[0] ) ), keep : false, block : parts[0] === addressOf( S.template ) };
+		// Where "back" goes from the view and the name it says: a page goes to the list. The page that is left is asked about first (go() guards it)
+		back		: function() {
+			return { parts : [], name : word('label/pages'), keep : false, block : false };
 		},
 	};
 
@@ -3756,6 +3839,7 @@
 		S.schemas = response.schemas ?? S.schemas;
 		S.findings = response.findings ?? {};
 		S.pendingVariants = response.variants ?? [];
+		S.own = response.own ?? S.own;
 		S.typeTitles = response.titles ?? S.typeTitles;
 		S.links = response.links ?? S.links;
 		learn( response.schemas ?? {} );
@@ -3805,6 +3889,7 @@
 				S.address = response.address;
 				S.findings = response.findings ?? {};
 				S.pendingVariants = response.variants ?? [];
+				S.own = response.own ?? {};
 
 				if( S.mode === 'advanced' && S.tree !== null )
 					S.tree.update( itemsNow() );
@@ -4028,32 +4113,9 @@
 		return block === undefined ? null : block.key;
 	};
 
-	// The way back from a view: the focus goes to where the person came from - the block that was opened, whose row in the outline is the chosen one and has the focus on its
-	// button of the extended view, in an outline that is as open as it was -, or the title of the page a frame was opened from
+	// The way back from a view: the page goes to the list, a sheet of another panel to where its adapter leads
 	const leaveExtended = function( advanced, way ) {
-
-		if( advanced === true && way.block === true ) {
-			S.selected = keyAt( rootAt() );
-			S.refocus = { at : rootAt(), action : 'advanced', from : 'outline' };
-		}
-
-		S.adapter.go( way.parts, advanced === true && way.block === false ? { focus : S.frame === true ? 'frames' : 'page' } : undefined );
-	};
-
-	// The frames of the site are two pages of their own, which a page does not hold: one icon beside its name asks which of them
-	const openFrames = function( opener ) {
-
-		Nino.adminUi.pickDialog( {
-			title		: word('label/frames-edit'),
-			items		: [
-				{ value : '@header', label : word('word/frame-header'), description : word('hint/frame-short') },
-				{ value : '@footer', label : word('word/frame-footer'), description : word('hint/frame-short') },
-			],
-			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
-			size		: 'narrow',
-			opener	: opener,
-			onChoose	: function( part ) { S.adapter.go( [ addressOf( S.template ), part ], { focus : 'back' } ) },
-		} );
+		S.adapter.go( way.parts );
 	};
 
 	// The view that is on the screen is left: what it asked of the page in the frame and of the other views stops
@@ -4100,9 +4162,6 @@
 		pictured( tools.widths.el, DEVICES.map( function( device ) { return device.glyph } ) );
 		S.tools = tools;
 
-		// The frames of the site are written for every page: from the design on, and not in the view of a frame
-		const icons = advanced === false && S.frame === false && S.level >= 2 ? [ { icon : 'panels-top-left', name : word('label/frames-edit'), onClick : function( event ) { openFrames( event.currentTarget ) }, id : 'builder-frames' } ] : [];
-
 		const context = Nino.adminUi.contextBar( {
 			panel	: Nino.adminUi.panelName( level ),
 			title	: S.sheet === 'block' ? S.name : ( advanced === true ? blockTitle() : S.name ),
@@ -4112,7 +4171,6 @@
 				href		: S.adapter.href( home ),
 				onClick	: function() { leaveExtended( advanced, way ) },
 			},
-			icons	: icons,
 			tools	: tools.el,
 			within	: level,
 		} );
@@ -4354,21 +4412,12 @@
 
 	const templateOf = function( part ) {
 
-		if( part === '@header' )
-			return 'frame-header';
-
-		if( part === '@footer' )
-			return 'frame-footer';
-
 		return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test( part ) === true ? 'page-'+ part : '';
 	};
 
 	const addressOf = function( template ) {
 
-		if( template === 'frame-header' )
-			return '@header';
-
-		return template === 'frame-footer' ? '@footer' : template.replace( /^page-/, '' );
+		return template === 'frame-header' ? '@header' : ( template === 'frame-footer' ? '@footer' : template.replace( /^page-/, '' ) );
 	};
 
 	/**
@@ -4401,7 +4450,7 @@
 		S.origin = null;
 		S.named = {};
 		S.selected = '';
-		S.frame = false;
+		S.frame = adapter.frame === true;
 		S.staged = [];
 		S.dir = draft.dir ?? '';
 		S.dim = draft.dim ?? 'frame';
@@ -4419,10 +4468,10 @@
 
 		const block = S.top.find( function( node ) { return kindOf( node ) === 'block' } );
 
-		if( block === undefined || idOf( block ) === '' )
+		if( block === undefined || ( S.frame === false && idOf( block ) === '' ) )
 			return false;
 
-		S.adv = { slug : adapter.slug ?? '', block : idOf( block ) };
+		S.adv = { slug : adapter.slug ?? '', block : S.frame === true ? '-' : idOf( block ) };
 		S.mode = 'advanced';
 		S.tree = null;
 		S.mark = null;
@@ -4454,6 +4503,7 @@
 			drawn.innerHTML = '';
 
 		S.sheet = 'page';
+		S.frame = false;
 		S.adapter = pageAdapter;
 		S.ready = false;
 		S.built = false;
@@ -4535,7 +4585,8 @@
 	};
 
 	/**
-	 *	What an address names: the template, the page a frame is shown on, and for the extended view the block
+	 *	What an address names: the page, and - for an address of the form #builder/<page>/<block> that the extended view used to have - the block of it that is marked where the
+	 *	page opens. A frame is no address of this panel; the editor of the blocks has it
 	 *
 	 *	@param		{Array}			parts				[ page, block ]
 	 *
@@ -4547,95 +4598,50 @@
 		if( template === '' )
 			return null;
 
-		const head = { mode : 'basic', template : template, page : '', slug : addressOf( template ), block : '' };
-
-		if( parts.length < 2 || /^@(?:header|footer)$/.test( parts[0] ) === true )
-			return head;
-
-		const frame = /^@(?:header|footer)$/.test( parts[1] ) === true;
-
-		if( frame === false && /^[a-z][a-z0-9-]*$/.test( parts[1] ) === false )
-			return head;
-
-		return {
-			mode		: 'advanced',
-			template	: frame === true ? templateOf( parts[1] ) : template,
-			page		: frame === true ? parts[0].replace( /^page-/, '' ) : '',
-			slug		: parts[0],
-			block		: parts[1],
-		};
+		return { mode : 'basic', template : template, page : '', slug : addressOf( template ), block : /^(?:@(?:header|footer)|[a-z][a-z0-9-]*)$/.test( parts[1] ?? '' ) === true ? parts[1] : '' };
 	};
 
 	/**
-	 *	Show what an address names: the page as it is written on, or the extended view of one of its blocks, and in it the tree or one component. A way into the
-	 *	extended view that the account may not take - it is for the design - or a block that is not there lands on the page, with a sentence
+	 *	Show what an address names: the page as it is written on. A block the address names - the old address of the extended view of it - is marked in the page; one that is not
+	 *	there is told, and the page stays as it is
 	 *
 	 *	@param		{Object}		target				As targetOf() answers
 	 */
 	const show = function( target ) {
 
 		const level = dc.getElementById( S.adapter.level );
-		const was = S.adv;
-		let mode = target.mode;
-		let because = '';
 
-		S.adv = mode === 'advanced' ? { slug : target.slug, block : target.block } : null;
-
-		// Another block by the address is another view: its name, its marks and its tree are its own
-		const another = was !== null && S.adv !== null && ( was.block !== S.adv.block || was.slug !== S.adv.slug );
-
-		if( another === true )
-			S.marked = '';
-
-		if( mode === 'advanced' && S.level < 2 )
-			because = word('msg/no-advanced');
-		else if( mode === 'advanced' && rootAt() === -1 )
-			because = word('msg/no-block');
-
-		if( because !== '' ) {
-			mode = 'basic';
-			S.adv = null;
-		}
-
-		S.mode = mode;
+		S.adv = null;
+		S.mode = 'basic';
 		S.tree = null;
 		S.mark = null;
 
-		if( S.built === false || S.view === null || S.view.kind !== mode || another === true ) {
+		if( S.built === false || S.view === null || S.view.kind !== 'basic' ) {
 
 			leaveView();
 
 			build( level );
 			S.built = true;
 		}
-		else if( mode === 'advanced' ) {
-			drawLeft();
-			paint();
-		}
 
 		S.adapter.show();
-
-		S.at = mode === 'basic' ? [ addressOf( S.template ) ] : partsOf();
+		S.at = [ addressOf( S.template ) ];
 		S.adapter.set( S.at );
 
-		if( because !== '' )
-			told( because );
+		if( target.block !== '' ) {
 
-		// The focus goes where the move says: into the view that was opened on its title, or back to the icon or the title it was opened from
+			if( atOf( target.block ) !== -1 )
+				selectBlock( target.block, true );
+			else
+				told( word('msg/no-block') );
+		}
+
+		// The focus goes where the move says: on the title of the page that was opened
 		const wanted = S.focusNext;
 
 		S.focusNext = '';
 
-		if( wanted === 'back' && mode === 'advanced' ) {
-
-			if( S.view.title.hasAttribute('tabindex') === false )
-				S.view.title.setAttribute( 'tabindex', '-1' );
-
-			S.view.title.focus();
-		}
-		else if( wanted === 'frames' && mode === 'basic' && dc.getElementById('builder-frames') !== null )
-			dc.getElementById('builder-frames').focus();
-		else if( wanted === 'page' && mode === 'basic' ) {
+		if( wanted === 'page' ) {
 
 			S.view.title.setAttribute( 'tabindex', '-1' );
 			S.view.title.focus();
@@ -6064,10 +6070,11 @@
 	 *	@param		{string}		key						The slot
 	 *
 	 */
-	const pictureBox = function( key, label, again ) {
+	const pictureBox = function( key, label, again, fallback ) {
 
 		const box = el( 'div', 'builder-picture' );
-		const info = Object.assign( {}, S.images[key], S.pictures[key] );
+		// A place of the page that is written and not made yet has the size the caller says: it is made with the first picture, and until then it is the placeholder
+		const info = Object.assign( {}, fallback, S.images[key], S.pictures[key] );
 		const own = key !== '' && key.indexOf( '/template/'+ S.template+ '/' ) === 0;
 		const line = el( 'p', 'nino-admin-hint builder-picture-line', '' );
 
@@ -6141,6 +6148,20 @@
 		return box;
 	};
 
+	// A request to the editor of the blocks, which has its own right: the answer of the panel as the page asks it
+	const askBlocks = function( action, payload, done ) {
+		Nino.admin.blocks.call( action, payload, done );
+	};
+
+	// The block of the project a block of the page is built like, in the editor of the blocks: the work that is not saved is asked about first
+	const editInBlocks = function( key ) {
+
+		if( typeof key !== 'string' || key === '' )
+			return;
+
+		Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'blocks', [ key ] ) } );
+	};
+
 	/**
 	 *	The dialog that makes a block of the project of the block of the page that is open: a name, a category and the folder it is kept in. It is made only where the
 	 *	kernel takes it as a block; where it does not, the dialog says what is in the way and stays
@@ -6190,7 +6211,7 @@
 				if( NAME.test( key.querySelector('input').value ) === false )
 					return refuse( key, word('own/bad-key') );
 
-				api( 'blocksave', { tree : S.top, at : String( rootAt() ), key : key.querySelector('input').value, name : name.querySelector('input').value.trim(), description : about.querySelector('input').value.trim(), category : category.querySelector('select').value, texts : S.texts, pictures : picturesNow() }, function( status, response ) {
+				askBlocks( 'adopt', { template : S.template, locale : S.locale, tree : S.top, at : String( rootAt() ), key : key.querySelector('input').value, name : name.querySelector('input').value.trim(), description : about.querySelector('input').value.trim(), category : category.querySelector('select').value, texts : S.texts, pictures : picturesNow() }, function( status, response ) {
 
 					if( status !== 200 ) {
 						refuse( ( response ?? {} ).field === 'key' ? key : ( ( response ?? {} ).field === 'category' ? category : name ), Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/own' ) );
@@ -6759,7 +6780,7 @@
 		const given = ( relNode( rel ).a ?? {} )[name];
 		const widths = widthsOf( given ?? declared.default );
 		const label = localized( declared.label );
-		const group = el( 'div', 'nino-admin-field builder-widths-set' );
+		const group = el( 'div', 'nino-admin-field builder-widths-set builder-widths-box' );
 		const caption = el( 'span', 'builder-field-label', label );
 		const grid = el( 'div', 'builder-widths-grid' );
 		const key = rel+ ':'+ name;
@@ -6795,9 +6816,11 @@
 	// for each setting, for that width. The dot at a device says that a value is written for it. A change is one step of the undo, as ever
 	const widthGroup = function( rel, names ) {
 
-		const group = el( 'div', 'builder-widths-group' );
+		const group = el( 'div', 'builder-widths-group builder-widths-box' );
 		const pick = el( 'div', 'nino-admin-field builder-width-pick' );
-		const caption = el( 'span', 'builder-field-label', word('rows/width') );
+
+		// The row of the devices has no caption on the screen - the devices say what they are - and keeps its name for a screen reader
+		const caption = el( 'span', 'nino-admin-sr-only', word('rows/width') );
 		const list = el( 'div', 'nino-admin-dialog-fields builder-widths-list' );
 		const box = S.box;
 		const dots = {};
@@ -7090,7 +7113,11 @@
 
 	// The title the project gives a type of elements, else what the loop names
 	const typeTitle = function( given ) {
-		return ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : S.typeTitles[given] ?? ( given.indexOf('/_') === 0 ? word('type/example') : given ) } ).title;
+		// The kernel's own placeholder type has the words of the placeholders whatever title the answer brings
+		if( given.indexOf('/_') === 0 )
+			return word('type/example');
+
+		return ( S.types.find( function( entry ) { return entry.type === given } ) ?? { title : S.typeTitles[given] ?? given } ).title;
 	};
 
 	// The types of elements of the project are asked for once, where a loop shows one by its title; what comes is told to the caller
@@ -7648,8 +7675,9 @@
 		if( node.n === 'html' && S.level >= DEVELOP )
 			rows.push( htmlRow( rel, node ) );
 
-		// A block of the page is kept as a block of the project, for the pages that are made after it: the lightbox gives way to the dialog that asks for its name
-		if( rel === 'root' && S.frame === false && S.sheet === 'page' ) {
+		// The way from a page to the editor of the blocks, for the one who holds the right of that panel: the block of the page is taken as a block of the project - the page
+		// stays as it is - or, where it is built like one, opened in the editor. The lightbox gives way to the dialog that asks for its name
+		if( rel === 'root' && S.sheet === 'page' && S.bridge === true ) {
 
 			const row = el( 'div', 'builder-box-change' );
 			const own = Nino.adminUi.button( word('own/open'), function() {
@@ -7659,6 +7687,18 @@
 
 			own.dataset.key = 'block:own';
 			row.appendChild( own );
+
+			if( S.own[box.block] !== undefined ) {
+
+				const edit = Nino.adminUi.button( word('own/edit'), function() {
+					box.then = 'edit';
+					box.close();
+				}, { className : 'nino-admin-btn--small' } );
+
+				edit.dataset.key = 'block:edit';
+				row.appendChild( edit );
+			}
+
 			rows.push( row );
 		}
 
@@ -7787,7 +7827,7 @@
 	 *
 	 *	@return		{boolean}									Whether it was opened
 	 */
-	const openProperties = function( at, rel, opener, back ) {
+	const openProperties = function( at, rel, opener, back, only ) {
 
 		const root = S.top[at];
 
@@ -7797,7 +7837,7 @@
 		const box = { block : idOf( root ), rel : rel, width : undefined, open : '', code : null, notationOn : false, asked : 0, then : '', draw : null, close : null, gone : false, recount : null };
 
 		// The notation is read and copied from a small window of its own, for the account that designs: the one that writes content has no such button
-		if( S.level >= 2 ) {
+		if( S.level >= 2 && only === undefined && S.sheet === 'block' ) {
 			box.code = el( 'pre', 'builder-code', '' );
 			box.code.tabIndex = 0;
 		}
@@ -7845,16 +7885,22 @@
 			const plan = contentPlan( rel, reads );
 			const sections = [];
 
-			if( reads.some( function( read ) { return read.where !== 'own' } ) === true )
+			// The background of a section: only the settings of it that the register names - the ground, the picture, whether it shows, whether it is dimmed - and the picture itself
+			if( only !== undefined ) {
+
+				sections.push( { key : 'background', label : word('bg/title'), content : function() { return body( backgroundRows( at, rel, only ) ) } } );
+				box.open = 'background';
+			}
+			else if( reads.some( function( read ) { return read.where !== 'own' } ) === true )
 				sections.push( { key : 'source', label : word('box/source'), content : function() { return body( sourceRows( rel, reads ) ) } } );
 
-			if( plan.length > 0 )
+			if( only === undefined && plan.length > 0 )
 				sections.push( { key : 'content', label : word('box/content'), summary : ownText( now, rel, 40 ), content : function() { return body( contentRows( rel, plan ) ) } } );
 
-			if( S.level >= 2 && lookRows( rel ).length > 0 )
+			if( only === undefined && S.level >= 2 && lookRows( rel ).length > 0 )
 				sections.push( { key : 'look', label : word('box/look'), summary : variantSummary( now ), content : function() { return body( lookRows( rel ) ) } } );
 
-			if( S.level >= 2 )
+			if( only === undefined && S.level >= 2 )
 				sections.push( { key : 'advanced', label : word('box/advanced'), content : function() { return body( advancedRows( rel, box ) ) } } );
 
 			if( sections.some( function( section ) { return section.key === box.open } ) === false )
@@ -7902,7 +7948,7 @@
 		box.draw();
 
 		// The types of elements are the design's to read: a loop is told by the path of its type to the step below
-		if( S.level >= 2 ) {
+		if( S.level >= 2 && only === undefined ) {
 			askTypes( redrawBox );
 			askFields( redrawBox );
 		}
@@ -7912,7 +7958,7 @@
 
 		Nino.adminUi.choiceDialog( {
 			title			: word( 'label/edit-component', name ),
-			message		: word( 'label/edit-component', name ),
+			message		: only === undefined ? word( 'label/edit-component', name ) : word('bg/edit'),
 			content		: holder,
 			size			: 'form',
 			className	: 'builder-lightbox',
@@ -7922,6 +7968,7 @@
 			onOpen		: function( handle ) {
 
 				box.close = function() { handle.close('close') };
+				dimmedClose( holder.closest('dialog'), box );
 
 				if( box.code !== null )
 					notationButton( handle, box );
@@ -7937,10 +7984,111 @@
 
 				if( box.then === 'own' )
 					openBlockSave( opener );
+				else if( box.then === 'edit' )
+					editInBlocks( S.own[box.block] );
 			},
 		} );
 
 		return true;
+	};
+
+	// The rows of the dialog "Edit background" of a section: its settings by name - the ones the register has, nothing else -, and the picture it shows, to look at and to exchange. Each
+	// change is in the draft at once and is one step of the undo, as in the lightbox
+	const backgroundRows = function( at, rel, names ) {
+
+		const node = relNode( rel );
+		const declared = S.schemas[node.n].attributes;
+		const rows = [];
+		const written = ( node.a ?? {} ).image;
+		const target = pictureTargets().find( function( candidate ) { return candidate.attribute === true && candidate.path === String( at ) } );
+
+		// The picture the section has: its place by the source it is written with - known before the page was drawn again - or by what the page told
+		const key = typeof written === 'string' && written.charAt(0) === '~' && idOf( node ) !== '' ? '/template/'+ S.template+ '/'+ idOf( node )+ '/'+ written.slice( 1 ) : ( target === undefined ? '' : target.key );
+		const label = declared.image === undefined ? '' : localized( declared.image.label );
+
+		names.forEach( function( name ) {
+
+			if( declared[name] === undefined )
+				return;
+
+			// What is about the picture is there where there is one: it shows or not, it is dimmed or not
+			if( ( name === 'picture' || name === 'dim' ) && key === '' )
+				return;
+
+			// The picture comes after the ground and before what is about it
+			if( name === 'picture' ) {
+
+				const holder = el( 'div', 'builder-picture-holder' );
+				const draw = function() {
+
+					holder.innerHTML = '';
+					holder.appendChild( pictureBox( key, label, draw, key.indexOf( '/template/'+ S.template+ '/' ) === 0 ? { label : label, width : 1920, height : 1080 } : undefined ) );
+				};
+
+				draw();
+				rows.push( holder );
+			}
+
+			rows.push( attributeField( rel, name, declared[name] ) );
+
+			// A section that has no picture is given one here, where the register allows it: its place is made when the page is saved
+			if( name === 'ground' && key === '' && declared.image !== undefined && S.adapter.uploads !== false && idOf( node ) !== '' ) {
+
+				const add = Nino.adminUi.button( word('bg/add'), function() {
+
+					const place = '/template/'+ S.template+ '/'+ idOf( node )+ '/background';
+
+					change( function() {
+						relNode( rel ).a = Object.assign( {}, relNode( rel ).a ?? {}, { image : '~background' } );
+						S.pictures[place] = { label : label, width : 1920, height : 1080 };
+					} );
+					redrawBox();
+				}, { className : 'nino-admin-btn--small' } );
+
+				add.dataset.key = 'background:add';
+				rows.push( add );
+			}
+		} );
+
+		return rows;
+	};
+
+	// "Edit background" at a section: the lightbox with the settings of its background and nothing else
+	// The settings of the background of a section, by name
+	const BACKGROUND = [ 'ground', 'picture', 'dim' ];
+
+	const openBackground = function( at, opener ) {
+		return openProperties( at, 'root', opener, undefined, BACKGROUND );
+	};
+
+	// A press in the dimmed area beside the lightbox closes it like "Close" does - and only a press that began there and ended there: text that is marked in the dialog and let go of
+	// outside it closes nothing. The dialogs with a form - the source among them - are not given this: what is typed in them is not thrown away by a click beside them
+	const dimmedClose = function( dialog, box ) {
+
+		if( dialog === null )
+			return;
+
+		const outside = function( event ) {
+
+			const rect = dialog.getBoundingClientRect();
+
+			return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+		};
+
+		let began = false;
+
+		dialog.addEventListener( 'mousedown', function( event ) { began = event.target === dialog && outside( event ) } );
+		dialog.addEventListener( 'click', function( event ) {
+
+			// Only the dialog that is on top is asked: with another on it - the source of a value, a question - a press beside them closes none
+			const open = dc.querySelectorAll('dialog[open]');
+			const closes = began === true && event.target === dialog && outside( event ) && open[open.length - 1] === dialog;
+
+			began = false;
+
+			if( closes === true && typeof box.close === 'function' )
+				box.close();
+		} );
 	};
 
 	// --- the extended view: the tree of a block ---
@@ -8413,6 +8561,7 @@
 
 		S.list = data;
 		S.level = data.level ?? S.level;
+		S.bridge = data.bridge === true;
 
 		const mount = dc.getElementById('builder-list');
 		const holder = el( 'div', '' );
@@ -8455,20 +8604,6 @@
 			} );
 		}
 
-		if( data.frames.length > 0 )
-			mount.appendChild( Nino.adminUi.list( data.frames.map( function( frame ) {
-
-				const parts = data.pages.length > 0 ? [ addressOf( data.pages[0].template ), addressOf( frame.template ) ] : [ addressOf( frame.template ) ];
-
-				return {
-					key		: frame.key,
-					title	: word( 'word/frame-'+ frame.key ),
-					detail	: word('hint/frame-short'),
-					href	: Nino.admin.router.href( 'builder', parts ),
-					onOpen	: function() { Nino.admin.builder.go( parts, { origin : [] } ) },
-				};
-			} ), { title : word('label/frames'), level : 2 } ) );
-
 		if( data.create === true ) {
 
 			N.button = makeButton('builder-new-page');
@@ -8504,7 +8639,7 @@
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,
 			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
-			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, openExtended : openExtended, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
+			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
 			glyphOf : glyphOf, glyph : glyph, pictured : pictured, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
@@ -8528,7 +8663,7 @@
 		 */
 		editor : {
 			open : openSheet, close : closeSheet, view : build, properties : openProperties, source : openSource, change : change, undo : undo, redo : redo, save : save,
-			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
+			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, replace : replaceFrame, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
 		},
 
 		go : function( parts, options ) {

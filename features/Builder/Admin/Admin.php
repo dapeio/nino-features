@@ -17,8 +17,7 @@ namespace Nino\Modules\Builder {
 	//	builder/keys			the texts of the project - or the picture slots - to choose a source from, found by name or by text
 	//	builder/upload		a picture for a slot of the page, made at once under a name no slot has; the save gives it to the slot
 	//	builder/unstage		the pictures of a draft that is thrown away: the files nobody has been given
-	//	builder/blocksave	a block of the page as a block of the project: private/blocks/<key>/, only if the kernel takes it as one
-	//	builder/blockdrop	a block of the project taken away again
+	//	builder/frametexts	the texts a frame of the site holds as its own, to read and to write: the content of it, from the content step on, and no structure
 	//	builder/create		a page: its template, its routes, its menu entries and the words of its first block, in one step
 	class Admin {
 
@@ -40,14 +39,12 @@ namespace Nino\Modules\Builder {
 				'builder/blocks'	=> [ self::class, 'apiBlocks' ],
 				'builder/block'		=> [ self::class, 'apiBlock' ],
 				'builder/tile'		=> [ self::class, 'apiTile' ],
-				'builder/offer'		=> [ self::class, 'apiOffer' ],
 				'builder/variant'	=> [ self::class, 'apiVariant' ],
-				'builder/notation'	=> [ self::class, 'apiNotation' ],
 				'builder/keys'		=> [ self::class, 'apiKeys' ],
 				'builder/upload'	=> [ self::class, 'apiUpload' ],
 				'builder/unstage'	=> [ self::class, 'apiUnstage' ],
-				'builder/blocksave'	=> [ self::class, 'apiBlockSave' ],
-				'builder/blockdrop'	=> [ self::class, 'apiBlockDrop' ],
+				'builder/frametexts'	=> [ self::class, 'apiFrameTexts' ],
+				'builder/frametextssave'	=> [ self::class, 'apiFrameTextsSave' ],
 				'builder/create'	=> [ self::class, 'apiCreate' ],
 				'builder/copyof'	=> [ self::class, 'apiCopyOf' ],
 				'builder/duplicate'	=> [ self::class, 'apiDuplicate' ],
@@ -57,7 +54,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The permissions of the three steps for the roles tab: the area of each, and the one action that stands for it
+		 *	The permissions of the two steps for the roles tab: the area of each, and the one action that stands for it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -69,7 +66,7 @@ namespace Nino\Modules\Builder {
 
 			// The label of an area is shown as it is, and so the words are the ones of the language of the workbench; the label of an action is a fill key the roles tab
 			// resolves itself
-			foreach( [ 'content' => \Nino\Modules\Builder::CONTENT, 'design' => \Nino\Modules\Builder::DESIGN, 'develop' => \Nino\Modules\Builder::DEVELOP ] as $area => $perm )
+			foreach( [ 'content' => \Nino\Modules\Builder::CONTENT, 'design' => \Nino\Modules\Builder::DESIGN ] as $area => $perm )
 				$areas[] = [
 					'id'				=> $area,
 					'label'			=> self::_word( $appData, 'scope/'. $area ),
@@ -122,10 +119,9 @@ namespace Nino\Modules\Builder {
 
 			return match( $action ) {
 				'builder/save'		=> 'Save Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
+				'builder/frametextssave'	=> 'Save Frame Texts '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/restore'	=> 'Restore Last Page State '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/upload'	=> 'Upload Page Picture '. Store::shown( \Nino\Admin\Admin::postString( $data, 'uri' ) ),
-				'builder/blocksave'	=> 'Save Own Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
-				'builder/blockdrop'	=> 'Delete Own Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
 				'builder/create'	=> 'Create Page '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
 				'builder/duplicate'	=> 'Duplicate Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'from' ) ). ' as '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
 				'builder/remove'	=> 'Delete Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
@@ -145,13 +141,6 @@ namespace Nino\Modules\Builder {
 			if( $locale === null )
 				return;
 
-			$frames = [];
-
-			// The frames are written for every page: from the design on
-			foreach( Store::FRAMES as $key => $template )
-				if( $level >= \Nino\Modules\Builder::LEVEL_DESIGN && is_file( \Nino\Filesystem::path( $appData, '/templates/'. $template. '.tpl' ) ) === true )
-					$frames[] = [ 'key' => $key, 'template' => $template ];
-
 			// What was uploaded for a draft of a page that nobody opens any more is taken away with the next look at the list
 			$pages = Pages::listed( $appData, $locale );
 
@@ -161,7 +150,7 @@ namespace Nino\Modules\Builder {
 			// A page is made by the one who may design and may write routes: the list says so, and the action asks again
 			$create = $level >= \Nino\Modules\Builder::LEVEL_DESIGN && \Nino\Auth::checkPermission( $appData, \Nino\Modules\Builder::ROUTES ) === true;
 
-			\Nino\Http::ok( $request, [ 'pages' => $pages, 'frames' => $frames, 'create' => $create, 'navs' => \Nino\Pages::navKeys( $appData ) ] + self::_view( $appData, $locale, $level ) );
+			\Nino\Http::ok( $request, [ 'pages' => $pages, 'create' => $create, 'bridge' => \Nino\Modules\Builder::bridge( $appData ), 'navs' => \Nino\Pages::navKeys( $appData ) ] + self::_view( $appData, $locale, $level ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -320,7 +309,7 @@ namespace Nino\Modules\Builder {
 					$fills[$key] = $text;
 			}
 
-			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Builder::KIND, self::perm(), [ 'template' => $template, 'source' => $prepared['draft'], 'fills' => $fills, 'slots' => $prepared['shown'], 'locale' => $locale ], \Nino\Admin\Admin::postString( $data, 'token' ) );
+			$token = \Nino\Preview::issue( $appData, ( $appData[\Nino\Modules\Builder::AS] ?? false ) === true ? \Nino\Modules\Builder::KIND_FRAME : \Nino\Modules\Builder::KIND, ( $appData[\Nino\Modules\Builder::AS] ?? false ) === true ? \Nino\Modules\Builder::BRIDGE : self::perm(), [ 'template' => $template, 'source' => $prepared['draft'], 'fills' => $fills, 'slots' => $prepared['shown'], 'locale' => $locale ], \Nino\Admin\Admin::postString( $data, 'token' ) );
 
 			if( $token === '' ) {
 				self::_fail( $request, [ 500, 'the preview could not be written', 'builder_preview', [], '' ] );
@@ -334,8 +323,8 @@ namespace Nino\Modules\Builder {
 				'sources'		=> $prepared['sources'],
 				'address'		=> self::_address( $appData, $template, $locale, \Nino\Admin\Admin::postString( $data, 'page' ) ),
 				'findings'	=> $prepared['findings'],
-				'notation'	=> $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? self::_notation( $appData, $prepared['tree'], $data['look'] ?? null ) : [],
-			] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'variants' => Library::variants( $appData, $prepared['tree'], \Nino\Components::components( $appData ) ) ] : [] ) );
+				'notation'	=> $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ? self::_notation( $appData, $prepared['tree'], $data['look'] ?? null ) : [],
+			] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'variants' => Library::variants( $appData, $prepared['tree'], \Nino\Components::components( $appData ) ) ] : [] ) + ( \Nino\Modules\Builder::bridge( $appData ) === true ? [ 'own' => Library::owned( $appData, $prepared['tree'], \Nino\Components::components( $appData ) ) ] : [] ) );
 		}
 
 		public static function apiSave( array &$appData, array &$request ): void {
@@ -517,12 +506,23 @@ namespace Nino\Modules\Builder {
 			return $previous === null ? '' : (string) ( self::_unback( $appData, $template, $state, $nodes, $previous, $level )[2] ?? '' );
 		}
 
+		/**
+		 *	The root a block must have to be offered in the editor that is asked: a frame of the site is a block of its own, and only a block of its own kind stands in its place
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	string
+		 */
+		private static function _wrap( array &$appData ): string {
+			return ( $appData[\Nino\Modules\Builder::AS] ?? false ) === true ? Library::wrapOf( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) ) : Library::PAGE;
+		}
+
 		public static function apiBlocks( array &$appData, array &$request ): void {
 
 			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT ) === null )
 				return;
 
-			\Nino\Http::ok( $request, Library::all( $appData ) );
+			\Nino\Http::ok( $request, Library::all( $appData, self::_wrap( $appData ) ) );
 		}
 
 		public static function apiBlock( array &$appData, array &$request ): void {
@@ -532,7 +532,7 @@ namespace Nino\Modules\Builder {
 			if( $level === null )
 				return;
 
-			$block = Library::block( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' ) );
+			$block = Library::block( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' ), self::_wrap( $appData ) );
 
 			if( $block === null ) {
 				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );
@@ -575,52 +575,6 @@ namespace Nino\Modules\Builder {
 			}
 
 			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'address' => self::_address( $appData, $template, $locale ) ] );
-		}
-
-		public static function apiNotation( array &$appData, array &$request ): void {
-
-			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
-
-			if( $level === null )
-				return;
-
-			$data = \Nino\Admin\Admin::postData();
-
-			if( self::_open( $appData, $request, $level ) === null )
-				return;
-
-			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
-
-			if( $canonical === null ) {
-				self::_fail( $request, [ 400, 'the tree is none the Builder takes', 'builder_tree', [], 'tree' ] );
-				return;
-			}
-
-			\Nino\Http::ok( $request, [ 'notation' => self::notationOf( $appData, $canonical[1], $data['look'] ?? null ) ] );
-		}
-
-		public static function apiOffer( array &$appData, array &$request ): void {
-
-			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
-
-			if( $level === null )
-				return;
-
-			$data = \Nino\Admin\Admin::postData();
-			$opened = self::_open( $appData, $request, $level );
-
-			if( $opened === null )
-				return;
-
-			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
-			$offered = $canonical === null ? null : self::offered( $appData, $canonical[1], \Nino\Admin\Admin::postString( $data, 'at' ), $level );
-
-			if( $offered === null ) {
-				self::_fail( $request, [ 400, 'there is no place for a component there', 'builder_place', [], 'at' ] );
-				return;
-			}
-
-			\Nino\Http::ok( $request, $offered );
 		}
 
 		/**
@@ -910,14 +864,25 @@ namespace Nino\Modules\Builder {
 			\Nino\Http::ok( $request, [ 'removed' => Pictures::sweep( $appData, $opened[0], $files ) ] );
 		}
 
-		public static function apiBlockSave( array &$appData, array &$request ): void {
+		/**
+		 *	A block of the page as a block of the project: private/blocks/<key>/, only if the kernel takes it as one - the page is not changed. The caller held the right of the editor of
+		 *	the blocks, and this panel asks for its own door and step for the page; whether a link may name a page the site has not yet is not for a request to say
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *
+		 *	@return 	void
+		 */
+		public static function adopt( array &$appData, array &$request ): void {
 
-			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
+			// The page is read by the door and the step of this panel, as every action on a page does: the right of the editor of the blocks alone opens no page
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT );
 
 			if( $level === null )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
+			unset( $data['lenient'] );
 			$opened = self::_open( $appData, $request, $level );
 
 			if( $opened === null )
@@ -940,19 +905,141 @@ namespace Nino\Modules\Builder {
 			\Nino\Http::ok( $request, $made );
 		}
 
-		public static function apiBlockDrop( array &$appData, array &$request ): void {
+		/**
+		 *	The door of the texts of a frame: this panel, the content step and a template that is a frame - nothing of the structure of a frame is in what it answers or takes
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			&$request
+		 *
+		 *	@return 	int|null									The step; null after the answer that says why not
+		 */
+		private static function _gateTexts( array &$appData, array &$request ): ?int {
 
-			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) === null )
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return null;
+
+			$level = \Nino\Modules\Builder::level( $appData );
+
+			if( $level < \Nino\Modules\Builder::LEVEL_CONTENT ) {
+				self::_fail( $request, self::_level() );
+				return null;
+			}
+
+			if( ( Store::named( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) )['frame'] ?? false ) !== true ) {
+				self::_fail( $request, [ 400, 'the request names no frame of the site', 'builder_unknown', [], 'template' ] );
+				return null;
+			}
+
+			return $level;
+		}
+
+		/**
+		 *	The texts a frame holds as its own: the key, what the component is, the words in each language. The tree is the frame's as it is saved and never one a request brings
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$template
+		 *	@param		array			$state
+		 *
+		 *	@return 	array											[ [ key, label, values ] ]
+		 */
+		private static function _frameTexts( array &$appData, string $template, array $state ): array {
+
+			$nodes = Tree::read( $appData, $state['source'] );
+			$registry = \Nino\Components::components( $appData );
+			$out = [];
+
+			foreach( Tree::sources( $nodes, $registry, $template ) as $source )
+				if( $source['kind'] === 'text' && $source['editable'] === true && $source['key'] !== '' && isset( $out[$source['key']] ) === false )
+					$out[$source['key']] = [ 'key' => $source['key'], 'label' => $source['name'], 'values' => (object) ( $state['texts'][$source['key']] ?? [] ) ];
+
+			return array_values( $out );
+		}
+
+		public static function apiFrameTexts( array &$appData, array &$request ): void {
+
+			if( self::_gateTexts( $appData, $request ) === null )
 				return;
 
-			$gone = Custom::drop( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' ) );
+			$locale = self::_locale( $appData, $request );
 
-			if( $gone !== null ) {
-				self::_fail( $request, $gone['failure'] );
+			if( $locale === null )
+				return;
+
+			$template = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' );
+			$state = Store::state( $appData, $template );
+
+			if( $state === null ) {
+				self::_fail( $request, [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $template ) ], 'template' ] );
 				return;
 			}
 
-			\Nino\Http::ok( $request );
+			\Nino\Http::ok( $request, [ 'texts' => self::_frameTexts( $appData, $template, $state ), 'stamp' => Store::stamp( $state ) ] + self::_view( $appData, $locale, \Nino\Modules\Builder::LEVEL_CONTENT ) );
+		}
+
+		/**
+		 *	The texts of a frame written: the words of the keys that the frame reads as its own, and nothing else - the tree is the one that is saved, the keys are the ones the
+		 *	register finds in it, and the step is the account's own
+		 */
+		public static function apiFrameTextsSave( array &$appData, array &$request ): void {
+
+			$level = self::_gateTexts( $appData, $request );
+
+			if( $level === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$template = \Nino\Admin\Admin::postString( $data, 'template' );
+			$state = Store::state( $appData, $template );
+
+			if( $state === null ) {
+				self::_fail( $request, [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $template ) ], 'template' ] );
+				return;
+			}
+
+			$own = array_column( self::_frameTexts( $appData, $template, $state ), 'key' );
+			$given = is_array( $data['texts'] ?? null ) === true ? $data['texts'] : [];
+
+			if( array_diff( array_keys( $given ), $own ) !== [] ) {
+				self::_fail( $request, [ 403, 'the frame reads no such text', 'builder_refused_source', [], 'texts' ] );
+				return;
+			}
+
+			if( ( $data['force'] ?? false ) !== true && ( is_string( $data['base'] ?? null ) === false || hash_equals( Store::stamp( $state ), $data['base'] ) === false ) ) {
+				self::_fail( $request, self::_changed() );
+				return;
+			}
+
+			$prepared = Store::prepare( $appData, $template, $state, Tree::read( $appData, $state['source'] ), $given, [], [], $level, [] );
+
+			if( isset( $prepared['failure'] ) === true ) {
+				self::_fail( $request, $prepared['failure'] );
+				return;
+			}
+
+			$changes = Store::changes( $state, $prepared, $template );
+			$target = [ 'source' => $state['source'], 'texts' => $state['texts'], 'slots' => $state['slots'] ];
+
+			foreach( $changes['set'] as $key => $values )
+				$target['texts'][$key] = $values + ( $state['texts'][$key] ?? [] );
+
+			foreach( $changes['drop'] as $key )
+				unset( $target['texts'][$key] );
+
+			ksort( $target['texts'] );
+
+			if( $changes['set'] !== [] || $changes['drop'] !== [] ) {
+
+				$failed = Store::commit( $appData, $template, $state, $target, $changes, [], null, [], $level );
+
+				if( $failed !== null ) {
+					self::_fail( $request, self::_unsaved( $failed ) );
+					return;
+				}
+			}
+
+			$now = Store::state( $appData, $template ) ?? $state;
+
+			\Nino\Http::ok( $request, [ 'saved' => true, 'stamp' => Store::stamp( $now ), 'texts' => self::_frameTexts( $appData, $template, $now ) ] );
 		}
 
 		public static function apiCreate( array &$appData, array &$request ): void {
@@ -1063,7 +1150,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			&$request			(reference) The request
-		 *	@param		int				$level				The step the account holds: a frame is for the design and up
+		 *	@param		int				$level				The step the account holds: a frame is for the step of the editor of the blocks
 		 *
 		 *	@return 	array|null								[ template, state, nodes, locale ]; null after the answer that says why not
 		 */
@@ -1082,7 +1169,8 @@ namespace Nino\Modules\Builder {
 				return null;
 			}
 
-			if( Store::named( $template )['frame'] === true && $level < \Nino\Modules\Builder::LEVEL_DESIGN ) {
+			// A frame is written in the editor of the blocks and nowhere else: the panel of the pages has none for anybody
+			if( Store::named( $template )['frame'] === true && $level < \Nino\Modules\Builder::LEVEL_DEVELOP ) {
 				self::_fail( $request, self::_level() );
 				return null;
 			}
@@ -1338,12 +1426,25 @@ namespace Nino\Modules\Builder {
 		 */
 		private static function _gate( array &$appData, array &$request, int $least ): ?int {
 
+			// The editor of the blocks passes a request on for a frame of the site: it held its own right and set the mark - in the memory of this request, which nothing a
+			// request brings can set - and the request is for a frame and for nothing else. The step it has is the last, which may write a frame down to its markup
+			if( ( $appData[\Nino\Modules\Builder::AS] ?? false ) === true ) {
+
+				if( ( Store::named( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) )['frame'] ?? false ) !== true ) {
+					self::_fail( $request, self::_level() );
+					return null;
+				}
+
+				return \Nino\Modules\Builder::LEVEL_DEVELOP;
+			}
+
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
 				return null;
 
 			$level = \Nino\Modules\Builder::level( $appData );
 
-			if( $level < $least ) {
+			// A frame is written in the editor of the blocks and nowhere else: no action of this panel is for one, whatever the account holds
+			if( $level < $least || ( Store::named( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) )['frame'] ?? false ) === true ) {
 				self::_fail( $request, self::_level() );
 				return null;
 			}

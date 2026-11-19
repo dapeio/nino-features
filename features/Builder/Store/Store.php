@@ -127,7 +127,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( $inserted as $id => $key ) {
 
-				$block = is_string( $id ) === true && \Nino\Modules\Builder\Tree::isId( $id ) === true && is_string( $key ) === true ? \Nino\Modules\Builder\Library::block( $appData, $key ) : null;
+				$block = is_string( $id ) === true && \Nino\Modules\Builder\Tree::isId( $id ) === true && is_string( $key ) === true ? \Nino\Modules\Builder\Library::block( $appData, $key, \Nino\Modules\Builder\Library::wrapOf( $template ) ) : null;
 
 				if( $block === null )
 					return [ 'failure' => [ 403, 'the block is none that is offered', 'builder_block', [], 'blocks' ] ];

@@ -106,6 +106,9 @@ namespace Nino\Modules\Builder {
 					if( $source === 'none' || $name( $written, $source ) === null )
 						return 'foreign';
 				}
+				// A loop of a block of the library shows the placeholder elements: the type is chosen where the block stands on a page
+				else if( $isLoop === true && preg_match( '/^\/[a-z_][a-z0-9_-]{0,63}$/D', $written ) === 1 && isset( \Nino\Elements::PLACEHOLDERS[$written] ) === false )
+					return 'loop';
 				// The type of the elements a loop shows, and a field of the elements below a loop, are sources of the elements and not of the page
 				else if( ( $isLoop === true && preg_match( '/^\/[a-z_][a-z0-9_-]{0,63}$/D', $written ) === 1 ) === false && ( $looped === true && preg_match( '/^\.[A-Za-z][A-Za-z0-9_-]{0,63}$/D', $written ) === 1 ) === false
 					&& isset( \Nino\Images::PLACEHOLDERS[$written] ) === false && isset( \Nino\Elements::PLACEHOLDERS[$written] ) === false )
