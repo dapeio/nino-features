@@ -582,12 +582,21 @@
 		step( S.redo, S.undo );
 	};
 
+	// The build of a page - blocks put in, moved, copied, taken out - is the work of the one who designs: the one who changes the content holds the words and the pictures of the
+	// blocks that stand there and no more. The server holds the same line (Tree::refused)
+	const builds = function() {
+		return S.level >= 2;
+	};
+
 	/**
 	 *	Move the block at an index to the place of the next block that way
 	 *
 	 *
 	 */
 	const move = function( at, direction, from ) {
+
+		if( builds() === false )
+			return;
 
 		const to = S.top[at] === undefined || free( S.top[at] ) === false ? -1 : neighbour( at, direction );
 
@@ -612,6 +621,9 @@
 	 *
 	 */
 	const duplicate = function( at, from ) {
+
+		if( builds() === false )
+			return;
 
 		const block = S.top[at];
 
@@ -679,6 +691,9 @@
 	 */
 	const remove = function( at, from ) {
 
+		if( builds() === false )
+			return;
+
 		if( free( S.top[at] ) === false || S.frame === true )
 			return false;
 
@@ -707,7 +722,7 @@
 
 		const list = [];
 
-		if( S.frame === true )
+		if( S.frame === true || builds() === false )
 			return list;
 
 		const rows = items();
@@ -1012,6 +1027,9 @@
 	 */
 	const askRemove = function( at, opener, from ) {
 
+		if( builds() === false )
+			return;
+
 		// Nothing a visitor sees changes before Save, so the question is the one of a thing that is taken away - and not the one of a live site
 		Nino.adminUi.confirm( 'destructive', {
 			title		: word('confirm/remove-title'),
@@ -1287,7 +1305,7 @@
 			if( spot !== undefined )
 				actions.push( { key : 'insert', icon : ACTION_ICONS.insert, name : word( 'label/insert-after', spot.name ) } );
 
-			if( item.kind === 'block' && S.frame === false && free( item.node ) === true )
+			if( item.kind === 'block' && S.frame === false && builds() === true && free( item.node ) === true )
 				[ 'up', 'down', 'copy', 'remove' ].forEach( function( action ) {
 					actions.push( { key : action, icon : ACTION_ICONS[action], name : word( 'label/'+ action )+ ': '+ title, disabled : possible( item.at, action ) === false, danger : action === 'remove' } );
 				} );
@@ -2123,7 +2141,7 @@
 			if( wide === true )
 				bar.appendChild( label );
 
-			if( S.frame === false && free( node ) === true )
+			if( S.frame === false && builds() === true && free( node ) === true )
 				ACTIONS.forEach( function( action ) {
 
 					const name = word( 'label/'+ action[0] )+ ': '+ title;
@@ -2137,7 +2155,7 @@
 					button.addEventListener( 'click', function() { selectBlock( block.key, false ); act( block.at, action[0], S.view.split.frame, 'frame' ) } );
 					bar.appendChild( button );
 				} );
-			else if( S.frame === false ) {
+			else if( S.frame === false && free( node ) === false ) {
 
 				const lock = doc.createElement('span');
 
@@ -3847,6 +3865,7 @@
 		S.pending = response.sources;
 		S.pictures = {};
 		S.saved = stateOf();
+		S.savedSnap = snap();
 		S.savedTexts = clone( S.texts );
 		S.copies = {};
 		S.inserted = {};
@@ -4416,10 +4435,13 @@
 		if( S.ready === false )
 			return;
 
-		const was = JSON.parse( S.saved );
+		// The draft goes back to what was saved: its tree, its words and what a sheet keeps beside them - the variants of a block, its details - from the copy made when it was
+		// saved, since the form the question is asked in is only that: a sheet whose variants were changed is no more changed once they are given up
+		const was = S.savedSnap ?? snap();
 
-		S.top = was[0];
-		S.texts = was[1];
+		S.top = clone( was.top );
+		S.texts = clone( was.texts );
+		S.extra = clone( was.extra ?? {} );
 		S.copies = {};
 		S.inserted = {};
 		S.pictures = {};
@@ -5273,6 +5295,144 @@
 		return true;
 	};
 
+	// --- the place of a content in a block of the library -------------------------------------------------------------------------------
+	// A block of the library is a template that every page takes a copy of: what it holds of content is a place with a name - the id of the place in the block - and the
+	// sample of what the place holds, which says how long it is. Where the content comes from, and what it is, is the page's to choose
+
+	// Where a part of a block begins in the library: what the blocks of the basis write there - the same as Blocks\Sheet::BEGIN, which makes the first of them
+	const PLACE_BEGIN = { 'section-row' : { width : 'narrow' } };
+	const LENGTHS = [ [ 'short', 3 ], [ 'line', 8 ], [ 'paragraph', 30 ], [ 'long', 80 ] ];
+	const LOREM = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum'.split( ' ' );
+
+	// Whether the sheet is the one of a block of the library: the frames of the site and the pages are none
+	const placing = function() {
+		return S.sheet === 'block' && S.frame === false;
+	};
+
+	const hashOf = function( text ) {
+
+		let hash = 2166136261;
+
+		for( let at = 0; at < text.length; at++ ) {
+			hash ^= text.charCodeAt( at );
+			hash = Math.imul( hash, 16777619 ) >>> 0;
+		}
+
+		return hash;
+	};
+
+	/**
+	 *	The sample of a place: Lorem ipsum of the length that was chosen, made from the id of the place and the number of words and from nothing else - the same place has the same
+	 *	words in every language, in every draft and in every session. A title has no full stop at its end and a button no more than two words; a text that is written as html is in paragraphs
+	 *
+	 *	@param		{string}		name				The id of the place
+	 *	@param		{number}		words				How many words
+	 *	@param		{Object}		kind				{ title, button, rich }
+	 *
+	 *	@return		{string}
+	 */
+	const loremOf = function( name, words, kind ) {
+
+		const count = kind.button === true ? Math.min( words, 2 ) : words;
+		let seed = hashOf( name+ ':'+ count );
+		const next = function() {
+
+			seed = ( Math.imul( seed, 1664525 ) + 1013904223 ) >>> 0;
+
+			return seed >>> 8;
+		};
+		const list = [];
+
+		for( let at = 0; at < count; at++ )
+			list.push( LOREM[next() % LOREM.length] );
+
+		const sentences = [];
+
+		for( let from = 0; from < list.length; ) {
+
+			const size = Math.min( list.length - from, 6 + next() % 7 );
+
+			sentences.push( list.slice( from, from + size ) );
+			from += size;
+		}
+
+		// A sentence of one or two words is the end of the one before it
+		while( sentences.length > 1 && sentences[sentences.length - 1].length < 3 )
+			sentences[sentences.length - 2] = sentences[sentences.length - 2].concat( sentences.pop() );
+
+		const closed = kind.title !== true && kind.button !== true && count > 3;
+		const said = sentences.map( function( sentence ) { const text = sentence.join( ' ' ); return text.charAt( 0 ).toUpperCase()+ text.slice( 1 ) } );
+
+		if( kind.rich === true && count >= 30 && said.length > 1 ) {
+
+			const half = Math.ceil( said.length / 2 );
+
+			return [ said.slice( 0, half ), said.slice( half ) ].filter( function( part ) { return part.length > 0 } ).map( function( part ) { return '<p>'+ part.join( '. ' )+ '.</p>' } ).join( '' );
+		}
+
+		const text = said.join( closed === true ? '. ' : ' ' )+ ( closed === true ? '.' : '' );
+
+		return kind.rich === true && count >= 30 ? '<p>'+ text+ '</p>' : text;
+	};
+
+	// What a place is by the call that reads it: a title, a button, or a text that is written as html
+	const kindOfPlace = function( node, format ) {
+
+		const name = String( node.n ?? '' );
+
+		return { title : /title$/.test( name ), button : name === 'button', rich : format !== undefined && format !== 'plain' && format !== 'inline' };
+	};
+
+	// The languages a sample is written in: the sample is the same words in each
+	const sampleLocales = function() {
+		return Array.from( new Set( [ S.native, S.locale ].concat( S.locales.map( function( entry ) { return entry.locale } ) ).filter( function( locale ) { return typeof locale === 'string' && locale !== '' } ) ) );
+	};
+
+	// The length of a place by what it holds: the one whose sample it is in each language - null for words that nobody made from a length, which are the person's own
+	const lengthOf = function( name, key, kind ) {
+
+		const held = S.texts[key];
+
+		if( held === undefined || held === null )
+			return null;
+
+		const found = LENGTHS.find( function( entry ) {
+
+			const sample = loremOf( name, entry[1], kind );
+
+			return sampleLocales().every( function( locale ) { return typeof held[locale] === 'string' && held[locale] === sample } );
+		} );
+
+		return found === undefined ? null : found[0];
+	};
+
+	// What a place is called when it is made: by the kind of the call, as the blocks of the kernel call theirs
+	const placeName = function( component ) {
+
+		if( /subtitle$/.test( component ) )
+			return 'untertitel';
+
+		if( /title$/.test( component ) )
+			return 'titel';
+
+		if( /(?:^|-)(?:image|picture|logo|photo)$/.test( component ) )
+			return 'bild';
+
+		return component.replace( /^.*-/, '' );
+	};
+
+	// The length a sample has when the place is made: a title is short, a subtitle a line, a text a paragraph
+	const firstLength = function( component ) {
+
+		if( /subtitle$/.test( component ) )
+			return 'line';
+
+		if( /title$/.test( component ) || component === 'button' )
+			return 'short';
+
+		return /text|paragraph|copy/.test( component ) === true ? 'paragraph' : 'line';
+	};
+
 	// The name of a new source in the scope: the last word of the component's name, then the first number behind it that nothing in the scope reads or has words for
 	const freeName = function( base, scope ) {
 
@@ -5326,18 +5486,30 @@
 		const close = blank.length > 1 && blank.slice( -1 ) === '\t' ? blank.slice( 0, -1 ) : '\n';
 		let made = '';
 
-		fresh.a = {};
+		fresh.a = placing() === true && PLACE_BEGIN[offer.name] !== undefined ? clone( PLACE_BEGIN[offer.name] ) : {};
 
 		change( function() {
 
 			if( schema.source !== 'none' && schema.source !== 'link' && scope !== '' ) {
 
-				const name = freeName( offer.name.replace( /^.*-/, '' ), scope );
+				const name = freeName( placing() === true ? placeName( offer.name ) : offer.name.replace( /^.*-/, '' ), scope );
 
 				fresh.s = '~'+ name;
 
-				if( schema.source === 'text' )
-					S.texts[ '/template/'+ S.template+ '/'+ scope+ '/'+ name ] = { [S.locale] : freshText() };
+				if( schema.source === 'text' ) {
+
+					const key = '/template/'+ S.template+ '/'+ scope+ '/'+ name;
+
+					if( placing() === true ) {
+
+						const sample = loremOf( name, LENGTHS.find( function( entry ) { return entry[0] === firstLength( offer.name ) } )[1], kindOfPlace( { n : offer.name }, schema.format === '' ? 'plain' : schema.format ) );
+
+						S.texts[key] = {};
+						sampleLocales().forEach( function( locale ) { S.texts[key][locale] = sample } );
+					}
+					else
+						S.texts[key] = { [S.locale] : freshText() };
+				}
 			}
 			else if( schema.source === 'text' )
 				fresh.a.text = word('new/text');
@@ -5393,37 +5565,63 @@
 			learn( response.schemas );
 
 			const body = el( 'div', 'builder-offer' );
-			const groups = [];
 			let picked = null;
 
-			response.offers.forEach( function( offer ) {
-
-				let group = groups.find( function( entry ) { return entry.key === offer.group } );
-
-				if( group === undefined ) {
-					group = { key : offer.group, label : offer.groupLabel === null || offer.groupLabel === undefined ? offer.group : localized( offer.groupLabel ), offers : [] };
-					groups.push( group );
-				}
-
-				group.offers.push( offer );
-			} );
-
-			if( groups.length === 0 )
+			if( response.offers.length === 0 )
 				body.appendChild( Nino.adminUi.emptyState( word('offer/none') ) );
 
-			groups.forEach( function( group ) {
+			// The dialog's own order, and where each component stands in it is said by the server (Admin::dialogGroup): a row for each part, its name at the left, the tiles at the
+			// right - an icon and the name - and what the place does not take grey, with the reason for it
+			const rows = [];
 
-				const list = el( 'ul', 'builder-offer-list' );
+			[ 'section', 'card', 'general', 'features', 'groups', 'loops' ].forEach( function( key ) {
 
-				body.appendChild( el( 'h4', 'builder-offer-group', group.label ) );
+				const list = response.offers.filter( function( offer ) { return offer.section === key } );
 
-				group.offers.forEach( function( offer ) {
+				if( list.length === 0 )
+					return;
+
+				if( key !== 'features' ) {
+					rows.push( { section : key, label : word( 'offer/sec-'+ key ), sub : '', offers : list } );
+					return;
+				}
+
+				rows.push( { section : key, label : word( 'offer/sec-'+ key ), sub : '', offers : [] } );
+
+				Array.from( new Set( list.map( function( offer ) { return offer.feature } ) ) ).forEach( function( feature ) {
+
+					const of = list.filter( function( offer ) { return offer.feature === feature } );
+
+					rows.push( { section : key, label : '', sub : of[0].featureLabel === null || of[0].featureLabel === undefined ? String( feature ) : localized( of[0].featureLabel ), offers : of } );
+				} );
+			} );
+
+			rows.forEach( function( entry ) {
+
+				const row = el( 'div', 'builder-offer-row' );
+				const name = el( 'div', 'builder-offer-name' );
+
+				row.dataset.section = entry.section;
+
+				if( entry.label !== '' )
+					name.appendChild( el( 'h4', 'builder-offer-group', entry.label ) );
+
+				if( entry.sub !== '' )
+					name.appendChild( el( 'span', 'builder-offer-sub', entry.sub ) );
+
+				row.appendChild( name );
+
+				const tiles = el( 'ul', 'builder-offer-list' );
+
+				entry.offers.forEach( function( offer ) {
 
 					const item = el( 'li', 'builder-offer-item' );
-					const button = el( 'button', 'nino-admin-btn builder-offer-pick', localized( offer.label ) );
+					const button = el( 'button', 'nino-admin-btn builder-offer-pick' );
 
 					button.type = 'button';
 					button.dataset.name = offer.name;
+					button.appendChild( glyph( offer.icon === '' || offer.icon === undefined ? 'box' : offer.icon, 16 ) );
+					button.appendChild( el( 'span', '', localized( offer.label ) ) );
 
 					if( offer.ok === true )
 						button.addEventListener( 'click', function() {
@@ -5433,24 +5631,64 @@
 						} );
 					else {
 						button.disabled = true;
-						item.appendChild( button );
-						item.appendChild( el( 'span', 'nino-admin-hint', word( 'offer/why-'+ offer.why ) ) );
-						list.appendChild( item );
-						return;
+						button.title = word( 'offer/why-'+ offer.why );
+						button.setAttribute( 'aria-label', localized( offer.label )+ ': '+ word( 'offer/why-'+ offer.why ) );
 					}
 
 					item.appendChild( button );
-					list.appendChild( item );
+					tiles.appendChild( item );
 				} );
 
-				body.appendChild( list );
+				row.appendChild( tiles );
+				body.appendChild( row );
+			} );
+
+			// The arrows walk the tiles that can be used: left and right to the next, up and down to the one nearest above or below
+			body.addEventListener( 'keydown', function( event ) {
+
+				if( [ 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown' ].indexOf( event.key ) === -1 || event.altKey === true || event.ctrlKey === true || event.metaKey === true )
+					return;
+
+				const buttons = Array.from( body.querySelectorAll('button:not(:disabled)') );
+				const at = buttons.indexOf( dc.activeElement );
+
+				if( at === -1 )
+					return;
+
+				let to = null;
+
+				if( event.key === 'ArrowLeft' || event.key === 'ArrowRight' )
+					to = buttons[at + ( event.key === 'ArrowLeft' ? -1 : 1 )] ?? null;
+				else if( typeof buttons[at].getBoundingClientRect === 'function' ) {
+
+					const here = buttons[at].getBoundingClientRect();
+					const down = event.key === 'ArrowDown';
+					const others = buttons.filter( function( other ) {
+
+						const box = other.getBoundingClientRect();
+
+						return down === true ? box.top > here.bottom - 2 : box.bottom < here.top + 2;
+					} );
+					const row = others.length === 0 ? null : ( down === true ? Math.min : Math.max ).apply( null, others.map( function( other ) { return other.getBoundingClientRect().top } ) );
+
+					others.filter( function( other ) { return other.getBoundingClientRect().top === row } ).forEach( function( other ) {
+						if( to === null || Math.abs( other.getBoundingClientRect().left - here.left ) < Math.abs( to.getBoundingClientRect().left - here.left ) )
+							to = other;
+					} );
+				}
+
+				if( to !== null ) {
+					event.preventDefault();
+					to.focus();
+				}
 			} );
 
 			Nino.adminUi.choiceDialog( {
 				title			: word( 'offer/title', titleOfRel( rel ) ),
 				message		: word('offer/note'),
 				content		: body,
-				size			: 'form',
+				size			: 'wide',
+				className	: 'builder-offer-dialog',
 				opener		: opener,
 				choices		: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ],
 				onChoose	: function() {
@@ -6802,13 +7040,10 @@
 	// A setting with a value for each width, alone in its section: the name, a row of the three devices as the heads of the columns and under each its choice
 	const widthSingle = function( rel, name, declared, options ) {
 
-		const given = ( relNode( rel ).a ?? {} )[name];
-		const widths = widthsOf( given ?? declared.default );
 		const label = localized( declared.label );
 		const group = el( 'div', 'nino-admin-field builder-widths-set builder-widths-box' );
 		const caption = el( 'span', 'builder-field-label', label );
 		const grid = el( 'div', 'builder-widths-grid' );
-		const key = rel+ ':'+ name;
 
 		caption.id = 'builder-widths-'+ rel.replace( /\./g, '-' )+ '-'+ name;
 		group.setAttribute( 'role', 'group' );
@@ -6823,14 +7058,7 @@
 
 			head.dataset.part = device.part;
 			column.appendChild( head );
-			column.appendChild( Nino.adminUi.selectField( {
-				key			: key+ ':'+ device.part,
-				label		: deviceWord( device ),
-				options	: partOptions( options, device.part ),
-				value		: widths[device.part],
-				className	: 'nino-admin-field builder-width-cell',
-				onChange	: function( value ) { setPart( rel, name, declared, device.part, value ) },
-			} ) );
+			column.appendChild( widthControl( rel, name, declared, device.part, options, deviceWord( device ), redrawBox ) );
 			grid.appendChild( column );
 		} );
 
@@ -6839,6 +7067,81 @@
 
 	// Several settings with a value for each width in one section: ONE choice of the width - the devices, the one that is chosen is the width of the preview - and under it one choice
 	// for each setting, for that width. The dot at a device says that a value is written for it. A change is one step of the undo, as ever
+	// The value that a width has where it writes none: the one of the widths below it - the tablet has the phone's, the desktop the tablet's where it has one, else the phone's
+	const inheritedOf = function( widths, part ) {
+		return part === 'l' ? ( widths.m !== '' ? widths.m : widths[''] ) : widths[''];
+	};
+
+	/**
+	 *	The control of one setting at one width. A choice that is off or on is a switch: on is what this width does - it hides, it reverses -, and a width that writes nothing is
+	 *	quiet: the switch shows what it has from the width below it and says so in words, and a width that writes a value has a small button that gives it back to the one below.
+	 *	A choice whose values have a picture - the alignments - is a strip of pictures, with a first step that is the value of the width below; any other is a choice
+	 *
+	 *	@param		{string}		rel
+	 *	@param		{string}		name
+	 *	@param		{Object}		declared
+	 *	@param		{string}		part					'' (phone), 'm' (tablet) or 'l' (desktop)
+	 *	@param		{Array}			options				[ { value, label } ]
+	 *	@param		{string}		[caption]			The label, where it is not the setting's own
+	 *
+	 *	@return		{Element}
+	 */
+	const widthControl = function( rel, name, declared, part, options, caption, after ) {
+
+		const widths = widthsOf( ( relNode( rel ).a ?? {} )[name] ?? declared.default );
+		const label = caption ?? localized( declared.label );
+		const key = rel+ ':'+ name+ ':'+ part;
+		const own = widths[part];
+		const below = part === 'm' ? word('rows/below-tablet') : word('rows/below-desktop');
+		const set = function( value ) {
+
+			setPart( rel, name, declared, part, value );
+
+			if( typeof after === 'function' )
+				after();
+		};
+
+		if( declared.options.length === 2 && declared.options.indexOf('off') !== -1 && declared.options.indexOf('on') !== -1 ) {
+
+			const effective = own === '' ? inheritedOf( widths, part ) : own;
+			const field = Nino.adminUi.switchField( { key : key, checked : effective === 'on', label : label, help : helpOf( declared ) } );
+
+			field.querySelector('input').addEventListener( 'change', function( event ) { set( event.target.checked === true ? 'on' : 'off' ) } );
+
+			// Nothing written at this width: the switch is quiet and says whose value it shows; a value that is written has its way back
+			if( part !== '' && own === '' ) {
+				field.classList.add('builder-width-inherited');
+				field.appendChild( el( 'small', 'nino-admin-hint', word( effective === 'on' ? 'rows/shows-on' : 'rows/shows-off', below ) ) );
+			}
+			else if( part !== '' )
+				field.appendChild( Nino.adminUi.button( below, function() { set( '' ) }, { className : 'nino-admin-btn--small builder-width-back' } ) );
+
+			return field;
+		}
+
+		const pictures = options.map( function( option ) { return glyphOf( name, option.value ) } );
+
+		if( pictures.length > 1 && pictures.every( function( one ) { return one !== null } ) ) {
+
+			const box = el( 'div', 'nino-admin-field builder-steps-field' );
+			const head = el( 'span', 'builder-field-label', label );
+			const list = ( part === '' ? [] : [ { value : '', label : below, title : below, icon : 'chevrons-left' } ] ).concat( options.map( function( option, at ) { return { value : option.value, label : option.label, title : option.label, icon : pictures[at] } } ) );
+
+			head.id = 'builder-steps-'+ key.replace( /[^a-z0-9]/gi, '-' );
+			box.dataset.stepKey = key;
+			box.appendChild( head );
+
+			const steps = Nino.adminUi.steps( { labelledby : head.id, steps : list, value : own, onChange : set } );
+
+			S.strips[key] = steps;
+			box.appendChild( steps.el );
+
+			return withHelp( box, head, steps.el, declared, label );
+		}
+
+		return Nino.adminUi.selectField( { key : key, label : label, options : partOptions( options, part ), value : own, help : helpOf( declared ), onChange : set } );
+	};
+
 	const widthGroup = function( rel, names ) {
 
 		const group = el( 'div', 'builder-widths-group builder-widths-box' );
@@ -6886,19 +7189,7 @@
 			names.forEach( function( name ) {
 
 				const declared = S.schemas[relNode( rel ).n].attributes[name];
-				const options = optionsOf( name, declared );
-				const widths = widthsOf( ( relNode( rel ).a ?? {} )[name] ?? declared.default );
-				const field = Nino.adminUi.selectField( {
-					key			: rel+ ':'+ name+ ':'+ device.part,
-					label		: localized( declared.label ),
-					options	: partOptions( options, device.part ),
-					value		: widths[device.part],
-					help		: helpOf( declared ),
-					onChange	: function( value ) {
-						setPart( rel, name, declared, device.part, value );
-						paintDots();
-					},
-				} );
+				const field = widthControl( rel, name, declared, device.part, optionsOf( name, declared ), undefined, function() { paintDots(); fill() } );
 
 				list.appendChild( field );
 			} );
@@ -7432,6 +7723,22 @@
 		return row;
 	};
 
+	// What belongs with a link where the link is shown: where it opens - the window - stands under it, in the section the link is in, and not among the looks of the component
+	const linkRows = function( rel, read ) {
+
+		const schema = S.schemas[relNode( rel ).n];
+
+		if( S.level < 2 || read.kind !== 'link' || read.attr === '' || schema.attributes.target === undefined || schema.attributes.target.type !== 'choice' )
+			return [];
+
+		return [ attributeField( rel, 'target', schema.attributes.target ) ];
+	};
+
+	// Whether a setting is shown with the link of its call and not among the looks
+	const isLinkTarget = function( schema, name ) {
+		return name === 'target' && schema.attributes.target.type === 'choice' && Object.keys( schema.attributes ).some( function( other ) { return schema.attributes[other].type === 'link' } );
+	};
+
 	const sourceRows = function( rel, reads ) {
 
 		const rows = [];
@@ -7440,9 +7747,261 @@
 
 			if( read.form === 'type' )
 				loopRows( rel, read ).forEach( function( row ) { rows.push( row ) } );
-			else
+			else {
 				rows.push( sentenceRow( rel, read ) );
+				linkRows( rel, read ).forEach( function( row ) { rows.push( row ) } );
+			}
 		} );
+
+		return rows;
+	};
+
+	// The key of a picture place in the details of a block: the id of the place, with the id of the part of the block it stands in in front of it
+	const detailKey = function( scope, name ) {
+
+		const root = idOf( S.top[rootAt()] );
+		const inner = scope === root ? '' : ( scope.indexOf( root+ '-' ) === 0 ? scope.slice( root.length + 1 ) : scope );
+
+		return ( inner === '' ? '' : inner+ '-' )+ name;
+	};
+
+	// A place has another id: the call reads it by the new id, and what the block holds under the old one - the words, the size of the picture - goes under the new
+	const renamePlace = function( rel, read, name ) {
+
+		const node = relNode( rel );
+		const scope = scopeOf( rel );
+		const base = '/template/'+ S.template+ '/'+ scope+ '/';
+		const old = read.written.slice( 1 );
+		const images = S.extra !== undefined && S.extra !== null && S.extra.details !== undefined && S.extra.details !== null ? S.extra.details.images : undefined;
+
+		change( function() {
+
+			if( read.attr === '' )
+				node.s = '~'+ name;
+			else
+				ensureAttrs( node )[read.attr] = '~'+ name;
+
+			[ S.texts, S.pictures ].forEach( function( held ) {
+
+				if( held[base+ old] !== undefined ) {
+					held[base+ name] = held[base+ old];
+					delete held[base+ old];
+				}
+			} );
+
+			if( images !== undefined && images[detailKey( scope, old )] !== undefined ) {
+				images[detailKey( scope, name )] = images[detailKey( scope, old )];
+				delete images[detailKey( scope, old )];
+			}
+		} );
+		redrawBox();
+	};
+
+	// The rows of the place of a content in a block of the library: its id - the name of the place in the block, and where it becomes the page's -, how long its sample is for a
+	// text, what format it is for a picture, and for an address nothing: where that goes is chosen on the page
+	const placeRows = function( rel, reads ) {
+
+		const rows = [];
+		const node = relNode( rel );
+		const scope = scopeOf( rel );
+		const base = '/template/'+ S.template+ '/'+ scope+ '/';
+
+		reads.forEach( function( read ) {
+
+			// An address has no id here: where it goes is chosen on the page; where it opens is the call's own
+			if( read.kind === 'link' ) {
+				linkRows( rel, read ).forEach( function( row ) { rows.push( row ) } );
+				return;
+			}
+
+			// A field of the elements of a loop is chosen from what the elements have: the id of a field, here, is the name of the field the placeholder elements are given
+			if( read.written.charAt( 0 ) === '.' && read.kind !== 'link' ) {
+
+				const type = loopOf( rel );
+				const info = type === null || type === '' ? undefined : S.fieldInfo[type];
+
+				if( info !== undefined ) {
+
+					const names = Object.keys( info.types ).filter( function( field ) { return [ 'id', 'uri', 'slug' ].indexOf( field ) === -1 } );
+					const current = read.written.slice( 1 );
+					const options = names.map( function( field ) { return { value : field, label : fieldWord( type, field ) } } );
+
+					if( names.indexOf( current ) === -1 )
+						options.unshift( { value : current, label : current } );
+
+					const pick = Nino.adminUi.selectField( { key : rel+ ':field:'+ ( read.attr === '' ? 'first' : read.attr ), label : read.attr === '' ? word('place/field') : word( 'place/field-of', read.label ), options : options, value : current, help : word('place/field-help'), onChange : function( value ) {
+
+						change( function() {
+							if( read.attr === '' )
+								node.s = '.'+ value;
+							else
+								ensureAttrs( node )[read.attr] = '.'+ value;
+						} );
+						redrawBox();
+					} } );
+
+					rows.push( pick );
+				}
+
+				return;
+			}
+
+			if( read.form === 'type' || read.written.charAt( 0 ) !== '~' || read.written.length < 2 )
+				return;
+
+			const name = read.written.slice( 1 );
+			const key = base+ name;
+			const group = el( 'div', 'builder-place' );
+			const field = Nino.adminUi.textField( { key : rel+ ':place:'+ ( read.attr === '' ? 'first' : read.attr ), label : read.attr === '' ? word('place/id') : word( 'place/id-of', read.label ), maxLength : 40, value : name, help : word('place/id-help') } );
+			const problem = el( 'p', 'nino-admin-hint builder-source-error', '' );
+			const becomes = el( 'p', 'nino-admin-hint builder-place-becomes', word( 'place/becomes', name ) );
+			const input = field.querySelector('input');
+
+			problem.setAttribute( 'role', 'alert' );
+			problem.hidden = true;
+			input.addEventListener( 'change', function() {
+
+				const now = input.value.trim();
+
+				if( now === name )
+					return;
+
+				if( NAME.test( now ) === false || now.length > 40 )
+					problem.textContent = word('source/bad-name');
+				else if( namesIn( scope ).has( now ) === true )
+					problem.textContent = word('source/taken');
+				else {
+					renamePlace( rel, read, now );
+					return;
+				}
+
+				problem.hidden = false;
+				input.value = name;
+			} );
+			group.appendChild( field );
+			group.appendChild( problem );
+			group.appendChild( becomes );
+
+			if( read.kind === 'text' ) {
+
+				const format = read.form === 'first' ? read.source.format : 'plain';
+				const kind = kindOfPlace( node, format );
+				const lengths = LENGTHS.map( function( entry ) { return { value : entry[0], label : word( 'place/len-'+ entry[0], kind.button === true ? 2 : entry[1] ) } } ).concat( [ { value : 'own', label : word('place/len-own') } ] );
+				const current = lengthOf( name, key, kind ) ?? 'own';
+				const select = Nino.adminUi.selectField( { key : rel+ ':length:'+ name, label : word('place/length'), help : word('place/length-help'), options : lengths, value : current } );
+
+				select.querySelector('select').addEventListener( 'change', function( event ) {
+
+					const chosen = LENGTHS.find( function( entry ) { return entry[0] === event.target.value } );
+
+					if( chosen === undefined ) {
+						redrawBox();
+						return;
+					}
+
+					const sample = loremOf( name, chosen[1], kind );
+
+					change( function() {
+						S.texts[key] = {};
+						sampleLocales().forEach( function( locale ) { S.texts[key][locale] = sample } );
+					} );
+					redrawBox();
+				} );
+				group.appendChild( select );
+
+				// The words of the person: one field for each language, folded away until they are wanted
+				if( current === 'own' ) {
+
+					const own = el( 'details', 'builder-place-own' );
+
+					own.appendChild( el( 'summary', '', word('place/len-own') ) );
+					sampleLocales().forEach( function( locale ) {
+
+						const text = Nino.adminUi.textareaField( { key : rel+ ':own:'+ name+ ':'+ locale, label : Nino.adminUi.localeName( locale ), value : String( ( S.texts[key] ?? {} )[locale] ?? '' ), rows : kind.rich === true ? 5 : 2 } );
+
+						text.querySelector('textarea').addEventListener( 'change', function( event ) {
+							change( function() { S.texts[key] = Object.assign( {}, S.texts[key] ?? {}, { [locale] : event.target.value } ) } );
+						} );
+						own.appendChild( text );
+					} );
+					group.appendChild( own );
+				}
+			}
+			else if( read.kind === 'image' ) {
+
+				const images = S.extra !== undefined && S.extra !== null && S.extra.details !== undefined && S.extra.details !== null ? S.extra.details.images : undefined;
+				const held = images !== undefined && images[detailKey( scope, name )] !== undefined ? images[detailKey( scope, name )] : ( S.pictures[key] ?? null );
+
+				if( held !== null ) {
+
+					const sizes = el( 'div', 'builder-place-format' );
+					const placeholders = S.extra !== undefined && S.extra !== null && S.extra.details !== undefined && S.extra.details !== null && Array.isArray( S.extra.details.placeholders ) === true ? S.extra.details.placeholders : [];
+
+					sizes.appendChild( el( 'p', 'nino-admin-hint', word('place/format') ) );
+
+					// What the place is called, in each language: the words the panel of the pictures shows for it
+					if( held.label !== null && typeof held.label === 'object' )
+						sizes.appendChild( Nino.adminUi.localeRows( { key : 'image-'+ name, label : word('place/image-label'), locales : sampleLocales(), work : S.locale, values : held.label, required : false, maxLength : 80, onChange : function( locale, text ) {
+							change( function() { held.label[locale] = text } );
+						} } ).el );
+
+					// What the page shows until a picture is chosen: one of the placeholders of the kernel
+					if( placeholders.length > 0 && held.placeholder !== undefined )
+						sizes.appendChild( Nino.adminUi.selectField( { key : rel+ ':placeholder:'+ name, label : word('place/placeholder'), help : word('place/placeholder-help'), options : placeholders.map( function( one ) { return { value : one, label : Nino.content.getText( '/_admin/blocks/details/ph-'+ one.slice( one.lastIndexOf('/') + 1 ) ) } } ), value : held.placeholder, onChange : function( value ) {
+							change( function() { held.placeholder = value } );
+						} } ) );
+
+					[ [ 'width', word('place/width') ], [ 'height', word('place/height') ] ].forEach( function( pair ) {
+
+						const number = Nino.adminUi.numberField( { key : rel+ ':'+ pair[0]+ ':'+ name, label : pair[1], value : held[pair[0]], min : 16, max : 4096 } );
+
+						number.querySelector('input').addEventListener( 'change', function( event ) {
+
+							const value = Math.max( 16, Math.min( 4096, Math.round( Number( event.target.value ) ) ) );
+
+							event.target.value = String( Number.isNaN( value ) === true ? 16 : value );
+							change( function() { held[pair[0]] = Number.isNaN( value ) === true ? 16 : value } );
+						} );
+						sizes.appendChild( number );
+					} );
+					group.appendChild( sizes );
+				}
+			}
+
+			rows.push( group );
+		} );
+
+		// What a place shows that is not one of these - a text of its own where nothing is read, a sentence of a source of the site - is as it is
+		return rows;
+	};
+
+	// The rows of a loop in a block of the library: the type is a placeholder and the page chooses the real one, so no source, no sort and no query - and the number of the elements
+	// the block shows as examples
+	const loopPlaceRows = function( rel ) {
+
+		const node = relNode( rel );
+		const schema = S.schemas[node.n];
+		const rows = [];
+
+		if( schema.attributes.limit !== undefined )
+			rows.push( attributeField( rel, 'limit', schema.attributes.limit ) );
+
+		const count = loopElements( node, rel );
+
+		if( count !== null ) {
+
+			const row = el( 'div', 'nino-admin-field builder-box-row' );
+			const value = el( 'div', 'builder-box-value' );
+			const shown = el( 'p', 'builder-box-sentence', count === 1 ? word('adv/element') : word( 'adv/elements', count ) );
+
+			row.appendChild( el( 'span', '', word('loop/shows') ) );
+			shown.dataset.count = 'loop';
+			value.appendChild( shown );
+			row.appendChild( value );
+			rows.push( row );
+		}
+
+		rows.push( el( 'p', 'nino-admin-hint', word('place/loop-note') ) );
 
 		return rows;
 	};
@@ -7583,8 +8142,10 @@
 
 		plan.forEach( function( step ) {
 
-			if( step.how === 'sentence' )
+			if( step.how === 'sentence' ) {
 				rows.push( sentenceRow( rel, step.read ) );
+				linkRows( rel, step.read ).forEach( function( row ) { rows.push( row ) } );
+			}
 			else {
 
 				const row = step.how === 'text' ? textRow( rel, step ) : pictureRow( rel, step );
@@ -7624,7 +8185,7 @@
 		}
 
 		const shown = Object.keys( schema.attributes ).filter( function( name ) {
-			return [ 'text', 'link', 'image', 'id' ].indexOf( schema.attributes[name].type ) === -1 && ( schema.loop !== true || LOOP_ATTRIBUTES.indexOf( name ) === -1 );
+			return [ 'text', 'link', 'image', 'id' ].indexOf( schema.attributes[name].type ) === -1 && ( schema.loop !== true || LOOP_ATTRIBUTES.indexOf( name ) === -1 ) && isLinkTarget( schema, name ) === false;
 		} );
 		const widthy = shown.filter( function( name ) { return schema.attributes[name].type === 'choice' && schema.attributes[name].responsive === true } );
 
@@ -7928,10 +8489,24 @@
 				sections.push( { key : 'background', label : word('bg/title'), content : function() { return body( backgroundRows( at, rel, only ), 'background' ) } } );
 				box.open = 'background';
 			}
+			else if( placing() === true ) {
+
+				// A block of the library has no source and no content of its own to write: it has places, with an id and a sample - the page chooses the rest
+				const isLoop = reads.some( function( read ) { return read.form === 'type' } );
+				const placed = isLoop === true ? loopPlaceRows( rel ) : placeRows( rel, reads );
+				const rest = plan.filter( function( step ) { return step.read.written.charAt( 0 ) !== '~' && step.how !== 'sentence' } );
+				const elsewhere = isLoop === true ? [] : reads.filter( function( read ) { return read.where !== 'own' && read.form !== 'type' && read.kind !== 'link' } ).map( function( read ) { return sentenceRow( rel, read ) } );
+
+				if( placed.length > 0 || rest.length > 0 || elsewhere.length > 0 )
+					sections.push( { key : 'place', label : word('box/place'), content : function() { return body( placed.concat( contentRows( rel, rest ), elsewhere ), 'place' ) } } );
+
+				if( box.open === '' && sections.length > 0 )
+					box.open = 'place';
+			}
 			else if( reads.some( function( read ) { return read.where !== 'own' } ) === true )
 				sections.push( { key : 'source', label : word('box/source'), content : function() { return body( sourceRows( rel, reads ), 'source' ) } } );
 
-			if( only === undefined && plan.length > 0 )
+			if( only === undefined && placing() === false && plan.length > 0 )
 				sections.push( { key : 'content', label : word('box/content'), summary : ownText( now, rel, 40 ), content : function() { return body( contentRows( rel, plan ), 'content' ) } } );
 
 			if( only === undefined && S.level >= 2 && lookRows( rel ).length > 0 )
@@ -8641,7 +9216,7 @@
 
 		// The model, for what drives it without a page
 		model : {
-			state : S, normalize : normalize, kindOf : kindOf, neighbour : neighbour, move : move, duplicate : duplicate, remove : remove,
+			state : S, builds : builds, discard : discard, snap : snap, loremOf : loremOf, lengthOf : lengthOf, kindOfPlace : kindOfPlace, placeName : placeName, normalize : normalize, kindOf : kindOf, neighbour : neighbour, move : move, duplicate : duplicate, remove : remove,
 			undo : undo, redo : redo, isDirty : isDirty, nodeAt : nodeAt, templateOf : templateOf, addressOf : addressOf,
 			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,

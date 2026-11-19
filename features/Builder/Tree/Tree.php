@@ -736,26 +736,18 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	What a person who may change the content of a page may do to its template - the one rule, for the draft, the save and the last state
 		 *
-		 *	The top level of the new tree is the old one with its blocks moved, copied or left out: every piece that is not a block - free markup, a call that has no
-		 *	schema - and every block that holds some stands where it stood, in number and order, to the byte (the blanks round it are the layout and may be what
-		 *	they like; the fixed texts of its calls may be what they like); it is not moved, copied or taken out, and what is between two of them stays between them.
-		 *	Every other block is one of the old ones of its run, with the fixed texts of its calls as they please and nothing else changed, or a copy of one: its
-		 *	root has the id of the original with the next number - an id that is no id of the page and has no words or slots - and what is inside has that id in front
-		 *	(inner()). No id stands twice
-		 *
-		 *	A block that is none of the old ones is a new one where $offers has the tree of a block for its id: it is that tree but for the ids and the fixed texts, and
-		 *	its root has the id of the block or the first number behind it that is no id of the page and has no words or slots, as a copy has. It stands in a run of the
-		 *	top level like any other block
+		 *	The content of the blocks that stand there is theirs - the words, the pictures - and the build of the page is not: the top level of the new tree is the old one
+		 *	but for the fixed texts of the calls. Every piece that is not a block - free markup, a call that has no schema - and every block, in number and order, to the byte
+		 *	but for the fixed texts of its calls and the blanks round it (the layout), stands where it stood: no block is put in, copied, moved or left out, and what is
+		 *	between two of them stays between them. The ids of the blocks are the old ones
 		 *
 		 *	@param		array			$old
 		 *	@param		array			$new
 		 *	@param		array			$registry			The schemas
-		 *	@param		array			$taken				What the old page uses as an id, see taken()
-		 *	@param		array			$offers				id of the root of a new block => the root of the block it is, laid out as it is put in
 		 *
-		 *	@return 	string|null								What is refused: 'ids', 'free', 'block', 'copy' or 'id'; null where it is the old page made new
+		 *	@return 	string|null								What is refused: 'ids', 'free', 'block' or 'copy'; null where it is the old page made new
 		 */
-		public static function refused( array $old, array $new, array $registry, array $taken = [], array $offers = [] ): ?string {
+		public static function refused( array $old, array $new, array $registry ): ?string {
 
 			if( self::twice( $new, $registry ) !== null )
 				return 'ids';
@@ -787,16 +779,22 @@ namespace Nino\Modules\Builder {
 					return 'free';
 			}
 
-			// A new block stands between the calls of the frames of the page - the header and the footer -, and anywhere where the page has none
-			$frames = [];
+			if( count( $runs[0] ) !== count( $runs[1] ) )
+				return 'block';
 
-			foreach( $kept[0] as $at => $piece )
-				if( isset( $piece['n'] ) === true && isset( $registry[$piece['n']] ) === false && $piece['n'] === 'template' )
-					$frames[] = $at;
+			foreach( $runs[0] as $run => $olds ) {
 
-			foreach( $runs[1] as $run => $news )
-				foreach( self::_run( $runs[0][$run] ?? [], $news, $registry, $taken, $offers, $frames === [] || ( $run > $frames[0] && ( count( $frames ) === 1 || $run <= end( $frames ) ) ) ) as $why )
-					return $why;
+				if( count( $olds ) !== count( $runs[1][$run] ) )
+					return 'block';
+
+				foreach( $olds as $at => $original ) {
+
+					$ids = [ self::_id( $original, $registry ), self::_id( $runs[1][$run][$at], $registry ) ];
+
+					if( $ids[0] !== $ids[1] || self::_alike( $original, $runs[1][$run][$at], $registry, $ids ) === false )
+						return 'block';
+				}
+			}
 
 			return null;
 		}
@@ -1320,75 +1318,6 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $out;
-		}
-
-		/**
-		 *	Whether the blocks of a run are the old ones of that run
-		 *
-		 *	@param		array			$olds
-		 *	@param		array			$news
-		 *	@param		array			$registry
-		 *	@param		array			$taken
-		 *	@param		array			$offers				See refused()
-		 *	@param		bool			$room					Whether a new block may stand in this run
-		 *
-		 *	@return 	array											[ 'block' ] or [ 'id' ] for what is refused, [] for nothing
-		 */
-		private static function _run( array $olds, array $news, array $registry, array $taken, array $offers, bool $room ): array {
-
-			// The blocks that are the old ones come first: a copy that stands before its original is not mistaken for it
-			$settled = [];
-
-			foreach( $news as $at => $block )
-				foreach( $olds as $index => $original ) {
-
-					$ids = [ self::_id( $original, $registry ), self::_id( $block, $registry ) ];
-
-					if( $ids[0] === $ids[1] && isset( $settled[$index] ) === false && self::_alike( $original, $block, $registry, $ids ) === true ) {
-						$settled[$index] = $at;
-						break;
-					}
-				}
-
-			$kept = array_flip( $settled );
-
-			foreach( $news as $at => $block ) {
-
-				if( isset( $kept[$at] ) === true )
-					continue;
-
-				$pick = null;
-				$now = self::_id( $block, $registry );
-
-				foreach( $olds as $index => $original )
-					if( self::_alike( $original, $block, $registry, [ self::_id( $original, $registry ), $now ] ) === true ) {
-						$pick = $index;
-						break;
-					}
-
-				if( $pick === null ) {
-
-					if( $room === false || $now === '' || isset( $offers[$now] ) === false )
-						return [ 'block' ];
-
-					// A block that is put in: the tree of its block, with an id that nobody uses
-					if( self::_alike( $offers[$now], $block, $registry, [ self::_id( $offers[$now], $registry ), $now ] ) === false )
-						return [ 'block' ];
-
-					if( self::isId( $now ) === false || in_array( $now, $taken, true ) === true || preg_match( '/^'. preg_quote( (string) preg_replace( '/-\d+$/', '', self::_id( $offers[$now], $registry ) ), '/' ). '(?:-[1-9]\d*)?$/D', $now ) !== 1 )
-						return [ 'id' ];
-
-					continue;
-				}
-
-				// The id of a copy is the one the rule makes: the base of the original and the next number, one nobody uses
-				$was = self::_id( $olds[$pick], $registry );
-
-				if( $was !== '' && ( $now === $was || self::isId( $now ) === false || preg_match( '/^'. preg_quote( (string) preg_replace( '/-\d+$/', '', $was ), '/' ). '-[1-9]\d*$/D', $now ) !== 1 || in_array( $now, $taken, true ) === true ) )
-					return [ 'id' ];
-			}
-
-			return [];
 		}
 
 		/**

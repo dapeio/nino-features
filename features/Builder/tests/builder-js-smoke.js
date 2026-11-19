@@ -118,8 +118,10 @@ const words = {
 	// The words of the extended view that are put together: what the register has against a place and why a component is grey, the three rows of a width, the
 	// two variants that have a word, what a field says of the id and the picture - and the three steps of the roles tab, which the kernel reads
 	[ 'unknown', 'variant', 'outside', 'foreign', 'place', 'once', 'self', 'depth', 'duplicate', 'nofield' ].forEach( function( key ) { asked.add( 'finding/'+ key ) } );
-	[ 'once', 'depth', 'self' ].forEach( function( key ) { asked.add( 'offer/why-'+ key ) } );
+	[ 'once', 'depth', 'self', 'place' ].forEach( function( key ) { asked.add( 'offer/why-'+ key ) } );
+	[ 'section', 'card', 'general', 'features', 'groups', 'loops' ].forEach( function( key ) { asked.add( 'offer/sec-'+ key ) } );
 	[ 'all', 'tablet', 'desktop' ].forEach( function( key ) { asked.add( 'rows/'+ key ) } );
+	[ 'shows-on', 'shows-off' ].forEach( function( key ) { asked.add( 'rows/'+ key ) } );
 	asked.add('variant/regular');
 	asked.add('field/read-id');
 	[ 'pick', 'new', 'fixed', 'page', 'address' ].forEach( function( key ) { asked.add( 'source/tab-'+ key ) } );
@@ -129,6 +131,8 @@ const words = {
 	[ 'text', 'image', 'link' ].forEach( function( key ) { asked.add( 'source/label-'+ key ) } );
 	[ 'asc', 'desc' ].forEach( function( way ) { [ 'text', 'date', 'number' ].forEach( function( kind ) { asked.add( 'sort/'+ way+ '-'+ kind ) } ) } );
 	[ 'main', 'footer', 'legal' ].forEach( function( key ) { asked.add( 'page/menu-'+ key ) } );
+	// The lengths a sample of a place in a block of the library has
+	[ 'short', 'line', 'paragraph', 'long', 'own' ].forEach( function( key ) { asked.add( 'place/len-'+ key ) } );
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
 	asked.add('new/copy');
@@ -192,6 +196,7 @@ const fresh = function() {
 	S.undo = [];
 	S.redo = [];
 	S.frame = false;
+	S.level = 2;
 	S.locale = 'de_DE';
 	S.ready = true;
 	S.pictures = {};
@@ -398,6 +403,20 @@ check( 'B. the extended view lays the desktop out at 1280 and scales it into its
 	const advanced = builder.layoutsOf( true );
 	const basic = builder.layoutsOf( false );
 	return advanced.desktop === 1280 && advanced.tablet === 768 && advanced.mobile === 390 && basic.desktop === null && basic.tablet === 768;
+} )() );
+check( 'B. the build of a page is the design step\'s: for the content step there is no place to put a block in, and a block is not moved, copied or taken out - whatever presses the way it is done', ( function() {
+	fresh();
+	const was = JSON.stringify( S.top );
+	const before = builder.points().length;
+	S.level = 1;
+	const none = builder.points().length === 0 && builder.builds() === false;
+	const [ one ] = blocks();
+	builder.move( one, 1, 'frame' );
+	builder.duplicate( one, 'frame' );
+	builder.remove( one, 'frame' );
+	const same = JSON.stringify( S.top ) === was && S.undo.length === 0;
+	S.level = 2;
+	return before > 0 && none === true && same === true && builder.builds() === true && builder.points().length === before;
 } )() );
 check( 'B. what the call of html holds is the account\'s that may develop: for the others the block that holds text in it is locked, for that account it is a block like any other - and the words of a new text are the ones of the language of the page', ( function() {
 	fresh();

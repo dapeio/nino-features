@@ -4,8 +4,8 @@ return [
 	'key'					=> 'builder',
 	'name'				=> [ 'en_US' => 'Builder', 'de_DE' => 'Builder' ],
 	'description'	=> [
-		'en_US' => 'Builder shows a page of the site as a row of blocks. A block is moved, copied or removed on the page itself, and a text is clicked and written where it stands; whoever may design opens a block as a tree of components with their properties, chooses where each content comes from, keeps a block as a block of the project and makes, copies and deletes pages. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
-		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Block wird auf der Seite selbst verschoben, kopiert oder entfernt, und ein Text wird dort angeklickt und geschrieben, wo er steht; wer gestalten darf, öffnet einen Block als Baum aus Komponenten mit ihren Eigenschaften, wählt, woher jeder Inhalt kommt, legt einen Block als Block des Projekts ab und macht, kopiert und löscht Seiten. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
+		'en_US' => 'Builder shows a page of the site as a row of blocks. A text is clicked and written where it stands, and a picture is changed there, in the blocks that are on the page; whoever may design puts blocks together into the page - puts them in, moves, copies and removes them -, opens a block as a tree of components with their properties, chooses where each content comes from, keeps a block as a block of the project and makes, copies and deletes pages. Nothing is written before Save, which keeps the template, the texts and the picture slots together and the state before it as the last state.',
+		'de_DE' => 'Der Builder zeigt eine Seite der Website als Folge von Blocks. Ein Text wird dort angeklickt und geschrieben, wo er steht, und ein Bild dort getauscht, in den Blocks, die auf der Seite sind; wer gestalten darf, setzt die Seite aus Blocks zusammen - fügt Blocks ein, verschiebt, kopiert und entfernt sie -, öffnet einen Block als Baum aus Komponenten mit ihren Eigenschaften, wählt, woher jeder Inhalt kommt, legt einen Block als Block des Projekts ab und macht, kopiert und löscht Seiten. Vor dem Speichern wird nichts geschrieben; es hält Vorlage, Texte und Bildplätze zusammen und behält den Stand davor als letzten Stand.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -32,8 +32,8 @@ return [
 		],
 		'panel' => [
 			'Builder' => [
-				'en_US' => 'The screen for the pages: the table with its search, and for a page the page with its outline and a bar on the block under the pointer; the right is /_admin/builder/manage.',
-				'de_DE' => 'Der Bildschirm für die Seiten: die Tabelle mit Suche, und je Seite die Seite mit ihrer Gliederung und einer Leiste am Block unter dem Zeiger; das Recht: /_admin/builder/manage.',
+				'en_US' => 'The screen for the pages: the table with its search and a page with its outline, where whoever designs has a bar on each block to move, copy and remove it; the right is /_admin/builder/manage.',
+				'de_DE' => 'Der Bildschirm für die Seiten: die Tabelle mit Suche und je Seite die Gliederung; wer gestaltet, hat an jedem Block eine Leiste (Verschieben, Kopieren, Löschen); das Recht: /_admin/builder/manage.',
 			],
 			'Advanced' => [
 				'en_US' => 'On a block of the page: the tree of its components, which are put in, moved and taken out where the register allows, and the properties of each in the lightbox.',
@@ -44,8 +44,8 @@ return [
 				'de_DE' => 'Der Stift an einer Komponente und eine Zeile des Baums öffnen ihre Eigenschaften in einer Lightbox: Quelle, Inhalt, Aussehen und Erweitert (die Kennung), die letzten beiden für alle, die gestalten.',
 			],
 			'/_admin/builder/*' => [
-				'en_US' => 'Every role needs the door /_admin/builder/manage; content/* and design/* below it allow blocks and texts, or also components, while frames and html belong to the panel Blocks.',
-				'de_DE' => 'Jede Rolle braucht die Tür /_admin/builder/manage; content/* und design/* darunter erlauben Blocks und Texte oder auch Komponenten, während Rahmen und html zum Panel Blocks gehören.',
+				'en_US' => 'Every role needs the door /_admin/builder/manage; content/* allows texts and pictures of the blocks on a page, design/* also putting a page together and designing; frames and html belong to Blocks.',
+				'de_DE' => 'Jede Rolle braucht die Tür /_admin/builder/manage; content/* erlaubt Texte und Bilder der Blocks einer Seite, design/* auch das Zusammensetzen und Gestalten; Rahmen und html gehören zu Blocks.',
 			],
 			'Variant' => [
 				'en_US' => 'A block of the catalogue with variants has a choice of them in its bar and in its look, for whoever designs; a variant sets looks and keeps the texts and pictures.',

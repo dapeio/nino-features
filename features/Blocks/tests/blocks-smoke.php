@@ -223,8 +223,29 @@ sort( $added );
 
 check( 'an empty block is a section with one row and one column: its key is made of its name, the kernel lists it as a block of the project with the name in every language and the category, and its three kinds of files are all that is written',
 	$made === 200 && $one['key'] === 'mein-block' && ( $kernel['origin'] ?? '' ) === 'project' && ( $kernel['name']['de_DE'] ?? '' ) === 'Mein Block' && ( $kernel['name']['en_US'] ?? '' ) === 'Mein Block' && ( $kernel['category'] ?? '' ) === 'content'
-	&& str_contains( (string) $kernel['source'], '[section-row]' ) === true && str_contains( (string) $kernel['source'], '[section-col]' ) === true && ( $meta['category'] ?? '' ) === 'content'
+	&& str_contains( (string) $kernel['source'], '[section-row width="narrow"]' ) === true && str_contains( (string) $kernel['source'], '[section-col]' ) === true && ( $meta['category'] ?? '' ) === 'content'
 	&& $added === [ '/private/blocks/mein-block/block.json', '/private/blocks/mein-block/block.tpl', '/private/blocks/mein-block/text/de_DE.json', '/private/blocks/mein-block/text/en_US.json' ] );
+
+// a new block begins where the blocks of the basis begin: what they write at a section, a row and a column - and nothing of what they leave to the schema, which is the padding,
+// the gap and the alignments. The usual values are read from the templates of the basis, so that the pin follows them
+$usual = [];
+
+foreach( glob( $root. '/_nino/Nino/Modules/Basis/blocks/*/block.tpl' ) ?: [] as $file )
+	foreach( [ 'section-wrap', 'section-row', 'section-col' ] as $call )
+		if( preg_match_all( '/\['. $call. '((?: \w+(?:="[^"]*")?)*)\]/', (string) file_get_contents( $file ), $found ) > 0 )
+			foreach( $found[1] as $attributes ) {
+				preg_match_all( '/ (\w+)="([^"]*)"/', $attributes, $pairs, PREG_SET_ORDER );
+				foreach( $pairs as [ , $name, $value ] )
+					$usual[$call][$name][$value] = ( $usual[$call][$name][$value] ?? 0 ) + 1;
+			}
+
+$narrowest = $usual['section-row']['width'] ?? [];
+arsort( $narrowest );
+
+check( 'a new block begins with what the blocks of the basis write: the section on the base ground, the row narrow - the width most of their rows have - and the column and the settings the schema has a value for - padding, gap, alignment - written nowhere',
+	Sheet::BEGIN === [ 'section-wrap' => [ 'ground' => 'base' ], 'section-row' => [ 'width' => 'narrow' ], 'section-col' => [] ] && array_key_first( $narrowest ) === 'narrow'
+	&& array_keys( Sheet::blank( 'x' )['tree'][0]['c'][1]['a'] ) === [ 'width' ] && Sheet::blank( 'x' )['tree'][0]['c'][1]['a']['width'] === 'narrow' && Sheet::blank( 'x' )['tree'][0]['a'] === [ 'id' => 'x', 'ground' => 'base' ]
+	&& isset( $usual['section-wrap']['pad'] ) === false && isset( $usual['section-col']['pad'] ) === false && isset( $usual['section-row']['halign'] ) === false );
 
 $before = blocksSnapshot( $site );
 $refusals = [

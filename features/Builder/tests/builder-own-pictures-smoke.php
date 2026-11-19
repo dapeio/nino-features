@@ -245,7 +245,7 @@ $foreign = Store::prepare( $site, 'page-home', Store::state( $site, 'page-home' 
 check( 'a request that names a file for the slot of a block that is put in is refused, and nothing it says is a picture of the block: the bytes come from the block that the server reads',
 	isset( $foreign['failure'] ) === true && Library::picture( $site, $keys['svg'], '../picture' ) === null && Library::picture( $site, $keys['svg'], 'other' ) === null && Library::picture( $site, '../x', 'picture' ) === null && Library::picture( $site, 'hero-full', 'nothing' ) === null );
 
-// the step: an account that does not design gets the placeholder, and no file is made for it - where the one who designs gets the picture of the same block
+// the step: an account that does not design puts no block in, and no file is made for it - where the one who designs gets the picture of the same block
 @mkdir( $sandbox. '/private/blocks/'. $keys['plain']. '/images', 0755, true );
 file_put_contents( $sandbox. '/private/blocks/'. $keys['plain']. '/images/picture.png', $png );
 \Nino\Blocks::forget( $site );
@@ -257,8 +257,8 @@ $contentTile = Library::tile( $site, 'page-home', $keys['plain'], 'de_DE', false
 $untouched = $images() === $before;
 $design = Store::prepare( $site, 'page-home', Store::state( $site, 'page-home' ), $with( 'plain' ), $words( 'plain' ), [], $put( 'plain' )['inserted'], \Nino\Modules\Builder::LEVEL_DESIGN, [] );
 
-check( 'what an account that does not design gets of this is nothing: the placeholder in the draft and in the tile, no file made, nothing to give up - where the account that designs gets the picture of the same block',
-	isset( $content['failure'] ) === false && $content['staged'] === [] && ( $content['slots'][$plainUriNow]['filename'] ?? '' ) === ltrim( $plainUriNow, '/' ). '.svg' && ( $contentTile['slots'] ?? [ 'x' ] ) === [] && $untouched === true
+check( 'what an account that does not design gets of this is nothing: the block is not put in - the build of a page is not its - no file is made, nothing to give up, and the tile shows the placeholder - where the account that designs gets the picture of the same block',
+	( $content['failure'][2] ?? '' ) === 'builder_refused_block' && ( $contentTile['slots'] ?? [ 'x' ] ) === [] && $untouched === true
 	&& count( $design['staged'] ?? [] ) === 1 );
 
 // the draft that is thrown away gives its pictures up: the files that nobody was given are taken away, those of a slot of the page are not

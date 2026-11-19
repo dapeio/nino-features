@@ -481,31 +481,80 @@
 
 .builder-offer {
 	display: grid;
-	gap: .5rem;
+	gap: var(--nino-admin-space-3);
 	min-width: 0;
 }
 
+.builder-offer-row {
+	display: grid;
+	grid-template-columns: 8rem minmax(0, 1fr);
+	gap: var(--nino-admin-space-3) var(--nino-admin-space-5);
+	align-items: start;
+	min-width: 0;
+}
+
+.builder-offer-name {
+	display: grid;
+	gap: .1rem;
+	padding-top: .4rem;
+}
+
 .builder-offer-group {
-	margin: .5rem 0 0;
+	margin: 0;
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-xs);
+	font-weight: var(--nino-admin-weight-strong);
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+.builder-offer-sub {
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
 }
 
 .builder-offer-list {
 	display: grid;
-	gap: .35rem;
+	grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+	gap: .5rem;
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
 
 .builder-offer-item {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: .25rem .75rem;
+	min-width: 0;
 }
 
 .builder-offer-pick {
-	min-height: 2rem;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: .5rem;
+	width: 100%;
+	min-height: 2.25rem;
+	text-align: left;
+	white-space: normal;
+}
+
+.builder-offer-pick:disabled {
+	opacity: .5;
+}
+
+/* The groups and the loops have a coloured edge on the left: they hold other components */
+.builder-offer-row[data-section="groups"] .builder-offer-pick {
+	border-left: 3px solid var(--editor-orange);
+}
+
+.builder-offer-row[data-section="loops"] .builder-offer-pick {
+	border-left: 3px solid var(--editor-blue);
+}
+
+@media (max-width: 40rem) {
+
+	.builder-offer-row {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 .builder-source-body,

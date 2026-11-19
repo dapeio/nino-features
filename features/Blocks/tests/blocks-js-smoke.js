@@ -768,13 +768,87 @@ const sheetOf = function( hash, extra ) {
 
 	fire( findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === String( words.en['/_admin/builder/source/change'] ) } )[0], 'click' );
 
-	const choose = dialogOf( w );
-	const tabs = findAll( choose, function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).map( function( el ) { return textOf( el ).trim() } );
+	const inputOf = function( key, tag ) { return findAll( box, function( el ) { return el.tagName === ( tag ?? 'INPUT' ) && el.dataset !== undefined && el.dataset.key === key } )[0] };
+	const place = inputOf( '1:place:first' );
+	const sourceWord = String( words.en['/_admin/builder/box/source'] );
+	const model = w.builder.model;
 
-	check( 'D. the dialog of a source on a block says where the text comes from as the block\'s - "of this block" - and not as the page\'s',
-		textOf( choose ).indexOf( String( words.en['/_admin/builder/source/is-key-block'] ).split('%s')[1].split(':')[0] ) !== -1 && textOf( choose ).indexOf( 'of this page' ) === -1 );
+	check( 'D. the lightbox of a component in a block has a place - its id and, quietly, where it becomes the page\'s - and no source, no content to write and no way to change the source',
+		place !== undefined && place.value === 'title' && textOf( box ).indexOf( sourceWord ) === -1 && textOf( box ).indexOf( String( words.en['/_admin/builder/box/content'] ) ) === -1
+		&& findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === String( words.en['/_admin/builder/source/change'] ) } ).length === 0
+		&& textOf( box ).indexOf( String( words.en['/_admin/builder/place/becomes'] ).replace( '%s', 'title' ) ) !== -1 );
 
-	check( 'D. the dialog of a source on a block has the two tabs a block can carry - choose a value and new - and no fixed text, no page and no address', tabs.join('|') === [ words.en['/_admin/builder/source/tab-pick'], words.en['/_admin/builder/source/tab-new'] ].join('|') );
+	const select = inputOf( '1:length:title', 'SELECT' );
+	const node = function() { return sheet.top[root].c[1] };
+	const sample = model.loremOf( 'title', 8, { title : false, button : false, rich : false } );
+
+	check( 'D. the sample of a place is Lorem ipsum of the length that is chosen, the same words in every language and the same every time - a title has no full stop, a button no more than two words',
+		select !== undefined && sample === model.loremOf( 'title', 8, { title : false, button : false, rich : false } ) && sample.split( ' ' ).length === 8 && sample.slice( -1 ) === '.'
+		&& model.loremOf( 'title', 8, { title : true, button : false, rich : false } ).slice( -1 ) !== '.' && model.loremOf( 'x', 80, { title : false, button : true, rich : false } ).split( ' ' ).length === 2
+		&& model.loremOf( 'a', 30, { title : false, button : false, rich : false } ) !== model.loremOf( 'b', 30, { title : false, button : false, rich : false } ) );
+
+	select.value = 'line';
+	fire( select, 'change' );
+
+	check( 'D. a length that is chosen writes its sample into the words of the place in each language of the site, as one step of the undo',
+		[ 'de_DE', 'en_US' ].every( function( locale ) { return sheet.texts['/template/page-home/karten/title'][locale] === model.loremOf( 'title', 8, model.kindOfPlace( node(), 'plain' ) ) } ) && sheet.undo.length > 0 );
+
+	const again = findAll( dialogOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
+
+	again.value = 'headline';
+	fire( again, 'change' );
+
+	check( 'D. the id of a place is changed with its words: the call reads the new id and the words stand under it, the old id has none - and an id that is taken or is no id is refused at the field',
+		node().s === '~headline' && sheet.texts['/template/page-home/karten/headline'] !== undefined && sheet.texts['/template/page-home/karten/title'] === undefined );
+
+	const third = findAll( dialogOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
+
+	third.value = 'Bad Name';
+	fire( third, 'change' );
+
+	check( 'D. an id with a capital or a space, or longer than forty letters, is no id of a place: it is refused at the field with the sentence of the source dialog, and the place is as it was',
+		node().s === '~headline' && third.value === 'headline' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/source/bad-name'] ) ) !== -1 );
+
+	// a second place of the block - its words are the block's, and its id is taken
+	sheet.texts['/template/page-home/karten/other'] = { de_DE : 'Other', en_US : 'Other' };
+
+	const fourth = findAll( dialogOf( w ), function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '1:place:first' } )[0];
+
+	fourth.value = 'other';
+	fire( fourth, 'change' );
+
+	check( 'D. an id that another place of the block has is refused at the field with the sentence "taken", and the place keeps its id and its words',
+		node().s === '~headline' && fourth.value === 'headline' && textOf( dialogOf( w ) ).indexOf( String( words.en['/_admin/builder/source/taken'] ) ) !== -1 && sheet.texts['/template/page-home/karten/headline'] !== undefined );
+
+	delete sheet.texts['/template/page-home/karten/other'];
+
+	// a picture place: its id, the size of its picture, what the page shows until one is chosen - and no source
+	const pic = sheetOf( '#blocks/karten', {
+		tree : [ FRAME_HEAD, { t : '\n' }, block( 'karten', [ { n : 'image', s : '~bild', a : {}, c : null }, { t : '\n' } ] ), { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
+		schemas : Object.assign( {}, pageAnswer().schemas, { image : schema( 'Image', 'image', 'image', {} ) } ),
+		details : { names : { de_DE : 'Karten', en_US : 'Cards' }, descriptions : { de_DE : 'D', en_US : 'D' }, category : 'content', rank : 900, images : { bild : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'B', en_US : 'P' }, used : true } }, placeholders : [ '/nino/placeholder/mark', '/nino/placeholder/landscape' ] },
+		images : { '/template/page-home/karten/bild' : { label : 'Bild', width : 800, height : 600, filename : null } },
+		sources : [ { key : '/template/page-home/karten/bild', kind : 'image', name : 'bild' } ],
+	} );
+	const picSheet = pic.builder.editor.state();
+	const picRoot = picSheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
+
+	pic.builder.editor.properties( picRoot, '3', element('button'), function() {} );
+
+	const picBox = dialogOf( pic );
+	const wide = findAll( picBox, function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '3:width:bild' } )[0];
+
+	wide.value = '1200';
+	fire( wide, 'change' );
+
+	check( 'D. a picture place has its id and its format in the lightbox of its component - the size of the picture and what the page shows until one is chosen - and the size is written to the details of the block, in the limits of the kernel',
+		wide !== undefined && picSheet.extra.details.images.bild.width === 1200 && findAll( picBox, function( el ) { return el.dataset !== undefined && el.dataset.key === '3:placeholder:bild' } ).length === 1
+		&& findAll( picBox, function( el ) { return el.tagName === 'INPUT' && el.dataset !== undefined && el.dataset.key === '3:place:first' } )[0].value === 'bild' && textOf( picBox ).indexOf( String( words.en['/_admin/builder/box/source'] ) ) === -1 );
+
+	wide.value = '99999';
+	fire( wide, 'change' );
+
+	check( 'D. a size beyond what the kernel takes is cut to its limit: 4096', picSheet.extra.details.images.bild.width === 4096 );
 }
 
 
@@ -896,6 +970,19 @@ const sheetOf = function( hash, extra ) {
 	check( 'E. a new variant is made from a name and begins as a copy of the one that is edited: its key is made from the name, it is the one that is edited, it has the sets the other had - and it is a change of the draft',
 		sheet.extra.vars.length === 3 && sheet.extra.vars[2].name === 'gross' && sheet.extra.edited === 'gross' && JSON.stringify( row().v.gross ) === '{"reverse":"on"}' && model.isDirty() === true && row().a.reverse === 'on' );
 
+	// a draft that is given up is the draft that was saved - whatever it keeps beside the tree: the variants that were made are gone and the draft is no more changed, which is what lets
+	// a person leave a sheet whose save was refused
+	( function() {
+		const keep = model.snap();
+		const had = JSON.stringify( [ keep.extra, keep.top ] );
+		model.discard();
+		const gone = sheet.extra.vars.length === 2 && sheet.extra.vars.every( function( variant ) { return variant.name !== 'gross' } ) === true;
+		check( 'E. a draft that is given up is the one that was saved: the variant that was made is gone, the draft is no more changed - so that the way out of a sheet whose save was refused is open - and the tree is a tree',
+			gone === true && model.isDirty() === false && Array.isArray( sheet.top ) === true && had !== JSON.stringify( [ model.snap().extra, model.snap().top ] ) );
+		sheet.top = keep.top;
+		sheet.extra = keep.extra;
+	} )();
+
 	chooseVariant( W('variants/manage') );
 
 	const manage = dialogOf( w );
@@ -903,6 +990,22 @@ const sheetOf = function( hash, extra ) {
 
 	check( 'E. the variants are managed in a dialog of their own: each has its name, the first is the template and has no way to move or to go, the others have up, down and delete',
 		names.join('|') === 'Standard|Rechts|Gross' );
+
+	// the first variant is the template and keeps its place, and it has a name that can be changed like any other
+	const firstField = findAll( manage, function( el ) { return el.tagName === 'INPUT' } )[0];
+	const before = model.snap();
+	const undoWas = sheet.undo.slice();
+
+	firstField.value = 'Normal';
+	fire( firstField, 'change' );
+
+	check( 'E. the standard variant is named in the same dialog as the others - the name is for the language of the work and for the languages that had the same word - and it stays the first and the template',
+		sheet.extra.vars[0].name === 'standard' && sheet.extra.vars[0].label.en_US === 'Normal' && sheet.extra.vars[0].label.de_DE === 'Normal' && sheet.extra.vars.length === 3 && sheet.extra.edited !== undefined );
+
+	// the name goes back in place - the dialog holds the sheet's own list - and the step of the undo goes with it
+	Object.assign( sheet.extra.vars[0].label, before.extra.vars[0].label );
+	sheet.undo.length = undoWas.length;
+	sheet.redo.length = 0;
 
 	const trash = findAll( manage, function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Gross' ) !== -1 && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Delete' ) !== -1 } )[0];
 

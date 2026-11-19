@@ -465,7 +465,7 @@ namespace Nino\Modules\Builder {
 			else {
 
 				$taken = Tree::taken( $back, $registry, array_merge( array_keys( $previous['texts'] ), array_keys( $previous['slots'] ) ) );
-				$why = Tree::refused( $back, $nodes, $registry, $taken, Library::offers( $appData, $nodes, $taken ) );
+				$why = Tree::refused( $back, $nodes, $registry );
 			}
 
 			if( $why !== null ) {
@@ -520,7 +520,7 @@ namespace Nino\Modules\Builder {
 
 		public static function apiBlocks( array &$appData, array &$request ): void {
 
-			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT ) === null )
+			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) === null )
 				return;
 
 			\Nino\Http::ok( $request, Library::all( $appData, self::_wrap( $appData ) ) );
@@ -528,7 +528,7 @@ namespace Nino\Modules\Builder {
 
 		public static function apiBlock( array &$appData, array &$request ): void {
 
-			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT );
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
 
 			if( $level === null )
 				return;
@@ -549,7 +549,7 @@ namespace Nino\Modules\Builder {
 
 		public static function apiTile( array &$appData, array &$request ): void {
 
-			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT );
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
 
 			if( $level === null )
 				return;
@@ -578,6 +578,52 @@ namespace Nino\Modules\Builder {
 			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'address' => self::_address( $appData, $template, $locale ) ] );
 		}
 
+		// Where a component stands in the dialog that offers them - the one place that says it, for the blocks, the frames and every other place a component is put in. It is the
+		// dialog's own order and no group of the register, which belongs to the themes: a part of a section, a part of a card, what is of a group of components, the loops, what a
+		// feature brings under the name of the feature, and the rest as general
+		private const array DIALOG = [
+			'section-row'			=> 'section',
+			'section-col'			=> 'section',
+			'section-title'		=> 'section',
+			'section-subtitle'	=> 'section',
+			'card'						=> 'card',
+			'card-title'			=> 'card',
+			'card-subtitle'		=> 'card',
+			'card-text'				=> 'card',
+			'card-image'			=> 'card',
+			'text'						=> 'general',
+			'button'					=> 'general',
+			'image'						=> 'general',
+			'logo'						=> 'general',
+			'html'						=> 'general',
+			'spacer'					=> 'general',
+			'scroll-hint'			=> 'general',
+			'button-group'		=> 'groups',
+			'tabs'						=> 'groups',
+			'accordion'				=> 'groups',
+		];
+
+		/**
+		 *	The part of the dialog a component is in
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					The component
+		 *	@param		bool			$loop					Whether it is a loop
+		 *
+		 *	@return 	array											'section' (section, card, general, features, groups or loops), 'feature' (the key of the feature, for features), 'featureLabel' (its name)
+		 */
+		public static function dialogGroup( array &$appData, string $name, bool $loop ): array {
+
+			$owner = $appData[\Nino\Components::OWNERS]['names'][$name] ?? null;
+			$feature = is_string( $owner ) === true && $owner !== 'basis' ? $owner : null;
+			$section = $loop === true ? 'loops' : ( self::DIALOG[$name] ?? ( $feature !== null ? 'features' : 'general' ) );
+
+			// A feature is told by its name where it brings a component of its own: the loops are the loops whoever brings them
+			$manifest = $feature === null || $section !== 'features' ? null : \Nino\Features::get( $appData, $feature );
+
+			return [ 'section' => $section, 'feature' => $section === 'features' ? $feature : null, 'featureLabel' => $manifest === null ? null : ( $manifest['name'] ?? $feature ) ];
+		}
+
 		/**
 		 *	What the register offers at a place of a tree: each component that may stand there, as the call it would be, with the schemas of them - the answer of the action
 		 *	"offer", for any panel that edits a tree with the code of the Builder. The html is offered to the step of the development and to no other
@@ -601,8 +647,17 @@ namespace Nino\Modules\Builder {
 			$groups = \Nino\Components::groups( $appData );
 			$entries = [];
 			$names = [];
+			$offered = \Nino\Components::offer( $appData, $route, (array) ( $container['c'] ?? [] ) );
 
-			foreach( \Nino\Components::offer( $appData, $route, (array) ( $container['c'] ?? [] ) ) as $name => $answer ) {
+			// What the register has that this place does not take is in the dialog as well, grey and with its reason: the person sees what there is, and why not here. The
+			// frames' own parts and what stands at the top of a page - a section - are no choice of any place inside a block
+			foreach( $registry as $name => $schema )
+				if( isset( $offered[$name] ) === false && in_array( (string) ( $schema['group'] ?? '' ), [ 'header', 'footer' ], true ) === false && ( $schema['in'] ?? [] ) !== [ 'page' ] && ( $name !== 'html' || $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ) )
+					$offered[$name] = 'place';
+
+			$schemas = Tree::schemas( $appData, [], $registry, array_map( 'strval', array_keys( $offered ) ) );
+
+			foreach( $offered as $name => $answer ) {
 
 				// The call of html is for the one who may develop and for nobody else: it is not offered, not even grey
 				if( $answer === \Nino\Components::CODE_HTML ) {
@@ -618,8 +673,10 @@ namespace Nino\Modules\Builder {
 				$entries[] = [
 					'name'				=> (string) $name,
 					'label'				=> $schema['label'],
+					'icon'				=> (string) ( $schema['icon'] ?? '' ),
 					'group'				=> (string) ( $schema['group'] ?? '' ),
 					'groupLabel'	=> $groups[$schema['group'] ?? '']['label'] ?? null,
+				] + self::dialogGroup( $appData, (string) $name, $schemas[$name]['loop'] ?? false ) + [
 					'ok'					=> $answer === true,
 					'why'					=> $answer === true ? '' : (string) $answer,
 					'node'				=> [ 'n' => (string) $name, 's' => '', 'a' => [], 'c' => isset( $schema['offers'] ) === true ? [] : null ],
@@ -630,7 +687,7 @@ namespace Nino\Modules\Builder {
 			$call = [ 'n' => 'spacer', 's' => '', 'a' => [], 'c' => null ];
 			$laid = \Nino\Markup::layout( [ $call, $call ], count( $route ) );
 
-			return [ 'offers' => $entries, 'blank' => (string) ( $laid[1]['t'] ?? "\n" ), 'schemas' => Tree::schemas( $appData, [], $registry, $names ), 'container' => $route[count( $route ) - 1] ];
+			return [ 'offers' => $entries, 'blank' => (string) ( $laid[1]['t'] ?? "\n" ), 'schemas' => $schemas, 'container' => $route[count( $route ) - 1] ];
 		}
 
 		/**

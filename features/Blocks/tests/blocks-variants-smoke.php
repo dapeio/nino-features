@@ -161,6 +161,19 @@ $had = $meta( $key )['variants'] ?? [];
 check( 'a save that brings no variants leaves the ones the block has, as it did - a draft of the details alone is no draft of the variants',
 	$kept === 200 && $meta( $key )['rank'] === 7 && array_keys( $had ) === [ 'image-left', 'image-right' ] && ( $meta( $key )['variants'] ?? [] ) == $had );
 
+// the first variant is the template, and a template nobody named is the standard: a block with no variants of its own is listed with a word for it in each language, and a
+// save whose first variant has none - the person gave a name to the second only, and in one language - is no refusal but has the word of the standard
+$blank = $key. '-blank';
+[ , $made ] = variantsCall( $site, 'blocks/create', [ 'name' => $label( 'Ohne Namen', 'Nameless' ), 'category' => 'content', 'from' => $key ] );
+$blank = $made['key'] ?? $blank;
+[ , $draft ] = variantsCall( $site, 'blocks/open', [ 'key' => $blank ] );
+$listed = \Nino\Modules\Blocks\Variants::listed( [ 'alternatives' => [] ], [ 'de_DE', 'en_US' ], 'de_DE' );
+[ $nameless ] = variantsCall( $site, 'blocks/save', [ 'key' => $blank, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'base' => $draft['stamp'], 'variants' => [ [ 'name' => 'standard', 'label' => $label( '', '' ), 'set' => [] ], [ 'name' => 'compact', 'label' => [ 'de_DE' => 'Kompakt', 'en_US' => '' ], 'set' => [] ] ] ] );
+$named = $meta( $blank )['variants'] ?? [];
+
+check( 'a block that has no variants is listed with the word of the standard in each language, and a save whose first variant has no name - the second was named in one language - is taken: the standard has its word in each language, the second its word where it has none',
+	$listed[0]['label'] === [ 'de_DE' => 'Standard', 'en_US' => 'Default' ] && $nameless === 200 && ( $named['standard']['label'] ?? [] ) == [ 'de_DE' => 'Standard', 'en_US' => 'Default' ] && ( $named['compact']['label'] ?? [] ) == [ 'de_DE' => 'Kompakt', 'en_US' => 'Kompakt' ] );
+
 $strong = [ 'name' => 'strong', 'label' => $label( 'Kräftig', 'Strong' ), 'set' => [ '1.3.5' => [ 'tone' => 'primary' ] ] ];
 [ , $draft ] = variantsCall( $site, 'blocks/open', [ 'key' => $key ] );
 [ $again ] = $save( [ 'variants' => [ $standard, $right, $tinted, $strong ] ] );

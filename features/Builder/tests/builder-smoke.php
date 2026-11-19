@@ -345,7 +345,7 @@ $site['/nino/http/routes'] = [ 'GET://contact' => [ 'uri' => '/contact', 'body' 
 $stored = $site['/nino/http/routes'] + [ 'GET://start' => [ 'uri' => '/start', 'body' => '[template /templates/page-home]' ], 'GET://kontakt' => [ 'uri' => '/kontakt', 'body' => '[template /templates/page-contact]' ] ];
 \Nino\Filesystem::putFileContent( $site, '/config.php', [ '/nino/html/images' => $site['/nino/html/images'], '/nino/http/routes' => $stored ] );
 
-ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nB. The pages\n";
@@ -501,6 +501,7 @@ check( 'the last state comes back, and the state it replaced is the last one: a 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nD. The rule\n";
 
+builderAccount( $site, 'content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
 [ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
 $tree = $open['tree'];
@@ -636,7 +637,14 @@ foreach( [ 'a root that is an attribute' => 'x" onmouseover="alert(1)', 'a root 
 check( 'the id of a copy is the rule\'s: an id with quotes, one of capitals, a new name for the copy and an id the page has are each refused - nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] || array_diff( array_unique( array_values( $answers ) ), [ 400, 403 ] ) === [] );
 
 [ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
-check( 'and a copy that is made by the rule - start-9 for start - is taken', builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => Tree::strip( $ids( 'start-9' ) ), 'texts' => [], 'base' => $open['stamp'] ] )[0] === 200 );
+$snapshot = builderSnapshot( $site );
+[ $copyStatus, $copyWhy ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => Tree::strip( $ids( 'start-9' ) ), 'texts' => [], 'base' => $open['stamp'] ] );
+
+check( 'and a copy that is made by the rule - start-9 for start - is no content: the content step is refused it as a block, and nothing is written', $copyStatus === 403 && ( $copyWhy['code'] ?? '' ) === 'builder_refused_block' && builderSnapshot( $site ) === $snapshot );
+
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+check( 'and the design step takes it', builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => Tree::strip( $ids( 'start-9' ) ), 'texts' => [], 'base' => $open['stamp'] ] )[0] === 200 );
+builderAccount( $site, 'content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
 
 \Nino\Filesystem::putFileContent( $site, '/templates/frame-header.tpl', "[header-wrap id=\"header\"]\n\t[header-logo]\n[/header-wrap]\n" );
 \Nino\Filesystem::putFileContent( $site, '/templates/frame-footer.tpl', "[footer-wrap id=\"footer\"]\n[/footer-wrap]\n" );
@@ -657,7 +665,7 @@ foreach( $whos as $who => $perms ) {
 			$answers[] = builderCall( $site, $action, [ 'template' => $frameName, 'tree' => [ [ 't' => "\n" ] ], 'texts' => [], 'base' => 'x', 'force' => true, 'key' => 'hero-full', 'kind' => 'types', 'uri' => 'x', 'files' => [] ] )[0];
 }
 
-ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+builderAccount( $site, 'content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
 check( 'a frame is no page of this panel, for anybody: the list does not tell of it, and every action that names it - open, preview, save, restore, tile, blocks, keys, variant, upload - is a 403 for the content step, the design, the door alone, the old development and the whole site, with nothing written',
 	isset( builderCall( $site, 'builder/list' )[1]['frames'] ) === false && array_unique( $answers ) === [ 403 ] && array_diff_key( builderSnapshot( $site ), [ 'config' => 1 ] ) === array_diff_key( $snapshot, [ 'config' => 1 ] ) );
 
@@ -686,7 +694,7 @@ $structure = (string) file_get_contents( builderFile( $site, 'frame-header' ) ) 
 [ $aPage ] = builderCall( $site, 'builder/frametexts', [ 'template' => 'page-home' ] );
 builderAccount( $site, 'frametexts-none@example.com', [ '/_admin/builder/manage', '/_admin/builder/zzz/edit' ] );
 [ $noStep ] = builderCall( $site, 'builder/frametexts', [ 'template' => 'frame-header' ] );
-ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+builderAccount( $site, 'content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
 
 check( 'the texts of a frame are written by the content step and the design, without the right of the editor of the blocks: the words of the keys the frame holds as its own - and no other key, no page, no tree from the request, no step below the content',
 	array_filter( $textsAnswers, static fn( bool $ok ): bool => $ok === false ) === [] && $refusedBy === [ '403 builder_refused_source', '403 builder_refused_source' ] && $structure === true && $aPage === 400 && $noStep === 403 );
@@ -712,6 +720,9 @@ $blank = $tree;
 $blank[2] = [ 't' => str_repeat( ' ', 900000 ) ];
 
 check( 'blanks between the blocks are layout: 900 KB of them are no page', builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $blank, 'texts' => [], 'base' => $open['stamp'], 'force' => true ] )[0] === 400 );
+
+// the build of a page is the design step's: what follows copies, takes out and brings back blocks
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
 
 // the slots of a copy: a copy of a block with a picture has a slot of its own, made from the original's, and nothing else is made
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
@@ -807,6 +818,8 @@ $after = \Nino\Text::values( $site, '/template/page-contact' ) + \Nino\Text::val
 $config = \Nino\Filesystem::getFileContent( $site, '/config.php', [] )['/nino/html/images'] ?? [];
 
 check( 'a last state that was changed by hand brings back the words and the slots of the namespace of its page and no other: no key of another page, none of the project, no slot of another page', $restored === 200 && isset( $after['/template/page-contact/hero/title'] ) === false && isset( $after['/template/common/form/name'] ) === false && isset( $config['/template/page-contact/hero/image'] ) === false );
+
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nE. The stamp\n";
@@ -984,6 +997,8 @@ $shown = $draw( $site, $inGerman['query'] );
 
 check( 'a draft is drawn in the language of the request and not in the one of the session, and the list and the page are opened in it', str_contains( $shown, 'Fassung-de' ) === true && str_contains( $shown, 'Fassung-en' ) === false && $listed['contentLocale'] === 'de_DE' && $opened['contentLocale'] === 'de_DE' );
 
+// the actions that offer the library are the design step's: the one who holds it is asked for each
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
 $before = builderSnapshot( $site );
 $asked = [];
 
@@ -993,6 +1008,7 @@ foreach( [ 'list' => [], 'open' => [ 'template' => 'page-home' ], 'preview' => [
 			$asked[] = $action. ' '. var_export( $locale, true );
 
 check( 'a request that names no language of the website - none, one the site does not have, one that is no code - is refused by every action that draws or writes, and nothing is written', $asked === [] && builderSnapshot( $site ) === $before );
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
 \Nino\Runtime::setSessionValue( $site, './admin/content-locale', '' );
 
 // another account - with the right, and without - and nobody: the page as it is
@@ -1002,7 +1018,7 @@ ninoUser( $site, 'plain@example.com', [ '/_admin/text/manage' ] );
 $public[] = $draw( $site, $draft['query'] );
 \Nino\Auth::logoutUser( $site );
 $public[] = $draw( $site, $draft['query'] );
-\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
 $public[] = $draw( $site, 'nino-preview=0123456789abcdef0123456789abcdef' );
 $plain = $draw( $site, '' );
 
@@ -1070,6 +1086,92 @@ $cheap = builderReboot( $site );
 ninoVisit( $cheap, '/?other=1' );
 
 check( 'a request that carries no query of a preview is not looked at: no draft held, no trace', \Nino\Preview::active( $cheap ) === false );
+
+// what the content step may do to a page that has blocks: change what stands in them - words, pictures - and nothing of the build. No block is put in, moved, copied or left out,
+// whatever else the request holds: a text it may write, in the same request, does not carry it through. The library of blocks is the design step's.
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+$page += [ 'slots' => (array) ( $page['slots'] ?? [] ) ];
+$hero = builderAt( $page['tree'], 'hero' );
+$start = builderAt( $page['tree'], 'start' );
+$put = builderInsert( $site, [ 'tree' => $page['tree'], 'texts' => $page['texts'], 'slots' => $page['slots'] ], 'hero-full', $start + 2 );
+$copy = builderCopy( $site, $page, 'start' );
+$swapped = $page['tree'];
+[ $swapped[$hero], $swapped[$start] ] = [ $page['tree'][$start], $page['tree'][$hero] ];
+$left = $page['tree'];
+array_splice( $left, $start - 1, 2 );
+$word = [ '/template/page-home/hero/title' => [ 'de_DE' => 'Ein Wort des Inhalts' ] ];
+$builds = [
+	'a block put in'	=> [ 'tree' => $put['tree'], 'texts' => $put['texts'] + $word, 'inserted' => $put['inserted'] ],
+	'a block put in, unsaid' => [ 'tree' => $put['tree'], 'texts' => $put['texts'] + $word ],
+	'a block copied'	=> [ 'tree' => $copy['tree'], 'texts' => $copy['texts'] + $word, 'slots' => $copy['slots'] ],
+	'a block moved'		=> [ 'tree' => $swapped, 'texts' => $word ],
+	'a block left out' => [ 'tree' => $left, 'texts' => $word ],
+];
+
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
+$snapshot = builderSnapshot( $site );
+$answers = [];
+
+foreach( $builds as $label => $data )
+	foreach( [ 'builder/preview', 'builder/save' ] as $action ) {
+
+		[ $status, $body ] = builderCall( $site, $action, [ 'template' => 'page-home', 'base' => $page['stamp'], 'force' => true ] + $data );
+		$answers[$label. ' - '. $action] = $status === 403 && in_array( $body['code'] ?? '', [ 'builder_refused_block', 'builder_refused_free', 'builder_refused_ids' ], true ) === true;
+	}
+
+$unchanged = builderSnapshot( $site ) === $snapshot;
+[ $kept ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $page['tree'], 'texts' => $word, 'base' => $page['stamp'] ] );
+
+check( 'the content step puts no block in, copies none, moves none and leaves none out - saved or drawn, with the block said to be one or not, with a word of its own in the same request - and nothing is written',
+	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && $unchanged === true && count( $answers ) === 10 );
+// the words of a block put in or copied are not a way in either: the same page with the same blocks and a block said to be put in - or a slot said to be a copy - is no content
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
+$snapshot = builderSnapshot( $site );
+$said = [
+	'a block said to be put in' => [ 'tree' => $page['tree'], 'texts' => $word, 'inserted' => $put['inserted'] ],
+	'a slot said to be a copy' => [ 'tree' => $page['tree'], 'texts' => $word, 'slots' => [ '/template/page-home/hero-9/background' => '/template/page-home/hero/background' ] ],
+];
+$answers = [];
+
+foreach( $said as $label => $data )
+	foreach( [ 'builder/preview', 'builder/save' ] as $action ) {
+
+		[ $status, $body ] = builderCall( $site, $action, [ 'template' => 'page-home', 'base' => $page['stamp'], 'force' => true ] + $data );
+		$answers[$label. ' - '. $action] = $status === 403 && ( $body['code'] ?? '' ) === 'builder_refused_block';
+	}
+
+$unchanged = builderSnapshot( $site ) === $snapshot;
+
+check( 'a block that the request says is put in, or a slot that it says is a copy, is refused for the content step even where the tree is the old one to the byte: nothing is written',
+	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && count( $answers ) === 4 && $unchanged === true );
+
+check( 'and the same page with the same blocks takes the word of the content step', $kept === 200 && ( builderWords( $site, '/template/page-home/hero/title' )['de_DE'] ?? '' ) === 'Ein Wort des Inhalts' );
+
+// the last state is the build of the page as well: a state that a design step kept, with blocks the page does not have, is not brought back by the content step
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+[ $made ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $copy['tree'], 'texts' => $copy['texts'], 'slots' => $copy['slots'], 'base' => $page['stamp'] ] );
+[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
+$snapshot = builderSnapshot( $site );
+[ $restored, $why ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-home', 'base' => $page['stamp'] ] );
+$unchanged = builderSnapshot( $site ) === $snapshot;
+
+check( 'a last state that the design step kept - with a block less - is not brought back by the content step: the build of the page is not its to change, and nothing is written', $made === 200 && $restored === 403 && ( $why['code'] ?? '' ) === 'builder_refused_block' && $unchanged === true );
+
+// the library of the blocks is offered from the design step up: the content step has nothing to put in, so it is shown nothing of it
+$library = [];
+
+foreach( [ 'builder/blocks' => [], 'builder/block' => [ 'key' => 'hero-full' ], 'builder/tile' => [ 'template' => 'page-home', 'key' => 'hero-full' ] ] as $action => $data )
+	$library[$action] = builderCall( $site, $action, $data )[0];
+
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+$library['design'] = builderCall( $site, 'builder/blocks' )[0];
+
+check( 'the blocks of the library, one block and its tile are the design step\'s: the content step is answered 403 by each, the design step is answered', $library === [ 'builder/blocks' => 403, 'builder/block' => 403, 'builder/tile' => 403, 'design' => 200 ] );
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nH. Insert block\n";
@@ -1151,7 +1253,9 @@ $link = '/template/page-home/'. $ids[0]. '/link';
 \Nino\Text::put( $site, [ $link => [ 'de_DE' => 'page:/elsewhere' ] ] );
 [ , $held ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
 $snapshot = builderSnapshot( $site );
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
 [ $named ] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $held['tree'], 'texts' => [ $link => [ 'de_DE' => $words[$link]['de_DE'] ] ], 'inserted' => [ $ids[0] => 'hero-full' ], 'base' => $held['stamp'], 'force' => true ] );
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
 $linked = ( $held['texts'][$link]['de_DE'] ?? '' ) === 'page:/elsewhere';
 [ $back ] = builderCall( $site, 'builder/restore', [ 'template' => 'page-home', 'base' => $held['stamp'] ] );
 
@@ -1234,14 +1338,20 @@ $tries['a picture slot in the namespace of another page'] = [ $slotsOf, 403, 'ke
 $snapshot = builderSnapshot( $site );
 $answers = [];
 
-foreach( $tries as $label => [ $data, $want, $why ] ) {
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
+$snapshot = builderSnapshot( $site );
+
+foreach( $tries as $label => [ $data ] ) {
 
 	[ $status, $body ] = builderCall( $site, 'builder/save', $data );
-	$answers[$label] = $status === $want && str_ends_with( (string) ( $body['code'] ?? '' ), $why ) === true;
+	$answers[$label] = $status === 403 && str_starts_with( (string) ( $body['code'] ?? '' ), 'builder_' ) === true;
 }
 
-check( 'a new block is the block of its key and nothing else: another tree under a valid key, a key that is none or is a frame\'s, no word of it at all, an id that is not the rule\'s or has words or is a block\'s, a block inside a block and what is not of the namespace are each refused with their word - and nothing is written',
-	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && builderSnapshot( $site ) === $snapshot );
+$unchanged = builderSnapshot( $site ) === $snapshot;
+\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+
+check( 'a block that is put in is the build of the page and no content: whatever the request brings - another tree under a valid key, a key that is none or is a frame\'s, no word of it at all, an id that is not the rule\'s or has words or is a block\'s, a block inside a block and what is not of the namespace are each refused with their word - and nothing is written',
+	array_filter( $answers, static fn( bool $ok ): bool => $ok === false ) === [] && $unchanged );
 
 // a block of the catalogue put in before a block of the same shape is the new one, and the one that was there stays what it was: the old ones are settled first
 $twinAt = builderAt( $page['tree'], 'hero' );
@@ -1382,7 +1492,7 @@ check( 'a block that names a variant the active mix has not got says which one i
 $bandSteps = [];
 $bandBase = (string) file_get_contents( builderFile( $site, 'page-home' ) );
 
-foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' ], 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 'develop' => [ '/*' ] ] as $step => $perms ) {
+foreach( [ 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 'develop' => [ '/*' ] ] as $step => $perms ) {
 
 	builderAccount( $site, 'band-'. $step. '@example.com', $perms );
 	\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $bandBase );
@@ -1401,15 +1511,15 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $bandBase );
 
-check( 'a block of a theme that is not active - the variant its root names is not in the mix - is put in, drawn, saved, copied and taken back for the content, the design and the development alike, and keeps its word',
-	$bandSteps === [ 'content' => [ 200, 200, 200, 200, 1 ], 'design' => [ 200, 200, 200, 200, 1 ], 'develop' => [ 200, 200, 200, 200, 1 ] ] );
+check( 'a block of a theme that is not active - the variant its root names is not in the mix - is put in, drawn, saved, copied and taken back for the design and the development alike, and keeps its word',
+	$bandSteps === [ 'design' => [ 200, 200, 200, 200, 1 ], 'develop' => [ 200, 200, 200, 200, 1 ] ] );
 
 // every block of the starter pages is copied as the panel copies it - the hero reads the name of the contact page by a key of the kernel, which a copy reads too - and the
-// copy is drawn and saved for the content, the design and the development alike
+// copy is drawn and saved for the design and the development alike
 $copyBase = [ 'page-home' => $bandBase, 'page-contact' => (string) file_get_contents( builderFile( $site, 'page-contact' ) ) ];
 $copied = [];
 
-foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' ], 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 'develop' => [ '/*' ] ] as $step => $perms ) {
+foreach( [ 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 'develop' => [ '/*' ] ] as $step => $perms ) {
 
 	builderAccount( $site, 'copy-'. $step. '@example.com', $perms );
 
@@ -1433,8 +1543,8 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 foreach( $copyBase as $template => $base )
 	\Nino\Filesystem::putFileContent( $site, '/templates/'. $template. '.tpl', $base );
 
-check( 'each block of the starter pages that can be copied is copied - drawn and saved - for the content, the design and the development alike',
-	count( $copied ) >= 9 && array_values( array_unique( array_map( 'json_encode', $copied ) ) ) === [ '[200,200]' ] );
+check( 'each block of the starter pages that can be copied is copied - drawn and saved - for the design and the development alike',
+	count( $copied ) >= 6 && array_values( array_unique( array_map( 'json_encode', $copied ) ) ) === [ '[200,200]' ] );
 
 // each block of the dialog is put in, saved, and then copied as well
 $dialogCopies = [];
@@ -1469,8 +1579,8 @@ $before = builderSnapshot( $site );
 check( 'the key of the kernel that the hero reads is no source for a button that is put in anew elsewhere: a 403 for the source, and nothing is written', $status === 403 && ( $why['code'] ?? '' ) === 'builder_refused_source' && $before === builderSnapshot( $site ) );
 
 // the first block of a page that has none: the call of the header and the call of the footer stand side by side, and the place between them is the one place an empty page has.
-// Every account that may put a block in puts the first one in and takes the last one out - the content step as the design step, the blanket of the site as both - and none of them
-// may put free markup there or a second header: the content step is held to what the design step may do, and the design step to what it could
+// The design step and the blanket of the site put the first block in and take the last one out; the content step does neither - the build of a page is not its - and nobody
+// may put free markup there or a second header
 $empty = "<!-- nino:template-name Home -->\n[template /templates/html-header]\n[template /templates/html-footer]\n";
 $firstAt = static fn( array $tree ): int => (int) array_key_last( array_filter( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'template' ) );
 $firsts = [];
@@ -1479,8 +1589,12 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 
 	builderAccount( $site, 'first-'. $who. '@example.com', $perms );
 	\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $empty );
+
+	// the block is made as the panel makes it, by the one who has the library; the account under test sends it
+	\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
 	[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
 	$put = builderInsert( $site, [ 'tree' => $page['tree'], 'texts' => $page['texts'], 'slots' => $page['slots'] ], 'hero-full', $firstAt( $page['tree'] ) );
+	\Nino\Auth::loginUser( $site, 'first-'. $who. '@example.com', 'correct horse battery staple' );
 	$answers = [];
 
 	// what may not be put between the calls: free markup, a second call of the header
@@ -1500,16 +1614,19 @@ foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' 
 	$between = preg_match( '/html-header\].*id="'. preg_quote( $put['id'], '/' ). '".*html-footer\]/s', $source ) === 1;
 
 	// the last block out: the page is as empty as it was
-	[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
-	$taken = $page['tree'];
-	array_splice( $taken, builderAt( $taken, $put['id'] ), 2 );
-	$answers['last'] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $taken, 'texts' => [], 'base' => $page['stamp'] ] )[0];
+	if( $between === true ) {
+		[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+		$taken = $page['tree'];
+		array_splice( $taken, builderAt( $taken, $put['id'] ), 2 );
+		$answers['last'] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $taken, 'texts' => [], 'base' => $page['stamp'] ] )[0];
+	}
+
 	$firsts[$who] = [ $answers, $kept, $between, trim( (string) file_get_contents( builderFile( $site, 'page-home' ) ) ) === trim( $empty ) ];
 }
 
 foreach( $firsts as $who => $got )
-	check( 'the first block of a page that has none is put in by the account of the '. $who. ' step - drawn, saved between the calls of the header and the footer - and the last one is taken out; free markup and a second header are a 403 and nothing is written',
-		$got === [ [ 'free' => 403, 'twice' => 403, 'preview' => 200, 'first' => 200, 'last' => 200 ], true, true, true ] );
+	check( 'the first block of a page that has none is put in by the account of the '. $who. ' step '. ( $who === 'content' ? '- it is refused, and the page stays as empty as it was -' : '- drawn, saved between the calls of the header and the footer - and the last one is taken out;' ). ' free markup and a second header are a 403 and nothing is written',
+		$got === ( $who === 'content' ? [ [ 'free' => 403, 'twice' => 403, 'preview' => 403, 'first' => 403 ], true, false, true ] : [ [ 'free' => 403, 'twice' => 403, 'preview' => 200, 'first' => 200, 'last' => 200 ], true, true, true ] ) );
 
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $bandBase );
 
@@ -1726,8 +1843,22 @@ builderAccount( $site, 'developer@example.com', [ '/*' ] );
 
 check( 'a place offers what the register says for it, and the call of html to nobody here - not to the account of the whole site either: the column offers the components of the flow - none of them a row or a column -, what the register would not have there is grey with its reason, a call that holds nothing offers nothing, and the blanks are those of the depth',
 	$status === 200 && $names === array_keys( array_filter( $register, static fn( mixed $answer ): bool => $answer === true ) ) && in_array( 'section-col', $names, true ) === false && in_array( 'section-row', $names, true ) === false
-	&& array_column( $rowOffer['offers'], 'name' ) === array_keys( \Nino\Components::offer( $site, Tree::route( $tree, $row ) ?? [], Tree::at( $tree, $row )['c'] ) ) && $nowhere === 400
+	&& array_column( array_filter( $rowOffer['offers'], static fn( array $entry ): bool => $entry['why'] !== 'place' ), 'name' ) === array_keys( \Nino\Components::offer( $site, Tree::route( $tree, $row ) ?? [], Tree::at( $tree, $row )['c'] ) ) && $nowhere === 400
 	&& in_array( 'html', array_column( $offer['offers'], 'name' ), true ) === false && in_array( 'html', array_column( $withHtml['offers'], 'name' ), true ) === false && $offer['blank'] === "\n". str_repeat( "\t", count( $route ) ) );
+
+// the dialog of the components has its own parts - a section, a card, what is general, what a feature brings, the groups, the loops - and each component stands in one of them, told by
+// the one place that says it; what the place does not take is in the dialog all the same, grey, with the word for it - never left out
+$byName = array_column( $offer['offers'], null, 'name' );
+$parts = array_unique( array_column( $offer['offers'], 'section' ) );
+$grey = array_filter( $offer['offers'], static fn( array $entry ): bool => $entry['ok'] === false );
+$loop = array_values( array_filter( $offer['offers'], static fn( array $entry ): bool => ( $offer['schemas'][$entry['name']]['loop'] ?? false ) === true ) );
+$loopSections = array_unique( array_column( $loop, 'section' ) );
+
+check( 'every component of the dialog is in one part of it - the title of a section in the section, the spacer and the button in general, every loop in the loops, an unknown one in general - and what the place does not take is grey with its reason instead of being left out',
+	array_diff( $parts, [ 'section', 'card', 'general', 'features', 'groups', 'loops' ] ) === [] && ( $byName['spacer']['section'] ?? '' ) === 'general' && ( $byName['button']['section'] ?? '' ) === 'general'
+	&& ( $byName['button-group']['section'] ?? '' ) === 'groups' && ( $loop === [] || $loopSections === [ 'loops' ] )
+	&& array_filter( $grey, static fn( array $entry ): bool => $entry['why'] === 'place' && $entry['name'] !== '' ) !== [] && ( $offer['offers'][0]['icon'] ?? null ) !== null
+	&& \Nino\Modules\Builder\Admin::dialogGroup( $site, 'section-title', false )['section'] === 'section' && \Nino\Modules\Builder\Admin::dialogGroup( $site, 'no-such-one', false )['section'] === 'general' && \Nino\Modules\Builder\Admin::dialogGroup( $site, 'whatever', true )['section'] === 'loops' );
 
 // a new component goes in as the panel puts it, laid out like its neighbours, and is the one line of the diff - the words it reads are its own
 builderAccount( $site, 'designer3@example.com', [ '/_admin/builder/manage' ] );
@@ -2117,7 +2248,7 @@ check( 'the notation of the block is the template as it is written and that of a
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nJ. What is measured\n";
 
-\Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
+\Nino\Auth::loginUser( $site, 'content@example.com', 'correct horse battery staple' );
 [ , $open ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
 $t0 = hrtime( true );
 builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );

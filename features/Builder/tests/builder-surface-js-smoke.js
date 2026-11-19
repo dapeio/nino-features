@@ -628,6 +628,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 			id : { type : 'id', label : 'Id', hint : '', default : '' },
 			size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '50', '100' ], optionLabels : null, responsive : true },
 			align : { type : 'choice', label : 'Align', hint : '', default : 'start', options : [ 'start', 'center', 'end' ], optionLabels : { start : 'Start', center : 'Centre', end : 'End' }, responsive : true },
+			hide : { type : 'choice', label : 'Hide', hint : '', default : 'off', options : [ 'off', 'on' ], optionLabels : { off : 'Off', on : 'On' }, responsive : true },
 		} } ),
 		'section-row' : schema( 'Row', 'rows-2', 'none', { variants : [], standard : 'regular', attributes : {
 			id : { type : 'id', label : 'Id', hint : '', default : '' },
@@ -636,10 +637,12 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 			tone : { type : 'choice', label : 'Tone', hint : '', default : 'a', options : [ 'a', 'b', 'c' ], optionLabels : { a : 'A', b : 'B', c : 'C' }, responsive : false },
 		} } ),
 		'section-title' : schema( 'Title', 'heading', 'text', { attributes : { href : { type : 'link', label : 'Target', hint : '', default : '' } } } ),
+		'button' : schema( 'Button', 'mouse-pointer', 'text', { attributes : { href : { type : 'link', label : 'Link', hint : '', default : '' }, target : { type : 'choice', label : 'Open in', hint : '', default : 'self', options : [ 'self', 'blank' ], optionLabels : { self : 'Same window', blank : 'New window' }, responsive : false }, tone : { type : 'choice', label : 'Tone', hint : '', default : 'primary', options : [ 'primary', 'quiet' ], optionLabels : { primary : 'Main', quiet : 'Quiet' }, responsive : false } } } ),
 	};
 	const page = [
 		{ n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
 		{ n : 'section-wrap', s : '', a : { id : 'team' }, c : [ { t : '\n' }, { n : 'section-title', s : '~title', a : {}, c : null }, { t : '\n' }, { n : 'section-row', s : '', a : {}, c : [ { t : '\n' }, { n : 'section-col', s : '', a : { id : 'one' }, c : [] }, { t : '\n' } ] }, { t : '\n' } ] }, { t : '\n' },
+		{ n : 'section-wrap', s : '', a : { id : 'more' }, c : [ { t : '\n' }, { n : 'button', s : '~button', a : { href : 'page:/home' }, c : null }, { t : '\n' } ] }, { t : '\n' },
 		{ n : 'template', s : '/templates/html-footer', a : {}, c : null }, { t : '\n' },
 	];
 	const make = function( level ) {
@@ -698,10 +701,10 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const x = make( 3 );
 		const row = lightbox( x, '3' );
 		const heads = withClass( row.dialog, 'builder-device' );
-		const selects = findAll( row.dialog, function( el ) { return el.tagName === 'SELECT' && /^3:reverse:/.test( el.dataset.key ?? '' ) } );
+		const selects = findAll( row.dialog, function( el ) { return el.tagName === 'INPUT' && /^3:reverse:/.test( el.dataset.key ?? '' ) } );
 		const steps = x.S.undo.length;
 
-		selects[1].value = 'on';
+		selects[1].checked = true;
 		fire( selects[1], 'change' );
 
 		const written = x.S.top[2].c[3].a.reverse === 'off m:on' && x.S.undo.length === steps + 1;
@@ -722,8 +725,8 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		const col = lightbox( x, '3.1' );
 		const picker = withClass( col.dialog, 'builder-width-pick' );
-		const radios = findAll( col.dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes.role === 'radio' } );
-		const keys = function() { return findAll( col.dialog, function( el ) { return el.tagName === 'SELECT' && /^3\.1:(?:size|align):/.test( el.dataset.key ?? '' ) } ).map( function( el ) { return el.dataset.key } ).join() };
+		const radios = findAll( picker[0], function( el ) { return el.tagName === 'BUTTON' && el.attributes.role === 'radio' } );
+		const keys = function() { return findAll( col.dialog, function( el ) { return ( el.tagName === 'SELECT' && /^3\.1:(?:size|align):/.test( el.dataset.key ?? '' ) ) || /^3\.1:(?:size|align):/.test( el.dataset.stepKey ?? '' ) } ).map( function( el ) { return el.dataset.key ?? el.dataset.stepKey } ).join() };
 		const atTablet = keys();
 		const steps = x.S.undo.length;
 		const sized = findAll( col.dialog, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === '3.1:size:m' } )[0];
@@ -745,6 +748,55 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return picker.length === 1 && radios.length === 3 && picture( picker[0] ) === 3 && atTablet === '3.1:size:m,3.1:align:m' && written === true && shown === '010' && atDesktop === '3.1:size:l,3.1:align:l' && coupled === true && x.S.top[2].c[3].c[1].a.size === undefined;
 	} )() );
+
+	check( 'I. 14: in a column the alignment is a strip of pictures for each width - with a first step that gives the width the value of the one below - and hiding is a switch for each width: on is what that width does, a width that writes nothing is quiet and shows the value it has from below in words, a width that writes one has the button that gives it back', ( function() {
+		const x = make( 3 );
+
+		x.S.width = 'tablet';
+
+		const col = lightbox( x, '3.1' );
+		const strip = findAll( col.dialog, function( el ) { return el.dataset !== undefined && el.dataset.stepKey === '3.1:align:m' } )[0];
+		const hide = function() { return findAll( col.dialog, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === '3.1:hide:m' } )[0] };
+		const quiet = withClass( col.dialog, 'builder-width-inherited' ).length === 1 && textOf( col.dialog ).indexOf( W('rows/below-tablet') ) !== -1;
+		const none = findAll( col.dialog, function( el ) { return el.tagName === 'SELECT' && /^3\.1:(?:align|hide):/.test( el.dataset.key ?? '' ) } ).length === 0;
+
+		hide().checked = true;
+		fire( hide(), 'change' );
+
+		const written = x.S.top[2].c[3].c[1].a.hide === 'off m:on' && withClass( col.dialog, 'builder-width-inherited' ).length === 0 && findAll( col.dialog, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-width-back') !== -1 } ).length === 1;
+		const back = findAll( col.dialog, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-width-back') !== -1 } )[0];
+
+		fire( back, 'click' );
+
+		const gone = x.S.top[2].c[3].c[1].a.hide === undefined;
+
+		col.close();
+
+		return strip !== undefined && picture( strip ) === 4 && quiet === true && none === true && written === true && gone === true;
+	} )() );
+
+	check( 'I. 15: where a call opens its link stands with the link - under it, in the section Content, where the link is - and not among the looks of the call: the button has "Open in" under its link and the weight under the looks',
+		( function() {
+			const x = make( 3 );
+
+			x.model.state.box = null;
+			x.model.openProperties( 4, '1', element('button'), function() {} );
+
+			const dialog = x.w.dialogs[x.w.dialogs.length - 1];
+			const has = function( key ) { return findAll( dialog, function( el ) { return el.dataset !== undefined && ( el.dataset.key === key || el.dataset.stepKey === key ) } ).length > 0 };
+			const atLink = has( '1:target' ) && has( '1:href:source' ) !== undefined;
+			const open0 = x.model.state.box.open;
+			const inSource = open0 === 'content' && has( '1:target' ) && has( '1:tone' ) === false;
+
+			x.model.state.box.open = 'look';
+			x.model.state.box.draw();
+
+			const inLook = has( '1:tone' ) && has( '1:target' ) === false;
+
+			fire( dialog, 'close' );
+
+			return atLink === true && inSource === true && inLook === true;
+		} )() );
 
 	check( 'I. 9: "Change source" stands where the value stands - in its column, under it, at the left - at every value alike: the text, the link; one place for every row', ( function() {
 		const x = make( 3 );

@@ -1605,22 +1605,8 @@
 
 					group.appendChild( head );
 
-					const labels = Nino.adminUi.localeRows( { key : 'image-'+ name, label : word('details/image-label'), locales : locales, work : work, values : image.label, required : false, maxLength : 80, onChange : function( locale, text ) { set( function( now ) { now.images[name].label[locale] = text } ) } } );
-					const kind = Nino.adminUi.selectField( { key : 'placeholder-'+ name, label : word('details/placeholder'), help : word('details/placeholder-help'), options : d.placeholders.map( function( one ) { return { value : one, label : word( 'details/ph-'+ one.slice( one.lastIndexOf('/') + 1 ) ) } } ), value : image.placeholder, onChange : function( value ) { set( function( now ) { now.images[name].placeholder = value } ) } } );
-					const wide = Nino.adminUi.numberField( { key : 'width-'+ name, label : word('details/width'), value : image.width, min : 16, max : 4096 } );
-					const high = Nino.adminUi.numberField( { key : 'height-'+ name, label : word('details/height'), value : image.height, min : 16, max : 4096 } );
-
-					[ [ wide, 'width' ], [ high, 'height' ] ].forEach( function( pair ) {
-						pair[0].querySelector('input').addEventListener( 'change', function( event ) {
-
-							const number = Math.max( 16, Math.min( 4096, Math.round( Number( event.target.value ) ) ) );
-
-							event.target.value = String( Number.isNaN( number ) === true ? 16 : number );
-							set( function( now ) { now.images[name][pair[1]] = Number.isNaN( number ) === true ? 16 : number } );
-						} );
-					} );
-
-					[ labels.el, kind, wide, high ].forEach( function( one ) { group.appendChild( one ) } );
+					// The format of a place - the placeholder and the size - is written where the place is: in the lightbox of the component that reads it. This is the list of them
+					group.appendChild( el( 'p', 'nino-admin-hint', word( 'details/image-is', String( image.width ), String( image.height ), word( 'details/ph-'+ String( image.placeholder ).slice( String( image.placeholder ).lastIndexOf('/') + 1 ) ) ) ) );
 
 					// A place no call of the block reads any more is taken away here; one that is read is made where the picture is put in
 					if( lost === true )

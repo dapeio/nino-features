@@ -207,38 +207,6 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The blocks of a page that are blocks of the catalogue that were put in: for each top-level block whose id is not in $taken the first block that \Nino\Blocks
-		 *	offers for a page that it is the tree of, as the rule of the Tree holds a new block to it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$nodes				The tree of the page
-		 *	@param		array			$taken				The ids the page it came from has
-		 *
-		 *	@return 	array											id of the root => the root of the block, laid out
-		 */
-		public static function offers( array &$appData, array $nodes, array $taken ): array {
-
-			$registry = \Nino\Components::components( $appData );
-			$offers = [];
-
-			foreach( $nodes as $node ) {
-
-				$id = isset( $node['n'] ) === true && isset( $registry[$node['n']] ) === true ? (string) ( $node['a'][Tree::idAttribute( $registry[$node['n']] )] ?? '' ) : '';
-
-				if( $id === '' || in_array( $id, $taken, true ) === true )
-					continue;
-
-				foreach( array_keys( \Nino\Blocks::all( $appData ) ) as $key )
-					if( ( $block = self::block( $appData, (string) $key ) ) !== null && Tree::likeBlock( $node, $block['tree'][0], $registry ) === true ) {
-						$offers[$id] = $block['tree'][0];
-						break;
-					}
-			}
-
-			return $offers;
-		}
-
-		/**
 		 *	Which block of the catalogue a block of a page is, for a block that has variants: a block that \Nino\Blocks offers for a page that has variants, whose places the tree has and
 		 *	whose calls it is - the rule of the Tree for a block that was put in, with the attributes left out. It is told from the tree; a request may only name which of the blocks of
 		 *	that form it put in, and only one of them is taken. Where several blocks have the form, the one put in this session is it, else the one whose root has the id of the block of the page - with the number of a copy - else the one whose

@@ -30,9 +30,21 @@ namespace Nino\Modules\Blocks {
 				$list[] = [ 'name' => (string) $name, 'label' => array_map( 'strval', (array) $variant['label'] ), 'set' => $variant['set'] === [] ? new \stdClass() : (object) array_map( static fn( array $attributes ): object => (object) $attributes, $variant['set'] ) ];
 
 			if( $list === [] )
-				$list[] = [ 'name' => 'standard', 'label' => array_fill_keys( $locales, '' ), 'set' => new \stdClass() ];
+				$list[] = [ 'name' => 'standard', 'label' => array_combine( $locales, array_map( [ self::class, 'standard' ], $locales ) ) ?: [], 'set' => new \stdClass() ];
 
 			return $list;
+		}
+
+		/**
+		 *	The word for the first variant where nobody gave it one: the variant that is the template itself
+		 *
+		 *	@param		string		$locale
+		 *
+		 *	@return 	string
+		 */
+		public static function standard( string $locale ): string
+		{
+			return str_starts_with( $locale, 'de' ) === true ? 'Standard' : 'Default';
 		}
 
 		/**
@@ -169,6 +181,10 @@ namespace Nino\Modules\Blocks {
 							break;
 						}
 
+				// The first variant is the template, and a template that nobody named is the standard: it has a word in every language - the word of the standard in that language -,
+				// never none
+				$given = $main !== '';
+
 				if( preg_match( self::NAME, $name ) !== 1 || strlen( $name ) > \Nino\Components::NAME_LENGTH || isset( $names[$name] ) === true )
 					return $fail( 'name', $main === '' ? $name : $main );
 
@@ -177,7 +193,7 @@ namespace Nino\Modules\Blocks {
 
 				foreach( $locales as $locale ) {
 
-					$text = is_string( $labels[$locale] ?? null ) === true && trim( $labels[$locale] ) !== '' ? trim( $labels[$locale] ) : $main;
+					$text = is_string( $labels[$locale] ?? null ) === true && trim( $labels[$locale] ) !== '' ? trim( $labels[$locale] ) : ( $at === 0 && $given === false ? self::standard( $locale ) : $main );
 
 					if( $text === '' || mb_strlen( $text ) > \Nino\Blocks::MAX_NAME || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $text ) === 1 )
 						return $fail( 'label', $name );

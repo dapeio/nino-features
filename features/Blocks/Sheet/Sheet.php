@@ -134,6 +134,13 @@ namespace Nino\Modules\Blocks {
 		}
 
 		/**
+		 *	What a section, a row and a column begin with in a new block: what the blocks of the basis write there, read from their templates - of six sections four stand on the
+		 *	base or the offset ground (the base is written), of seven rows four are narrow, and no column writes more than its width. Padding, gap and the alignments are the schema's
+		 *	own in all of them and are written nowhere, so a new block writes them nowhere either
+		 */
+		public const array BEGIN = [ 'section-wrap' => [ 'ground' => 'base' ], 'section-row' => [ 'width' => 'narrow' ], 'section-col' => [] ];
+
+		/**
 		 *	A block with a root of a section, a row and a column and nothing in them, as Library::block() answers a block
 		 *
 		 *	@param		string		$id						The id of the root
@@ -142,7 +149,7 @@ namespace Nino\Modules\Blocks {
 		 */
 		public static function blank( string $id ): array {
 
-			$root = [ 'n' => Library::PAGE, 's' => '', 'a' => [ 'id' => $id, 'ground' => 'base' ], 'c' => [ [ 'n' => 'section-row', 's' => '', 'a' => [], 'c' => [ [ 'n' => 'section-col', 's' => '', 'a' => [], 'c' => [] ] ] ] ] ];
+			$root = [ 'n' => Library::PAGE, 's' => '', 'a' => [ 'id' => $id ] + self::BEGIN['section-wrap'], 'c' => [ [ 'n' => 'section-row', 's' => '', 'a' => self::BEGIN['section-row'], 'c' => [ [ 'n' => 'section-col', 's' => '', 'a' => self::BEGIN['section-col'], 'c' => [] ] ] ] ] ];
 
 			return [ 'key' => '', 'id' => $id, 'tree' => Tree::strip( \Nino\Markup::layout( [ $root ], 0 ) ), 'known' => [], 'texts' => [ \Nino\Blocks::FALLBACK => [] ], 'slots' => [], 'images' => [] ];
 		}

@@ -125,6 +125,10 @@ namespace Nino\Modules\Builder {
 			if( is_array( $inserted ) === false || count( $inserted ) > self::MAX_KEYS )
 				return [ 'failure' => [ 400, 'the blocks are none', 'builder_block', [], 'blocks' ] ];
 
+			// The content of the blocks of a page is the content step's, the build of the page is not: no block is put in, and none is copied
+			if( $level < \Nino\Modules\Builder::LEVEL_DESIGN && ( $inserted !== [] || empty( $copies ) === false ) )
+				return [ 'failure' => [ 403, 'the page may not be changed like that: block', 'builder_refused_block', [], 'tree' ] ];
+
 			foreach( $inserted as $id => $key ) {
 
 				$block = is_string( $id ) === true && \Nino\Modules\Builder\Tree::isId( $id ) === true && is_string( $key ) === true ? \Nino\Modules\Builder\Library::block( $appData, $key, \Nino\Modules\Builder\Library::wrapOf( $template ) ) : null;
@@ -138,7 +142,7 @@ namespace Nino\Modules\Builder {
 
 			$why = $level >= \Nino\Modules\Builder::LEVEL_DESIGN
 				? \Nino\Modules\Builder\Tree::designed( $appData, $old, $nodes, $registry, $taken, $level >= \Nino\Modules\Builder::LEVEL_DEVELOP )
-				: \Nino\Modules\Builder\Tree::refused( $old, $nodes, $registry, $taken, $offers );
+				: \Nino\Modules\Builder\Tree::refused( $old, $nodes, $registry );
 
 			if( $why !== null )
 				return [ 'failure' => [ 403, 'the page may not be changed like that: '. $why, 'builder_refused_'. $why, [], 'tree' ] ];
