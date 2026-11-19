@@ -3,22 +3,22 @@ declare(strict_types=1);
 
 /**
  *	Nino features
- *	blocks-package-smoke.php	Contract test for the export and the import of own blocks as a package of the catalogue's form:
+ *	themelab-package-smoke.php	Contract test for the export and the import of own blocks as a package of the catalogue's form:
  *
  *															A. the export: the form of the package, what the kernel takes of it, the file and its headers, what is refused
  *															B. the import: the preview that writes nothing, each of the three choices where a key is taken, the first block that fails
  *															C. what may not come in: every archive the reader refuses, the bytes that are held, the right and the token, what a block may not hold
  *															D. there and back: a package that is imported on a second site is the same blocks, file for file
  *
- *	Usage: php features/Blocks/tests/blocks-package-smoke.php
- *				 NINO_ROOT=../nino php features/Blocks/tests/blocks-package-smoke.php
+ *	Usage: php features/Themelab/tests/themelab-package-smoke.php
+ *				 NINO_ROOT=../nino php features/Themelab/tests/themelab-package-smoke.php
  */
 
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
 
-use Nino\Modules\Blocks\Package;
+use Nino\Modules\Themelab\Package;
 
 function packCall( array &$appData, string $action, array $data = [] ): array {
 
@@ -29,7 +29,7 @@ function packCall( array &$appData, string $action, array $data = [] ): array {
 	return [ $status, is_string( $body ) === true ? $body : json_decode( (string) json_encode( $body ), true ), $request ];
 }
 
-/** A site with the components of the kernel and the blocks of the Blocks feature, and an account that may use it */
+/** A site with the components of the kernel and the blocks of the Themelab feature, and an account that may use it */
 function packSite( string $name ): array {
 
 	global $root;
@@ -38,7 +38,7 @@ function packSite( string $name ): array {
 	$site['./nino/filesystem/path'] = $root;
 	$site['/nino/html/assets'] = [];
 	$site['/nino/html/navs'] = [ 'main' ];
-	$site['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Navigation', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Collections', '\\Nino\\Modules\\Builder', '\\Nino\\Modules\\Blocks' ];
+	$site['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Navigation', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Collections', '\\Nino\\Modules\\Builder', '\\Nino\\Modules\\Themelab' ];
 	\Nino\Html::init( $site );
 	\Nino\Features::registerComponents( $site );
 	\Nino\Modules::callModules( $site, 'init' );
@@ -50,7 +50,7 @@ function packSite( string $name ): array {
 		\Nino\Filesystem::putFileContent( $site, '/text/'. $locale. '.php', [ '[[/template/page-home/hero/title]]' => 'Hallo' ] );
 
 	$site['/nino/http/routes'] = [ 'GET://home' => [ 'uri' => '/home', 'body' => '[template /templates/page-home]' ] ];
-	ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
+	ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 
 	return $site;
 }
@@ -112,7 +112,7 @@ function packUpload( array &$appData, string $bytes, string $name = 'blocks.tar.
 	file_put_contents( $tmp, $bytes );
 	$_FILES['file'] = [ 'name' => $name, 'type' => 'application/gzip', 'tmp_name' => $tmp, 'error' => UPLOAD_ERR_OK, 'size' => strlen( $bytes ) ];
 
-	$answer = packCall( $appData, 'blocks/import-check' );
+	$answer = packCall( $appData, 'themelab/import-check' );
 
 	unset( $_FILES['file'] );
 	@unlink( $tmp );
@@ -120,14 +120,14 @@ function packUpload( array &$appData, string $bytes, string $name = 'blocks.tar.
 	return $answer;
 }
 
-$a = packSite( 'blocks-package-a' );
+$a = packSite( 'themelab-package-a' );
 $dirA = ninoSandboxDir( $a ). '/private/blocks';
 $_SESSION = [];
 
 // Two blocks of the project: a copy of a block of the kernel that has variants, a picture place and words in two languages - with a picture of its own - and a new one
-[ , $made ] = packCall( $a, 'blocks/create', [ 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ], 'category' => 'content', 'from' => 'split-image-text' ] );
+[ , $made ] = packCall( $a, 'themelab/create', [ 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ], 'category' => 'content', 'from' => 'split-image-text' ] );
 $first = (string) ( $made['key'] ?? '' );
-[ , $made ] = packCall( $a, 'blocks/create', [ 'name' => [ 'de_DE' => 'Leerer Block', 'en_US' => 'Empty block' ], 'category' => 'intro' ] );
+[ , $made ] = packCall( $a, 'themelab/create', [ 'name' => [ 'de_DE' => 'Leerer Block', 'en_US' => 'Empty block' ], 'category' => 'intro' ] );
 $second = (string) ( $made['key'] ?? '' );
 $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><script>alert(2)</script><rect width="10" height="10" fill="#cccccc" onclick="alert(3)"/></svg>';
 $cleanSvg = (string) \Nino\Images::cleanSvg( $svg );
@@ -138,7 +138,7 @@ file_put_contents( $dirA. '/'. $first. '/images/picture.svg', $svg );
 echo "\nA. The export\n";
 
 $given = [ 'keys' => [ $first, $second ], 'key' => 'my-blocks', 'version' => '1.0.0', 'name' => 'Meine Blocks', 'description' => 'Zwei Blocks.' ];
-[ $status, $bytes, $request ] = packCall( $a, 'blocks/export', $given );
+[ $status, $bytes, $request ] = packCall( $a, 'themelab/export', $given );
 $limits = \Nino\Packages::LIMITS[\Nino\Packages::BLOCKS];
 $files = is_string( $bytes ) === true ? \Nino\Archive::read( $bytes, 'my-blocks', 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] ) : 'none';
 $paths = is_array( $files ) === true ? array_keys( $files ) : [];
@@ -167,14 +167,14 @@ check( 'the download is a file the kernel answers as one (Http::download): the t
 	&& ( $header['X-Content-Type-Options'] ?? '' ) === 'nosniff' && is_string( $bytes ) === true && str_starts_with( $bytes, "\x1f\x8b" ) === true
 	&& ( $header['Content-Length'] ?? '' ) === (string) strlen( $bytes ) && ( $request['/nino/http/response']['raw'] ?? false ) === true );
 
-[ $dry, $said ] = packCall( $a, 'blocks/export', $given + [ 'check' => true ] );
+[ $dry, $said ] = packCall( $a, 'themelab/export', $given + [ 'check' => true ] );
 
 check( 'a request that only asks whether the package can be made says so in the words of the panel: the file, its size, the number of blocks - and sends no file',
 	$dry === 200 && ( $said['file'] ?? '' ) === 'my-blocks-1.0.0.tar.gz' && ( $said['size'] ?? 0 ) === strlen( (string) $bytes ) && ( $said['blocks'] ?? 0 ) === 2 );
 
 // a licence the project has of its own goes in; none is made up
 file_put_contents( $dirA. '/LICENSE.txt', "Meine Lizenz\n" );
-[ , $withLicence ] = packCall( $a, 'blocks/export', $given );
+[ , $withLicence ] = packCall( $a, 'themelab/export', $given );
 $licenced = is_string( $withLicence ) === true ? \Nino\Archive::read( $withLicence, 'my-blocks', 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] ) : [];
 unlink( $dirA. '/LICENSE.txt' );
 
@@ -199,8 +199,8 @@ foreach( [
 	'a description with a key'			=> [ [ 'description' => 'see [[/x]]' ] + $given, 400 ],
 ] as $why => [ $data, $expected ] ) {
 
-	[ $status, $body, $request ] = packCall( $a, 'blocks/export', $data );
-	$refused[$why] = $status === $expected && is_array( $body ) === true && str_starts_with( (string) ( $body['code'] ?? '' ), 'blocks_' ) === true && isset( $request['/nino/http/response']['header']['Content-Disposition'] ) === false;
+	[ $status, $body, $request ] = packCall( $a, 'themelab/export', $data );
+	$refused[$why] = $status === $expected && is_array( $body ) === true && str_starts_with( (string) ( $body['code'] ?? '' ), 'themelab_' ) === true && isset( $request['/nino/http/response']['header']['Content-Disposition'] ) === false;
 }
 
 check( 'what may not go into a package is refused with a sentence of its own and no file: a block that is not the project\'s, a key or a version or a name that is none, a line break or a path in them - nothing of the request is in a header',
@@ -208,10 +208,10 @@ check( 'what may not go into a package is refused with a sentence of its own and
 
 $sayings = [ 'de_DE' => require dirname( __DIR__ ). '/text/de_DE.php', 'en_US' => require dirname( __DIR__ ). '/text/en_US.php' ];
 $codes = array_merge(
-	array_map( static fn( string $code ): string => 'blocks_import_archive_'. $code, [ 'gzip', 'bomb', 'trailing', 'truncated', 'header', 'type', 'pax', 'path', 'depth', 'folder', 'duplicate', 'name', 'count', 'file-size', 'total-size', 'unsupported', 'refused' ] ),
-	array_map( static fn( string $code ): string => 'blocks_package_'. $code, [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-map', 'block', 'preview', 'refused', 'loop' ] ),
-	array_map( static fn( string $code ): string => 'blocks_export_'. $code, [ 'key', 'version', 'name', 'description', 'none', 'unknown', 'read', 'archive', 'large' ] ),
-	[ 'blocks_import_large', 'blocks_import_empty', 'blocks_import_unknown', 'blocks_import_nofile', 'blocks_import_words', 'blocks_package_block_place', 'blocks_package_block_text', 'blocks_package_block_source' ]
+	array_map( static fn( string $code ): string => 'themelab_import_archive_'. $code, [ 'gzip', 'bomb', 'trailing', 'truncated', 'header', 'type', 'pax', 'path', 'depth', 'folder', 'duplicate', 'name', 'count', 'file-size', 'total-size', 'unsupported', 'refused' ] ),
+	array_map( static fn( string $code ): string => 'themelab_package_'. $code, [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-map', 'block', 'preview', 'refused', 'loop' ] ),
+	array_map( static fn( string $code ): string => 'themelab_export_'. $code, [ 'key', 'version', 'name', 'description', 'none', 'unknown', 'read', 'archive', 'large' ] ),
+	[ 'themelab_import_large', 'themelab_import_empty', 'themelab_import_unknown', 'themelab_import_nofile', 'themelab_import_words', 'themelab_package_block_place', 'themelab_package_block_text', 'themelab_package_block_source' ]
 );
 $unsaid = array_filter( $codes, static fn( string $code ): bool => isset( $sayings['de_DE']['[[/_admin/error/'. $code. ']]'], $sayings['en_US']['[[/_admin/error/'. $code. ']]'] ) === false );
 
@@ -220,7 +220,7 @@ check( 'every refusal of the export and the import has its sentence in both lang
 
 echo "\nB. The import\n";
 
-$b = packSite( 'blocks-package-b' );
+$b = packSite( 'themelab-package-b' );
 $dirB = ninoSandboxDir( $b ). '/private/blocks';
 $sandboxB = ninoSandboxDir( $b );
 $exported = (string) $bytes;
@@ -238,7 +238,7 @@ check( 'a package that was chosen is read, checked and shown before anything is 
 	&& ( $byKey[$second]['state'] ?? '' ) === 'free' && packFiles( $dirB ) === [] && ( $held['id'] ?? '' ) === ( $preview['id'] ?? 'x' ) );
 
 // the same keys are taken on the second site: a block of the project of that key, a block of the kernel of that key, and one that is free
-[ , $made ] = packCall( $b, 'blocks/create', [ 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ], 'category' => 'trust' ] );
+[ , $made ] = packCall( $b, 'themelab/create', [ 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ], 'category' => 'trust' ] );
 $takenKey = (string) ( $made['key'] ?? '' );
 $board = static function( array $names ) use ( $files ): array {
 
@@ -268,7 +268,7 @@ $choose = static function( array $items ) use ( &$b, $mixBytes ): array {
 
 	packUpload( $b, (string) $mixBytes );
 	$id = (string) ( $_SESSION[Package::SESSION]['id'] ?? '' );
-	[ $status, $body ] = packCall( $b, 'blocks/import', [ 'id' => $id, 'items' => $items ] );
+	[ $status, $body ] = packCall( $b, 'themelab/import', [ 'id' => $id, 'items' => $items ] );
 
 	return [ $status, array_column( $body['results'] ?? [], 'result', 'key' ), $body ];
 };
@@ -316,7 +316,7 @@ $partial = $board( [ 'aa-new' => $second, 'hero-full' => $second, 'zz-new' => $s
 $partialBytes = \Nino\Archive::write( 'mix', $partial, 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] );
 packUpload( $b, (string) $partialBytes );
 $id = (string) ( $_SESSION[Package::SESSION]['id'] ?? '' );
-[ $stopped, $report ] = packCall( $b, 'blocks/import', [ 'id' => $id, 'items' => [ 'aa-new' => [ 'take' => true ], 'hero-full' => [ 'take' => true, 'how' => 'replace' ], 'zz-new' => [ 'take' => true ] ] ] );
+[ $stopped, $report ] = packCall( $b, 'themelab/import', [ 'id' => $id, 'items' => [ 'aa-new' => [ 'take' => true ], 'hero-full' => [ 'take' => true, 'how' => 'replace' ], 'zz-new' => [ 'take' => true ] ] ] );
 $by = array_column( $report['results'] ?? [], null, 'key' );
 
 check( 'the first block that cannot be written ends the import: the ones before it stay, the one that failed is named with its reason in the words of the panel - a block of the kernel is no block to replace - and the ones behind it are said to be untried and are not written',
@@ -360,7 +360,7 @@ foreach( $archives as $name => $data ) {
 	unset( $_SESSION[Package::SESSION] );
 	$before = $whole( $b );
 	[ $status, $body ] = packUpload( $b, $data );
-	$why[$name] = $status === 400 && is_array( $body ) === true && preg_match( '/^blocks_(?:import|package)_/', (string) ( $body['code'] ?? '' ) ) === 1 && isset( $_SESSION[Package::SESSION] ) === false && $whole( $b ) === $before && packFiles( $dirB ) === $base;
+	$why[$name] = $status === 400 && is_array( $body ) === true && preg_match( '/^themelab_(?:import|package)_/', (string) ( $body['code'] ?? '' ) ) === 1 && isset( $_SESSION[Package::SESSION] ) === false && $whole( $b ) === $before && packFiles( $dirB ) === $base;
 }
 
 check( 'what the reader of archives and the rule of the packages refuse is refused with a sentence of its own, nothing is written and nothing is held - a path that climbs, a link, a file that is too large, too many entries, a php file, an .htaccess, a hidden file, a bomb, an archive that is cut off, no gzip, a file beside the folder - and no rest of the uploaded file is left',
@@ -378,13 +378,13 @@ foreach( [
 	$changed[$block. '/block.'. $part] = $change( $files[$block. '/block.'. $part] );
 	$data = \Nino\Archive::write( 'my-blocks', $changed, 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] );
 	[ $status, $body ] = packUpload( $b, (string) $data );
-	$why[$name] = $status === 400 && in_array( $body['code'] ?? '', [ 'blocks_package_block', 'blocks_package_block_place', 'blocks_package_block_text', 'blocks_package_block_source' ], true ) && isset( $_SESSION[Package::SESSION] ) === false && packFiles( $dirB ) === $base;
+	$why[$name] = $status === 400 && in_array( $body['code'] ?? '', [ 'themelab_package_block', 'themelab_package_block_place', 'themelab_package_block_text', 'themelab_package_block_source' ], true ) && isset( $_SESSION[Package::SESSION] ) === false && packFiles( $dirB ) === $base;
 }
 
 $changed = $files;
 $changed[$second. '/block.tpl'] = "[section-wrap id=\"x\"]\n\t[section-row]\n\t\t[section-col]\n\t\t\t[collection /team]\n\t\t\t[/collection]\n\t\t[/section-col]\n\t[/section-row]\n[/section-wrap]\n";
 [ $status, $body ] = packUpload( $b, (string) \Nino\Archive::write( 'my-blocks', $changed, 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] ) );
-$why['a real type of elements'] = $status === 400 && ( $body['code'] ?? '' ) === 'blocks_package_loop' && packFiles( $dirB ) === $base;
+$why['a real type of elements'] = $status === 400 && ( $body['code'] ?? '' ) === 'themelab_package_loop' && packFiles( $dirB ) === $base;
 
 check( 'a block the editor would not save is not imported: free html, a script in a name, a text that is not its own - refused as the kernel refuses a block - and a block of a real type of elements with the sentence of the editor; nothing is written',
 	array_filter( $why, static fn( bool $ok ): bool => $ok === false ) === [] );
@@ -394,11 +394,11 @@ packUpload( $b, $exported );
 $id = (string) $_SESSION[Package::SESSION]['id'];
 $mine = $_SESSION;
 $_SESSION = [];
-[ $foreign ] = packCall( $b, 'blocks/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
+[ $foreign ] = packCall( $b, 'themelab/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
 $_SESSION = $mine;
-[ $wrong ] = packCall( $b, 'blocks/import', [ 'id' => str_repeat( '0', 32 ), 'items' => [ $first => [ 'take' => true ] ] ] );
+[ $wrong ] = packCall( $b, 'themelab/import', [ 'id' => str_repeat( '0', 32 ), 'items' => [ $first => [ 'take' => true ] ] ] );
 $_SESSION[Package::SESSION]['until'] = time() - 1;
-[ $expired ] = packCall( $b, 'blocks/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
+[ $expired ] = packCall( $b, 'themelab/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
 $gone = isset( $_SESSION[Package::SESSION] ) === false;
 
 check( 'the bytes of a package that was shown are held for the session that sent them and for a quarter of an hour: another session, a key that was not given and a key that has run out are each a 403, and nothing is written',
@@ -408,34 +408,34 @@ check( 'the bytes of a package that was shown are held for the session that sent
 packUpload( $b, $exported );
 $id = (string) $_SESSION[Package::SESSION]['id'];
 ninoUser( $b, 'builder-only@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
-[ $noWrite ] = packCall( $b, 'blocks/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
+[ $noWrite ] = packCall( $b, 'themelab/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
 unset( $_SESSION[Package::SESSION] );
 [ $noUpload ] = packUpload( $b, $exported );
-ninoUser( $b, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
+ninoUser( $b, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 
-check( 'an account that has the Builder and not the right of the Blocks is refused, 403, at the check of a package and at the writing of one - and nothing is written and nothing is held',
+check( 'an account that has the Builder and not the right of Themelab is refused, 403, at the check of a package and at the writing of one - and nothing is written and nothing is held',
 	$noWrite === 403 && $noUpload === 403 && packFiles( $dirB ) === $base && isset( $_SESSION[Package::SESSION] ) === false );
 
 packUpload( $b, $exported );
 $id = (string) $_SESSION[Package::SESSION]['id'];
 $_SESSION[Package::SESSION]['bytes'] = (string) $archives['a php file'];
-[ $altered ] = packCall( $b, 'blocks/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
+[ $altered ] = packCall( $b, 'themelab/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
 packUpload( $b, $exported );
 $id = (string) $_SESSION[Package::SESSION]['id'];
 $_SESSION[Package::SESSION]['bytes'] = (string) $archives['a php file'];
 $_SESSION[Package::SESSION]['sum'] = hash( 'sha256', (string) $archives['a php file'] );
-[ $again, $body ] = packCall( $b, 'blocks/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
+[ $again, $body ] = packCall( $b, 'themelab/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ] ] ] );
 
 check( 'what is written is the package that is read and checked again from the held bytes - no trust in what was shown: bytes that are no longer the ones that were held are a 403, and held bytes that the reader refuses are refused at the write, with nothing written and nothing held',
-	$altered === 403 && $again === 400 && preg_match( '/^blocks_(?:import|package)_/', (string) ( $body['code'] ?? '' ) ) === 1 && packFiles( $dirB ) === $base && isset( $_SESSION[Package::SESSION] ) === false );
+	$altered === 403 && $again === 400 && preg_match( '/^themelab_(?:import|package)_/', (string) ( $body['code'] ?? '' ) ) === 1 && packFiles( $dirB ) === $base && isset( $_SESSION[Package::SESSION] ) === false );
 
 echo "\nD. There and back\n";
 
-$c = packSite( 'blocks-package-c' );
+$c = packSite( 'themelab-package-c' );
 $dirC = ninoSandboxDir( $c ). '/private/blocks';
 packUpload( $c, $exported );
 $id = (string) $_SESSION[Package::SESSION]['id'];
-[ $backStatus, $back ] = packCall( $c, 'blocks/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ], $second => [ 'take' => true ] ] ] );
+[ $backStatus, $back ] = packCall( $c, 'themelab/import', [ 'id' => $id, 'items' => [ $first => [ 'take' => true ], $second => [ 'take' => true ] ] ] );
 
 check( 'a package that is imported on a second, fresh site is the same blocks: every file of each block - the block, its template, its texts in both languages, its variants, its picture place - is the same file, byte for byte, and the picture of its own is the cleaned svg; nothing else is changed where no key and no name is taken',
 	$backStatus === 200 && array_column( $back['results'] ?? [], 'result' ) === [ 'written', 'written' ] && packFiles( $dirC. '/'. $first ) === array_replace( packFiles( $dirA. '/'. $first ), [ 'images/picture.svg' => hash( 'sha256', $cleanSvg ) ] ) && packFiles( $dirC. '/'. $second ) === packFiles( $dirA. '/'. $second ) && count( packFiles( $dirC. '/'. $first ) ) >= 5 );
@@ -447,7 +447,7 @@ check( 'the blocks that came in are the kernel\'s blocks of the project: the var
 	is_array( $again ) === true && array_keys( (array) $again['alternatives'] ) === array_keys( (array) $source['alternatives'] ) && (array) $again['images'] === (array) $source['images'] && (array) ( $again['pictures'] ?? [] ) === (array) ( $source['pictures'] ?? [] ) && (array) $again['pictures'] !== []
 	&& ( \Nino\Blocks::all( $c )[$first]['origin'] ?? '' ) === 'project' );
 
-[ , $reexport ] = packCall( $c, 'blocks/export', [ 'keys' => [ $first, $second ], 'key' => 'my-blocks', 'version' => '1.0.0', 'name' => 'Meine Blocks', 'description' => 'Zwei Blocks.' ] );
+[ , $reexport ] = packCall( $c, 'themelab/export', [ 'keys' => [ $first, $second ], 'key' => 'my-blocks', 'version' => '1.0.0', 'name' => 'Meine Blocks', 'description' => 'Zwei Blocks.' ] );
 $roundtrip = is_string( $reexport ) === true ? \Nino\Archive::read( $reexport, 'my-blocks', 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] ) : 'none';
 
 check( 'and back again: the package made on the second site holds the same files as the one made on the first',
@@ -461,23 +461,23 @@ $nasty = $files;
 $nasty[$first. '/images/picture.svg'] = $svg;
 [ $nastyStatus ] = packUpload( $c, (string) \Nino\Archive::write( 'my-blocks', $nasty, 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] ) );
 $nastyId = (string) ( $_SESSION[Package::SESSION]['id'] ?? '' );
-[ $nastyDone ] = packCall( $c, 'blocks/import', [ 'id' => $nastyId, 'items' => [ $first => [ 'take' => true, 'how' => 'replace' ] ] ] );
+[ $nastyDone ] = packCall( $c, 'themelab/import', [ 'id' => $nastyId, 'items' => [ $first => [ 'take' => true, 'how' => 'replace' ] ] ] );
 $written = (string) file_get_contents( $dirC. '/'. $first. '/images/picture.svg' );
 
 check( 'a svg that a package holds as it came is written as the picture that cleanSvg() rebuilds of it: on the disk of the block there is no script and no event attribute, whatever the package had in it',
 	$nastyStatus === 200 && $nastyDone === 200 && $written === $cleanSvg && $written === $onDisk && preg_match( '/script|onload|onclick|alert/i', $written ) === 0 );
 
 // what the project wrote before the rule was held is cleaned at the next save: the raw file on the first site is replaced when the block is written anew
-[ $cleaned ] = packCall( $a, 'blocks/rename', [ 'key' => $first, 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ] ] );
+[ $cleaned ] = packCall( $a, 'themelab/rename', [ 'key' => $first, 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ] ] );
 
 check( 'a svg that lies in a block of the project as it came is cleaned when the block is written anew: the details of the block replace it by the cleaned picture',
 	$cleaned === 200 && file_get_contents( $dirA. '/'. $first. '/images/picture.svg' ) === $cleanSvg );
 
 $picture = packFiles( $dirC. '/'. $first )['images/picture.svg'] ?? '';
-[ $renamed ] = packCall( $c, 'blocks/rename', [ 'key' => $first, 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ], 'rank' => 7 ] );
+[ $renamed ] = packCall( $c, 'themelab/rename', [ 'key' => $first, 'name' => [ 'de_DE' => 'Mein Split', 'en_US' => 'My split' ], 'rank' => 7 ] );
 $afterRename = packFiles( $dirC. '/'. $first )['images/picture.svg'] ?? 'gone';
-[ , $draft ] = packCall( $c, 'blocks/open', [ 'key' => $first ] );
-[ $savedAgain ] = packCall( $c, 'blocks/save', [ 'key' => $first, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'base' => $draft['stamp'] ] );
+[ , $draft ] = packCall( $c, 'themelab/open', [ 'key' => $first ] );
+[ $savedAgain ] = packCall( $c, 'themelab/save', [ 'key' => $first, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'base' => $draft['stamp'] ] );
 $afterSave = packFiles( $dirC. '/'. $first )['images/picture.svg'] ?? 'gone';
 
 check( 'the picture that a block has of its own stays where the block is written anew: a change of its details and a save of the editor - the slot is read still - leave images/picture.svg as it was, byte for byte',
@@ -519,14 +519,14 @@ $alongside = static function( array &$site, string $template, array $keys, array
 		$out['asked'][$label] = $status;
 	}
 
-	ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
+	ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 
 	return $out;
 };
 
 // the block of the kernel and a copy of it that has a variant of its own, side by side on a page that was saved and is opened anew: each is told to be its own block
-[ , $open ] = packCall( $a, 'blocks/open', [ 'key' => $first ] );
-packCall( $a, 'blocks/save', [ 'key' => $first, 'tree' => $open['tree'], 'texts' => $open['texts'], 'base' => $open['stamp'], 'variants' => $varied ] );
+[ , $open ] = packCall( $a, 'themelab/open', [ 'key' => $first ] );
+packCall( $a, 'themelab/save', [ 'key' => $first, 'tree' => $open['tree'], 'texts' => $open['texts'], 'base' => $open['stamp'], 'variants' => $varied ] );
 $both = $alongside( $a, 'page-both', [ 'split-image-text', $first ], [ 'the copy\'s variant at the block of the kernel' => [ 0, 'quiet' ], 'the copy\'s variant at the copy' => [ 1, 'quiet' ], 'a variant of the kernel at the block of the kernel' => [ 0, 'image-right' ] ] );
 
 check( 'a page that has the block of the kernel and a copy of it that has a variant of its own, saved and opened anew, tells each block to be its own: the one offers its two variants, the copy its three - and the Builder sets the variant of the block that stands there and of no other',
@@ -534,8 +534,8 @@ check( 'a page that has the block of the kernel and a copy of it that has a vari
 	&& $both['asked'] === [ 'the copy\'s variant at the block of the kernel' => 403, 'the copy\'s variant at the copy' => 200, 'a variant of the kernel at the block of the kernel' => 200 ] );
 
 // a copy that is saved under a name from the editor has the id of its own key, too - and stands beside the block of the kernel and the first copy, each told to be its own
-[ , $open ] = packCall( $a, 'blocks/open', [ 'key' => $first ] );
-[ $savedAs, $savedBody ] = packCall( $a, 'blocks/saveas', [ 'key' => $first, 'name' => $label( 'Gesichert', 'Saved' ), 'tree' => $open['tree'], 'texts' => $open['texts'] ] );
+[ , $open ] = packCall( $a, 'themelab/open', [ 'key' => $first ] );
+[ $savedAs, $savedBody ] = packCall( $a, 'themelab/saveas', [ 'key' => $first, 'name' => $label( 'Gesichert', 'Saved' ), 'tree' => $open['tree'], 'texts' => $open['texts'] ] );
 $asKey = (string) ( $savedBody['key'] ?? '' );
 $asId = $asKey === '' ? '' : \Nino\Modules\Builder\Library::block( $a, $asKey )['id'];
 $three = $asKey === '' ? [] : $alongside( $a, 'page-three', [ 'split-image-text', $first, $asKey ], [ 'the variant of the first copy at the second' => [ 2, 'quiet' ] ] );
@@ -544,9 +544,9 @@ check( 'a block that is saved under a name from the editor has the id of its own
 	$savedAs === 200 && $asId === $asKey && $asKey !== $first && count( $three['variants'] ?? [] ) === 3 && array_column( $three['variants'], 0 ) === [ 'split-image-text', $first, $asKey ] );
 
 // a copy that came in by a package has the id of its own key, so that it can be told from the block it is a copy of
-packCall( $c, 'blocks/save', [ 'key' => $first, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'base' => packCall( $c, 'blocks/open', [ 'key' => $first ] )[1]['stamp'], 'variants' => $varied ] );
+packCall( $c, 'themelab/save', [ 'key' => $first, 'tree' => $draft['tree'], 'texts' => $draft['texts'], 'base' => packCall( $c, 'themelab/open', [ 'key' => $first ] )[1]['stamp'], 'variants' => $varied ] );
 packUpload( $c, $exported );
-[ $copyStatus, $copied ] = packCall( $c, 'blocks/import', [ 'id' => (string) $_SESSION[Package::SESSION]['id'], 'items' => [ $first => [ 'take' => true, 'how' => 'copy' ], $second => [ 'take' => false ] ] ] );
+[ $copyStatus, $copied ] = packCall( $c, 'themelab/import', [ 'id' => (string) $_SESSION[Package::SESSION]['id'], 'items' => [ $first => [ 'take' => true, 'how' => 'copy' ], $second => [ 'take' => false ] ] ] );
 $copyKey = (string) ( array_column( $copied['results'] ?? [], 'as', 'key' )[$first] ?? '' );
 $copyId = $copyKey === '' ? '' : \Nino\Modules\Builder\Library::block( $c, $copyKey )['id'];
 $pair = $copyKey === '' ? [] : $alongside( $c, 'page-pair', [ $first, $copyKey ], [ 'the variant of the original at the copy' => [ 1, 'quiet' ], 'the variant of the original at the original' => [ 0, 'quiet' ] ] );
@@ -562,29 +562,29 @@ packUpload( $b, $exported );
 $one = (string) $_SESSION[Package::SESSION]['id'];
 packUpload( $b, $exported );
 $two = (string) $_SESSION[Package::SESSION]['id'];
-[ $replacedOne ] = packCall( $b, 'blocks/import', [ 'id' => $one, 'items' => [ $first => [ 'take' => true ] ] ] );
+[ $replacedOne ] = packCall( $b, 'themelab/import', [ 'id' => $one, 'items' => [ $first => [ 'take' => true ] ] ] );
 
 check( 'one package is held for a session, and a newer preview takes the place of the older: the key of the older is a 403 and nothing is written; and the keys are made of chance - the same bytes sent twice have two keys, and the key is no hash of them',
 	$replacedOne === 403 && $one !== $two && $one !== substr( hash( 'sha256', $exported ), 0, 32 ) && $two !== substr( hash( 'sha256', $exported ), 0, 32 ) && preg_match( '/^[0-9a-f]{32}$/D', $two ) === 1 && $two !== str_repeat( '0', 32 ) && packFiles( $dirB ) === $base );
 
-[ $wrongDrop ] = packCall( $b, 'blocks/import-drop', [ 'id' => str_repeat( 'a', 32 ) ] );
+[ $wrongDrop ] = packCall( $b, 'themelab/import-drop', [ 'id' => str_repeat( 'a', 32 ) ] );
 $stillHeld = isset( $_SESSION[Package::SESSION] ) === true;
-[ $drop ] = packCall( $b, 'blocks/import-drop', [ 'id' => $two ] );
+[ $drop ] = packCall( $b, 'themelab/import-drop', [ 'id' => $two ] );
 
 check( 'a preview that is left is let go of: the key that was held lets go of the bytes, a key that is not held lets go of nothing',
 	$wrongDrop === 200 && $stillHeld === true && $drop === 200 && isset( $_SESSION[Package::SESSION] ) === false );
 
 packUpload( $b, $exported );
 $_SESSION[Package::SESSION]['until'] = time() - 1;
-packCall( $b, 'blocks/list', [ 'tab' => 'project' ] );
+packCall( $b, 'themelab/list', [ 'tab' => 'project' ] );
 $swept = isset( $_SESSION[Package::SESSION] ) === false;
 packUpload( $b, $exported );
-packCall( $b, 'blocks/list', [ 'tab' => 'project' ] );
+packCall( $b, 'themelab/list', [ 'tab' => 'project' ] );
 
 check( 'bytes whose time is out are let go of by the next request of the session, whatever it asks for - and bytes that are still held are not',
 	$swept === true && isset( $_SESSION[Package::SESSION] ) === true );
 
-packCall( $b, 'blocks/import', [ 'id' => (string) $_SESSION[Package::SESSION]['id'], 'items' => [ $second => [ 'take' => true ] ] ] );
+packCall( $b, 'themelab/import', [ 'id' => (string) $_SESSION[Package::SESSION]['id'], 'items' => [ $second => [ 'take' => true ] ] ] );
 
 check( 'what was written lets go of what was held for it: the import ends the hold, whatever it wrote', isset( $_SESSION[Package::SESSION] ) === false );
 
@@ -610,22 +610,22 @@ for( $at = 1; $at <= 100; $at++ ) {
 }
 
 \Nino\Blocks::forget( $crowd );
-[ $crowded, $why ] = packCall( $crowd, 'blocks/export', [ 'keys' => $more, 'key' => 'crowd', 'version' => '1.0.0', 'name' => 'Crowd' ] );
+[ $crowded, $why ] = packCall( $crowd, 'themelab/export', [ 'keys' => $more, 'key' => 'crowd', 'version' => '1.0.0', 'name' => 'Crowd' ] );
 
 check( 'a package that holds more files than a package of blocks may have is not handed out: a hundred blocks of four files are refused by the rule of the catalogue\'s packages, with its sentence and no file',
-	count( packFiles( $dirCrowd ) ) >= 400 && $crowded === 400 && ( $why['code'] ?? '' ) === 'blocks_package_files-many' );
+	count( packFiles( $dirCrowd ) ) >= 400 && $crowded === 400 && ( $why['code'] ?? '' ) === 'themelab_package_files-many' );
 
 echo "\nG. What is said of a refusal\n";
 
 [ $emptyStatus, $empty ] = packUpload( $b, '' );
 
-check( 'an empty file says that it is empty - and not that it is too large', $emptyStatus === 400 && ( $empty['code'] ?? '' ) === 'blocks_import_nofile' );
+check( 'an empty file says that it is empty - and not that it is too large', $emptyStatus === 400 && ( $empty['code'] ?? '' ) === 'themelab_import_nofile' );
 
 $reasons = [];
 
 foreach( [
-	'a call where the kernel does not allow it'	=> [ $second. '/block.tpl', "[section-wrap id=\"x\"]\n[text ~foreign]\n[/section-wrap]\n", 'blocks_package_block_place' ],
-	'words with markup'													=> [ $second. '/block.json', str_replace( 'Empty block', '<b>x</b>', (string) $files[$second. '/block.json'] ), 'blocks_package_block_text' ],
+	'a call where the kernel does not allow it'	=> [ $second. '/block.tpl', "[section-wrap id=\"x\"]\n[text ~foreign]\n[/section-wrap]\n", 'themelab_package_block_place' ],
+	'words with markup'													=> [ $second. '/block.json', str_replace( 'Empty block', '<b>x</b>', (string) $files[$second. '/block.json'] ), 'themelab_package_block_text' ],
 ] as $why => [ $path, $content, $code ] ) {
 
 	$changed = $files;
@@ -644,7 +644,7 @@ foreach( [ 'name' => 'Pack <b>x</b>', 'description' => 'see [[/x]]' ] as $field 
 	$changed = $files;
 	$changed['pack.json'] = json_encode( array_replace( (array) json_decode( $files['pack.json'], true ), [ $field => $text ] ) ). "\n";
 	[ $status, $body ] = packUpload( $b, (string) \Nino\Archive::write( 'my-blocks', $changed, 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] ) );
-	$words[$field] = $status === 400 && ( $body['code'] ?? '' ) === 'blocks_import_words' && isset( $_SESSION[Package::SESSION] ) === false;
+	$words[$field] = $status === 400 && ( $body['code'] ?? '' ) === 'themelab_import_words' && isset( $_SESSION[Package::SESSION] ) === false;
 }
 
 check( 'the import holds the name and the description of a package to the words the export holds them to: markup and a key of the project are refused, nothing is held',

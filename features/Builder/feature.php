@@ -16,8 +16,8 @@ return [
 				'de_DE' => 'Die Vorlage einer Seite wird als Folge von Blocks gelesen, je ein Aufruf auf oberster Ebene; freies HTML und Aufrufe ohne Schema stehen als gesperrte Blocks da.',
 			],
 			'frame-header.tpl' => [
-				'en_US' => 'The header and the footer stand in every page as two quiet rows and are written in the panel Blocks, under Frames; their texts and pictures are written in the page.',
-				'de_DE' => 'Header und Footer stehen in jeder Seite als zwei leise Zeilen und werden im Panel Blocks unter Rahmen geschrieben; ihre Texte und Bilder schreibt man in der Seite.',
+				'en_US' => 'The header and the footer stand in every page as two quiet rows and are written in Themelab, under Frames; their texts and pictures are written in the page.',
+				'de_DE' => 'Header und Footer stehen in jeder Seite als zwei leise Zeilen und werden in Themelab unter Rahmen geschrieben; ihre Texte und Bilder schreibt man in der Seite.',
 			],
 		],
 		'routes' => [
@@ -56,8 +56,8 @@ return [
 				'de_DE' => 'Woher Text, Adresse oder Bild einer Komponente kommen: ein Text, der da ist, oder ein neuer, ein fester Text, eine Seite, eine Adresse, ein Bildplatz oder ein Feld des Elements einer Schleife.',
 			],
 			'Take over into Own blocks …' => [
-				'en_US' => 'In the lightbox of the block, for whoever holds the right of the panel Blocks: the block is kept as a block of the project and the page stays as it is; it is deleted in the panel Blocks.',
-				'de_DE' => 'In der Lightbox des Blocks, für alle, die das Recht des Panels Blocks haben: der Block wird als Block des Projekts abgelegt, die Seite bleibt, wie sie ist; gelöscht wird er im Panel Blocks.',
+				'en_US' => 'In the lightbox of the block, for whoever holds the right of Themelab: the block is kept as a block of the project and the page stays as it is; it is deleted in Themelab.',
+				'de_DE' => 'In der Lightbox des Blocks, für alle, die das Recht von Themelab haben: der Block wird als Block des Projekts abgelegt, die Seite bleibt, wie sie ist; gelöscht wird er im Panel Blocks.',
 			],
 			'New page …' => [
 				'en_US' => 'In the view #builder/@new, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',

@@ -141,6 +141,7 @@ const words = {
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
 	asked.add('new/copy');
+	[ 'header', 'footer' ].forEach( function( key ) { asked.add( 'frame/'+ key ) } );
 	[ 'content', 'design', 'content-edit', 'design-edit' ].forEach( function( key ) { asked.add( 'scope/'+ key ) } );
 	// The failure of a load is the one the shell's panel() asks for by the name of the panel
 	asked.add('error/load');

@@ -358,7 +358,7 @@ echo "\nB. The pages\n";
 [ $status, $list ] = builderCall( $site, 'builder/list' );
 $byTemplate = array_column( (array) ( $list['pages'] ?? [] ), null, 'template' );
 
-check( 'the list names the pages the routes answer with a template of a page - there are none in a sandbox without routes - and no frame: the frames are not pages of this panel', $status === 200 && $byTemplate === [] && isset( $list['frames'] ) === false );
+check( 'the list names the pages the routes answer with a template of a page - there are none in a sandbox without routes - and no frame among the pages - the frames are not pages of this panel: the list tells of them apart, as the two rows of the choice of a block, for the step of the design only (see builder-frames-smoke.php)', $status === 200 && $byTemplate === [] && array_diff( array_column( (array) ( $list['frames'] ?? [] ), 'key' ), [ 'header', 'footer' ] ) === [] );
 
 $site['/nino/http/routes'] = [ 'GET://' => [ 'uri' => '/home', 'body' => '[template /templates/page-home]' ], 'GET://contact' => [ 'uri' => '/contact', 'body' => '[template /templates/page-contact]' ] ];
 [ , $list ] = builderCall( $site, 'builder/list' );
@@ -671,8 +671,8 @@ foreach( $whos as $who => $perms ) {
 }
 
 builderAccount( $site, 'content@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
-check( 'a frame is no page of this panel, for anybody: the list does not tell of it, and every action that names it - open, preview, save, restore, tile, blocks, keys, variant, upload - is a 403 for the content step, the design, the door alone, the old development and the whole site, with nothing written',
-	isset( builderCall( $site, 'builder/list' )[1]['frames'] ) === false && array_unique( $answers ) === [ 403 ] && array_diff_key( builderSnapshot( $site ), [ 'config' => 1 ] ) === array_diff_key( $snapshot, [ 'config' => 1 ] ) );
+check( 'a frame is no page of this panel, for anybody: the list has none among its pages, and every action that names it - open, preview, save, restore, tile, blocks, keys, variant, upload - is a 403 for the content step, the design, the door alone, the old development and the whole site, with nothing written',
+	array_filter( array_column( (array) ( builderCall( $site, 'builder/list' )[1]['pages'] ?? [] ), 'template' ), static fn( string $template ): bool => str_starts_with( $template, 'frame-' ) ) === [] && array_unique( $answers ) === [ 403 ] && array_diff_key( builderSnapshot( $site ), [ 'config' => 1 ] ) === array_diff_key( $snapshot, [ 'config' => 1 ] ) );
 
 // the texts of a frame: the content step - and the design above it - reads and writes the words the frame holds as its own, with the frame's structure and every other key out of reach
 $frameSource = "[header-wrap id=\"header\"]\n\t[header-logo]\n\t[header-actions]\n\t\t[button ~button href=\"page:/contact\"]\n\t[/header-actions]\n[/header-wrap]\n";

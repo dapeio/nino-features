@@ -45,6 +45,9 @@ namespace Nino\Modules\Builder {
 				'builder/unstage'	=> [ self::class, 'apiUnstage' ],
 				'builder/frametexts'	=> [ self::class, 'apiFrameTexts' ],
 				'builder/frametextssave'	=> [ self::class, 'apiFrameTextsSave' ],
+				'builder/framechoices'	=> [ self::class, 'apiFrameChoices' ],
+				'builder/framechoose'	=> [ self::class, 'apiFrameChoose' ],
+				'builder/framerestore'	=> [ self::class, 'apiFrameRestore' ],
 				'builder/create'	=> [ self::class, 'apiCreate' ],
 				'builder/copyof'	=> [ self::class, 'apiCopyOf' ],
 				'builder/duplicate'	=> [ self::class, 'apiDuplicate' ],
@@ -121,6 +124,8 @@ namespace Nino\Modules\Builder {
 				'builder/save'		=> 'Save Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/frametextssave'	=> 'Save Frame Texts '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/restore'	=> 'Restore Last Page State '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
+				'builder/framechoose'	=> 'Choose Frame Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ). ' '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
+				'builder/framerestore'	=> 'Restore Last Frame State '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/upload'	=> 'Upload Page Picture '. Store::shown( \Nino\Admin\Admin::postString( $data, 'uri' ) ),
 				'builder/create'	=> 'Create Page '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
 				'builder/duplicate'	=> 'Duplicate Page '. Store::shown( \Nino\Admin\Admin::postString( $data, 'from' ) ). ' as '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
@@ -150,7 +155,7 @@ namespace Nino\Modules\Builder {
 			// A page is made by the one who may design and may write routes: the list says so, and the action asks again
 			$create = $level >= \Nino\Modules\Builder::LEVEL_DESIGN && \Nino\Auth::checkPermission( $appData, \Nino\Modules\Builder::ROUTES ) === true;
 
-			\Nino\Http::ok( $request, [ 'pages' => $pages, 'create' => $create, 'bridge' => \Nino\Modules\Builder::bridge( $appData ), 'navs' => \Nino\Pages::navKeys( $appData ) ] + self::_view( $appData, $locale, $level ) );
+			\Nino\Http::ok( $request, [ 'pages' => $pages, 'frames' => $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? self::_frames( $appData ) : [], 'create' => $create, 'bridge' => \Nino\Modules\Builder::bridge( $appData ), 'navs' => \Nino\Pages::navKeys( $appData ) ] + self::_view( $appData, $locale, $level ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -354,6 +359,24 @@ namespace Nino\Modules\Builder {
 				self::_fail( $request, self::_changed() );
 				return;
 			}
+
+			self::_commit( $appData, $request, $template, $state, $prepared, $level );
+		}
+
+		/**
+		 *	A draft that was prepared, written: what changed - the template, the words, the slots - is committed under the lock of the store, and the answer is what the screen needs
+		 *	of the state that stands now; a draft that changes nothing is answered as saved and writes nothing
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *	@param		string		$template
+		 *	@param		array			$state				The state the draft was made against
+		 *	@param		array			$prepared			Store::prepare()
+		 *	@param		int				$level
+		 *
+		 *	@return 	void
+		 */
+		private static function _commit( array &$appData, array &$request, string $template, array $state, array $prepared, int $level ): void {
 
 			$changes = Store::changes( $state, $prepared, $template );
 			$target = [ 'source' => $prepared['source'], 'texts' => $state['texts'], 'slots' => array_replace( array_diff_key( $state['slots'], array_flip( $changes['dropSlots'] ) ), $prepared['slots'] ) ];
@@ -1137,6 +1160,215 @@ namespace Nino\Modules\Builder {
 			$now = Store::state( $appData, $template ) ?? $state;
 
 			\Nino\Http::ok( $request, [ 'saved' => true, 'stamp' => Store::stamp( $now ), 'texts' => self::_frameTexts( $appData, $template, $now ) ] );
+		}
+
+		/**
+		 *	The two frames of the site as the list of the pages shows them, for the one who designs: which frame, whether there is a last state to go back to, and where the way to the
+		 *	editor of the frames is open - Themelab is on and the account holds its right
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	array											[ [ key, template, last ] ]
+		 */
+		private static function _frames( array &$appData ): array {
+
+			$out = [];
+
+			foreach( Store::FRAMES as $key => $template )
+				if( ( $state = Store::state( $appData, $template ) ) !== null ) {
+
+					$stamp = Store::stamp( $state );
+
+					// The way back is for the frame the choice wrote: as long as the frame is that one, and no other
+					$out[] = [ 'key' => $key, 'template' => $template, 'stamp' => $stamp, 'last' => self::_last( $appData, $template ), 'undo' => self::_last( $appData, $template ) > 0 && self::_chosen( $appData, $template ) === $stamp ];
+				}
+
+			return $out;
+		}
+
+		// Where the stamp of the frame that a choice wrote is kept, to tell the frame the choice made from one that was changed since
+		private const string CHOSEN = '/data/builder/frame-choice';
+
+		private static function _chosen( array &$appData, string $template ): string {
+
+			$kept = \Nino\Filesystem::getFileContent( $appData, self::CHOSEN. '/'. $template. '.php', [] );
+
+			return is_array( $kept ) === true && is_string( $kept['stamp'] ?? null ) === true ? $kept['stamp'] : '';
+		}
+
+		/**
+		 *	A request for a frame that comes from a list that saw another frame than the one that stands: the stamp it names is not the stamp of the frame now - a save in the editor of
+		 *	the frames came between - so nothing is written, and the answer says so
+		 */
+		private static function _frameChanged(): array {
+			return [ 409, 'the frame was changed since the list was drawn', 'builder_frame_changed', [], '' ];
+		}
+
+		/**
+		 *	The door of the choice of a frame: the panel, the step of the design and a template that is a frame of the site - the choice is the design's and no other step has it,
+		 *	and no other template is a frame
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *
+		 *	@return 	string|null								The template; null after the answer that says why not
+		 */
+		private static function _frameDoor( array &$appData, array &$request ): ?string {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return null;
+
+			if( \Nino\Modules\Builder::level( $appData ) < \Nino\Modules\Builder::LEVEL_DESIGN ) {
+				self::_fail( $request, self::_level() );
+				return null;
+			}
+
+			$template = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' );
+
+			if( in_array( $template, Store::FRAMES, true ) === false ) {
+				self::_fail( $request, [ 400, 'the request names no frame of the site', 'builder_unknown', [], 'template' ] );
+				return null;
+			}
+
+			return $template;
+		}
+
+		/**
+		 *	The blocks a frame can be given: the blocks of its kind - a header or a footer - of every source the kernel lists, the project's own and those of every installed theme, each
+		 *	with where it comes from
+		 */
+		public static function apiFrameChoices( array &$appData, array &$request ): void {
+
+			$template = self::_frameDoor( $appData, $request );
+
+			if( $template === null )
+				return;
+
+			\Nino\Http::ok( $request, Library::all( $appData, Library::wrapOf( $template ) ) );
+		}
+
+		/**
+		 *	A frame given a block of its kind: the block that stands in the frame is the one that is chosen - the kind of it, where it comes from and the rule of the kernel are asked of
+		 *	\Nino\Blocks, never of the request, which names only the frame and the key - and the frame is written as the editor of the frames writes it, with the words of the block
+		 *	under the ids it has in the frame. The last state is kept, so that the choice can be taken back
+		 */
+		public static function apiFrameChoose( array &$appData, array &$request ): void {
+
+			if( self::_frameDoor( $appData, $request ) === null )
+				return;
+
+			$level = \Nino\Modules\Builder::LEVEL_DEVELOP;
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			[ $template, $state, $nodes, $locale ] = $opened;
+			$data = \Nino\Admin\Admin::postData();
+
+			// The frame the list saw is the frame that is replaced: a frame that is another now - a save in the editor came between - is not written over
+			if( is_string( $data['base'] ?? null ) === false || hash_equals( Store::stamp( $state ), $data['base'] ) === false ) {
+				self::_fail( $request, self::_frameChanged() );
+				return;
+			}
+
+			$key = \Nino\Admin\Admin::postString( $data, 'key' );
+			$block = Library::block( $appData, $key, Library::wrapOf( $template ) );
+
+			if( $block === null ) {
+				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );
+				return;
+			}
+
+			$at = null;
+
+			foreach( $nodes as $index => $node )
+				if( isset( $node['n'] ) === true && $at === null )
+					$at = $index;
+
+			if( $at === null ) {
+				self::_fail( $request, [ 409, 'the frame holds no block', 'builder_unreadable', [ Store::shown( $template ), '' ], 'template' ] );
+				return;
+			}
+
+			// The frame stands on the id of the block and nothing else stands in it: the words and the picture places of the block are the frame's under the same ids
+			$tree = $nodes;
+			$tree[$at] = $block['tree'][0];
+			$native = \Nino\Locales::getNativeLocale( $appData );
+			$texts = [];
+			$pictures = [];
+
+			foreach( $block['slots'] as $slot ) {
+
+				$id = $slot['scope'] === '' ? $block['id'] : $block['id']. '-'. $slot['scope'];
+				$place = '/template/'. $template. '/'. $id. '/'. $slot['word'];
+
+				if( $slot['kind'] === 'image' ) {
+
+					$spec = $block['images'][$slot['name']] ?? null;
+
+					if( is_array( $spec ) === true ) {
+
+						$label = (array) ( $spec['label'] ?? [] );
+						$pictures[$place] = [ 'label' => (string) ( $label[$locale] ?? $label['en_US'] ?? ( $label === [] ? $slot['word'] : reset( $label ) ) ), 'width' => (int) $spec['width'], 'height' => (int) $spec['height'] ];
+					}
+
+					continue;
+				}
+
+				foreach( \Nino\Locales::getTextLocales( $appData ) as $code ) {
+
+					$own = $block['texts'][$code][$slot['name']] ?? null;
+					$text = is_string( $own ) === true ? $own : ( $code === $native ? ( $block['texts']['en_US'][$slot['name']] ?? null ) : null );
+
+					if( is_string( $text ) === true )
+						$texts[$place][$code] = $text;
+				}
+			}
+
+			$prepared = Store::prepare( $appData, $template, $state, $tree, $texts, [], [ $block['id'] => $key ], $level, $pictures );
+
+			if( isset( $prepared['failure'] ) === true ) {
+				self::_fail( $request, $prepared['failure'] );
+				return;
+			}
+
+			self::_commit( $appData, $request, $template, $state, $prepared, $level );
+
+			// The frame that the choice wrote, by its stamp: only this frame is one the way back may restore
+			if( ( $request['/nino/http/response']['statusCode'] ?? 200 ) === 200 && ( $now = Store::state( $appData, $template ) ) !== null )
+				\Nino\Filesystem::putFileContent( $appData, self::CHOSEN. '/'. $template. '.php', [ 'stamp' => Store::stamp( $now ) ] );
+		}
+
+		/**
+		 *	The frame as it was before the last choice or save: the last state, put back. The door is the choice's - the design - and the write is the one of the restore of a page, which
+		 *	takes a frame for the length of this call only
+		 */
+		public static function apiFrameRestore( array &$appData, array &$request ): void {
+
+			$template = self::_frameDoor( $appData, $request );
+
+			if( $template === null )
+				return;
+
+			$state = Store::state( $appData, $template );
+			$data = \Nino\Admin\Admin::postData();
+			$stamp = $state === null ? '' : Store::stamp( $state );
+
+			// The way back is for the frame the choice wrote and for the frame the list saw: a frame that was changed since is left as it is
+			if( $stamp === '' || is_string( $data['base'] ?? null ) === false || hash_equals( $stamp, $data['base'] ) === false || self::_chosen( $appData, $template ) !== $stamp ) {
+				self::_fail( $request, self::_frameChanged() );
+				return;
+			}
+
+			$appData[\Nino\Modules\Builder::AS] = true;
+
+			try {
+				self::apiRestore( $appData, $request );
+			}
+			finally {
+				unset( $appData[\Nino\Modules\Builder::AS] );
+			}
 		}
 
 		public static function apiCreate( array &$appData, array &$request ): void {

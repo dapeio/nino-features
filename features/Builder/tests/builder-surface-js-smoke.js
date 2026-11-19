@@ -964,7 +964,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		w.serve();
 
 		const adapter = {
-			panel : 'blocks', level : 'builder-page', template : 'page-home', name : 'Team', slug : 'home', dir : 'ltr', restore : false, sources : 'block', uploads : false,
+			panel : 'themelab', level : 'builder-page', template : 'page-home', name : 'Team', slug : 'home', dir : 'ltr', restore : false, sources : 'block', uploads : false,
 			call : function( action, payload, done, extra ) { w.panel.call( action, payload, done, extra ) },
 			base : function() { return { template : 'page-home', locale : 'de_DE' } },
 			go : function() {}, href : function( parts ) { return w.Nino.admin.router.href( 'builder', parts ) },

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Nino\Modules\Blocks {
+namespace Nino\Modules\Themelab {
 
 	use Nino\Modules\Builder\Library;
 	use Nino\Modules\Builder\Pictures;
@@ -38,7 +38,7 @@ namespace Nino\Modules\Blocks {
 		 *	A language the panel has no text file of has the word in English
 		 *
 		 *	@param		array			$locales
-		 *	@param		string		$key					The key of the word below /_admin/blocks/
+		 *	@param		string		$key					The key of the word below /_admin/themelab/
 		 *
 		 *	@return 	array											locale => word
 		 */
@@ -50,7 +50,7 @@ namespace Nino\Modules\Blocks {
 
 				$file = dirname( __DIR__ ). '/text/'. ( preg_match( '/^[a-z]{2}_[A-Z]{2}$/D', (string) $locale ) === 1 && is_file( dirname( __DIR__ ). '/text/'. $locale. '.php' ) === true ? $locale : \Nino\Blocks::FALLBACK ). '.php';
 				$words = is_file( $file ) === true ? (array) require $file : [];
-				$out[(string) $locale] = (string) ( $words['[[/_admin/blocks/'. $key. ']]'] ?? '' );
+				$out[(string) $locale] = (string) ( $words['[[/_admin/themelab/'. $key. ']]'] ?? '' );
 			}
 
 			return $out;
@@ -97,7 +97,7 @@ namespace Nino\Modules\Blocks {
 		 *
 		 *	@param		array 		&$appData
 		 *
-		 *	@return 	array|null								[ 'key', 'name' ]; null without the feature Themes or a theme in use
+		 *	@return 	array|null								[ 'key', 'name', 'version', 'origin' ] - origin is 'package' for an installed package of a theme, 'feature' for one that comes with Themes; null without the feature Themes or a theme in use
 		 */
 		public static function theme( array &$appData ): ?array {
 
@@ -109,9 +109,11 @@ namespace Nino\Modules\Blocks {
 			if( is_string( $key ) === false || $key === '' )
 				return null;
 
-			$name = \Nino\Modules\Themes\Reader::read( $appData )['themes'][$key]['name'] ?? $key;
+			$found = \Nino\Modules\Themes\Reader::read( $appData )['themes'][$key] ?? [];
+			$dir = (string) ( $found['dir'] ?? '' );
+			$packages = realpath( \Nino\Packages::dir( $appData, \Nino\Packages::THEME, '' ) );
 
-			return [ 'key' => $key, 'name' => $name ];
+			return [ 'key' => $key, 'name' => $found['name'] ?? $key, 'version' => (string) ( $found['version'] ?? '' ), 'origin' => $packages !== false && str_starts_with( $dir, $packages. '/' ) === true ? 'package' : 'feature' ];
 		}
 
 		/**
@@ -331,7 +333,7 @@ namespace Nino\Modules\Blocks {
 			if( $hint === '' )
 				return $nodes;
 
-			$place = str_replace( '[[hint]]', htmlspecialchars( $hint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), rtrim( \Nino\Feature::template( $appData, '/features/Blocks/templates', 'place' ) ) );
+			$place = str_replace( '[[hint]]', htmlspecialchars( $hint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), rtrim( \Nino\Feature::template( $appData, '/features/Themelab/templates', 'place' ) ) );
 
 			return self::_placed( $nodes, $place );
 		}

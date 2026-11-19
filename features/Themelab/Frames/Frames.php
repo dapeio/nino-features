@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Nino\Modules\Blocks {
+namespace Nino\Modules\Themelab {
 
 	use Nino\Modules\Builder\Library;
 	use Nino\Modules\Builder\Store;
@@ -40,11 +40,11 @@ namespace Nino\Modules\Blocks {
 		 */
 		public static function guard( array &$appData, array &$request ): bool {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, \Nino\Modules\Blocks::PERM ) === false )
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, \Nino\Modules\Themelab::PERM ) === false )
 				return false;
 
 			if( in_array( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ), Store::FRAMES, true ) === false ) {
-				\Nino\Http::fail( $request, 400, 'the request names no frame of the site', 'blocks_frame', [], 'template' );
+				\Nino\Http::fail( $request, 400, 'the request names no frame of the site', 'themelab_frame', [], 'template' );
 				return false;
 			}
 

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Nino\Modules\Blocks {
+namespace Nino\Modules\Themelab {
 
 	use Nino\Modules\Builder\Custom;
 
@@ -14,7 +14,7 @@ namespace Nino\Modules\Blocks {
 		public const int HOLD = 900;
 
 		// The key of the session the bytes are held under
-		public const string SESSION = 'nino-blocks-import';
+		public const string SESSION = 'nino-themelab-import';
 
 		// The files a package of blocks may hold, as \Nino\Packages::check() says them - and nothing the check would refuse is asked of the reader
 		private const string ALLOWED = '~^(?:pack\.json|LICENSE\.txt|preview\.webp|[a-z][a-z0-9]*(?:-[a-z0-9]+)*/(?:block\.(?:json|tpl)|text/[a-z]{2}_[A-Z]{2}\.json|images/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)))$~D';
@@ -88,7 +88,7 @@ namespace Nino\Modules\Blocks {
 		}
 
 		private static function _fail( int $status, string $code, array $params = [], string $field = '', string $message = '' ): array {
-			return [ 'failure' => [ $status, $message === '' ? 'the package is not made: '. $code : $message, 'blocks_'. $code, $params, $field ] ];
+			return [ 'failure' => [ $status, $message === '' ? 'the package is not made: '. $code : $message, 'themelab_'. $code, $params, $field ] ];
 		}
 
 		/**

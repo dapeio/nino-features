@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Nino\Modules\Blocks {
+namespace Nino\Modules\Themelab {
 
 	// The variants of a block of the project as the editor has them and as block.json writes them. The editor sends them as a list - name, label in each language, set - of a
 	// block it shows with the template and nothing else; what is written is made here from that and from the tree, never taken over: a set holds places of the tree and
@@ -159,7 +159,7 @@ namespace Nino\Modules\Blocks {
 		 */
 		public static function built( array &$appData, array $root, mixed $given, array $locales, string $work ): array
 		{
-			$fail = static fn( string $code, string $label = '', string $place = '', string $detail = '' ): array => [ 'failure' => [ 400, 'the variants are not taken: '. $code, 'blocks_variant_'. $code, $code === 'place' ? [ $label ] : [ $label, $place, $detail ], 'variants' ] ];
+			$fail = static fn( string $code, string $label = '', string $place = '', string $detail = '' ): array => [ 'failure' => [ 400, 'the variants are not taken: '. $code, 'themelab_variant_'. $code, $code === 'place' ? [ $label ] : [ $label, $place, $detail ], 'variants' ] ];
 
 			if( is_array( $given ) === false || array_is_list( $given ) === false || count( $given ) > \Nino\Blocks::MAX_VARIANTS || $given === [] )
 				return $fail( 'shape' );

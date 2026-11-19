@@ -86,7 +86,7 @@ $sandbox = ninoSandboxDir( $site );
 $site['./nino/filesystem/path'] = $root;
 $site['/nino/html/assets'] = [];
 $site['/nino/html/navs'] = [ 'main' ];
-$site['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Navigation', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Collections', '\\Nino\\Modules\\Builder', '\\Nino\\Modules\\Blocks' ];
+$site['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Navigation', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Collections', '\\Nino\\Modules\\Builder', '\\Nino\\Modules\\Themelab' ];
 \Nino\Html::init( $site );
 \Nino\Features::registerComponents( $site );
 \Nino\Modules::callModules( $site, 'init' );
@@ -99,7 +99,7 @@ foreach( [ 'de_DE', 'en_US' ] as $locale )
 	\Nino\Filesystem::putFileContent( $site, '/text/'. $locale. '.php', [ '[[/template/page-home/hero/title]]' => 'Hallo' ] );
 
 $site['/nino/http/routes'] = [ 'GET://home' => [ 'uri' => '/home', 'body' => '[template /templates/page-home]' ] ];
-ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
+ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 
 // Two blocks of the project that have a picture of their own for their slot - a png, and a svg with a script in it - and one that has none
 $names = [ 'png' => [ 'Mit Bild', 'With picture' ], 'svg' => [ 'Mit Vektor', 'With vector' ], 'plain' => [ 'Ohne Bild', 'Without picture' ] ];
@@ -107,7 +107,7 @@ $keys = [];
 
 foreach( $names as $at => [ $de, $en ] ) {
 
-	[ , $made ] = ownCall( $site, 'blocks/create', [ 'name' => [ 'de_DE' => $de, 'en_US' => $en ], 'category' => 'content', 'from' => 'split-image-text' ] );
+	[ , $made ] = ownCall( $site, 'themelab/create', [ 'name' => [ 'de_DE' => $de, 'en_US' => $en ], 'category' => 'content', 'from' => 'split-image-text' ] );
 	$keys[$at] = (string) ( $made['key'] ?? '' );
 }
 
@@ -223,8 +223,8 @@ check( 'the preview says which files were made for the draft, and the save gives
 	$previewStatus === 200 && ( $preview['staged'] ?? [] ) === [ $got ] && $saved === 200 && $after === $got && \Nino\Images::read( $site, $got ) !== false );
 
 // the block of the library may go: the page keeps the picture
-ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Blocks::PERM ] );
-[ $removed ] = ownCall( $site, 'blocks/remove', [ 'key' => $keys['png'] ] );
+ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
+[ $removed ] = ownCall( $site, 'themelab/remove', [ 'key' => $keys['png'] ] );
 ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
 \Nino\Blocks::forget( $site );
 unset( $site['./nino/blocks/state'] );

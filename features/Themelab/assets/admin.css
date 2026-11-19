@@ -2,7 +2,7 @@
 
 /**
  *	Nino features
- *	Blocks						What the panel of the Blocks needs beyond the design system and the stylesheet of the Builder, whose rules for the list, the picture of a block and the
+ *	Blocks						What Themelab needs beyond the design system and the stylesheet of the Builder, whose rules for the list, the picture of a block and the
  *										editor it shares by the id of its panel: the small picture in a row of the list. Scoped to the id of the panel.
  *
  *	@package					Dape/Nino
@@ -13,7 +13,7 @@
 @layer nino.tool {
 
 /* The picture of a block in a row of the list: as large as the tile of the dialog "Insert block" of the Builder, of which it is the same picture - the row is as high as it is */
-#blocks-app .blocks-tile {
+#themelab-app .themelab-tile {
 	width: 15rem;
 	max-width: 100%;
 }
@@ -21,13 +21,13 @@
 /* A narrow screen has less to spare: the picture is smaller, and the name is broken where it is long and never cut off */
 @media (max-width: 40rem) {
 
-	#blocks-app .blocks-tile {
+	#themelab-app .themelab-tile {
 		width: 9rem;
 	}
 }
 
 /* The head of the column of the pictures is set as the heads of the others, which are the sort buttons of the table: it has none, a picture is not sorted */
-#blocks-app .nino-admin-table thead th[data-key="tile"] {
+#themelab-app .nino-admin-table thead th[data-key="tile"] {
 	padding: var(--nino-admin-space-3) var(--nino-admin-space-5);
 	color: var(--editor-text-secondary);
 	font-size: var(--nino-admin-text-xs);
@@ -37,8 +37,8 @@
 	text-transform: uppercase;
 }
 
-#blocks-app .builder-cell-name,
-#blocks-app .builder-cell-name > * {
+#themelab-app .builder-cell-name,
+#themelab-app .builder-cell-name > * {
 	min-width: 0;
 	max-width: 100%;
 	overflow: visible;
@@ -131,13 +131,13 @@
 }
 
 /* Import: the rows of what a package holds */
-.blocks-import {
+.themelab-import {
 	display: grid;
 	gap: var(--nino-admin-space-4);
 	min-width: 0;
 }
 
-.blocks-import-row {
+.themelab-import-row {
 	display: grid;
 	gap: var(--nino-admin-space-3);
 	padding: var(--nino-admin-space-4);
@@ -146,14 +146,14 @@
 	min-width: 0;
 }
 
-.blocks-import-head {
+.themelab-import-head {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: baseline;
 	gap: var(--nino-admin-space-3);
 }
 
-.blocks-import-facts {
+.themelab-import-facts {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -163,30 +163,30 @@
 }
 
 /* Replacing is the one choice that takes something away: it is red where it is chosen */
-.blocks-import-how.is-replace select {
+.themelab-import-how.is-replace select {
 	border-color: var(--editor-red-ink);
 	color: var(--editor-red-ink);
 }
 
-.blocks-import-warn {
+.themelab-import-warn {
 	margin: 0;
 	color: var(--editor-red-ink);
 }
 
-.blocks-import-results {
+.themelab-import-results {
 	display: grid;
 	gap: var(--nino-admin-space-2);
 	margin: 0;
 	padding-left: var(--nino-admin-space-5);
 }
 
-.blocks-import-results .is-failed {
+.themelab-import-results .is-failed {
 	color: var(--editor-red-ink);
 	font-weight: var(--nino-admin-weight-strong);
 }
 
 /* The box that takes a block over stands before its name */
-.blocks-import-take {
+.themelab-import-take {
 	display: inline-flex;
 	flex-direction: row-reverse;
 	align-items: center;
@@ -195,14 +195,14 @@
 	margin: 0;
 }
 
-.blocks-import-take input {
+.themelab-import-take input {
 	width: 24px;
 	height: 24px;
 	margin: 0;
 	flex: none;
 }
 
-.blocks-import-take > span {
+.themelab-import-take > span {
 	min-width: 0;
 	overflow: visible;
 	text-overflow: clip;
@@ -211,7 +211,7 @@
 }
 
 /* One line for each block of a package: the box before the name, and quietly what the block is */
-.blocks-import-line {
+.themelab-import-line {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -219,8 +219,40 @@
 }
 
 /* The column of the boxes has no head to read: its name is for a screen reader */
-#blocks-app .nino-admin-table thead th[data-key="pick"] {
+#themelab-app .nino-admin-table thead th[data-key="pick"] {
 	overflow: hidden;
 	text-indent: -9999px;
 	white-space: nowrap;
+}
+
+/* The third tab, the theme in use: what it is called and where it comes from as a short list of facts, and what a package of a theme will hold */
+#themelab-app .themelab-info {
+	display: grid;
+	gap: var(--nino-admin-space-5);
+	max-width: 44rem;
+	padding: var(--nino-admin-space-5);
+}
+
+#themelab-app .themelab-facts {
+	display: grid;
+	grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr);
+	gap: var(--nino-admin-space-3) var(--nino-admin-space-5);
+	margin: 0;
+}
+
+#themelab-app .themelab-facts dt {
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
+}
+
+#themelab-app .themelab-facts dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+#themelab-app .themelab-package {
+	display: grid;
+	gap: var(--nino-admin-space-2);
+	margin: 0;
+	padding-left: 1.2em;
 }

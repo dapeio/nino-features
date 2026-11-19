@@ -1295,7 +1295,7 @@
 
 			// The frames are written in the editor of the blocks: the one who holds the right of that panel is taken there from the row
 			if( item.kind === 'frame' && S.bridge === true && ( row.key === '@header' || row.key === '@footer' ) )
-				actions.push( { key : 'blocks', icon : 'external-link', name : word( 'own/frame-edit', row.label ) } );
+				actions.push( { key : 'themelab', icon : 'external-link', name : word( 'own/frame-edit', row.label ) } );
 
 			const held = item.kind === 'block' && S.frame === false ? variantOfBlock( item.at ) : undefined;
 			const named = held === undefined || held.current === null ? undefined : held.items.find( function( entry ) { return entry[0] === held.current } );
@@ -1374,8 +1374,8 @@
 			return;
 		}
 
-		if( key === 'blocks' ) {
-			Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'blocks', [ 'frames', id === '@footer' ? 'footer' : 'header' ] ) } );
+		if( key === 'themelab' ) {
+			Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ 'frames', id === '@footer' ? 'footer' : 'header' ] ) } );
 			return;
 		}
 
@@ -6588,7 +6588,7 @@
 
 	// A request to the editor of the blocks, which has its own right: the answer of the panel as the page asks it
 	const askBlocks = function( action, payload, done ) {
-		Nino.admin.blocks.call( action, payload, done );
+		Nino.admin.themelab.call( action, payload, done );
 	};
 
 	// The block of the project a block of the page is built like, in the editor of the blocks: the work that is not saved is asked about first
@@ -6597,7 +6597,7 @@
 		if( typeof key !== 'string' || key === '' )
 			return;
 
-		Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'blocks', [ key ] ) } );
+		Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ key ] ) } );
 	};
 
 	/**
@@ -8192,7 +8192,7 @@
 
 					// What the page shows until a picture is chosen: one of the placeholders of the kernel
 					if( placeholders.length > 0 )
-						sizes.appendChild( Nino.adminUi.selectField( { key : rel+ ':placeholder:'+ name, label : word('place/placeholder'), help : word('place/placeholder-help'), options : placeholders.map( function( one ) { return { value : one, label : Nino.content.getText( '/_admin/blocks/details/ph-'+ one.slice( one.lastIndexOf('/') + 1 ) ) } } ), value : held.placeholder ?? ( held.width >= held.height * 1.25 ? '/nino/placeholder/landscape' : '/nino/placeholder/mark' ), onChange : function( value ) {
+						sizes.appendChild( Nino.adminUi.selectField( { key : rel+ ':placeholder:'+ name, label : word('place/placeholder'), help : word('place/placeholder-help'), options : placeholders.map( function( one ) { return { value : one, label : Nino.content.getText( '/_admin/themelab/details/ph-'+ one.slice( one.lastIndexOf('/') + 1 ) ) } } ), value : held.placeholder ?? ( held.width >= held.height * 1.25 ? '/nino/placeholder/landscape' : '/nino/placeholder/mark' ), onChange : function( value ) {
 							change( function() { held.placeholder = value } );
 						} } ) );
 
@@ -9546,6 +9546,145 @@
 	};
 
 	/**
+	 *	The block a frame is given, chosen: ONE dialog for the list of the pages and for the editor of the frames of Themelab. The blocks of the kind of the frame - a header or a footer -
+	 *	of every source the server lists, the own ones first and then those of each theme, the source said at each; then the question before the whole frame goes. What is done with the
+	 *	choice is the caller's: the list writes the frame, the editor puts the block into its draft
+	 *
+	 *	@param		{Object}		options
+	 *	@param		{string}		options.name					What the frame is called: "Header"
+	 *	@param		{Element}		options.opener				What opened it: the focus returns there
+	 *	@param		{Function}	options.load					load( done ) - asks the server for the blocks of the kind of the frame; done( status, response )
+	 *	@param		{Function}	options.fail					fail( status, response ) - a request that was refused
+	 *	@param		{Function}	options.none					none() - there is no block for the frame
+	 *	@param		{Function}	options.apply					apply( key, entry ) - the block that was chosen and confirmed
+	 */
+	const chooseFrameBlock = function( options ) {
+
+		options.load( function( status, response ) {
+
+			if( status !== 200 ) {
+				options.fail( status, response );
+				return;
+			}
+
+			const sourceOf = function( entry ) { return entry.own === true ? '' : localized( ( entry.origin ?? {} ).label ) };
+			const entries = response.blocks.filter( function( entry ) { return entry.off === null || entry.off === undefined } ).sort( function( one, other ) {
+				return ( one.own === true ? 0 : 1 ) - ( other.own === true ? 0 : 1 ) || sourceOf( one ).localeCompare( sourceOf( other ) ) || localized( one.name ).localeCompare( localized( other.name ) );
+			} );
+
+			if( entries.length === 0 ) {
+				options.none();
+				return;
+			}
+
+			Nino.adminUi.pickDialog( {
+				title		: word('frame/choose'),
+				message	: word('frame/pick-note'),
+				items		: entries.map( function( entry ) {
+
+					const from = entry.own === true ? word('frame/own') : sourceOf( entry );
+					const text = localized( entry.description );
+
+					return { value : entry.key, label : localized( entry.name ), description : from+ ( text === '' ? '' : ' - '+ text ) };
+				} ),
+				cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
+				opener	: options.opener,
+				onChoose	: function( key ) {
+
+					const entry = entries.find( function( candidate ) { return candidate.key === key } );
+
+					// The whole frame goes: it is asked, and it can be taken back
+					Nino.adminUi.confirm( 'destructive', {
+						title		: word('frame/confirm-title'),
+						message	: word( 'frame/confirm-message', options.name, localized( entry.name ) ),
+						yes			: word('frame/confirm-yes'),
+						no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+						kind		: 'danger',
+						opener	: options.opener,
+						onChoose : function( ok ) {
+
+							if( ok === true )
+								options.apply( key, entry );
+						},
+					} );
+				},
+			} );
+		} );
+	};
+
+	// The two frames in the list of the pages, for the one who designs: each a row with the choice of its block, the way back to what it was, and - where Themelab is on and the account may
+	// use it - the way to its editor. A frame is changed here by being given another block of its kind; what is built in it is built in Themelab
+	const framesList = function( data ) {
+
+		// A frame that was changed since the list was drawn - in the editor of the frames - is not written over: the list is drawn again and says so
+		const frameFailed = function( status, response ) {
+
+			if( status === 409 && ( response ?? {} ).code === 'builder_frame_changed' ) {
+				Nino.adminUi.say( word('frame/changed') );
+				Nino.admin.builder.reload();
+				return;
+			}
+
+			listFail( status, response, '/_admin/builder/error/frame' );
+		};
+
+		const rows = data.frames.map( function( frame ) {
+
+			const name = word( 'frame/'+ frame.key );
+			const actions = [];
+
+			actions.push( Nino.adminUi.button( word('frame/choose'), function( event ) {
+
+				clearFail();
+				chooseFrameBlock( {
+					name : name,
+					opener : event.currentTarget,
+					load : function( done ) { Nino.admin.builder.call( 'framechoices', { template : frame.template, locale : Nino.admin.workLocale.current }, done ) },
+					fail : frameFailed,
+					none : function() { Nino.adminUi.say( word('frame/none') ) },
+					apply : function( key, entry ) {
+
+						Nino.admin.builder.call( 'framechoose', { template : frame.template, key : key, base : frame.stamp, locale : Nino.admin.workLocale.current }, function( status, response ) {
+
+							if( status !== 200 ) {
+								frameFailed( status, response );
+								return;
+							}
+
+							Nino.adminUi.say( word( 'frame/chosen', name, localized( entry.name ) ) );
+							Nino.admin.builder.reload();
+						} );
+					},
+				} );
+			}, { small : true, name : word( 'frame/choose-of', name ) } ) );
+
+			if( frame.undo === true )
+				actions.push( Nino.adminUi.button( word('frame/undo'), function() {
+
+					Nino.admin.builder.call( 'framerestore', { template : frame.template, base : frame.stamp, locale : Nino.admin.workLocale.current }, function( status, response ) {
+
+						if( status !== 200 ) {
+							frameFailed( status, response );
+							return;
+						}
+
+						Nino.adminUi.say( word( 'frame/undone', name ) );
+						Nino.admin.builder.reload();
+					} );
+				}, { small : true, name : word( 'frame/undo-of', name ) } ) );
+
+			if( data.bridge === true )
+				actions.push( Nino.adminUi.button( word('frame/themelab'), function() {
+					Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ 'frames', frame.key ] ) } );
+				}, { small : true, name : word( 'frame/themelab-of', name ) } ) );
+
+			return { key : frame.key, title : name, detail : word('frame/hint'), actions : actions };
+		} );
+
+		return Nino.adminUi.list( rows, { title : word('frame/title'), level : 2 } );
+	};
+
+	/**
 	 *	The question before a page is deleted, from the answer of the server (uses): the page with its address, and where others read words or pictures of it or link to it,
 	 *	who they are - the readers and the pages that link, each at most LISTED, the rest counted. A leftover that has no address is named by its template
 	 *
@@ -9722,6 +9861,10 @@
 			} );
 		}
 
+		// The frames of the site: the header and the footer, for the one who designs
+		if( data.frames.length > 0 )
+			holder.appendChild( framesList( data ) );
+
 		if( data.create === true ) {
 
 			N.button = makeButton('builder-new-page');
@@ -9783,6 +9926,9 @@
 			open : openSheet, close : closeSheet, view : build, properties : openProperties, pick : pickComponent, hold : holdProperties, paintOwn : paintOwn, source : openSource, change : change, undo : undo, redo : redo, save : save,
 			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, replace : replaceFrame, reshape : reshape, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
 		},
+
+		// The dialog that gives a frame its block, for Themelab's editor of the frames: see chooseFrameBlock()
+		chooseFrame : chooseFrameBlock,
 
 		go : function( parts, options ) {
 

@@ -1,88 +1,88 @@
 <?php
 declare(strict_types=1);
 
-namespace Nino\Modules\Blocks {
+namespace Nino\Modules\Themelab {
 
 	use Nino\Modules\Builder\Custom;
 	use Nino\Modules\Builder\Library;
 	use Nino\Modules\Builder\Tree;
 
 	// The API of the workbench for the blocks of the project, and the panel that draws its answers (assets/admin.js). Every action guards itself with the right
-	// /_admin/blocks/manage, and so does the entry in the rail: an account without it has no panel. Only a block of the project is written or taken away
+	// /_admin/themelab/manage, and so does the entry in the rail: an account without it has no panel. Only a block of the project is written or taken away
 	//
-	//	blocks/list			the blocks of a source - the project, or the theme in use - and what the dialog of a new block offers to begin with
-	//	blocks/open			one block as a sheet of the editor: its tree between the frame of the site, its words and its slots, its stamp
-	//	blocks/preview	a draft of the sheet as a token, the query that names it and the address of the page it is drawn on
-	//	blocks/save			the sheet over the block of the project it was opened from, after the stamp it was opened with - with the details of the block and its variants, which the
+	//	themelab/list			the blocks of a source - the project, or the theme in use - and what the dialog of a new block offers to begin with
+	//	themelab/open			one block as a sheet of the editor: its tree between the frame of the site, its words and its slots, its stamp
+	//	themelab/preview	a draft of the sheet as a token, the query that names it and the address of the page it is drawn on
+	//	themelab/save			the sheet over the block of the project it was opened from, after the stamp it was opened with - with the details of the block and its variants, which the
 	//							server builds block.json from itself and the kernel's \Nino\Blocks::validate() has the last word on
-	//	blocks/saveas		the sheet as a new block of the project under the key its name makes
-	//	blocks/create		a new block of the project: with a section, a row and a column, or the copy of any block of the library
-	//	blocks/duplicate	a block of the list as a new block of the project, with a name of its own
-	//	blocks/rename		the details of a block of the project - name and description in each language, category, rank - without the sheet; the key stays
-	//	blocks/remove		a block of the project taken away
-	//	blocks/export		own blocks as a package of the catalogue's form, checked by the rule of its packages, and handed over as a file to save
-	//	blocks/import-check	a package that was chosen, read and checked, and what is in it - nothing is written; the bytes are held for this session
-	//	blocks/import		the blocks of that package that were chosen, written as own blocks, each the way the editor saves one
-	//	blocks/import-drop	the bytes that are held for a preview that was left: let go of
-	//	blocks/offer		what the register offers at a place of the tree of the sheet
-	//	blocks/notation	the notation of the block and of a component, as the template has them written
-	//	blocks/keys			the fields and the types a loop of the sheet is told by - and nothing of the texts or the pictures of the site, which a block does not read
-	//	blocks/frames		the frames of the site, header and footer
-	//	blocks/frame-<x>	the actions of the editor, for a frame: the code of the Builder, after the right of this panel
-	//	blocks/adopt		a block of a page as a block of the project, the page unchanged
-	//	blocks/tile			a draft of a page with one block in it, for the small picture of the block in the list
+	//	themelab/saveas		the sheet as a new block of the project under the key its name makes
+	//	themelab/create		a new block of the project: with a section, a row and a column, or the copy of any block of the library
+	//	themelab/duplicate	a block of the list as a new block of the project, with a name of its own
+	//	themelab/rename		the details of a block of the project - name and description in each language, category, rank - without the sheet; the key stays
+	//	themelab/remove		a block of the project taken away
+	//	themelab/export		own blocks as a package of the catalogue's form, checked by the rule of its packages, and handed over as a file to save
+	//	themelab/import-check	a package that was chosen, read and checked, and what is in it - nothing is written; the bytes are held for this session
+	//	themelab/import		the blocks of that package that were chosen, written as own blocks, each the way the editor saves one
+	//	themelab/import-drop	the bytes that are held for a preview that was left: let go of
+	//	themelab/offer		what the register offers at a place of the tree of the sheet
+	//	themelab/notation	the notation of the block and of a component, as the template has them written
+	//	themelab/keys			the fields and the types a loop of the sheet is told by - and nothing of the texts or the pictures of the site, which a block does not read
+	//	themelab/frames		the frames of the site, header and footer
+	//	themelab/frame-<x>	the actions of the editor, for a frame: the code of the Builder, after the right of this panel
+	//	themelab/adopt		a block of a page as a block of the project, the page unchanged
+	//	themelab/tile			a draft of a page with one block in it, for the small picture of the block in the list
 	class Admin {
 
 		// The size of a picture slot that is made without one: width and height of a picture of a page
 		private const array PICTURE = [ 1200, 800 ];
 
 		public static function perm(): string {
-			return \Nino\Modules\Blocks::PERM;
+			return \Nino\Modules\Themelab::PERM;
 		}
 
 		public static function actions(): array {
 
 			return [
-				'blocks/list'			=> [ self::class, 'apiList' ],
-				'blocks/open'			=> [ self::class, 'apiOpen' ],
-				'blocks/preview'	=> [ self::class, 'apiPreview' ],
-				'blocks/save'			=> [ self::class, 'apiSave' ],
-				'blocks/saveas'		=> [ self::class, 'apiSaveAs' ],
-				'blocks/create'		=> [ self::class, 'apiCreate' ],
-				'blocks/duplicate'	=> [ self::class, 'apiDuplicate' ],
-				'blocks/rename'		=> [ self::class, 'apiRename' ],
-				'blocks/remove'		=> [ self::class, 'apiRemove' ],
-				'blocks/offer'		=> [ self::class, 'apiOffer' ],
-				'blocks/notation'	=> [ self::class, 'apiNotation' ],
-				'blocks/keys'			=> [ self::class, 'apiKeys' ],
-				'blocks/tile'			=> [ self::class, 'apiTile' ],
-				'blocks/picture'	=> [ self::class, 'apiPicture' ],
-				'blocks/picture-drop'	=> [ self::class, 'apiPictureDrop' ],
-				'blocks/picture-show'	=> [ self::class, 'apiPictureShow' ],
-				'blocks/frames'		=> [ self::class, 'apiFrames' ],
-				'blocks/adopt'		=> [ self::class, 'apiAdopt' ],
-				'blocks/export'		=> [ self::class, 'apiExport' ],
-				'blocks/import-check'	=> [ self::class, 'apiImportCheck' ],
-				'blocks/import'		=> [ self::class, 'apiImport' ],
-				'blocks/import-drop'	=> [ self::class, 'apiImportDrop' ],
-				'blocks/frame-open'	=> [ self::class, 'apiFrameOpen' ],
-				'blocks/frame-preview'	=> [ self::class, 'apiFramePreview' ],
-				'blocks/frame-save'	=> [ self::class, 'apiFrameSave' ],
-				'blocks/frame-restore'	=> [ self::class, 'apiFrameRestore' ],
-				'blocks/frame-blocks'	=> [ self::class, 'apiFrameBlocks' ],
-				'blocks/frame-block'	=> [ self::class, 'apiFrameBlock' ],
-				'blocks/frame-keys'	=> [ self::class, 'apiFrameKeys' ],
-				'blocks/frame-variant'	=> [ self::class, 'apiFrameVariant' ],
-				'blocks/frame-offer'	=> [ self::class, 'apiFrameOffer' ],
-				'blocks/frame-notation'	=> [ self::class, 'apiFrameNotation' ],
-				'blocks/frame-upload'	=> [ self::class, 'apiFrameUpload' ],
-				'blocks/frame-unstage'	=> [ self::class, 'apiFrameUnstage' ],
+				'themelab/list'			=> [ self::class, 'apiList' ],
+				'themelab/open'			=> [ self::class, 'apiOpen' ],
+				'themelab/preview'	=> [ self::class, 'apiPreview' ],
+				'themelab/save'			=> [ self::class, 'apiSave' ],
+				'themelab/saveas'		=> [ self::class, 'apiSaveAs' ],
+				'themelab/create'		=> [ self::class, 'apiCreate' ],
+				'themelab/duplicate'	=> [ self::class, 'apiDuplicate' ],
+				'themelab/rename'		=> [ self::class, 'apiRename' ],
+				'themelab/remove'		=> [ self::class, 'apiRemove' ],
+				'themelab/offer'		=> [ self::class, 'apiOffer' ],
+				'themelab/notation'	=> [ self::class, 'apiNotation' ],
+				'themelab/keys'			=> [ self::class, 'apiKeys' ],
+				'themelab/tile'			=> [ self::class, 'apiTile' ],
+				'themelab/picture'	=> [ self::class, 'apiPicture' ],
+				'themelab/picture-drop'	=> [ self::class, 'apiPictureDrop' ],
+				'themelab/picture-show'	=> [ self::class, 'apiPictureShow' ],
+				'themelab/frames'		=> [ self::class, 'apiFrames' ],
+				'themelab/adopt'		=> [ self::class, 'apiAdopt' ],
+				'themelab/export'		=> [ self::class, 'apiExport' ],
+				'themelab/import-check'	=> [ self::class, 'apiImportCheck' ],
+				'themelab/import'		=> [ self::class, 'apiImport' ],
+				'themelab/import-drop'	=> [ self::class, 'apiImportDrop' ],
+				'themelab/frame-open'	=> [ self::class, 'apiFrameOpen' ],
+				'themelab/frame-preview'	=> [ self::class, 'apiFramePreview' ],
+				'themelab/frame-save'	=> [ self::class, 'apiFrameSave' ],
+				'themelab/frame-restore'	=> [ self::class, 'apiFrameRestore' ],
+				'themelab/frame-blocks'	=> [ self::class, 'apiFrameBlocks' ],
+				'themelab/frame-block'	=> [ self::class, 'apiFrameBlock' ],
+				'themelab/frame-keys'	=> [ self::class, 'apiFrameKeys' ],
+				'themelab/frame-variant'	=> [ self::class, 'apiFrameVariant' ],
+				'themelab/frame-offer'	=> [ self::class, 'apiFrameOffer' ],
+				'themelab/frame-notation'	=> [ self::class, 'apiFrameNotation' ],
+				'themelab/frame-upload'	=> [ self::class, 'apiFrameUpload' ],
+				'themelab/frame-unstage'	=> [ self::class, 'apiFrameUnstage' ],
 			];
 		}
 
 		// The entry of the rail, directly behind the Builder's
 		public static function nav(): array {
-			return [ 'blocks', '/_admin/blocks/nav', 62 ];
+			return [ 'themelab', '/_admin/themelab/nav', 62 ];
 		}
 
 		public static function template(): string {
@@ -107,19 +107,19 @@ namespace Nino\Modules\Blocks {
 			$key = static fn( string $name ): string => \Nino\Modules\Builder\Store::shown( \Nino\Admin\Admin::postString( $data, $name ) );
 
 			return match( $action ) {
-				'blocks/save'			=> 'Save Block '. $key( 'key' ),
-				'blocks/picture'	=> 'Upload Block Picture '. $key( 'key' ),
-				'blocks/saveas'		=> 'Save Block As '. $key( 'name' ),
-				'blocks/create'		=> 'Create Block '. $key( 'name' ),
-				'blocks/duplicate'	=> 'Duplicate Block '. $key( 'key' ),
-				'blocks/rename'		=> 'Rename Block '. $key( 'key' ),
-				'blocks/remove'		=> 'Delete Block '. $key( 'key' ),
-				'blocks/export'		=> 'Export Blocks '. $key( 'key' ),
-				'blocks/import'		=> 'Import Blocks',
-				'blocks/adopt'		=> 'Adopt Block '. $key( 'key' ),
-				'blocks/frame-save'	=> 'Save Frame '. $key( 'template' ),
-				'blocks/frame-restore'	=> 'Restore Last Frame State '. $key( 'template' ),
-				'blocks/frame-upload'	=> 'Upload Frame Picture '. $key( 'uri' ),
+				'themelab/save'			=> 'Save Block '. $key( 'key' ),
+				'themelab/picture'	=> 'Upload Block Picture '. $key( 'key' ),
+				'themelab/saveas'		=> 'Save Block As '. $key( 'name' ),
+				'themelab/create'		=> 'Create Block '. $key( 'name' ),
+				'themelab/duplicate'	=> 'Duplicate Block '. $key( 'key' ),
+				'themelab/rename'		=> 'Rename Block '. $key( 'key' ),
+				'themelab/remove'		=> 'Delete Block '. $key( 'key' ),
+				'themelab/export'		=> 'Export Blocks '. $key( 'key' ),
+				'themelab/import'		=> 'Import Blocks',
+				'themelab/adopt'		=> 'Adopt Block '. $key( 'key' ),
+				'themelab/frame-save'	=> 'Save Frame '. $key( 'template' ),
+				'themelab/frame-restore'	=> 'Restore Last Frame State '. $key( 'template' ),
+				'themelab/frame-upload'	=> 'Upload Frame Picture '. $key( 'uri' ),
 				default						=> '',
 			};
 		}
@@ -154,7 +154,7 @@ namespace Nino\Modules\Blocks {
 			$locale = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'locale' );
 
 			if( $locale === '' || in_array( $locale, \Nino\Locales::getTextLocales( $appData ), true ) === false ) {
-				self::_fail( $request, 400, 'the request names no language of the website', 'blocks_language', [], 'locale' );
+				self::_fail( $request, 400, 'the request names no language of the website', 'themelab_language', [], 'locale' );
 				return null;
 			}
 
@@ -171,7 +171,7 @@ namespace Nino\Modules\Blocks {
 			$shell = Sheet::shell( $appData, $locale );
 
 			if( $shell === null )
-				self::_fail( $request, 409, 'the site has no page to draw a block on', 'blocks_shell' );
+				self::_fail( $request, 409, 'the site has no page to draw a block on', 'themelab_shell' );
 
 			return $shell;
 		}
@@ -185,7 +185,7 @@ namespace Nino\Modules\Blocks {
 		private static function _own( array &$appData, array &$request, string $key ): ?string {
 
 			if( strlen( $key ) > \Nino\Components::NAME_LENGTH || preg_match( \Nino\Components::NAME, $key ) !== 1 || ( \Nino\Blocks::all( $appData )[$key]['origin'] ?? '' ) !== 'project' ) {
-				self::_fail( $request, 404, 'there is no such block of the project', 'blocks_unknown', [], 'key' );
+				self::_fail( $request, 404, 'there is no such block of the project', 'themelab_unknown', [], 'key' );
 				return null;
 			}
 
@@ -204,14 +204,14 @@ namespace Nino\Modules\Blocks {
 			$theme = Sheet::theme( $appData );
 
 			if( strlen( $key ) > \Nino\Components::NAME_LENGTH || preg_match( \Nino\Components::NAME, $key ) !== 1 || $listed === null || ( $any === false && (string) $listed['origin'] !== 'project' && ( $theme === null || (string) $listed['origin'] !== $theme['key'] ) ) ) {
-				self::_fail( $request, 404, 'there is no such block', 'blocks_unknown', [], 'key' );
+				self::_fail( $request, 404, 'there is no such block', 'themelab_unknown', [], 'key' );
 				return null;
 			}
 
 			$block = Library::block( $appData, $key );
 
 			if( $block === null )
-				self::_fail( $request, 404, 'there is no such block', 'blocks_unknown', [], 'key' );
+				self::_fail( $request, 404, 'there is no such block', 'themelab_unknown', [], 'key' );
 
 			return $block;
 		}
@@ -241,7 +241,7 @@ namespace Nino\Modules\Blocks {
 				$name = $name === '' ? $main : $name;
 
 				if( $name === '' || mb_strlen( $name ) > \Nino\Blocks::MAX_NAME || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $name ) === 1 ) {
-					self::_fail( $request, 400, 'the name is none', 'blocks_name', [ \Nino\Blocks::MAX_NAME ], $field );
+					self::_fail( $request, 400, 'the name is none', 'themelab_name', [ \Nino\Blocks::MAX_NAME ], $field );
 					return null;
 				}
 
@@ -270,7 +270,7 @@ namespace Nino\Modules\Blocks {
 
 				foreach( $names as $locale => $name )
 					if( is_string( $has[$locale] ?? null ) === true && mb_strtolower( trim( $has[$locale] ), 'UTF-8' ) === mb_strtolower( $name, 'UTF-8' ) ) {
-						self::_fail( $request, 409, 'the name is taken', 'blocks_name_taken', [ $name ], $field );
+						self::_fail( $request, 409, 'the name is taken', 'themelab_name_taken', [ $name ], $field );
 						return false;
 					}
 			}
@@ -299,7 +299,7 @@ namespace Nino\Modules\Blocks {
 		private static function _category( array &$request, string $category ): ?string {
 
 			if( in_array( $category, array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ), true ) === false ) {
-				self::_fail( $request, 400, 'the category is none', 'blocks_category', [], 'category' );
+				self::_fail( $request, 400, 'the category is none', 'themelab_category', [], 'category' );
 				return null;
 			}
 
@@ -312,7 +312,7 @@ namespace Nino\Modules\Blocks {
 		private static function _failed( array &$request, array $failure ): void {
 
 			// The reason the kernel gives for a block it takes for none is told in the sentence: a person reads what to change
-			self::_fail( $request, $failure[0], $failure[1], str_replace( 'builder_own_', 'blocks_', (string) $failure[2] ), $failure[3], (string) $failure[4] );
+			self::_fail( $request, $failure[0], $failure[1], str_replace( 'builder_own_', 'themelab_', (string) $failure[2] ), $failure[3], (string) $failure[4] );
 		}
 
 		/**
@@ -325,7 +325,7 @@ namespace Nino\Modules\Blocks {
 			$reason = \Nino\Blocks::validate( $appData, $key, $parts );
 
 			if( is_string( $reason ) === true ) {
-				self::_fail( $request, 400, 'the block is not valid: '. $reason, 'blocks_invalid', [ $reason ], 'at' );
+				self::_fail( $request, 400, 'the block is not valid: '. $reason, 'themelab_invalid', [ $reason ], 'at' );
 				return null;
 			}
 
@@ -352,7 +352,7 @@ namespace Nino\Modules\Blocks {
 			$at = $canonical === null ? null : Sheet::rootAt( $canonical[1] );
 
 			if( $canonical === null || $at === null ) {
-				self::_fail( $request, 400, 'the tree is none of a block', 'blocks_tree', [], 'tree' );
+				self::_fail( $request, 400, 'the tree is none of a block', 'themelab_tree', [], 'tree' );
 				return null;
 			}
 
@@ -364,7 +364,7 @@ namespace Nino\Modules\Blocks {
 			$old = Tree::read( $appData, Sheet::source( $appData, $was ) );
 
 			if( Tree::designed( $appData, $old, $canonical[1], $registry, Tree::taken( $old, $registry, [] ), false ) !== null ) {
-				self::_fail( $request, 403, 'the block may not be changed like that', 'blocks_refused', [], 'tree' );
+				self::_fail( $request, 403, 'the block may not be changed like that', 'themelab_refused', [], 'tree' );
 				return null;
 			}
 
@@ -385,10 +385,10 @@ namespace Nino\Modules\Blocks {
 
 			$theme = Sheet::theme( $appData );
 			$asked = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'tab' );
-			$tab = $asked === 'frames' ? 'frames' : ( $asked === 'theme' && $theme !== null ? 'theme' : 'project' );
+			$tab = in_array( $asked, [ 'frames', 'info' ], true ) === true ? $asked : ( $asked === 'theme' && $theme !== null ? 'theme' : 'project' );
 			$blocks = [];
 
-			foreach( $tab === 'frames' ? [] : Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project' ) as $key => $block )
+			foreach( $tab === 'frames' || $tab === 'info' ? [] : Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project' ) as $key => $block )
 				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'description' => $block['description'], 'category' => (string) $block['category'], 'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'variantNames' => array_values( array_map( static fn( array $variant ): array => array_map( 'strval', (array) $variant['label'] ), (array) ( $block['alternatives'] ?? [] ) ) ), 'rank' => (int) $block['rank'] ];
 
 			usort( $blocks, static fn( array $one, array $other ): int => $one['rank'] <=> $other['rank'] ?: strcmp( $one['key'], $other['key'] ) );
@@ -400,7 +400,9 @@ namespace Nino\Modules\Blocks {
 
 			\Nino\Http::ok( $request, [
 				'tab'				=> $tab,
-				'theme'			=> $theme === null ? null : [ 'name' => $theme['name'] ],
+				'theme'			=> $theme === null ? null : [ 'name' => $theme['name'], 'version' => $theme['version'], 'origin' => $theme['origin'] ],
+				// What the project holds of its own, for the page of the theme: the blocks and the frames
+				'counts'		=> [ 'blocks' => count( Sheet::listed( $appData, 'project' ) ), 'frames' => count( Frames::listed( $appData ) ) ],
 				'blocks'		=> $blocks,
 				'frames'		=> Frames::listed( $appData ),
 				'library'		=> $library,
@@ -499,10 +501,10 @@ namespace Nino\Modules\Blocks {
 
 			// The sheet as it is written - the two calls of the frame and the block - with the placeholder of the kernel for each picture that has no file
 			$draft = [ 'template' => $template, 'source' => \Nino\Markup::write(																																																																								Sheet::hinted( $appData, Tree::shown( $sheet['nodes'], $sources, $pictures ), \Nino\Admin\Admin::postString( $data, 'hint' ) ), \Nino\Components::containers( $appData ) ), 'fills' => $fills, 'slots' => new \stdClass(), 'locale' => $locale ];
-			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Blocks::KIND, self::perm(), $draft, \Nino\Admin\Admin::postString( $data, 'token' ) );
+			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Themelab::KIND, self::perm(), $draft, \Nino\Admin\Admin::postString( $data, 'token' ) );
 
 			if( $token === '' ) {
-				self::_fail( $request, 500, 'the preview could not be written', 'blocks_preview' );
+				self::_fail( $request, 500, 'the preview could not be written', 'themelab_preview' );
 				return;
 			}
 
@@ -552,7 +554,7 @@ namespace Nino\Modules\Blocks {
 					$line = $line === '' ? (string) ( $out['names'][$one] ?? reset( $out['names'] ) ) : $line;
 
 					if( mb_strlen( $line ) > \Nino\Blocks::MAX_DESCRIPTION || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $line ) === 1 ) {
-						self::_fail( $request, 400, 'the description is none', 'blocks_description', [ \Nino\Blocks::MAX_DESCRIPTION ], 'description' );
+						self::_fail( $request, 400, 'the description is none', 'themelab_description', [ \Nino\Blocks::MAX_DESCRIPTION ], 'description' );
 						return null;
 					}
 
@@ -573,7 +575,7 @@ namespace Nino\Modules\Blocks {
 			if( array_key_exists( 'rank', $given ) === true ) {
 
 				if( ( is_int( $given['rank'] ) === false && ( is_string( $given['rank'] ) === false || preg_match( '/^\d{1,3}$/D', $given['rank'] ) !== 1 ) ) || (int) $given['rank'] < 0 || (int) $given['rank'] > 999 ) {
-					self::_fail( $request, 400, 'the rank is a number from 0 to 999', 'blocks_rank', [], 'rank' );
+					self::_fail( $request, 400, 'the rank is a number from 0 to 999', 'themelab_rank', [], 'rank' );
 					return null;
 				}
 
@@ -591,7 +593,7 @@ namespace Nino\Modules\Blocks {
 					$text = is_string( $words[$one] ?? null ) === true && trim( $words[$one] ) !== '' ? trim( $words[$one] ) : $main;
 
 					if( $text === '' || mb_strlen( $text ) > \Nino\Blocks::MAX_NAME || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $text ) === 1 ) {
-						self::_fail( $request, 400, 'the label of a picture is none', 'blocks_picture_label', [ (string) $name ], 'images' );
+						self::_fail( $request, 400, 'the label of a picture is none', 'themelab_picture_label', [ (string) $name ], 'images' );
 						return null;
 					}
 
@@ -603,7 +605,7 @@ namespace Nino\Modules\Blocks {
 				$placeholder = is_array( $image ) === true && is_string( $image['placeholder'] ?? null ) === true ? $image['placeholder'] : '';
 
 				if( is_string( $name ) === false || preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D', $name ) !== 1 || is_int( $width ) === false || is_int( $height ) === false || $width < 16 || $width > \Nino\Blocks::MAX_SIDE || $height < 16 || $height > \Nino\Blocks::MAX_SIDE || isset( \Nino\Images::PLACEHOLDERS[$placeholder] ) === false ) {
-					self::_fail( $request, 400, 'a place of a picture is none', 'blocks_picture_place', [ (string) $name ], 'images' );
+					self::_fail( $request, 400, 'a place of a picture is none', 'themelab_picture_place', [ (string) $name ], 'images' );
 					return null;
 				}
 
@@ -677,7 +679,7 @@ namespace Nino\Modules\Blocks {
 
 			foreach( $reads as $place => $number )
 				if( $number > 1 ) {
-					self::_fail( $request, 400, 'two components read one place of the block', 'blocks_place_twice', [ substr( $place, (int) strrpos( $place, '/' ) + 1 ) ], 'tree' );
+					self::_fail( $request, 400, 'two components read one place of the block', 'themelab_place_twice', [ substr( $place, (int) strrpos( $place, '/' ) + 1 ) ], 'tree' );
 					return null;
 				}
 
@@ -760,7 +762,7 @@ namespace Nino\Modules\Blocks {
 
 			// Another session changed the block since it was opened: it is not written over unless force says so
 			if( ( $data['force'] ?? false ) !== true && ( is_string( $data['base'] ?? null ) === false || hash_equals( Sheet::stamp( $appData, $key ), $data['base'] ) === false ) ) {
-				self::_fail( $request, 409, 'the block was changed since it was opened', 'blocks_changed', [], 'key' );
+				self::_fail( $request, 409, 'the block was changed since it was opened', 'themelab_changed', [], 'key' );
 				return;
 			}
 
@@ -810,18 +812,18 @@ namespace Nino\Modules\Blocks {
 
 				// A name is the form the places have - never a path - and a token is the form apiPicture() gives
 				if( preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D', $place ) !== 1 || strlen( $place ) > \Nino\Components::NAME_LENGTH ) {
-					self::_fail( $request, 400, 'the name of the place is none', 'blocks_picture_name', [], 'own' );
+					self::_fail( $request, 400, 'the name of the place is none', 'themelab_picture_name', [], 'own' );
 					return;
 				}
 
 				if( isset( $meta['images'][$place] ) === false || ( $token !== null && $token !== '' && ( is_string( $token ) === false || preg_match( '/^[a-f0-9]{32}\.(?:svg|webp|png|jpg)$/D', $token ) !== 1 ) ) ) {
-					self::_fail( $request, 400, 'the picture of the place is none', 'blocks_picture_own', [ $place ], 'own' );
+					self::_fail( $request, 400, 'the picture of the place is none', 'themelab_picture_own', [ $place ], 'own' );
 					return;
 				}
 
 				// A file that was put aside is the session's that did it and the block's it was for
 				if( is_string( $token ) === true && $token !== '' && ( $_SESSION[self::STAGED][$token]['key'] ?? null ) !== $key ) {
-					self::_fail( $request, 403, 'the picture was put aside for another', 'blocks_picture_own', [ $place ], 'own' );
+					self::_fail( $request, 403, 'the picture was put aside for another', 'themelab_picture_own', [ $place ], 'own' );
 					return;
 				}
 
@@ -833,7 +835,7 @@ namespace Nino\Modules\Blocks {
 					$bytes = @file_get_contents( self::_staged( $appData ). $token );
 
 					if( is_string( $bytes ) === false ) {
-						self::_fail( $request, 400, 'the picture of the place is gone', 'blocks_picture_own', [ $place ], 'own' );
+						self::_fail( $request, 400, 'the picture of the place is gone', 'themelab_picture_own', [ $place ], 'own' );
 						return;
 					}
 
@@ -859,13 +861,13 @@ namespace Nino\Modules\Blocks {
 		}
 
 		// Where the session keeps what it put aside: token => [ the block it was for, until when ]
-		private const string STAGED = 'nino_blocks_pictures';
+		private const string STAGED = 'nino_themelab_pictures';
 
 		/**
 		 *	The folder the pictures are in that a person chose for a place and did not save: files of an hour or less, made by apiPicture()
 		 */
 		private static function _staged( array &$appData ): string {
-			return (string) ( $appData['./nino/filesystem/contentpath'] ?? '' ). '/data/.preview/blocks-picture/';
+			return (string) ( $appData['./nino/filesystem/contentpath'] ?? '' ). '/data/.preview/themelab-picture/';
 		}
 
 		/**
@@ -924,7 +926,7 @@ namespace Nino\Modules\Blocks {
 			}
 
 			if( $bytes === '' ) {
-				\Nino\Http::fail( $request, 400, 'the file is empty', 'blocks_picture_empty' );
+				\Nino\Http::fail( $request, 400, 'the file is empty', 'themelab_picture_empty' );
 				return;
 			}
 
@@ -952,19 +954,19 @@ namespace Nino\Modules\Blocks {
 
 				// A block carries a png, a jpeg, a webp or a svg: another kind - a gif - is told so at once
 				if( $size === false || in_array( $size['type'], [ IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP ], true ) === false ) {
-					\Nino\Http::fail( $request, 400, 'a block takes no picture of that kind', 'blocks_picture_type' );
+					\Nino\Http::fail( $request, 400, 'a block takes no picture of that kind', 'themelab_picture_type' );
 					return;
 				}
 
 				// Written anew by the kernel, as every picture it is given is: the whole picture, upright, never larger than it was
-				$made = \Nino\Images::fit( $appData, $bytes, \Nino\Modules\Builder\Pictures::MAX_SIDE, \Nino\Modules\Builder\Pictures::MAX_SIDE, 'blocks-picture/'. bin2hex( random_bytes( 8 ) ) );
+				$made = \Nino\Images::fit( $appData, $bytes, \Nino\Modules\Builder\Pictures::MAX_SIDE, \Nino\Modules\Builder\Pictures::MAX_SIDE, 'themelab-picture/'. bin2hex( random_bytes( 8 ) ) );
 				$again = $made === false ? false : \Nino\Images::read( $appData, $made );
 
 				if( $made !== false )
 					\Nino\Images::delete( $appData, $made );
 
 				// fit() makes the folder it writes into and the file only passes through it: the folder is not left behind empty (rmdir takes nothing that has a file in it)
-				@rmdir( \Nino\Filesystem::path( $appData, '/images/blocks-picture' ) );
+				@rmdir( \Nino\Filesystem::path( $appData, '/images/themelab-picture' ) );
 
 				if( $again === false || $again === '' ) {
 					\Nino\Http::fail( $request, 400, 'the image could not be processed', 'image_unreadable' );
@@ -979,7 +981,7 @@ namespace Nino\Modules\Blocks {
 			$token = bin2hex( random_bytes( 16 ) ). '.'. $kind;
 
 			if( ( is_dir( $dir ) === false && @mkdir( $dir, 0755, true ) === false && is_dir( $dir ) === false ) || file_put_contents( $dir. $token, $bytes ) === false ) {
-				\Nino\Http::fail( $request, 500, 'could not keep the picture', 'blocks_write' );
+				\Nino\Http::fail( $request, 500, 'could not keep the picture', 'themelab_write' );
 				return;
 			}
 
@@ -1006,19 +1008,19 @@ namespace Nino\Modules\Blocks {
 			$token = \Nino\Admin\Admin::postString( $data, 'file' );
 
 			if( preg_match( '/^[a-f0-9]{32}\.(?:svg|webp|png|jpg)$/D', $token ) !== 1 ) {
-				self::_fail( $request, 400, 'the picture of the place is none', 'blocks_picture_own', [ '' ], 'own' );
+				self::_fail( $request, 400, 'the picture of the place is none', 'themelab_picture_own', [ '' ], 'own' );
 				return;
 			}
 
 			if( ( $_SESSION[self::STAGED][$token]['key'] ?? null ) !== $key ) {
-				self::_fail( $request, 403, 'the picture was put aside for another', 'blocks_picture_own', [ '' ], 'own' );
+				self::_fail( $request, 403, 'the picture was put aside for another', 'themelab_picture_own', [ '' ], 'own' );
 				return;
 			}
 
 			$bytes = @file_get_contents( self::_staged( $appData ). $token );
 
 			if( is_string( $bytes ) === false ) {
-				self::_fail( $request, 400, 'the picture of the place is gone', 'blocks_picture_own', [ '' ], 'own' );
+				self::_fail( $request, 400, 'the picture of the place is gone', 'themelab_picture_own', [ '' ], 'own' );
 				return;
 			}
 
@@ -1063,7 +1065,7 @@ namespace Nino\Modules\Blocks {
 			$shell = Sheet::shell( $appData, $locale );
 
 			if( $block === null || $shell === null ) {
-				self::_fail( $request, 500, 'the block could not be read', 'blocks_write' );
+				self::_fail( $request, 500, 'the block could not be read', 'themelab_write' );
 				return;
 			}
 
@@ -1091,7 +1093,7 @@ namespace Nino\Modules\Blocks {
 			$key = Sheet::keyOf( (string) ( $names[$locale] ?? reset( $names ) ) );
 
 			if( Sheet::taken( $appData, $key ) === true ) {
-				self::_fail( $request, 409, 'the key is taken', 'blocks_taken', [ $key ], 'name' );
+				self::_fail( $request, 409, 'the key is taken', 'themelab_taken', [ $key ], 'name' );
 				return;
 			}
 
@@ -1160,7 +1162,7 @@ namespace Nino\Modules\Blocks {
 			$key = Sheet::keyOf( (string) ( $names[$locale] ?? reset( $names ) ) );
 
 			if( Sheet::taken( $appData, $key ) === true ) {
-				self::_fail( $request, 409, 'the key is taken', 'blocks_taken', [ $key ], 'name' );
+				self::_fail( $request, 409, 'the key is taken', 'themelab_taken', [ $key ], 'name' );
 				return;
 			}
 
@@ -1256,12 +1258,12 @@ namespace Nino\Modules\Blocks {
 			$size = is_string( $tmp ) === true ? (int) @filesize( $tmp ) : 0;
 
 			if( is_string( $tmp ) === true && $size < 1 ) {
-				self::_failed( $request, [ 400, 'the file is empty', 'blocks_import_nofile', [], 'file' ] );
+				self::_failed( $request, [ 400, 'the file is empty', 'themelab_import_nofile', [], 'file' ] );
 				return;
 			}
 
 			if( is_string( $tmp ) === false || $size > \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::BLOCKS] ) {
-				self::_failed( $request, [ 400, 'the file is none a package comes in', 'blocks_import_large', [ \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::BLOCKS] ], 'file' ] );
+				self::_failed( $request, [ 400, 'the file is none a package comes in', 'themelab_import_large', [ \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::BLOCKS] ], 'file' ] );
 				return;
 			}
 
@@ -1317,7 +1319,7 @@ namespace Nino\Modules\Blocks {
 			$bytes = Package::held( \Nino\Admin\Admin::postString( $data, 'id' ) );
 
 			if( $bytes === null ) {
-				self::_failed( $request, [ 403, 'there is no such package held for this session', 'blocks_import_unknown', [], 'id' ] );
+				self::_failed( $request, [ 403, 'there is no such package held for this session', 'themelab_import_unknown', [], 'id' ] );
 				return;
 			}
 
@@ -1420,7 +1422,7 @@ namespace Nino\Modules\Blocks {
 			$key = Sheet::keyOf( (string) ( $names[$locale] ?? reset( $names ) ) );
 
 			if( Sheet::taken( $appData, $key ) === true ) {
-				self::_fail( $request, 409, 'the key is taken', 'blocks_taken', [ $key ], 'name' );
+				self::_fail( $request, 409, 'the key is taken', 'themelab_taken', [ $key ], 'name' );
 				return;
 			}
 
@@ -1449,7 +1451,7 @@ namespace Nino\Modules\Blocks {
 			$parts = Sheet::partsOf( $appData, $key );
 
 			if( $parts === null ) {
-				self::_fail( $request, 404, 'there is no such block of the project', 'blocks_unknown', [], 'key' );
+				self::_fail( $request, 404, 'there is no such block of the project', 'themelab_unknown', [], 'key' );
 				return;
 			}
 
@@ -1512,7 +1514,7 @@ namespace Nino\Modules\Blocks {
 			$offered = $canonical === null || Sheet::rootAt( $canonical[1] ) === null ? null : \Nino\Modules\Builder\Admin::offered( $appData, $canonical[1], \Nino\Admin\Admin::postString( $data, 'at' ), \Nino\Modules\Builder::LEVEL_DESIGN );
 
 			if( $offered === null ) {
-				self::_fail( $request, 400, 'there is no place for a component there', 'blocks_place', [], 'at' );
+				self::_fail( $request, 400, 'there is no place for a component there', 'themelab_place', [], 'at' );
 				return;
 			}
 
@@ -1528,7 +1530,7 @@ namespace Nino\Modules\Blocks {
 			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
 
 			if( $canonical === null ) {
-				self::_fail( $request, 400, 'the tree is none of a block', 'blocks_tree', [], 'tree' );
+				self::_fail( $request, 400, 'the tree is none of a block', 'themelab_tree', [], 'tree' );
 				return;
 			}
 
@@ -1598,7 +1600,7 @@ namespace Nino\Modules\Blocks {
 			$offered = $canonical === null ? null : \Nino\Modules\Builder\Admin::offered( $appData, $canonical[1], \Nino\Admin\Admin::postString( $data, 'at' ), \Nino\Modules\Builder::LEVEL_DEVELOP );
 
 			if( $offered === null ) {
-				self::_fail( $request, 400, 'there is no place for a component there', 'blocks_place', [], 'at' );
+				self::_fail( $request, 400, 'there is no place for a component there', 'themelab_place', [], 'at' );
 				return;
 			}
 
@@ -1614,7 +1616,7 @@ namespace Nino\Modules\Blocks {
 			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
 
 			if( $canonical === null ) {
-				self::_fail( $request, 400, 'the tree is none of a frame', 'blocks_tree', [], 'tree' );
+				self::_fail( $request, 400, 'the tree is none of a frame', 'themelab_tree', [], 'tree' );
 				return;
 			}
 
@@ -1668,14 +1670,14 @@ namespace Nino\Modules\Blocks {
 				return;
 
 			if( $tile === null ) {
-				self::_fail( $request, 404, 'there is no such block', 'blocks_unknown', [], 'key' );
+				self::_fail( $request, 404, 'there is no such block', 'themelab_unknown', [], 'key' );
 				return;
 			}
 
-			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Blocks::TILE, self::perm(), $tile, \Nino\Admin\Admin::postString( $data, 'token' ), Library::TILES );
+			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Themelab::TILE, self::perm(), $tile, \Nino\Admin\Admin::postString( $data, 'token' ), Library::TILES );
 
 			if( $token === '' ) {
-				self::_fail( $request, 500, 'the preview could not be written', 'blocks_preview' );
+				self::_fail( $request, 500, 'the preview could not be written', 'themelab_preview' );
 				return;
 			}
 

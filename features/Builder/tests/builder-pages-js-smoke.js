@@ -71,6 +71,7 @@ const answer = function( extra ) {
 			{ template : 'page-about', name : 'About us', path : '/about', locales : [ 'de_DE', 'en_US' ], navs : [ 'main', 'footer' ], complete : true, locked : '', blocks : 0, saved : 1763200000 },
 		],
 		create : true,
+		frames : [],
 		navs : [ 'main', 'footer' ],
 		native : 'de_DE',
 		locales : LOCALES,
@@ -839,6 +840,63 @@ function world( options ) {
 
 		check( 'F. the account that may not make a page is taken to the list by the address of a copy as well, and nothing is asked', w.state.hash === '#builder' && w.shown( w.list ) === true && w.requests.length === 0 );
 	}
+}
+
+// --- the frames in the list: a header and a footer that are given a block of their kind, without the editor of Themelab -----------------------------------------
+
+{
+	const frames = [ { key : 'header', template : 'frame-header', stamp : 'aa', last : 0, undo : false }, { key : 'footer', template : 'frame-footer', stamp : 'bb', last : 1763356920, undo : true } ];
+	const w = world( { list : answer( { frames : frames, bridge : false } ) } );
+
+	w.open('#builder');
+
+	const buttons = function( node ) { return findAll( node, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-btn') !== -1 && el.className.indexOf('nino-admin-btn-icon') === -1 } ).map( textOf ) };
+	const rows = findAll( w.list, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'footer' ) } );
+
+	check( 'G. the list of the pages has the two frames for the one who designs - a row each, "applies to all pages", with the choice of a block, the way back only where there is a last state, and nothing that names Themelab where Themelab is off',
+		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W('frame/hint') ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 );
+
+	const content = world( { list : answer( { frames : [] } ) } );
+
+	content.open('#builder');
+
+	const bridged = world( { list : answer( { frames : frames, bridge : true } ) } );
+
+	bridged.open('#builder');
+
+	check( 'G. the account that only writes the content gets no frames from the server and so no row of them; where Themelab is on and the account holds its right each row has "Edit in Themelab" as well',
+		findAll( content.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header' } ).length === 0 && buttons( bridged.list ).filter( function( text ) { return text === W('frame/themelab') } ).length === 2 );
+
+	// the choice: the blocks of the frame are asked by its template, the dialog names each with where it comes from, the question is asked before anything is written - and the answer yes writes that block
+	fire( findAll( rows[0], function( el ) { return el.tagName === 'BUTTON' && textOf( el ) === W('frame/choose') } )[0], 'click' );
+
+	const asked = w.requests.filter( function( entry ) { return entry.action === 'builder/framechoices' } )[0];
+
+	asked.callback( { status : 200, responseJSON : { blocks : [ { key : 'header-soft', name : 'Soft', description : '', category : 'frame', origin : { kind : 'theme', label : 'Craft' }, own : false, off : null }, { key : 'mine', name : 'Mine', description : 'Own', category : 'frame', origin : { kind : 'project', label : 'Project' }, own : true, off : null } ], categories : [] }, getAllResponseHeaders : function() { return 'x' } } );
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+	const items = findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-pick-item') !== -1 } );
+
+	check( 'G. the dialog of the choice lists the blocks of the kind of the frame from every source, the own ones first, each with its source, and asks the server for them by the template of the frame - nothing is written by asking',
+		asked.payload.template === 'frame-header' && items.length === 2 && textOf( items[0] ).indexOf('Mine') !== -1 && textOf( items[1] ).indexOf('Craft') !== -1 && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0 );
+
+	fire( items[1], 'click' );
+	fire( dialog, 'close' );
+
+	const question = w.questions[w.questions.length - 1];
+
+	check( 'G. the whole frame goes by the choice, so it is asked first - destructive, naming the frame and the block - and only the answer yes asks the server to write: the template, the key, the stamp of the frame the list saw and the language, and no tree, no words, no right',
+		question !== undefined && question.level === 'destructive' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0 && ( question.options.onChoose( true ), w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 1 )
+		&& Object.keys( w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } )[0].payload ).sort().join() === 'base,key,locale,template' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } )[0].payload.base === 'aa' );
+
+	// the frame was saved elsewhere meanwhile: the server says so with its own code - the list says it in words and is drawn again, and nothing is forced
+	const chose = w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } )[0];
+
+	w.requests.length = 0;
+	chose.callback( { status : 409, responseJSON : { error : 'x', code : 'builder_frame_changed' }, getAllResponseHeaders : function() { return 'x' } } );
+
+	check( 'G. a frame that was changed since the list was drawn is not forced: the answer 409 with the code of the frame says so in words, the list is asked for again, and no request is made with force',
+		w.said.indexOf( W('frame/changed') ) !== -1 && w.requests.filter( function( entry ) { return entry.action === 'builder/list' } ).length === 1 && w.requests.every( function( entry ) { return entry.payload.force === undefined } ) );
 }
 
 done();

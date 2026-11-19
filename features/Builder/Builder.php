@@ -36,13 +36,13 @@ namespace Nino\Modules {
 		// What a person may do once inside, in two steps: the content (the blocks of a page and the words in them) and the design (the components of a block and their
 		// settings). The scope is the panel's: an account that holds no permission below it - the door alone - is not described in detail and may design; one that is
 		// described holds what it is given, and the permission of a step is any that lies below it. The frames of the site and the call of html are no step of this panel:
-		// they are written in the editor of the blocks, with the right of that panel (see Blocks\Frames)
+		// they are written in the editor of the blocks, with the right of that panel (see Themelab\Frames)
 		public const string SCOPE = '/_admin/builder/';
 		public const string CONTENT = '/_admin/builder/content/edit';
 		public const string DESIGN = '/_admin/builder/design/edit';
 
 		// The step that was once "Development" and the permissions of it: they have no effect any more, and the update of the feature gives whoever held one the right of the
-		// panel Blocks (see upgrade())
+		// Themelab (see upgrade())
 		public const string DEVELOPED = '/_admin/builder/develop/';
 
 		// The steps as numbers. The third is no step of an account: it is what a request has that the editor of the blocks passes on for a frame, which may be written down to its
@@ -51,8 +51,8 @@ namespace Nino\Modules {
 		public const int LEVEL_DESIGN = 2;
 		public const int LEVEL_DEVELOP = 3;
 
-		// The right of the panel Blocks, by its name: the bridge from a page to it is shown to whoever holds it
-		public const string BRIDGE = '/_admin/blocks/manage';
+		// The right of Themelab, by its name: the bridge from a page to it is shown to whoever holds it
+		public const string BRIDGE = '/_admin/themelab/manage';
 
 		// What the editor of the blocks tells the actions of this panel it runs for it: this request is for a frame of the site and the right of the editor was held
 		public const string AS = './nino/builder/as';
@@ -184,7 +184,7 @@ namespace Nino\Modules {
 		 *	@return 	bool
 		 */
 		public static function bridge( array &$appData ): bool {
-			return ( \Nino\Features::all( $appData )['blocks']['active'] ?? false ) === true && \Nino\Auth::checkPermission( $appData, self::BRIDGE ) === true;
+			return ( \Nino\Features::all( $appData )['themelab']['active'] ?? false ) === true && \Nino\Auth::checkPermission( $appData, self::BRIDGE ) === true;
 		}
 
 		/**

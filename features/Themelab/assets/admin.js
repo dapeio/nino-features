@@ -1,14 +1,14 @@
 /**
  *	Nino features
- *	Blocks						The panel of the workbench for the blocks of the project: the list of them - those of the project, which are changed, and those of the
+ *	Blocks						Themelab, the panel of the workbench for the blocks of the project: the list of them - those of the project, which are changed, and those of the
  *										theme in use, which are looked at - and for a block the editor of the Builder on a sheet of its own. The editor is not written here: the tree
  *										view, the lightbox of a component with its dialog of a source, the frame that draws the block alone, Undo and Redo
  *										and the picture of a block are Nino.admin.builder.editor - the functions of the panel of the pages - and what this script brings is the adapter
  *										that says where the requests of the sheet go (blocks/...), where back leads, what the panel is called, and the list, the forms and the questions
- *										that stand round it. Everything it shows is the answer of the API (see Modules\Blocks\Admin).
+ *										that stand round it. Everything it shows is the answer of the API (see Modules\Themelab\Admin).
  *
- *										The address is #blocks (the blocks of the project), #blocks/<key> (one of them in the editor), #blocks/theme (the blocks of the theme in use) and
- *										#blocks/theme/<key> (one of them, shown and not changed). The list opens first; a click on a row opens the block.
+ *										The address is #themelab (the blocks of the project), #themelab/<key> (one of them in the editor), #themelab/theme (the blocks of the theme in use) and
+ *										#themelab/theme/<key> (one of them, shown and not changed). The list opens first; a click on a row opens the block.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -20,7 +20,7 @@
 	wn.Nino.admin = wn.Nino.admin || {};
 
 	const word = function( key, ...params ) {
-		return Nino.adminUi.format( Nino.content.getText( '/_admin/blocks/'+ key ), ...params );
+		return Nino.adminUi.format( Nino.content.getText( '/_admin/themelab/'+ key ), ...params );
 	};
 
 	// A text that is a map of languages as the words of the page say it: the one of the workbench, else English, else the first
@@ -56,15 +56,17 @@
 	const N = {
 		fresh		: '',
 		tab			: 'project',
+		source	: 'project',
 		open		: null,
 		button	: null,
 		data		: null,
 		keys		: false,
 	};
 
-	// The address of the list of a tab, and of a block in it
+	// The address of the list of a tab, and of a block in it: the first tab is the blocks - 'project' for the own ones, 'theme' for those of the theme in use, a switch inside the
+	// tab -, the second the frames, the third 'info' - the theme itself, which has an address of its own and no block in it
 	const tabParts = function( tab ) {
-		return tab === 'theme' ? [ 'theme' ] : ( tab === 'frames' ? [ 'frames' ] : [] );
+		return tab === 'theme' ? [ 'theme-blocks' ] : ( tab === 'frames' ? [ 'frames' ] : ( tab === 'info' ? [ 'theme' ] : [] ) );
 	};
 
 	const partsOf = function( tab, key ) {
@@ -74,11 +76,15 @@
 	// What the address names: the tab and the key of the block, '' for the list
 	const targetOf = function( parts ) {
 
-		const tab = parts[0] === 'theme' ? 'theme' : ( parts[0] === 'frames' ? 'frames' : 'project' );
+		const tab = parts[0] === 'theme-blocks' ? 'theme' : ( parts[0] === 'frames' ? 'frames' : ( parts[0] === 'theme' ? 'info' : 'project' ) );
 		const rest = tab === 'project' ? parts : parts.slice( 1 );
 
 		if( rest.length === 0 )
 			return { tab : tab, key : '' };
+
+		// The theme has one page and no block in it
+		if( tab === 'info' )
+			return null;
 
 		// A frame is the header or the footer; a block is any key of the form of a key
 		return rest.length === 1 && ( tab === 'frames' ? /^(?:header|footer)$/ : /^[a-z][a-z0-9-]{0,63}$/ ).test( rest[0] ) === true ? { tab : tab, key : rest[0] } : null;
@@ -88,12 +94,12 @@
 
 		const model = editor().state();
 
-		return model.sheet === 'block' && model.adapter.panel === 'blocks' && model.ready === true;
+		return model.sheet === 'block' && model.adapter.panel === 'themelab' && model.ready === true;
 	};
 
 	const fail = function( status, response, key ) {
 
-		const list = dc.getElementById('blocks-list');
+		const list = dc.getElementById('themelab-list');
 		const box = Nino.adminUi.notice( Nino.adminUi.api.errorText( status, response, key ) );
 		const old = list.querySelector('.builder-list-error');
 
@@ -108,7 +114,7 @@
 
 	const clearFail = function() {
 
-		const box = dc.getElementById('blocks-list').querySelector('.builder-list-error');
+		const box = dc.getElementById('themelab-list').querySelector('.builder-list-error');
 
 		if( box !== null )
 			box.remove();
@@ -120,9 +126,9 @@
 	const tiles = function() {
 
 		return {
-			panel	: 'blocks',
+			panel	: 'themelab',
 			dir		: N.data.dir,
-			call	: function( action, payload, done, extra ) { Nino.admin.blocks.call( action, payload, done, extra ) },
+			call	: function( action, payload, done, extra ) { Nino.admin.themelab.call( action, payload, done, extra ) },
 			base	: function() { return { locale : N.data.contentLocale } },
 		};
 	};
@@ -133,7 +139,7 @@
 
 	const tileCell = function( value, row ) {
 
-		const box = el( 'span', 'builder-tile-thumb blocks-tile' );
+		const box = el( 'span', 'builder-tile-thumb themelab-tile' );
 
 		box.dataset.block = row.key;
 		box.setAttribute( 'aria-hidden', 'true' );
@@ -189,19 +195,19 @@
 	// The file is asked of the server by a form that posts into a frame nobody sees: a file that is saved does not load, so what loads there is the refusal
 	const download = function( body ) {
 
-		let frame = dc.getElementById('blocks-download');
+		let frame = dc.getElementById('themelab-download');
 
 		if( frame === null ) {
 			frame = dc.createElement('iframe');
-			frame.id = 'blocks-download';
-			frame.name = 'blocks-download';
+			frame.id = 'themelab-download';
+			frame.name = 'themelab-download';
 			frame.hidden = true;
 			frame.setAttribute( 'title', word('export/button') );
 			frame.setAttribute( 'tabindex', '-1' );
 			dc.body.appendChild( frame );
 		}
 
-		const fields = { action : 'blocks/export', data : JSON.stringify( body ) };
+		const fields = { action : 'themelab/export', data : JSON.stringify( body ) };
 		const csrf = dc.querySelector( 'input[name="_csrf"]' );
 
 		if( csrf !== null )
@@ -212,7 +218,7 @@
 		form.method = 'post';
 		// Where every panel posts: the directory of the project and the workbench's own address, with its slash
 		form.action = ( typeof Nino.dir === 'string' ? Nino.dir : '' )+ '/_admin'+ '/';
-		form.target = 'blocks-download';
+		form.target = 'themelab-download';
 		form.hidden = true;
 
 		Object.keys( fields ).forEach( function( name ) {
@@ -259,10 +265,10 @@
 				const body = { keys : keys, key : String( values.key ).trim(), version : String( values.version ).trim(), name : String( values.name ).trim(), description : String( values.description ?? '' ).trim(), locale : work };
 
 				// Asked first, so that a refusal is said here at its field; the file that follows is the one that was asked about
-				Nino.admin.blocks.call( 'export', Object.assign( { check : true }, body ), function( status, response ) {
+				Nino.admin.themelab.call( 'export', Object.assign( { check : true }, body ), function( status, response ) {
 
 					if( status !== 200 ) {
-						refused( ctl, status, response, '/_admin/blocks/error/export' );
+						refused( ctl, status, response, '/_admin/themelab/error/export' );
 						return;
 					}
 
@@ -277,17 +283,17 @@
 	// What a package holds, one line for each block: the box before its name, and quietly what it is; where its key is taken, the choice of what is done with it under it
 	const importRows = function( preview, picks ) {
 
-		const holder = el( 'div', 'blocks-import' );
+		const holder = el( 'div', 'themelab-import' );
 
 		holder.appendChild( el( 'p', 'nino-admin-hint', word( 'import/pack', preview.pack.name, preview.pack.version ) ) );
 
 		preview.blocks.forEach( function( block ) {
 
-			const row = el( 'div', 'blocks-import-row' );
+			const row = el( 'div', 'themelab-import-row' );
 			const pick = { take : true, how : 'skip' };
-			const line = el( 'div', 'blocks-import-line' );
-			const tick = Nino.adminUi.checkField( { key : 'take:'+ block.key, label : block.name, checked : true, className : 'nino-admin-field blocks-import-take', onChange : function( on ) { pick.take = on } } );
-			const facts = el( 'small', 'nino-admin-hint blocks-import-facts', [ categoryWord( block.category ), word( 'import/col-variants' )+ ': '+ block.variants.length, word( 'import/col-pictures' )+ ': '+ block.images ].join( ' · ' ) );
+			const line = el( 'div', 'themelab-import-line' );
+			const tick = Nino.adminUi.checkField( { key : 'take:'+ block.key, label : block.name, checked : true, className : 'nino-admin-field themelab-import-take', onChange : function( on ) { pick.take = on } } );
+			const facts = el( 'small', 'nino-admin-hint themelab-import-facts', [ categoryWord( block.category ), word( 'import/col-variants' )+ ': '+ block.variants.length, word( 'import/col-pictures' )+ ': '+ block.images ].join( ' · ' ) );
 			const names = block.variants.filter( function( label ) { return label !== '' } ).join( ', ' );
 
 			if( names !== '' )
@@ -305,8 +311,8 @@
 				if( block.replace === true )
 					options.push( { value : 'replace', label : word('import/how-replace') } );
 
-				const note = el( 'p', 'nino-admin-hint blocks-import-warn', word('import/replace-note') );
-				const choice = Nino.adminUi.selectField( { key : 'how:'+ block.key, label : word('import/exists'), options : options, value : 'skip', className : 'nino-admin-field blocks-import-how', onChange : function( value ) {
+				const note = el( 'p', 'nino-admin-hint themelab-import-warn', word('import/replace-note') );
+				const choice = Nino.adminUi.selectField( { key : 'how:'+ block.key, label : word('import/exists'), options : options, value : 'skip', className : 'nino-admin-field themelab-import-how', onChange : function( value ) {
 
 					pick.how = value;
 					note.hidden = value !== 'replace';
@@ -327,8 +333,8 @@
 	// The result of an import: a line for each block, and where one was missing, which and why
 	const askImportResult = function( results, opener ) {
 
-		const holder = el( 'div', 'blocks-import' );
-		const list = el( 'ul', 'blocks-import-results' );
+		const holder = el( 'div', 'themelab-import' );
+		const list = el( 'ul', 'themelab-import-results' );
 		const failed = results.find( function( result ) { return result.result === 'failed' } );
 
 		results.forEach( function( result ) {
@@ -348,7 +354,7 @@
 			content	: holder,
 			opener	: opener,
 			choices	: [ { value : 'close', label : word('import/close'), kind : 'primary' } ],
-			onChoose	: function() { Nino.admin.blocks.go( [] ) },
+			onChoose	: function() { Nino.admin.themelab.go( [] ) },
 		} );
 	};
 
@@ -375,14 +381,14 @@
 
 				// A preview that is left lets go of the bytes that are held for it
 				if( value !== 'import' ) {
-					Nino.admin.blocks.call( 'import-drop', { id : preview.id, locale : Nino.admin.workLocale.current }, function() {} );
+					Nino.admin.themelab.call( 'import-drop', { id : preview.id, locale : Nino.admin.workLocale.current }, function() {} );
 					return;
 				}
 
-				Nino.admin.blocks.call( 'import', { id : preview.id, items : picks, locale : Nino.admin.workLocale.current }, function( status, response ) {
+				Nino.admin.themelab.call( 'import', { id : preview.id, items : picks, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 					if( status !== 200 ) {
-						fail( status, response, '/_admin/blocks/error/import' );
+						fail( status, response, '/_admin/themelab/error/import' );
 						return;
 					}
 
@@ -396,7 +402,7 @@
 
 		clearFail();
 
-		const holder = el( 'div', 'blocks-import' );
+		const holder = el( 'div', 'themelab-import' );
 		const file = Nino.adminUi.fileField( { key : 'file', label : word('import/file'), accept : '.gz,.tgz,application/gzip', maxBytes : N.data.package.bytes, note : word( 'import/limits', Math.round( N.data.package.bytes / 1024 )+ ' KiB' ), button : word('import/file-button') } );
 		let preview = null;
 
@@ -428,12 +434,12 @@
 				handle.buttons.check.disabled = true;
 				file.clearError();
 
-				Nino.admin.blocks.call( 'import-check', { locale : Nino.admin.workLocale.current }, function( status, response ) {
+				Nino.admin.themelab.call( 'import-check', { locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 					handle.buttons.check.disabled = false;
 
 					if( status !== 200 ) {
-						file.error( Nino.adminUi.api.errorText( status, response, '/_admin/blocks/error/import' ) );
+						file.error( Nino.adminUi.api.errorText( status, response, '/_admin/themelab/error/import' ) );
 						return;
 					}
 
@@ -451,6 +457,44 @@
 		} );
 	};
 
+	// The third tab: the theme in use - its name, its version and where it comes from - how many blocks and frames the project has of its own, and what a package of a theme will hold.
+	// Nothing in it can be pressed: the export and the import of a theme package are not here yet, and the (?) says so
+	const infoView = function( data ) {
+
+		const view = el( 'div', 'themelab-info' );
+		const theme = data.theme;
+		const rows = el( 'dl', 'themelab-facts' );
+		const fact = function( label, value ) {
+
+			rows.appendChild( el( 'dt', '', label ) );
+			rows.appendChild( el( 'dd', '', value ) );
+		};
+
+		if( theme === null )
+			view.appendChild( Nino.adminUi.emptyState( word('info/none') ) );
+		else {
+			fact( word('info/name'), localized( theme.name ) );
+			fact( word('info/version'), theme.version );
+			fact( word('info/origin'), word( 'info/origin-'+ theme.origin ) );
+		}
+
+		fact( word('info/blocks'), String( data.counts.blocks ) );
+		fact( word('info/frames'), String( data.counts.frames ) );
+		view.appendChild( rows );
+
+		const title = el( 'h2', 'nino-admin-section-title', word('info/package') );
+
+		title.appendChild( Nino.adminUi.fieldHelp( word('info/package-help'), { name : word('info/package') } ) );
+		view.appendChild( title );
+
+		const list = el( 'ul', 'themelab-package' );
+
+		[ 'info/package-design', 'info/package-blocks', 'info/package-frames' ].forEach( function( key ) { list.appendChild( el( 'li', '', word( key ) ) ) } );
+		view.appendChild( list );
+
+		return view;
+	};
+
 	const render = function( data ) {
 
 		if( editor().state().sheet === 'block' )
@@ -459,25 +503,23 @@
 		N.data = data;
 		N.tab = data.tab;
 
-		const mount = dc.getElementById('blocks-list');
+		const mount = dc.getElementById('themelab-list');
 		const holder = el( 'div', '' );
 
 		mount.innerHTML = '';
 
-		// The sources of the blocks: the project, and the theme in use where there is one
-		const items = [ { key : 'project', label : word('tab/project') } ];
+		// The tabs: the blocks - the project's own, and the theme's beside them by a switch of their own -, the frames of the site and the theme in use
+		const items = [ { key : 'blocks', label : word('tab/blocks') }, { key : 'frames', label : word('tab/frames') }, { key : 'info', label : word('tab/info') } ];
+		const shown = data.tab === 'project' || data.tab === 'theme' ? 'blocks' : data.tab;
 
-		if( data.theme !== null )
-			items.push( { key : 'theme', label : word( 'tab/theme', localized( data.theme.name ) ) } );
+		const strip = Nino.adminUi.tabs( items, { active : shown, label : word('tab/label'), id : 'themelab-tabs', onSelect : function( key ) {
 
-		// The frames of the site - its header and its footer - are the third: they are written here and in no other panel
-		items.push( { key : 'frames', label : word('tab/frames') } );
-
-		const strip = Nino.adminUi.tabs( items, { active : data.tab, label : word('tab/label'), id : 'blocks-tabs', onSelect : function( key ) {
-
-			if( key !== N.tab )
-				Nino.admin.blocks.go( tabParts( key ) );
+			if( key !== shown )
+				Nino.admin.themelab.go( tabParts( key === 'blocks' ? ( N.source === 'theme' && data.theme !== null ? 'theme' : 'project' ) : key ) );
 		} } );
+
+		if( data.tab === 'project' || data.tab === 'theme' )
+			N.source = data.tab;
 
 		// The tabs are the head of the pane's: beside its name, where the workbench keeps the tabs of a panel - and where there is no head, over the list
 		const head = Nino.adminUi.panelHead( mount );
@@ -487,7 +529,29 @@
 		else
 			mount.appendChild( strip.el );
 
+		// The blocks of the project and those of the theme in use: one switch over the list, the own ones first
+		if( ( data.tab === 'project' || data.tab === 'theme' ) && data.theme !== null ) {
+
+			const caption = el( 'span', 'nino-admin-sr-only', word('source/label') );
+
+			caption.id = 'themelab-source-label';
+			mount.appendChild( caption );
+			mount.appendChild( Nino.adminUi.steps( { labelledby : caption.id, steps : [ { value : 'project', label : word('tab/project') }, { value : 'theme', label : word( 'tab/theme', localized( data.theme.name ) ) } ], value : data.tab, onChange : function( value ) {
+
+				if( value !== data.tab )
+					Nino.admin.themelab.go( tabParts( value ) );
+			} } ).el );
+		}
+
 		mount.appendChild( holder );
+
+		// The theme in use, and what a package of a theme will hold: it is read here and nothing is written
+		if( data.tab === 'info' ) {
+
+			holder.appendChild( infoView( data ) );
+
+			return;
+		}
 
 		if( data.tab === 'frames' ) {
 
@@ -497,8 +561,8 @@
 					key		: frame.key,
 					title	: word( 'frames/'+ frame.key ),
 					detail	: word('frames/hint'),
-					href	: Nino.admin.router.href( 'blocks', partsOf( 'frames', frame.key ) ),
-					onOpen	: function() { Nino.admin.blocks.go( partsOf( 'frames', frame.key ) ) },
+					href	: Nino.admin.router.href( 'themelab', partsOf( 'frames', frame.key ) ),
+					onOpen	: function() { Nino.admin.themelab.go( partsOf( 'frames', frame.key ) ) },
 				};
 			} ), { title : word('tab/frames'), level : 2 } ) );
 
@@ -527,16 +591,16 @@
 				labels		: { search : word('list/search'), empty : word('msg/none-project'), noMatch : word('list/no-match') },
 				search		: true,
 				searchText	: function( row ) { return row.key },
-				onRowClick	: function( row ) { Nino.admin.blocks.go( partsOf( N.tab, row.key ) ) },
+				onRowClick	: function( row ) { Nino.admin.themelab.go( partsOf( N.tab, row.key ) ) },
 			} );
 
-		N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'blocks-new' } );
+		N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'themelab-new' } );
 
 		// The own blocks are taken in beside the button of a new block: a package comes in
 		const beside = [];
 
 		if( N.tab === 'project' )
-			beside.push( Nino.adminUi.button( word('import/button'), function( event ) { askImport( event.currentTarget ) }, { kind : 'secondary', id : 'blocks-import' } ) );
+			beside.push( Nino.adminUi.button( word('import/button'), function( event ) { askImport( event.currentTarget ) }, { kind : 'secondary', id : 'themelab-import' } ) );
 
 		mount.appendChild( Nino.adminUi.actionBar( { list : true, secondary : beside, primary : N.button } ).el );
 	};
@@ -578,7 +642,7 @@
 		rows.forEach( function( row ) { inner.appendChild( row ) } );
 
 		// An accordion of the workbench, closed: the rows are in it, hidden, and still the controls of the field
-		list.appendChild( Nino.adminUi.accordion( { id : 'blocks-more', sections : [ { key : 'more', label : word('new/more-languages'), content : inner } ], collapsible : true, level : 4 } ).el );
+		list.appendChild( Nino.adminUi.accordion( { id : 'themelab-more', sections : [ { key : 'more', label : word('new/more-languages'), content : inner } ], collapsible : true, level : 4 } ).el );
 	};
 
 	// What a name in a language is, of a map or a text: the language's, else English, else the first
@@ -626,16 +690,16 @@
 			opener	: opener,
 			onSubmit	: function( given, ctl ) {
 
-				Nino.admin.blocks.call( 'rename', { key : row.key, name : given.name, description : given.description, category : given.category, rank : given.rank, locale : work }, function( status, response ) {
+				Nino.admin.themelab.call( 'rename', { key : row.key, name : given.name, description : given.description, category : given.category, rank : given.rank, locale : work }, function( status, response ) {
 
 					if( status !== 200 ) {
-						refused( ctl, status, response, '/_admin/blocks/error/rename' );
+						refused( ctl, status, response, '/_admin/themelab/error/rename' );
 						return;
 					}
 
 					ctl.close();
 					Nino.adminUi.say( word( 'msg/renamed', nameIn( given.name, work ) ) );
-					Nino.admin.blocks.reload();
+					Nino.admin.themelab.reload();
 				} );
 			},
 		} );
@@ -665,10 +729,10 @@
 			opener	: opener,
 			onSubmit	: function( values, ctl ) {
 
-				Nino.admin.blocks.call( 'create', { name : values.name, category : values.category, from : values.from, locale : Nino.admin.workLocale.current }, function( status, response ) {
+				Nino.admin.themelab.call( 'create', { name : values.name, category : values.category, from : values.from, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 					if( status !== 200 ) {
-						refused( ctl, status, response, '/_admin/blocks/error/create' );
+						refused( ctl, status, response, '/_admin/themelab/error/create' );
 						return;
 					}
 
@@ -677,7 +741,7 @@
 
 					// A block that is new has nothing in it: the editor opens with its column chosen, so that the plus is at hand
 					N.fresh = response.key;
-					Nino.admin.blocks.go( partsOf( 'project', response.key ) );
+					Nino.admin.themelab.go( partsOf( 'project', response.key ) );
 				} );
 			},
 		} );
@@ -702,10 +766,10 @@
 			opener	: opener,
 			onSubmit	: function( given, ctl ) {
 
-				Nino.admin.blocks.call( action, { key : row.key, name : given.name, locale : Nino.admin.workLocale.current }, function( status, response ) {
+				Nino.admin.themelab.call( action, { key : row.key, name : given.name, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 					if( status !== 200 ) {
-						refused( ctl, status, response, '/_admin/blocks/error/'+ action );
+						refused( ctl, status, response, '/_admin/themelab/error/'+ action );
 						return;
 					}
 
@@ -714,9 +778,9 @@
 
 					// A copy of a block of the theme is a block of the project: the list goes to the project
 					if( action === 'duplicate' && own === false )
-						Nino.admin.blocks.go( [] );
+						Nino.admin.themelab.go( [] );
 					else
-						Nino.admin.blocks.reload();
+						Nino.admin.themelab.reload();
 				} );
 			},
 		} );
@@ -740,15 +804,15 @@
 				if( ok !== true )
 					return;
 
-				Nino.admin.blocks.call( 'remove', { key : row.key }, function( status, response ) {
+				Nino.admin.themelab.call( 'remove', { key : row.key }, function( status, response ) {
 
 					if( status !== 200 ) {
-						fail( status, response, '/_admin/blocks/error/remove' );
+						fail( status, response, '/_admin/themelab/error/remove' );
 						return;
 					}
 
 					Nino.adminUi.say( word( 'msg/removed', row.name ) );
-					Nino.admin.blocks.reload();
+					Nino.admin.themelab.reload();
 				} );
 			},
 		} );
@@ -783,15 +847,15 @@
 					if( at >= keys.length ) {
 
 						if( refused.length > 0 )
-							fail( refused[0].status, refused[0].response, '/_admin/blocks/error/remove' );
+							fail( refused[0].status, refused[0].response, '/_admin/themelab/error/remove' );
 						else
 							Nino.adminUi.say( word( 'msg/removed-many', gone ) );
 
-						Nino.admin.blocks.reload();
+						Nino.admin.themelab.reload();
 						return;
 					}
 
-					Nino.admin.blocks.call( 'remove', { key : keys[at] }, function( status, response ) {
+					Nino.admin.themelab.call( 'remove', { key : keys[at] }, function( status, response ) {
 
 						if( status === 200 )
 							gone++;
@@ -833,7 +897,7 @@
 				editor().call( 'saveas', { name : values.name, tree : sheet.top, texts : sheet.texts, pictures : model.picturesNow() }, function( status, response ) {
 
 					if( status !== 200 ) {
-						refused( ctl, status, response, '/_admin/blocks/error/saveas' );
+						refused( ctl, status, response, '/_admin/themelab/error/saveas' );
 						return;
 					}
 
@@ -842,8 +906,8 @@
 
 					// The sheet that was worked on is given up - what it held is in the new block - and the new block is opened
 					editor().close();
-					Nino.admin.router.go( 'blocks', partsOf( 'project', response.key ) );
-					Nino.admin.blocks.follow();
+					Nino.admin.router.go( 'themelab', partsOf( 'project', response.key ) );
+					Nino.admin.themelab.follow();
 				} );
 			},
 		} );
@@ -1638,7 +1702,7 @@
 			return list;
 		} } );
 
-		const accordion = Nino.adminUi.accordion( { id : 'blocks-details-acc', level : 3, open : 'name', sections : sections, onToggle : function() {} } );
+		const accordion = Nino.adminUi.accordion( { id : 'themelab-details-acc', level : 3, open : 'name', sections : sections, onToggle : function() {} } );
 
 		holder.appendChild( accordion.el );
 
@@ -1660,8 +1724,8 @@
 		const title = localized( response.name );
 
 		const adapter = {
-			panel		: 'blocks',
-			level		: 'blocks-sheet',
+			panel		: 'themelab',
+			level		: 'themelab-sheet',
 			template	: response.template,
 			name		: title,
 			slug		: '',
@@ -1674,15 +1738,15 @@
 			uploads	: false,
 			// The properties of a component open in the column beside the preview, not in a lightbox
 			props		: 'panel',
-			call		: function( action, payload, done, extra ) { Nino.admin.blocks.call( action, payload, done, extra ) },
+			call		: function( action, payload, done, extra ) { Nino.admin.themelab.call( action, payload, done, extra ) },
 			code		: key,
 			// The key and the language every request of the sheet names, and the sentence the preview puts in a column that has nothing in it
 			base		: function() { return { key : key, locale : editor().state().locale, hint : word('preview/place') } },
-			go			: function( parts, options ) { Nino.admin.blocks.go( parts, options ) },
-			href		: function( parts ) { return Nino.admin.router.href( 'blocks', parts ) },
-			set			: function() { Nino.admin.router.set( 'blocks', partsOf( theme === true ? 'theme' : 'project', key ) ) },
-			show		: function() { Nino.adminUi.showLevel( 'blocks-sheet', { focus : false } ) },
-			fail		: function( level, status, answer ) { Nino.admin.blocks.fail( level, status, answer ) },
+			go			: function( parts, options ) { Nino.admin.themelab.go( parts, options ) },
+			href		: function( parts ) { return Nino.admin.router.href( 'themelab', parts ) },
+			set			: function() { Nino.admin.router.set( 'themelab', partsOf( theme === true ? 'theme' : 'project', key ) ) },
+			show		: function() { Nino.adminUi.showLevel( 'themelab-sheet', { focus : false } ) },
+			fail		: function( level, status, answer ) { Nino.admin.themelab.fail( level, status, answer ) },
 			back		: function() { return { parts : tabParts( theme === true ? 'theme' : 'project' ), name : word('title'), keep : false, block : false } },
 			reload	: function() { openBlock( key, theme ) },
 			// The variants and the details: what the editor keeps beside the tree, and how it sends and takes it
@@ -1701,59 +1765,28 @@
 		return adapter;
 	};
 
-	// The block that takes the place of a frame: the frame is the block of its kind that stands in it, and a block that the project offers for it replaces it, after the question
+	// The block that takes the place of a frame: the frame is the block of its kind that stands in it, and a block that the project offers for it replaces it - in the draft, so that
+	// Undo brings it back. The dialog and its question are the Builder's: the list of the pages gives a frame its block by the same one
 	const askFrameBlock = function( adapter ) {
 
 		const sheet = editor().state();
 
-		editor().call( 'blocks', {}, function( status, response ) {
+		Nino.admin.builder.chooseFrame( {
+			name		: adapter.name,
+			opener	: sheet.view.bar.buttons.frameblock,
+			load		: function( done ) { editor().call( 'blocks', {}, done ) },
+			fail		: function( status, response ) { sheet.view.bar.line.error( status, response ) },
+			none		: function() { sheet.view.bar.line.idle( word('frames/no-blocks') ) },
+			apply		: function( key, entry ) {
 
-			if( status !== 200 ) {
-				sheet.view.bar.line.error( status, response );
-				return;
-			}
+				editor().call( 'block', { key : key }, function( code, block ) {
 
-			const items = response.blocks.map( function( entry ) { return { value : entry.key, label : localized( entry.name ), description : localized( entry.description ) } } );
-
-			if( items.length === 0 ) {
-				sheet.view.bar.line.idle( word('frames/no-blocks') );
-				return;
-			}
-
-			Nino.adminUi.pickDialog( {
-				title		: word('frames/insert'),
-				message	: word('frames/insert-note'),
-				items		: items,
-				cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
-				opener	: sheet.view.bar.buttons.frameblock,
-				onChoose	: function( key ) {
-
-					const entry = response.blocks.find( function( candidate ) { return candidate.key === key } );
-
-					// The whole frame goes: it is asked, and Undo brings it back
-					Nino.adminUi.confirm( 'destructive', {
-						title		: word('frames/confirm-title'),
-						message	: word( 'frames/confirm-message', adapter.name, localized( entry.name ) ),
-						yes			: word('frames/confirm-yes'),
-						no			: Nino.adminUi.text('/_admin/common/label/cancel'),
-						kind		: 'danger',
-						opener	: sheet.view.bar.buttons.frameblock,
-						onChoose : function( ok ) {
-
-							if( ok === false )
-								return;
-
-							editor().call( 'block', { key : key }, function( code, block ) {
-
-								if( code !== 200 )
-									sheet.view.bar.line.error( code, block );
-								else if( editor().replace( block, entry.name ) === false )
-									sheet.view.bar.line.fail( word('frames/insert-fail') );
-							} );
-						},
-					} );
-				},
-			} );
+					if( code !== 200 )
+						sheet.view.bar.line.error( code, block );
+					else if( editor().replace( block, entry.name ) === false )
+						sheet.view.bar.line.fail( word('frames/insert-fail') );
+				} );
+			},
 		} );
 	};
 
@@ -1764,8 +1797,8 @@
 		const template = 'frame-'+ frame;
 
 		const adapter = {
-			panel		: 'blocks',
-			level		: 'blocks-sheet',
+			panel		: 'themelab',
+			level		: 'themelab-sheet',
 			frame		: true,
 			template	: template,
 			name		: title,
@@ -1774,14 +1807,14 @@
 			restore	: true,
 			sources	: 'block',
 			props		: 'panel',
-			call		: function( action, payload, done, extra ) { Nino.admin.blocks.call( 'frame-'+ action, payload, done, extra ) },
+			call		: function( action, payload, done, extra ) { Nino.admin.themelab.call( 'frame-'+ action, payload, done, extra ) },
 			code		: template,
 			base		: function() { return { template : template, locale : editor().state().locale, hint : word('preview/place') } },
-			go			: function( parts, options ) { Nino.admin.blocks.go( parts, options ) },
-			href		: function( parts ) { return Nino.admin.router.href( 'blocks', parts ) },
-			set			: function() { Nino.admin.router.set( 'blocks', partsOf( 'frames', frame ) ) },
-			show		: function() { Nino.adminUi.showLevel( 'blocks-sheet', { focus : false } ) },
-			fail		: function( level, status, answer ) { Nino.admin.blocks.fail( level, status, answer ) },
+			go			: function( parts, options ) { Nino.admin.themelab.go( parts, options ) },
+			href		: function( parts ) { return Nino.admin.router.href( 'themelab', parts ) },
+			set			: function() { Nino.admin.router.set( 'themelab', partsOf( 'frames', frame ) ) },
+			show		: function() { Nino.adminUi.showLevel( 'themelab-sheet', { focus : false } ) },
+			fail		: function( level, status, answer ) { Nino.admin.themelab.fail( level, status, answer ) },
 			back		: function() { return { parts : tabParts( 'frames' ), name : word('title'), keep : false, block : false } },
 			reload	: function() { openFrame( frame ) },
 			buttons	: [ { key : 'frameblock', label : word('frames/insert'), name : word( 'frames/insert-of', title ), onPress : function() { askFrameBlock( adapter ) } } ],
@@ -1792,15 +1825,15 @@
 
 	const openFrame = function( frame ) {
 
-		const level = dc.getElementById('blocks-sheet');
+		const level = dc.getElementById('themelab-sheet');
 
 		clearFail();
 
-		Nino.admin.blocks.call( 'frame-open', { template : 'frame-'+ frame, locale : Nino.admin.workLocale.current }, function( status, response ) {
+		Nino.admin.themelab.call( 'frame-open', { template : 'frame-'+ frame, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 			if( status !== 200 ) {
-				Nino.admin.blocks.fail( level, status, response );
-				Nino.adminUi.showLevel( 'blocks-sheet', { focus : false } );
+				Nino.admin.themelab.fail( level, status, response );
+				Nino.adminUi.showLevel( 'themelab-sheet', { focus : false } );
 				return;
 			}
 
@@ -1810,7 +1843,7 @@
 			}
 
 			if( editor().open( frameAdapterOf( frame, response ), response ) === false ) {
-				Nino.admin.blocks.go( tabParts( 'frames' ) );
+				Nino.admin.themelab.go( tabParts( 'frames' ) );
 				return;
 			}
 
@@ -1851,7 +1884,7 @@
 	// The list is left for the editor: its previews - a frame of the site each - are taken out of the page, and the list is drawn again where it is come back to
 	const unloadList = function() {
 
-		const list = dc.getElementById('blocks-list');
+		const list = dc.getElementById('themelab-list');
 
 		list.innerHTML = '';
 		N.button = null;
@@ -1859,15 +1892,15 @@
 
 	const openBlock = function( key, theme ) {
 
-		const level = dc.getElementById('blocks-sheet');
+		const level = dc.getElementById('themelab-sheet');
 
 		clearFail();
 
-		Nino.admin.blocks.call( 'open', { key : key, locale : Nino.admin.workLocale.current }, function( status, response ) {
+		Nino.admin.themelab.call( 'open', { key : key, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 			if( status !== 200 ) {
-				Nino.admin.blocks.fail( level, status, response );
-				Nino.adminUi.showLevel( 'blocks-sheet', { focus : false } );
+				Nino.admin.themelab.fail( level, status, response );
+				Nino.adminUi.showLevel( 'themelab-sheet', { focus : false } );
 				return;
 			}
 
@@ -1878,7 +1911,7 @@
 			}
 
 			if( editor().open( adapterOf( key, theme, response ), response ) === false ) {
-				Nino.admin.blocks.go( tabParts( theme === true ? 'theme' : 'project' ) );
+				Nino.admin.themelab.go( tabParts( theme === true ? 'theme' : 'project' ) );
 				return;
 			}
 
@@ -1902,28 +1935,28 @@
 
 	// --- the panel -------------------------------------------------------------------------------------------------------------
 
-	Nino.admin.blocks = Nino.adminUi.panel( {
-		uri		: 'blocks',
-		mount	: 'blocks-list',
+	Nino.admin.themelab = Nino.adminUi.panel( {
+		uri		: 'themelab',
+		mount	: 'themelab-list',
 		render	: render,
 		payload	: function() {
 
 			const at = here();
-			const target = at.panel === 'blocks' ? targetOf( at.parts ) : null;
+			const target = at.panel === 'themelab' ? targetOf( at.parts ) : null;
 
 			return { locale : Nino.admin.workLocale.current, tab : target === null ? N.tab : target.tab };
 		},
 		show	: 'always',
-		onError	: function() { Nino.adminUi.showLevel( 'blocks-list', { focus : false } ) },
+		onError	: function() { Nino.adminUi.showLevel( 'themelab-list', { focus : false } ) },
 	} );
 
-	Object.assign( Nino.admin.blocks, {
+	Object.assign( Nino.admin.themelab, {
 
 		go : function( parts, options ) {
 
-			Nino.admin.dirty.guard( sheetOpen() === true ? [ 'blocks' ] : [], function() {
-				Nino.admin.router.go( 'blocks', parts );
-				Nino.admin.blocks.follow();
+			Nino.admin.dirty.guard( sheetOpen() === true ? [ 'themelab' ] : [], function() {
+				Nino.admin.router.go( 'themelab', parts );
+				Nino.admin.themelab.follow();
 			} );
 
 			return options;
@@ -1934,10 +1967,10 @@
 			clearFail();
 
 			const at = here();
-			const target = targetOf( at.panel === 'blocks' ? at.parts : [] );
+			const target = targetOf( at.panel === 'themelab' ? at.parts : [] );
 
 			if( target === null ) {
-				Nino.admin.blocks.go( [] );
+				Nino.admin.themelab.go( [] );
 				return;
 			}
 
@@ -1945,11 +1978,11 @@
 
 				editor().close();
 				N.open = null;
-				Nino.admin.router.set( 'blocks', tabParts( target.tab ) );
+				Nino.admin.router.set( 'themelab', tabParts( target.tab ) );
 
 				// The list of the tab that the address names: asked again where it is another tab or the blocks changed
 				N.tab = target.tab;
-				Nino.admin.blocks.reload( function() { Nino.adminUi.showLevel( 'blocks-list', { focus : N.button !== null && N.button.isConnected === true ? N.button : Nino.adminUi.panelName( dc.getElementById('blocks-list') ) } ) } );
+				Nino.admin.themelab.reload( function() { Nino.adminUi.showLevel( 'themelab-list', { focus : N.button !== null && N.button.isConnected === true ? N.button : Nino.adminUi.panelName( dc.getElementById('themelab-list') ) } ) } );
 
 				return;
 			}
@@ -1964,35 +1997,35 @@
 
 			const at = here();
 
-			if( Nino.admin.blocks.ready === true && at.panel !== 'blocks' )
+			if( Nino.admin.themelab.ready === true && at.panel !== 'themelab' )
 				return;
 
-			const proceed = function() { Nino.admin.blocks.follow() };
+			const proceed = function() { Nino.admin.themelab.follow() };
 
-			if( Nino.admin.blocks.ready === false ) {
-				Nino.admin.blocks.init( proceed );
+			if( Nino.admin.themelab.ready === false ) {
+				Nino.admin.themelab.init( proceed );
 				return;
 			}
 
 			const there = targetOf( at.parts );
 			const same = sheetOpen() === true && there !== null && N.open !== null && there.tab === N.open.tab && there.key === N.open.key;
 
-			Nino.admin.router.leave( [ 'blocks' ], sheetOpen() === true && same === false, proceed, function() {
-				Nino.admin.router.set( 'blocks', N.open === null ? [] : partsOf( N.open.tab, N.open.key ) );
+			Nino.admin.router.leave( [ 'themelab' ], sheetOpen() === true && same === false, proceed, function() {
+				Nino.admin.router.set( 'themelab', N.open === null ? [] : partsOf( N.open.tab, N.open.key ) );
 			} );
 		},
 	} );
 
 	// The choice of a language in the workbench asks the sheet about its unsaved work by the name of the panel; what it answers is loaded anew in that language
-	Nino.admin.workLocale.follow( 'blocks', function() {
+	Nino.admin.workLocale.follow( 'themelab', function() {
 
 		// Another panel is the one that is shown: this one asks again when it is shown
-		if( here().panel !== 'blocks' )
+		if( here().panel !== 'themelab' )
 			return;
 
-		Nino.admin.dirty.guard( [ 'blocks' ], function() {
+		Nino.admin.dirty.guard( [ 'themelab' ], function() {
 			editor().hold();
-			Nino.admin.blocks.reload( function() { Nino.admin.blocks.follow() } );
+			Nino.admin.themelab.reload( function() { Nino.admin.themelab.follow() } );
 		}, function() {
 			Nino.admin.workLocale.set( editor().state().locale );
 		} );
@@ -2005,7 +2038,7 @@
 
 		dc.addEventListener( 'keydown', function( event ) {
 
-			if( sheetOpen() === false || here().panel !== 'blocks' || event.ctrlKey === false && event.metaKey === false )
+			if( sheetOpen() === false || here().panel !== 'themelab' || event.ctrlKey === false && event.metaKey === false )
 				return;
 
 			const held = dc.activeElement;
