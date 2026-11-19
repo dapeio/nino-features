@@ -1174,6 +1174,9 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 		JSON.stringify( sheet.extra.vars.map( function( variant ) { return variant.name } ) ) === '["standard","right"]' && sheet.extra.edited === 'standard' && JSON.stringify( row().v ) === '{"right":{"reverse":"on"}}' && row().o.reverse === null && row().a.reverse === undefined
 		&& canon().variants[1].set['3'].reverse === 'on' && canon().tree.length === sheet.top.length );
 
+	check( 'E. the question before a variant is deleted is asked by the workbench\'s confirm() of the dialog that manages the variants - nested, in red, for no visitor - and no question of the panel\'s own is made for it',
+		/Nino\.adminUi\.confirm\( 'destructive', \{\s*title\s*: word\('variants\/delete-title'\),[\s\S]*?kind\s*: 'danger',\s*visitors\s*: false,[\s\S]*?nested\s*: true,/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true && /Nino\.adminUi\.choiceDialog\( \{[^}]*variants\/delete-title/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === false );
+
 	chooseVariant( 'Rechts' );
 
 	check( 'E. another variant is looked at by the menu of the bar: the attributes of the calls are its own, the bar says which it is, and that is no change of the draft - nothing is unsaved and nothing is on the undo',
@@ -1487,23 +1490,45 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 {
 	const { w } = shown('#blocks');
-	const boxes = findAll( w.page, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' } );
+	const rowBoxes = function( page ) { return findAll( page, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' && el.attributes['aria-label'] !== undefined && /^(?:Choose|.*wählen)/.test( String( el.attributes['aria-label'] ) ) } ) };
+	const boxes = rowBoxes( w.page );
 	const button = function( id ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && el.id === id } )[0] };
-	const exportBar = button('blocks-export');
 	const importBar = button('blocks-import');
 	const on = shown( '#blocks', LIST( { tab : 'theme' } ) ).w;
+	const barButton = function( label ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === label } ).filter( function( el ) { return String( el.className ).indexOf('nino-admin-btn') !== -1 && el.id === '' } )[0] };
 
-	check( 'F. the list of the own blocks has a box at each row, named for its block, and in its bar - beside "New block" - a button of the export, which is off until a block is ticked, and a quiet button of the import; the theme\'s list has none of them',
-		boxes.length === 2 && boxes[0].attributes['aria-label'] === W( 'list/pick', 'Cards' ) && exportBar !== undefined && exportBar.disabled === true && textOf( exportBar ).trim() === W('export/button') && importBar !== undefined && textOf( importBar ).trim() === W('import/button')
-		&& findAll( on.page, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' } ).length === 0 && findAll( on.page, function( el ) { return el.id === 'blocks-export' || el.id === 'blocks-import' } ).length === 0 );
+	check( 'F. the list of the own blocks is chosen by the workbench\'s table: a box at each row, named for its block, and a quiet button of the import beside "New block" - no button of the export of its own; the theme\'s list has no box and no import',
+		boxes.length === 2 && boxes[0].attributes['aria-label'] === W( 'list/pick', 'Cards' ) && button('blocks-export') === undefined && importBar !== undefined && textOf( importBar ).trim() === W('import/button')
+		&& rowBoxes( on.page ).length === 0 && findAll( on.page, function( el ) { return el.id === 'blocks-import' } ).length === 0 );
 
 	boxes[0].checked = true;
-	fire( boxes[0], 'change' );
+	fire( boxes[0], 'click' );
 	boxes[1].checked = true;
-	fire( boxes[1], 'change' );
+	fire( boxes[1], 'click' );
 
-	check( 'F. ticking the rows turns the export on and counts them: "Export (2)"; a box that is taken away takes one off',
-		exportBar.disabled === false && textOf( exportBar ).trim() === W( 'export/button-n', 2 ) && ( function() { boxes[1].checked = false; fire( boxes[1], 'change' ); return textOf( exportBar ).trim() === W( 'export/button-n', 1 ) } )() );
+	const exportBar = barButton( W('export/button') );
+	const deleteBar = barButton( W('delete/many') );
+
+	check( 'F. with blocks chosen the bar of the table has the two actions for them - the export and the deletion, the deletion in red - and the theme\'s list has no bar',
+		exportBar !== undefined && deleteBar !== undefined && String( deleteBar.className ).indexOf('danger') !== -1 && String( exportBar.className ).indexOf('danger') === -1
+		&& findAll( on.page, function( el ) { return String( el.className ).indexOf('nino-admin-table-selection') !== -1 } ).length === 0 );
+
+	// several blocks: ONE package, asked of the server with exactly the keys that are chosen, in the order of the rows
+	fire( exportBar, 'click' );
+
+	const several = dialogOf( w );
+
+	pressed( several, W('export/submit') );
+
+	const askedAll = request( w, 'blocks/export' );
+
+	check( 'F. the export of the chosen blocks is one package: the request has exactly the keys of the chosen rows, in the order of the rows, and the dialog names a package of its own - not the name of one block',
+		askedAll !== undefined && askedAll.payload.keys.join() === 'karten,held' && askedAll.payload.name !== 'Karten' );
+
+	fire( several, 'close' );
+	w.requests.length = 0;
+	boxes[1].checked = false;
+	fire( boxes[1], 'click' );
 
 	// one block: its name and the key that comes of it
 	fire( exportBar, 'click' );
@@ -1632,9 +1657,41 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 	check( 'F. a preview that is left - Cancel or Escape - lets go of the bytes that are held for it: the key of the preview is sent, and the title of the dialog is the one of the import',
 		dropped !== undefined && dropped.payload.id === 'b'.repeat( 32 ) && request( w, 'blocks/import' ) === undefined && textOf( preview ).indexOf( W('import/title') ) !== -1 );
 
-	const head = findAll( w.page, function( el ) { return el.tagName === 'TH' && el.dataset.key === 'pick' } )[0];
+}
 
-	check( 'F. the column of the boxes has no head to read: its name for a screen reader is "Select"', head !== undefined && textOf( head ).trim() === W('list/pick-head') );
+
+// --- G. several own blocks taken away together -------------------------------------------------------------------------------
+
+{
+	const { w } = shown('#blocks');
+	const boxes = findAll( w.page, function( el ) { return el.tagName === 'INPUT' && el.type === 'checkbox' && /Cards|Held/.test( String( el.attributes['aria-label'] ) ) } );
+
+	boxes.forEach( function( box ) { box.checked = true; fire( box, 'click' ) } );
+
+	const bar = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('delete/many') && el.id === '' } )[0];
+
+	w.requests.length = 0;
+	fire( bar, 'click' );
+
+	const question = dialogOf( w );
+	const counted = textOf( question ).indexOf( W( 'delete/many-title', 2 ) ) !== -1 && w.requests.length === 0;
+
+	pressed( question, W('delete/many') );
+	fire( question, 'close' );
+
+	const first = w.requests.filter( function( entry ) { return entry.action === 'blocks/remove' } );
+
+	check( 'G. several blocks are taken away after ONE question that says how many, and nothing is asked of the server before the answer: then each key is a request of its own - the right, the token and the checks of one block - the first before the second',
+		counted === true && first.length === 1 && first[0].payload.key === 'karten' );
+
+	answerOf( first[0], 200, { key : 'karten' } );
+
+	const second = w.requests.filter( function( entry ) { return entry.action === 'blocks/remove' } )[1];
+
+	answerOf( second, 403, { error : 'x', code : 'blocks_forbidden' } );
+
+	check( 'G. a block that the server refuses does not stop the others: each key was asked, in the order of the rows, whatever the answer to the one before',
+		second !== undefined && second.payload.key === 'held' && w.requests.filter( function( entry ) { return entry.action === 'blocks/remove' } ).length === 2 );
 }
 
 done();

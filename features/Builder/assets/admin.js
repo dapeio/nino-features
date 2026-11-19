@@ -223,35 +223,6 @@
 		return Object.hasOwn( GLYPH_OF, name ) === true && Object.hasOwn( GLYPH_OF[name], value ) === true ? GLYPH_OF[name][value] : null;
 	};
 
-	// The strip of steps that the workbench draws for a tool of its own - the widths of the preview bar - gets the picture in each step as steps() of the workbench gives one, in
-	// its face: the workbench's preview tools take no pictures yet, and this is the face they would have
-	const pictured = function( strip, names ) {
-
-		Array.from( strip.querySelectorAll('.nino-admin-steps-step') ).forEach( function( button, at ) {
-
-			const label = button.querySelector('span');
-
-			if( label === null || names[at] === null || names[at] === undefined )
-				return;
-
-			const picture = glyph( names[at], 16 );
-
-			// A workbench whose set does not have the picture yet draws nothing for it: the word stays the face of the step
-			if( !picture || ( picture.childNodes !== undefined && picture.childNodes.length === 0 ) )
-				return;
-
-			const text = label.textContent;
-
-			label.textContent = '';
-			label.className = 'nino-admin-steps-icon';
-			label.appendChild( picture );
-			label.appendChild( el( 'span', 'nino-admin-sr-only', text ) );
-			button.title = button.title !== '' && button.title !== undefined ? button.title : text;
-		} );
-
-		return strip;
-	};
-
 	const localized = function( value ) {
 
 		if( typeof value === 'string' )
@@ -4219,7 +4190,9 @@
 		const buttons = {};
 		const gl = { tree : null, rail : el( 'div', 'builder-rail' ), lit : [], first : null };
 
+		// The widths are the devices of them - the phone, the tablet, the desktop: the pictures are the workbench's, their names stay the names of the steps and their tooltips
 		const tools = Nino.adminUi.previewTools( {
+			icons		: true,
 			width		: S.width,
 			onWidth	: function( name ) {
 				S.width = name;
@@ -4234,8 +4207,6 @@
 			},
 		} );
 
-		// The widths are the devices of them: the phone, the tablet, the desktop - their names are the names of the steps and their tooltips
-		pictured( tools.widths.el, DEVICES.map( function( device ) { return device.glyph } ) );
 		S.tools = tools;
 
 		// What a sheet puts beside the name of the sheet - an icon and a word each, for what is about the sheet as a whole
@@ -4350,6 +4321,7 @@
 		const split = Nino.adminUi.split( {
 			id			: advanced === true ? 'builder-split-extended' : 'builder-split',
 			fill		: true,
+			settingsWidth	: S.adapter.props === 'panel' ? 'wide' : undefined,
 			settings	: advanced === true ? settings : undefined,
 			aside		: advanced === true ? undefined : { content : gl.body, label : word('label/outline'), rail : gl.rail, collapsed : true },
 			preview		: { src : 'about:blank', title : word('label/preview-title'), width : layouts[S.width] ?? undefined },
@@ -9786,7 +9758,7 @@
 			addComponent : addComponent, relNode : relNode, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			glyphOf : glyphOf, glyph : glyph, pictured : pictured, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		/**

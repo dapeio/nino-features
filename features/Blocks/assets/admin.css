@@ -130,31 +130,7 @@
 	max-width: 100%;
 }
 
-/* Export and import: the tick of a row of the list, and the rows of what a package holds */
-#blocks-app .blocks-pick {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 24px;
-	min-height: 24px;
-}
-
-#blocks-app .blocks-pick input {
-	width: 24px;
-	height: 24px;
-	margin: 0;
-}
-
-#blocks-app .nino-admin-table thead th[data-key="pick"] {
-	padding: var(--nino-admin-space-3) var(--nino-admin-space-3);
-	color: var(--editor-text-secondary);
-	font-size: var(--nino-admin-text-xs);
-	font-weight: var(--nino-admin-weight-strong);
-	letter-spacing: .04em;
-	text-align: left;
-	text-transform: uppercase;
-}
-
+/* Import: the rows of what a package holds */
 .blocks-import {
 	display: grid;
 	gap: var(--nino-admin-space-4);

@@ -1228,11 +1228,7 @@ namespace Nino\Modules\Blocks {
 				return;
 			}
 
-			$request['/nino/http/response']['body'] = $made['bytes'];
-			$request['/nino/http/response']['header']['Content-Type'] = 'application/gzip';
-			$request['/nino/http/response']['header']['Content-Disposition'] = 'attachment; filename="'. $made['file']. '"';
-			$request['/nino/http/response']['header']['Cache-Control'] = 'private, no-store';
-			$request['/nino/http/response']['header']['X-Content-Type-Options'] = 'nosniff';
+			\Nino\Http::download( $request, $made['bytes'], $made['file'], 'application/gzip' );
 		}
 
 		/**

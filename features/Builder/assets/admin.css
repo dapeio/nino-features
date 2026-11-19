@@ -671,19 +671,6 @@
 
 /* --- The properties of a component in the column beside the preview (the Blocks editor) -------------------------------------------------------------------------------- */
 
-/* The column of the block editors is 480 px wide where the view has the room - narrower in step with the view, half of it at the most. The workbench's split() has no
-   option for the width of its settings column: this is the one place the rule is made, and the kernel is asked for the option (settingsWidth) */
-#blocks-app .nino-admin-split--fill > .nino-admin-split-grid {
-	grid-template-columns: minmax(18rem, min(480px, 50cqw)) minmax(0, 1fr);
-}
-
-@container nino-split (max-width: 44rem) {
-
-	#blocks-app .nino-admin-split--fill > .nino-admin-split-grid {
-		grid-template-columns: minmax(0, 1fr);
-	}
-}
-
 /* With the properties open the outline is out of sight - it stays in the page, told of every change - and the column is the properties' own: no padding, the head sticks */
 #blocks-app .nino-admin-split-settings.builder-props-open {
 	padding: 0;

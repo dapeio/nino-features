@@ -162,9 +162,10 @@ check( 'a svg leaves in the package as the picture that cleanSvg() rebuilds of i
 	$cleanSvg !== '' && $cleanSvg !== $svg && ( $files[$first. '/images/picture.svg'] ?? '' ) === $cleanSvg && preg_match( '/script|onload|onclick|alert/i', (string) ( $files[$first. '/images/picture.svg'] ?? '' ) ) === 0
 	&& file_get_contents( $dirA. '/'. $first. '/images/picture.svg' ) === $svg );
 
-check( 'the download is a file: the type of a gzip, an attachment named for the key and the version, no cache, no sniffing - the bytes are a gzip stream of a tar',
+check( 'the download is a file the kernel answers as one (Http::download): the type of a gzip, an attachment named for the key and the version, no cache, no sniffing, the length of the bytes, and the bytes are not drawn as a page - they are a gzip stream of a tar',
 	( $header['Content-Type'] ?? '' ) === 'application/gzip' && ( $header['Content-Disposition'] ?? '' ) === 'attachment; filename="my-blocks-1.0.0.tar.gz"' && ( $header['Cache-Control'] ?? '' ) === 'private, no-store'
-	&& ( $header['X-Content-Type-Options'] ?? '' ) === 'nosniff' && is_string( $bytes ) === true && str_starts_with( $bytes, "\x1f\x8b" ) === true );
+	&& ( $header['X-Content-Type-Options'] ?? '' ) === 'nosniff' && is_string( $bytes ) === true && str_starts_with( $bytes, "\x1f\x8b" ) === true
+	&& ( $header['Content-Length'] ?? '' ) === (string) strlen( $bytes ) && ( $request['/nino/http/response']['raw'] ?? false ) === true );
 
 [ $dry, $said ] = packCall( $a, 'blocks/export', $given + [ 'check' => true ] );
 

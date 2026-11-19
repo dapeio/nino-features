@@ -186,49 +186,6 @@
 		return key === '' ? 'blocks' : key;
 	};
 
-	// The blocks that are ticked for the export: only blocks of the project that the list has
-	const pickedNow = function() {
-
-		const have = new Set( ( N.data.blocks ?? [] ).map( function( block ) { return block.key } ) );
-
-		return Array.from( N.picked ?? [] ).filter( function( key ) { return have.has( key ) } );
-	};
-
-	const paintExport = function() {
-
-		if( N.exportButton === null || N.exportButton === undefined )
-			return;
-
-		const count = pickedNow().length;
-
-		N.exportButton.disabled = count === 0;
-		N.exportButton.textContent = count === 0 ? word('export/button') : word( 'export/button-n', count );
-	};
-
-	// The tick of a row for the export: a box with the name of the block for a screen reader
-	const pickCell = function( value, row ) {
-
-		const label = el( 'label', 'blocks-pick' );
-		const input = dc.createElement('input');
-
-		input.type = 'checkbox';
-		input.checked = ( N.picked ?? new Set() ).has( row.key );
-		input.dataset.key = 'pick:'+ row.key;
-		input.setAttribute( 'aria-label', word( 'list/pick', row.name ) );
-		input.addEventListener( 'change', function() {
-
-			if( input.checked === true )
-				N.picked.add( row.key );
-			else
-				N.picked.delete( row.key );
-
-			paintExport();
-		} );
-		label.appendChild( input );
-
-		return label;
-	};
-
 	// The file is asked of the server by a form that posts into a frame nobody sees: a file that is saved does not load, so what loads there is the refusal
 	const download = function( body ) {
 
@@ -273,11 +230,10 @@
 		dc.body.removeChild( form );
 	};
 
-	const askExport = function( opener ) {
+	// The package of the blocks that are chosen in the list: one package, whatever their number
+	const askExport = function( keys, opener ) {
 
 		clearFail();
-
-		const keys = pickedNow();
 
 		if( keys.length === 0 )
 			return;
@@ -502,7 +458,6 @@
 
 		N.data = data;
 		N.tab = data.tab;
-		N.picked = N.picked ?? new Set();
 
 		const mount = dc.getElementById('blocks-list');
 		const holder = el( 'div', '' );
@@ -556,14 +511,19 @@
 			Nino.adminUi.table( {
 				mount			: holder,
 				rowKey		: 'key',
-				columns		: ( N.tab === 'project' ? [ { key : 'pick', label : word('list/pick-head'), type : 'string', render : pickCell, sortable : false } ] : [] ).concat( [
+				columns		: [
 					{ key : 'tile', label : word('list/preview'), type : 'string', render : tileCell, sortable : false },
 					{ key : 'name', label : word('list/name'), type : 'string', render : nameCell },
 					{ key : 'category', label : word('list/category'), type : 'string', render : function( value ) { return categoryWord( value ) } },
 					{ key : 'variants', label : word('list/variants'), type : 'integer', render : variantCell },
-				] ),
+				],
 				rows			: data.blocks.map( function( block ) { return { key : block.key, pick : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ) } } ),
 				actions		: rowButtons,
+				// The own blocks are chosen in the list and handed out or taken away together; the theme's blocks are only looked at and copied
+				select		: N.tab === 'project' ? { label : word('list/pick-head'), rowLabel : function( row ) { return word( 'list/pick', row.name ) }, actions : [
+					{ key : 'export', label : word('export/button'), run : function( keys ) { askExport( keys, dc.activeElement ) } },
+					{ key : 'delete', label : word('delete/many'), danger : true, run : function( keys ) { askDeleteMany( keys, dc.activeElement ) } },
+				] } : undefined,
 				labels		: { search : word('list/search'), empty : word('msg/none-project'), noMatch : word('list/no-match') },
 				search		: true,
 				searchText	: function( row ) { return row.key },
@@ -572,18 +532,11 @@
 
 		N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'blocks-new' } );
 
-		// The own blocks are handed out and taken in: the ticked ones go into a package, and a package comes in beside the button of a new block
+		// The own blocks are taken in beside the button of a new block: a package comes in
 		const beside = [];
 
-		N.exportButton = null;
-
-		if( N.tab === 'project' ) {
-
-			N.exportButton = Nino.adminUi.button( word('export/button'), function() { askExport( N.exportButton ) }, { kind : 'secondary', id : 'blocks-export' } );
-			beside.push( N.exportButton );
+		if( N.tab === 'project' )
 			beside.push( Nino.adminUi.button( word('import/button'), function( event ) { askImport( event.currentTarget ) }, { kind : 'secondary', id : 'blocks-import' } ) );
-			paintExport();
-		}
 
 		mount.appendChild( Nino.adminUi.actionBar( { list : true, secondary : beside, primary : N.button } ).el );
 	};
@@ -797,6 +750,59 @@
 					Nino.adminUi.say( word( 'msg/removed', row.name ) );
 					Nino.admin.blocks.reload();
 				} );
+			},
+		} );
+	};
+
+	// Several own blocks at once, after ONE question that says how many: each is asked of the server on its own - the right, the token and the checks are those of the one block - and
+	// what was refused is said with its name, the rest is taken away
+	const askDeleteMany = function( keys, opener ) {
+
+		clearFail();
+
+		if( keys.length === 0 )
+			return;
+
+		Nino.adminUi.confirm( 'destructive', {
+			title		: word( 'delete/many-title', keys.length ),
+			message	: word( 'delete/many-message', keys.length ),
+			yes			: word('delete/many'),
+			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+			kind		: 'danger',
+			opener	: opener,
+			onChoose	: function( ok ) {
+
+				if( ok !== true )
+					return;
+
+				const refused = [];
+				let gone = 0;
+
+				const next = function( at ) {
+
+					if( at >= keys.length ) {
+
+						if( refused.length > 0 )
+							fail( refused[0].status, refused[0].response, '/_admin/blocks/error/remove' );
+						else
+							Nino.adminUi.say( word( 'msg/removed-many', gone ) );
+
+						Nino.admin.blocks.reload();
+						return;
+					}
+
+					Nino.admin.blocks.call( 'remove', { key : keys[at] }, function( status, response ) {
+
+						if( status === 200 )
+							gone++;
+						else
+							refused.push( { key : keys[at], status : status, response : response } );
+
+						next( at + 1 );
+					} );
+				};
+
+				next( 0 );
 			},
 		} );
 	};
@@ -1359,16 +1365,18 @@
 
 					row.appendChild( Nino.adminUi.iconButton( 'trash-2', word( 'variants/delete', labelOf( variant ) ), function( event ) {
 
-						// confirm() does not pass `nested` on, and the question is asked of the open dialog of the management: choiceDialog() is asked itself
-						Nino.adminUi.choiceDialog( {
+						Nino.adminUi.confirm( 'destructive', {
 							title		: word('variants/delete-title'),
 							message	: word( 'variants/delete-message', labelOf( variant ) ),
+							yes			: word('variants/delete-yes'),
+							no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+							kind		: 'danger',
+							visitors	: false,
 							opener	: event.currentTarget,
 							nested	: true,
-							choices	: [ { value : 'no', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'yes', label : word('variants/delete-yes'), kind : 'danger' } ],
-							onChoose : function( value ) {
+							onChoose : function( ok ) {
 
-								if( value !== 'yes' )
+								if( ok !== true )
 									return;
 
 								editor().change( function() {
