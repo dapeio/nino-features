@@ -806,7 +806,8 @@ namespace Nino\Modules\Builder {
 		 *	holds, and in nothing else. The register is asked of both (\Nino\Components::check()) and the new tree may have nothing against it that the old one had not
 		 *	by the same name and attributes - but for a variant the active mix has not got, which is a hint for each step. What the call of html holds is its own for the one
 		 *	who may develop. Free markup and calls without a schema - and for the one who may not develop the call of html and what it holds - are
-		 *	pieces of the old tree to the byte, and the pieces that follow one another are one unit: it stays in its container, whole and in its order, and is moved
+		 *	pieces of the old tree to the byte, and the pieces that follow one another are one unit - but for a call of a frame that follows another, which is a unit of its
+		 *	own, so that the first block of an empty page goes between the header and the footer - : it stays in its container, whole and in its order, and is moved
 		 *	or taken out as a whole, never split, never put in another container, never made twice. No id stands twice, a new id is no id of the page and has no
 		 *	words or slots. An address that runs a script or leaves the site and a textfill in a value are the old ones or none, where old means the same attribute of
 		 *	a call of the same name. The size, the number of calls and the depth are the canonical reading's
@@ -900,7 +901,7 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	The pieces of a tree that a person who designs does not write: free markup, a fill, a call that has no schema, and - where the call of html is not for the
 		 *	person - html with what it holds. A piece is the text without its blanks, or the node as it is written. The pieces that follow one another in a container,
-		 *	with nothing but blanks between, are a unit; it is told by the container it stands in - the names of the calls it stands in, from the top of the page down, so that it never gets an ancestor it did not have: no loop, no other kind of container - and what it holds
+		 *	with nothing but blanks between, are a unit - a call of a frame that follows another is the start of one of its own -; it is told by the container it stands in - the names of the calls it stands in, from the top of the page down, so that it never gets an ancestor it did not have: no loop, no other kind of container - and what it holds
 		 *
 		 *	@param		array			$nodes
 		 *	@param		array			$registry
@@ -914,6 +915,7 @@ namespace Nino\Modules\Builder {
 		private static function _pieces( array $nodes, array $registry, bool $develop, array &$pieces, array &$units, string $parent = '' ): void {
 
 			$run = [];
+			$framed = false;
 
 			foreach( $nodes as $node ) {
 
@@ -927,11 +929,20 @@ namespace Nino\Modules\Builder {
 							$units[] = (string) json_encode( [ $parent, $run ] );
 
 						$run = [];
+						$framed = false;
 
 						if( is_array( $node['c'] ?? null ) === true )
 							self::_pieces( $node['c'], $registry, $develop, $pieces, $units, $parent. '/'. $node['n'] );
 
 						continue;
+					}
+
+					// A call of a frame that follows another is a unit of its own: the header and the footer are two units whether a block stands between them or not, so that the first
+					// block of a page - the place between them is the only one an empty page has - splits no unit, and the last one taken out joins none
+					if( $node['n'] === 'template' && $framed === true && $run !== [] ) {
+
+						$units[] = (string) json_encode( [ $parent, $run ] );
+						$run = [];
 					}
 
 					$piece = [ (string) json_encode( $node ), $node['n'] === 'html' ];
@@ -945,6 +956,7 @@ namespace Nino\Modules\Builder {
 				if( $piece !== null ) {
 					$pieces[] = $piece;
 					$run[] = $piece[0];
+					$framed = isset( $node['n'] ) === true && $node['n'] === 'template';
 				}
 			}
 

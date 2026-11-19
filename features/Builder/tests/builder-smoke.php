@@ -1468,6 +1468,51 @@ $before = builderSnapshot( $site );
 
 check( 'the key of the kernel that the hero reads is no source for a button that is put in anew elsewhere: a 403 for the source, and nothing is written', $status === 403 && ( $why['code'] ?? '' ) === 'builder_refused_source' && $before === builderSnapshot( $site ) );
 
+// the first block of a page that has none: the call of the header and the call of the footer stand side by side, and the place between them is the one place an empty page has.
+// Every account that may put a block in puts the first one in and takes the last one out - the content step as the design step, the blanket of the site as both - and none of them
+// may put free markup there or a second header: the content step is held to what the design step may do, and the design step to what it could
+$empty = "<!-- nino:template-name Home -->\n[template /templates/html-header]\n[template /templates/html-footer]\n";
+$firstAt = static fn( array $tree ): int => (int) array_key_last( array_filter( $tree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'template' ) );
+$firsts = [];
+
+foreach( [ 'content' => [ '/_admin/builder/manage', '/_admin/builder/content/*' ], 'design' => [ '/_admin/builder/manage', '/_admin/builder/design/*' ], 'blanket' => [ '/*' ] ] as $who => $perms ) {
+
+	builderAccount( $site, 'first-'. $who. '@example.com', $perms );
+	\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $empty );
+	[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+	$put = builderInsert( $site, [ 'tree' => $page['tree'], 'texts' => $page['texts'], 'slots' => $page['slots'] ], 'hero-full', $firstAt( $page['tree'] ) );
+	$answers = [];
+
+	// what may not be put between the calls: free markup, a second call of the header
+	$before = builderSnapshot( $site );
+	$free = $page['tree'];
+	array_splice( $free, $firstAt( $page['tree'] ), 0, [ [ 'n' => 'p', 's' => '', 'a' => [], 'c' => [ [ 't' => 'free' ] ] ], [ 't' => "\n" ] ] );
+	$twice = $page['tree'];
+	array_splice( $twice, $firstAt( $page['tree'] ), 0, [ $page['tree'][array_key_first( array_filter( $page['tree'], static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'template' ) )], [ 't' => "\n" ] ] );
+	$answers['free'] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $free, 'texts' => [], 'base' => $page['stamp'] ] )[0];
+	$answers['twice'] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $twice, 'texts' => [], 'base' => $page['stamp'] ] )[0];
+	$kept = builderSnapshot( $site ) === $before;
+
+	// the first block: drawn in the preview and saved, and it stands between the two calls
+	$answers['preview'] = builderCall( $site, 'builder/preview', [ 'template' => 'page-home', 'tree' => $put['tree'], 'texts' => $put['texts'], 'inserted' => $put['inserted'] ] )[0];
+	$answers['first'] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $put['tree'], 'texts' => $put['texts'], 'inserted' => $put['inserted'], 'base' => $page['stamp'] ] )[0];
+	$source = (string) file_get_contents( builderFile( $site, 'page-home' ) );
+	$between = preg_match( '/html-header\].*id="'. preg_quote( $put['id'], '/' ). '".*html-footer\]/s', $source ) === 1;
+
+	// the last block out: the page is as empty as it was
+	[ , $page ] = builderCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
+	$taken = $page['tree'];
+	array_splice( $taken, builderAt( $taken, $put['id'] ), 2 );
+	$answers['last'] = builderCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $taken, 'texts' => [], 'base' => $page['stamp'] ] )[0];
+	$firsts[$who] = [ $answers, $kept, $between, trim( (string) file_get_contents( builderFile( $site, 'page-home' ) ) ) === trim( $empty ) ];
+}
+
+foreach( $firsts as $who => $got )
+	check( 'the first block of a page that has none is put in by the account of the '. $who. ' step - drawn, saved between the calls of the header and the footer - and the last one is taken out; free markup and a second header are a 403 and nothing is written',
+		$got === [ [ 'free' => 403, 'twice' => 403, 'preview' => 200, 'first' => 200, 'last' => 200 ], true, true, true ] );
+
+\Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', $bandBase );
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nI. The extended view\n";
 
