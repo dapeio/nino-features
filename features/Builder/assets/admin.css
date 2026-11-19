@@ -344,6 +344,28 @@
 	min-width: 0;
 }
 
+/* Where the box is too narrow for three choices side by side - their words, "Inherited from smartphone", are cut off - they stand one under the other, each with its device in front */
+.builder-lightbox .builder-widths-set {
+	container-type: inline-size;
+}
+
+@container (max-width: 40rem) {
+	.builder-lightbox .builder-widths-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.builder-lightbox .builder-widths-column {
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: center;
+		gap: var(--nino-admin-space-3);
+	}
+
+	.builder-lightbox .builder-widths-column > .builder-device {
+		justify-self: start;
+		min-width: 24px;
+	}
+}
+
 /* The choice of a column has its name in the head above it: the label of the field is for a screen reader */
 .builder-lightbox .builder-width-cell {
 	display: block;

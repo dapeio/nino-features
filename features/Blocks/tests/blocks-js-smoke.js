@@ -332,7 +332,7 @@ const LIST = function( extra ) {
 	return Object.assign( {
 		tab : 'project', theme : { name : 'Nino' },
 		blocks : [
-			{ key : 'karten', name : { de_DE : 'Karten', en_US : 'Cards' }, category : 'content', group : 'content', variants : 2, rank : 900 },
+			{ key : 'karten', name : { de_DE : 'Karten', en_US : 'Cards' }, description : { de_DE : 'Vier Karten', en_US : 'Four cards' }, category : 'content', group : 'content', variants : 2, variantNames : [ { de_DE : 'Standard', en_US : 'Standard' }, { de_DE : 'Dunkel', en_US : 'Dark' } ], rank : 900 },
 			{ key : 'held', name : 'Held', category : 'intro', group : 'intro', variants : 0, rank : 900 },
 		],
 		library : [ { key : 'hero-full', name : { en_US : 'Hero' }, origin : { en_US : 'Basis' }, own : false }, { key : 'karten', name : { en_US : 'Cards' }, origin : { en_US : 'Project' }, own : true } ],
@@ -446,11 +446,11 @@ const typed = function( dialog, values ) {
 
 	const rename = dialogOf( w );
 
-	pressed( rename, W('rename/submit') );
+	pressed( rename, W('details/submit') );
 
 	const sent = request( w, 'blocks/rename' );
 
-	check( 'B. a block is renamed with the names it has in each language in the fields - and the request names the key and the names', sent !== undefined && sent.payload.key === 'karten' && sent.payload.name.de_DE === 'Karten' && sent.payload.name.en_US === 'Cards' );
+	check( 'B. a block is renamed with the names it has in each language in the fields - and the request names the key and the names', sent !== undefined && sent.payload.key === 'karten' && sent.payload.name.de_DE === 'Karten' && sent.payload.name.en_US === 'Cards' && sent.payload.description.de_DE === 'Vier Karten' && sent.payload.category === 'content' && String( sent.payload.rank ) === '900' );
 
 	const second = shown('#blocks').w;
 
@@ -637,12 +637,12 @@ const sheetOf = function( hash, extra ) {
 
 	fire( findAll( rowsOfList( second )[0], function( el ) { return el.tagName === 'BUTTON' } )[0], 'click' );
 
-	check( 'D. a copy begins with the name of the block and the word of a copy in each language, a rename with the name of the block in each language',
+	check( 'D. a copy begins with the name of the block and the word of a copy in each language, the details of a block begin with its name in each language',
 		inputsOf( dialogOf( second ) ).map( function( input ) { return input.value } ).join('|') === 'Karten Kopie|Cards copy' && ( function() {
 			fire( dialogOf( second ), 'close' );
 			fire( findAll( rowsOfList( second )[0], function( el ) { return el.tagName === 'BUTTON' } )[1], 'click' );
 
-			return inputsOf( dialogOf( second ) ).map( function( input ) { return input.value } ).join('|') === 'Karten|Cards';
+			return inputsOf( dialogOf( second ) ).map( function( input ) { return input.value } ).slice( 0, 2 ).join('|') === 'Karten|Cards';
 		} )() );
 }
 
@@ -773,5 +773,292 @@ const sheetOf = function( hash, extra ) {
 	check( 'D. the dialog of a source on a block has the two tabs a block can carry - choose a value and new - and no fixed text, no page and no address', tabs.join('|') === [ words.en['/_admin/builder/source/tab-pick'], words.en['/_admin/builder/source/tab-new'] ].join('|') );
 }
 
+
+// --- the variants and the details of a block ------------------------------------------------------------------------------
+
+{
+	const attribute = function( label, name, fallback, options, look ) { return { type : 'choice', label : label, hint : '', default : fallback, options : options, optionLabels : null, responsive : false, min : null, max : null, class : look } };
+	const VARIED = function( extra ) {
+
+		const schemas = Object.assign( {}, pageAnswer().schemas, {
+			'section-wrap' : schema( 'Section', 'panel-top', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '', options : null, optionLabels : null, responsive : false, min : null, max : null, class : false }, ground : attribute( 'Ground', 'ground', 'base', [ 'base', 'tint' ], true ) } } ),
+			'section-row' : schema( 'Row', 'rows-2', 'none', { variants : [ 'regular', 'card' ], standard : 'regular', attributes : { reverse : attribute( 'Reverse', 'reverse', 'off', [ 'off', 'on' ], true ), gap : attribute( 'Gap', 'gap', '2', [ '1', '2', '3' ], false ) } } ),
+		} );
+
+		return Object.assign( {
+			schemas : schemas,
+			alternatives : [ { name : 'standard', label : { de_DE : 'Standard', en_US : 'Standard' }, set : {} }, { name : 'right', label : { de_DE : 'Rechts', en_US : 'Right' }, set : { '3' : { reverse : 'on' } } } ],
+			details : { names : { de_DE : 'Karten', en_US : 'Cards' }, descriptions : { de_DE : 'D', en_US : 'D' }, category : 'content', rank : 900, images : { picture : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'B', en_US : 'P' }, used : true }, spare : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'S', en_US : 'S' }, used : false } }, locales : [ 'de_DE', 'en_US' ], placeholders : [ '/nino/placeholder/landscape', '/nino/placeholder/mark' ] },
+		}, extra ?? {} );
+	};
+	const w = sheetOf( '#blocks/karten', VARIED() );
+	const sheet = w.builder.editor.state();
+	const model = w.builder.model;
+	const root = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
+	const row = function() { return sheet.top[root].c[3] };
+	const canon = function() { return sheet.adapter.canon( sheet.top, sheet.extra ) };
+	const chooseVariant = function( label ) {
+
+		fire( sheet.view.bar.buttons.variant, 'click' );
+
+		const box = dialogOf( w );
+
+		fire( findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim().indexOf( label ) === 0 } )[0], 'click' );
+		fire( box, 'close' );
+	};
+
+	check( 'E. the sets of the variants stand on the calls they are about - the one that sets the reverse of the row has it in v, and the value the template has in o - and the first variant, the template, is the one that is edited: the row has the reverse of the template',
+		JSON.stringify( sheet.extra.vars.map( function( variant ) { return variant.name } ) ) === '["standard","right"]' && sheet.extra.edited === 'standard' && JSON.stringify( row().v ) === '{"right":{"reverse":"on"}}' && row().o.reverse === null && row().a.reverse === undefined
+		&& canon().variants[1].set['3'].reverse === 'on' && canon().tree.length === sheet.top.length );
+
+	chooseVariant( 'Rechts' );
+
+	check( 'E. another variant is looked at by the menu of the bar: the attributes of the calls are its own, the bar says which it is, and that is no change of the draft - nothing is unsaved and nothing is on the undo',
+		sheet.extra.edited === 'right' && row().a.reverse === 'on' && model.isDirty() === false && sheet.undo.length === 0 && textOf( sheet.view.bar.buttons.variant ).indexOf( W( 'variants/button', 'Rechts' ) ) !== -1 );
+
+	const inContext = function( node ) { for( let up = node; up !== null && up !== undefined; up = up.parentNode ) if( String( up.className ?? '' ).split(' ').indexOf('nino-admin-contextbar') !== -1 ) return true; return false };
+
+	check( 'E. the buttons of the block - its details and its variant - stand in the bar of the context beside its name and not in the foot; the name of the variant button is the words it shows, so that what a person reads is what she says',
+		sheet.adapter.buttons.map( function( one ) { return one.key } ).join() === 'saveas' && sheet.adapter.context.map( function( one ) { return one.key } ).join() === 'details,variant' && inContext( sheet.view.bar.buttons.details ) === true && inContext( sheet.view.bar.buttons.variant ) === true
+		&& sheet.view.bar.buttons.variant.attributes['aria-label'] === W( 'variants/button', 'Rechts' ) && textOf( sheet.view.bar.buttons.variant ).trim() === W( 'variants/button', 'Rechts' ) );
+
+	model.setAttr( 'root', 'ground', 'tint' );
+
+	check( 'E. a look that is changed in a variant other than the first is the set of that variant at the place of the call - the template keeps what it had - and is a change of the draft, one step of the undo',
+		sheet.top[root].v.right.ground === 'tint' && sheet.top[root].o.ground === null && canon().tree[root].a.ground === undefined && canon().variants[1].set.root.ground === 'tint' && model.isDirty() === true && sheet.undo.length === 1 );
+
+	model.setAttr( '3', 'gap', '3' );
+
+	check( 'E. what is no look - the gap of the row here, which the register does not write as a class - is the template\'s whatever variant is edited, and no set has it',
+		row().a.gap === '3' && Object.hasOwn( row().v.right, 'gap' ) === false && canon().tree[root].c[3].a.gap === '3' );
+
+	model.setAttr( 'root', 'ground', null );
+
+	check( 'E. a look that is put back to what the template has leaves no set: the value is the template\'s again and the set of the variant at that place is gone',
+		Object.keys( sheet.top[root].v ?? {} ).length === 0 && canon().variants[1].set.root === undefined && sheet.top[root].a.ground === undefined );
+
+	model.undo();
+	model.undo();
+
+	const half = sheet.top[root].v.right.ground === 'tint' && row().a.gap === undefined && sheet.extra.edited === 'right' && model.isDirty() === true;
+
+	model.undo();
+
+	check( 'E. the undo takes the steps back in the variant that they were made in: the look of the set is back, and with the last step gone the draft is as it was opened',
+		half === true && Object.keys( sheet.top[root].v ?? {} ).length === 0 && model.isDirty() === false );
+
+	chooseVariant( 'Standard' );
+	model.setAttr( 'root', 'ground', 'tint' );
+
+	check( 'E. in the first variant a look is the template\'s: the variants that do not set it have it too, and the one that sets it keeps its own',
+		canon().tree[root].a.ground === 'tint' && canon().variants[1].set.root === undefined && JSON.stringify( row().v ) === '{"right":{"reverse":"on"}}' );
+
+	model.undo();
+
+	// a call that is taken out takes its set with it, and the places that come after move: the sets are carried by the calls
+	model.removeComponent( '1' );
+
+	check( 'E. the sets move with the calls: when a call before the row is taken out the row has another place and its set is at that place - and a set of a call that was taken out is gone',
+		canon().variants[1].set['1'].reverse === 'on' && canon().variants[1].set['3'] === undefined );
+
+	model.undo();
+
+	chooseVariant( 'Rechts' );
+
+	const sent = { tree : sheet.top.slice(), texts : {} };
+
+	sheet.adapter.out( 'preview', sent );
+
+	const saving = { tree : sheet.top.slice(), texts : {} };
+
+	sheet.adapter.out( 'save', saving );
+
+	check( 'E. the draft that is drawn has no sets on its calls and the attributes of the variant that is edited, the draft that is saved is the template with the variants and the details beside it - the server is told what it builds block.json from',
+		JSON.stringify( sent.tree ).indexOf( '"v"' ) === -1 && JSON.stringify( sent.tree ).indexOf( '"o"' ) === -1 && sent.variants === undefined && saving.variants.length === 2 && saving.variants[1].set['3'].reverse === 'on' && saving.details.rank === 900 && saving.tree[root].c[3].a.reverse === undefined );
+
+	// the answer of the save: the variant that was edited is the one that stays
+	sheet.adapter.took( { alternatives : saving.variants, details : sheet.extra.details }, { edited : 'right' } );
+
+	check( 'E. after the save the variant that was edited is still the one that is edited - the answer of the server brings the variants as they are saved and the tree shows the one that was looked at, not the standard',
+		sheet.extra.edited === 'right' && row().a.reverse === 'on' && sheet.extra.vars.length === 2 );
+
+	// a new variant begins as the one that is edited
+	chooseVariant( 'Rechts' );
+	chooseVariant( W('variants/new') );
+	typed( dialogOf( w ), [ 'Gross', 'Big' ] );
+	pressed( dialogOf( w ), W('variants/new-submit') );
+	fire( dialogOf( w ), 'close' );
+
+	check( 'E. a new variant is made from a name and begins as a copy of the one that is edited: its key is made from the name, it is the one that is edited, it has the sets the other had - and it is a change of the draft',
+		sheet.extra.vars.length === 3 && sheet.extra.vars[2].name === 'gross' && sheet.extra.edited === 'gross' && JSON.stringify( row().v.gross ) === '{"reverse":"on"}' && model.isDirty() === true && row().a.reverse === 'on' );
+
+	chooseVariant( W('variants/manage') );
+
+	const manage = dialogOf( w );
+	const names = findAll( manage, function( el ) { return el.tagName === 'INPUT' } ).map( function( input ) { return input.value } );
+
+	check( 'E. the variants are managed in a dialog of their own: each has its name, the first is the template and has no way to move or to go, the others have up, down and delete',
+		names.join('|') === 'Standard|Rechts|Gross' );
+
+	const trash = findAll( manage, function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Gross' ) !== -1 && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Delete' ) !== -1 } )[0];
+
+	fire( trash, 'click' );
+	pressed( dialogOf( w ), W('variants/delete-yes') );
+	fire( dialogOf( w ), 'close' );
+
+	check( 'E. a variant is taken away after a question that says what happens to the pages that have it: its set is gone from every call, the first variant is the one that is edited then, and it is a change of the draft',
+		sheet.extra.vars.length === 2 && row().v.gross === undefined && sheet.extra.edited === 'standard' && row().a.reverse === undefined );
+
+	// every row of the lightbox says where it writes: a look the set of this variant, the rest every variant - and what it says is where the change goes
+	// the management of the variants is still open under the question that was answered: it is closed, as a person does with Close
+	fire( w.dialogs.filter( function( one ) { return textOf( one ).indexOf( W('variants/manage-title') ) === 0 } ).pop(), 'close' );
+
+	chooseVariant( 'Rechts' );
+
+	const opener = sheet.view.bar.buttons.variant;
+	const shownBox = w.builder.editor.properties( root, '3', opener );
+	const boxDialog = dialogOf( w );
+	const headerOf = function( word ) { return findAll( boxDialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && textOf( el ).trim().indexOf( word ) === 0 } )[0] };
+
+	fire( headerOf( words.en['/_admin/builder/box/look'] ), 'click' );
+
+	const bodies = findAll( boxDialog, function( el ) { return String( el.className ).indexOf('builder-box-body') !== -1 } );
+	const lookBody = bodies.filter( function( body ) { return findAll( body, function( el ) { return String( el.className ).indexOf('nino-admin-field') !== -1 } ).length > 0 } )[0];
+	const countOf = function( node, name ) { return findAll( node, function( el ) { return String( el.className ).split(' ').indexOf( name ) !== -1 } ).length };
+	const fieldRows = lookBody.children.filter( function( child ) { return String( child.className ).indexOf('builder-var-note') === -1 } );
+	const marks = fieldRows.map( function( one ) { return [ countOf( one, 'builder-var-all' ), countOf( one, 'builder-var-here' ) ] } );
+
+	check( 'E. every row of the look of a component in another variant says where it writes - exactly one of "this variant" for a look and "all variants" for what is not one, the variant of the component among them - and the section has no sentence of its own over them',
+		shownBox === true && fieldRows.length === 3 && countOf( lookBody, 'builder-var-note' ) === 0 && marks.map( function( pair ) { return pair.join('') } ).join('|') === '10|01|10' );
+
+	const dots = fieldRows.map( function( one ) { return countOf( one, 'builder-var-dot' ) } );
+	const resets = fieldRows.map( function( one ) { return findAll( one, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('variants/reset') } ).length } );
+	const steps = sheet.undo.length;
+
+	fire( findAll( fieldRows[1], function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('variants/reset') } )[0], 'click' );
+
+	check( 'E. a row that has a value in the set of the variant has a dot and the way back to the template - "Reset to template" - a row that has none has neither; the way back takes the value out of the set, as one step of the undo',
+		dots.join() === '0,1,0' && resets.join() === '0,1,0' && ( row().v ?? {} ).right === undefined && sheet.undo.length === steps + 1 && row().a.reverse === undefined );
+
+	model.undo();
+
+	// ... and what a row says is where the change goes
+	model.setAttr( '3', 'variant', 'card' );
+	model.setAttr( '3', 'gap', '1' );
+	model.setAttr( '3', 'reverse', 'off' );
+
+	check( 'E. what a row says is where its change goes: the variant of the component and the gap are the template\'s - for every variant - the look is the set of the variant that is edited',
+		row().a.variant === 'card' && row().o.variant === undefined && row().a.gap === '1' && row().o.gap === undefined && Object.keys( ( row().v ?? {} ).right ?? {} ).join() === ''
+		&& canon().tree[root].c[3].a.variant === 'card' && canon().tree[root].c[3].a.gap === '1' );
+
+	fire( boxDialog, 'close' );
+
+	// a step back that lands in the variant its change was made in says which variant is edited
+	chooseVariant( 'Standard' );
+	model.undo();
+
+	check( 'E. a step back that goes to another variant - the change it takes back was made there - says in the bar which variant is edited; choosing a variant says nothing',
+		sheet.extra.edited === 'right' && sheet.view.bar.line.element.textContent === W( 'variants/edited', 'Rechts' ) );
+}
+
+{
+	const w = sheetOf( '#blocks/theme/karten', { editable : false, alternatives : [ { name : 'standard', label : { en_US : 'Standard' }, set : {} }, { name : 'right', label : { en_US : 'Right' }, set : {} } ] } );
+	const sheet = w.builder.editor.state();
+	const buttons = Object.keys( sheet.view.bar.buttons );
+
+	check( 'E. a block of the theme is looked at: its variants can be chosen to look at and there is no way to make one or to manage them, and it has no details to change',
+		buttons.indexOf( 'variant' ) !== -1 && buttons.indexOf( 'details' ) === -1 && sheet.adapter.readOnly === true );
+}
+
+{
+	const w = sheetOf( '#blocks/karten', { details : { names : { de_DE : 'Karten', en_US : 'Cards' }, descriptions : { de_DE : 'D', en_US : 'D' }, category : 'content', rank : 900, images : { picture : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'B', en_US : 'P' }, used : true }, spare : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'S', en_US : 'S' }, used : false } }, locales : [ 'de_DE', 'en_US' ], placeholders : [ '/nino/placeholder/landscape', '/nino/placeholder/mark' ] }, alternatives : [ { name : 'standard', label : { de_DE : 'Standard', en_US : 'Standard' }, set : {} } ] } );
+	const sheet = w.builder.editor.state();
+	const model = w.builder.model;
+
+	fire( sheet.view.bar.buttons.details, 'click' );
+
+	const box = dialogOf( w );
+	const heads = findAll( box, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined } ).map( function( el ) { return textOf( el ).trim() } );
+
+	check( 'E. the details of a block are a lightbox with an accordion: the name and the description in each language, the choice - category and rank - and the places of the pictures',
+		heads.length === 3 && heads[0].indexOf( W('details/name') ) === 0 && heads[1].indexOf( W('details/order') ) === 0 && heads[2].indexOf( W('details/images') ) === 0 );
+
+	const fields = findAll( box, function( el ) { return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' } );
+	const named = fields.filter( function( el ) { return el.tagName === 'INPUT' } );
+	const described = fields.filter( function( el ) { return el.tagName === 'TEXTAREA' } );
+
+	named[1].value = 'Boxes';
+	fire( named[1], 'input' );
+	described[0].value = 'Eine Beschreibung';
+	fire( described[0], 'input' );
+
+	check( 'E. the name and the description are written for the language they are typed in - the other languages keep theirs - and each is a step of the undo',
+		sheet.extra.details.names.en_US === 'Boxes' && sheet.extra.details.names.de_DE === 'Karten' && sheet.extra.details.descriptions.de_DE === 'Eine Beschreibung' && sheet.extra.details.descriptions.en_US === 'D' && sheet.undo.length === 2 && model.isDirty() === true );
+
+	model.undo();
+	model.undo();
+
+	check( 'E. the undo takes the names back as they were', sheet.extra.details.names.en_US === 'Cards' && sheet.extra.details.descriptions.de_DE === 'D' && model.isDirty() === false );
+
+	const orderHead = findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim().indexOf( W('details/order') ) === 0 } )[0];
+
+	fire( orderHead, 'click' );
+
+	const rank = findAll( box, function( el ) { return el.tagName === 'INPUT' && el.type === 'number' && el.value === '900' } )[0];
+
+	rank.value = '5000';
+	fire( rank, 'change' );
+
+	const kind = findAll( box, function( el ) { return el.tagName === 'SELECT' } )[0];
+
+	kind.value = 'trust';
+	fire( kind, 'change' );
+
+	check( 'E. the rank is a number from 0 to 999 - what is typed beyond is the end of it - and the category is one of the words of the kernel; both are steps of the undo and part of what is saved',
+		sheet.extra.details.rank === 999 && sheet.extra.details.category === 'trust' && sheet.undo.length === 2 );
+
+	model.undo();
+	model.undo();
+
+	const open = findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim().indexOf( W('details/images') ) === 0 } )[0];
+
+	fire( open, 'click' );
+
+	const unused = textOf( box ).indexOf( W('details/unused') ) !== -1;
+	const drop = findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W( 'details/image-delete', 'spare' ) } )[0];
+
+	const keepable = findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W( 'details/image-delete', 'picture' ) } ).length;
+
+	fire( drop, 'click' );
+
+	check( 'E. a place of a picture that no call reads is marked unused and can be taken away - and that is a change of the draft, one step of the undo; the one that is read has no such button',
+		unused === true && drop !== undefined && keepable === 0 && sheet.extra.details.images.spare === undefined && sheet.extra.details.images.picture !== undefined && model.isDirty() === true && sheet.undo.length === 1 );
+
+	model.undo();
+
+	check( 'E. the undo brings a detail back: the place of the picture is there again, and the draft is as it was opened', sheet.extra.details.images.spare !== undefined && model.isDirty() === false );
+
+	// a place is unused when the draft does not read it - the picture that was read is taken out - and not only when the block was opened so: it is marked at once, and the button says that it goes with the save
+	fire( box, 'close' );
+
+	const rootId = String( sheet.top.find( function( node ) { return node.n === 'section-wrap' } ).a.id );
+
+	sheet.sources = [ { kind : 'image', key : '/template/blocks-x/'+ rootId+ '/spare', path : '1', written : '~spare', name : 'image' } ];
+	sheet.adapter.painted();
+
+	const gone = sheet.view.bar.buttons.details.dataset.notice;
+
+	fire( sheet.view.bar.buttons.details, 'click' );
+
+	const again = dialogOf( w );
+
+	fire( findAll( again, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim().indexOf( W('details/images') ) === 0 } )[0], 'click' );
+
+	const dropLost = findAll( again, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W( 'details/image-delete', 'picture' ) } ).length;
+	const dropKept = findAll( again, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W( 'details/image-delete', 'spare' ) } ).length;
+
+	check( 'E. a place of a picture that the draft does not read is marked unused at once and said to go with the save - the kernel holds no place that is not read - the button of the details carries a quiet dot and the words, the places that are read have neither',
+		gone === 'picture' && dropLost === 1 && dropKept === 0 && textOf( again ).indexOf( W('details/unused') ) !== -1 && sheet.view.bar.buttons.details.title === W( 'details/falls-away', 'picture' ) );
+}
 
 done();

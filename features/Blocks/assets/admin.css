@@ -48,3 +48,70 @@
 }
 
 }
+
+/* The variants of a block: a row of the look that the edited variant sets has a dot and the way back to the template; a row that is the template's says so quietly */
+.builder-lightbox .builder-var-set {
+	position: relative;
+}
+
+.builder-lightbox .builder-var-dot {
+	top: .25rem;
+	right: .25rem;
+}
+
+.builder-lightbox .builder-var-all,
+.builder-lightbox .builder-var-here,
+.builder-lightbox .builder-var-note {
+	display: block;
+	margin: 0;
+	grid-column: 1 / -1;
+}
+
+.builder-lightbox .builder-var-reset {
+	justify-self: start;
+	grid-column: 1 / -1;
+}
+
+/* The management of the variants: a name, up, down, delete in a row */
+.builder-var-manage {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+}
+
+.builder-var-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto auto;
+	align-items: end;
+	gap: var(--nino-admin-space-2);
+}
+
+.builder-var-row > :first-child {
+	grid-column: 1;
+}
+
+/* The pictures of the block: one group each, quiet */
+.builder-var-images {
+	display: grid;
+	gap: var(--nino-admin-space-4);
+}
+
+.builder-var-image {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	padding: var(--nino-admin-space-3);
+	border: 1px solid var(--editor-separator);
+	border-radius: var(--editor-radius-sm);
+}
+
+.builder-var-image-head {
+	display: flex;
+	align-items: center;
+	gap: var(--nino-admin-space-3);
+}
+
+/* The buttons beside the name of the block - its details and its variant: one line each, the name of the variant may be long */
+.builder-lightbox ~ .nino-admin-contextbar .builder-context-button,
+.nino-admin-contextbar-name .builder-context-button {
+	white-space: nowrap;
+	max-width: 100%;
+}

@@ -142,6 +142,17 @@
 		return box;
 	};
 
+	// The number of variants has their names as its tooltip
+	const variantCell = function( value, row ) {
+
+		const cell = el( 'span', '', String( value ) );
+
+		if( row.names !== undefined && row.names !== '' )
+			cell.title = row.names;
+
+		return cell;
+	};
+
 	const nameCell = function( value, row ) {
 
 		const cell = el( 'span', 'builder-cell-name' );
@@ -159,7 +170,7 @@
 			return [ Nino.adminUi.iconButton( 'copy', word( 'row/copy', row.name ), function( event ) { askName( 'duplicate', row, event.currentTarget ) }, { small : true } ) ];
 
 		const copy = Nino.adminUi.iconButton( 'copy', word( 'row/duplicate', row.name ), function( event ) { askName( 'duplicate', row, event.currentTarget ) }, { small : true } );
-		const rename = Nino.adminUi.iconButton( 'pencil', word( 'row/rename', row.name ), function( event ) { askName( 'rename', row, event.currentTarget ) }, { small : true } );
+		const rename = Nino.adminUi.iconButton( 'pencil', word( 'row/details', row.name ), function( event ) { askListDetails( row, event.currentTarget ) }, { small : true } );
 		const drop = Nino.adminUi.iconButton( 'trash-2', word( 'row/delete', row.name ), function( event ) { askDelete( row, event.currentTarget ) }, { small : true, danger : true } );
 
 		return [ copy, rename, drop ];
@@ -229,9 +240,9 @@
 					{ key : 'tile', label : word('list/preview'), type : 'string', render : tileCell, sortable : false },
 					{ key : 'name', label : word('list/name'), type : 'string', render : nameCell },
 					{ key : 'category', label : word('list/category'), type : 'string', render : function( value ) { return categoryWord( value ) } },
-					{ key : 'variants', label : word('list/variants'), type : 'integer' },
+					{ key : 'variants', label : word('list/variants'), type : 'integer', render : variantCell },
 				],
-				rows			: data.blocks.map( function( block ) { return { key : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants } } ),
+				rows			: data.blocks.map( function( block ) { return { key : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ) } } ),
 				actions		: rowButtons,
 				labels		: { search : word('list/search'), empty : word('msg/none-project'), noMatch : word('list/no-match') },
 				search		: true,
@@ -305,6 +316,46 @@
 		return out;
 	};
 
+	// The details of a block of the project from the list: name, description, category and rank - the places of the pictures are managed where the block is open
+	const askListDetails = function( row, opener ) {
+
+		clearFail();
+
+		const block = N.data.blocks.find( function( entry ) { return entry.key === row.key } ) ?? {};
+		const locales = N.data.locales.map( function( entry ) { return entry.locale } );
+		const work = Nino.admin.workLocale.current;
+
+		Nino.adminUi.formDialog( {
+			title		: word( 'details/title', row.name ),
+			fields	: [
+				{ key : 'name', type : 'locales', label : word('details/name'), locales : locales, work : work, values : copyNames( block.name ?? {}, false ), required : false, maxLength : 80,
+					validate : function( value ) { return String( ( value ?? {} )[work] ?? '' ).trim() === '' ? word('new/name-missing') : '' } },
+				{ key : 'description', type : 'locales', label : word('details/description'), locales : locales, work : work, values : block.description ?? {}, required : false, maxLength : 240, multiline : true, rows : 3 },
+				{ key : 'category', type : 'select', label : word('details/category'), help : word('details/category-help'), options : CATEGORIES.map( function( one ) { return { value : one, label : word( 'cat/'+ one ) } } ), value : CATEGORIES.indexOf( block.category ) === -1 ? 'content' : block.category },
+				{ key : 'rank', type : 'number', label : word('details/rank'), help : word('details/rank-help'), value : String( block.rank ?? 0 ) },
+			],
+			submit	: word('details/submit'),
+			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
+			opener	: opener,
+			onSubmit	: function( given, ctl ) {
+
+				Nino.admin.blocks.call( 'rename', { key : row.key, name : given.name, description : given.description, category : given.category, rank : given.rank, locale : work }, function( status, response ) {
+
+					if( status !== 200 ) {
+						refused( ctl, status, response, '/_admin/blocks/error/rename' );
+						return;
+					}
+
+					ctl.close();
+					Nino.adminUi.say( word( 'msg/renamed', nameIn( given.name, work ) ) );
+					Nino.admin.blocks.reload();
+				} );
+			},
+		} );
+
+		tuck();
+	};
+
 	// A new block: a name in each language, the category, and what it begins with - nothing, or the copy of a block of the library
 	const askNew = function( opener ) {
 
@@ -354,12 +405,12 @@
 
 		const own = N.tab === 'project';
 		const was = ( N.data.blocks.find( function( block ) { return block.key === row.key } ) ?? {} ).name ?? {};
-		const values = copyNames( was, action !== 'rename' );
+		const values = copyNames( was, true );
 
 		Nino.adminUi.formDialog( {
-			title		: word( action === 'rename' ? 'rename/title' : ( own === true ? 'dup/title' : 'dup/title-theme' ), row.name ),
+			title		: word( own === true ? 'dup/title' : 'dup/title-theme', row.name ),
 			fields	: [ nameField( values ) ],
-			submit	: word( action === 'rename' ? 'rename/submit' : ( own === true ? 'dup/submit' : 'dup/submit-theme' ) ),
+			submit	: word( own === true ? 'dup/submit' : 'dup/submit-theme' ),
 			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
 			opener	: opener,
 			onSubmit	: function( given, ctl ) {
@@ -372,7 +423,7 @@
 					}
 
 					ctl.close();
-					Nino.adminUi.say( word( action === 'rename' ? 'msg/renamed' : 'msg/duplicated', nameIn( given.name, Nino.admin.workLocale.current ) ) );
+					Nino.adminUi.say( word( 'msg/duplicated', nameIn( given.name, Nino.admin.workLocale.current ) ) );
 
 					// A copy of a block of the theme is a block of the project: the list goes to the project
 					if( action === 'duplicate' && own === false )
@@ -460,7 +511,829 @@
 		tuck();
 	};
 
+	const MAX_VARIANTS = 8;
+	const CATEGORIES = [ 'intro', 'content', 'trust', 'offer', 'action', 'contact' ];
+
+	// --- the variants and the details of a block ---------------------------------------------------------------------------------
+	//
+	// A variant is a set: place => attribute => value, over the template. In the editor the set of each variant is carried by the calls it is about - node.v[name] = { attribute : value } -
+	// so that a call that is moved, copied or taken out takes its sets with it, and nothing is counted by place until the server is told; node.o keeps what the template has of each
+	// attribute that a set names (null: not written). The attributes of the tree - a.* - are those of the variant that is edited, which is why the draft that is sent is the template and
+	// the draft that is drawn is the tree as it stands
+
+	const stateOf = function() {
+		return editor().state();
+	};
+
+	const firstOf = function( x ) {
+		return ( x.vars ?? [] )[0] === undefined ? '' : x.vars[0].name;
+	};
+
+	// Whether there is a choice: more than the standard
+	const varied = function() {
+		return ( stateOf().extra.vars ?? [] ).length > 1;
+	};
+
+	// Whether a variant other than the standard is the one that is edited: what is a look is then the variant's and not the template's
+	const inVariant = function() {
+
+		const x = stateOf().extra;
+
+		return varied() === true && x.edited !== firstOf( x );
+	};
+
+	const rootOf = function( top ) {
+		return top.findIndex( function( node ) { return node.n === 'section-wrap' } );
+	};
+
+	// Every call below a root with its place - 'root', or the indices from the root down, the blanks counted
+	const calls = function( root, each, place ) {
+
+		each( root, place ?? 'root' );
+
+		( Array.isArray( root.c ) === true ? root.c : [] ).forEach( function( child, at ) {
+			if( child.n !== undefined )
+				calls( child, each, ( place ?? 'root' ) === 'root' ? String( at ) : place+ '.'+ at );
+		} );
+	};
+
+	const cloned = function( node, template ) {
+
+		const out = Object.assign( {}, node );
+
+		if( node.a !== undefined )
+			out.a = Object.assign( {}, node.a );
+
+		// The template has the values the sets leave alone: what is written in the tree is that of the variant that is edited
+		if( template === true && node.o !== undefined )
+			Object.keys( node.o ).forEach( function( name ) {
+
+				if( node.o[name] === null )
+					delete out.a[name];
+				else
+					out.a[name] = node.o[name];
+			} );
+
+		delete out.o;
+		delete out.v;
+
+		if( Array.isArray( node.c ) === true )
+			out.c = node.c.map( function( child ) { return cloned( child, template ) } );
+
+		return out;
+	};
+
+	const sorted = function( map ) {
+
+		const out = {};
+
+		Object.keys( map ).sort().forEach( function( name ) { out[name] = map[name] } );
+
+		return out;
+	};
+
+	// The sets of the variants as the server takes them, from the calls: [ { name, label, set } ]
+	const setsOut = function( top, x ) {
+
+		const root = top[rootOf( top )];
+		const list = ( x.vars ?? [] ).map( function( variant ) { return { name : variant.name, label : variant.label, set : {} } } );
+
+		if( root === undefined )
+			return list;
+
+		calls( root, function( node, place ) {
+
+			list.forEach( function( variant, at ) {
+
+				const set = at === 0 || node.v === undefined || node.v[variant.name] === undefined ? {} : node.v[variant.name];
+
+				if( Object.keys( set ).length > 0 )
+					variant.set[place] = sorted( set );
+			} );
+		} );
+
+		return list;
+	};
+
+	// What of the draft is the draft: the tree as the template has it, the variants with their sets, the details - and nothing of which variant is looked at
+	const canon = function( top, x ) {
+		return { tree : top.map( function( node ) { return cloned( node, true ) } ), variants : setsOut( top, x ), more : { vars : ( x.vars ?? [] ).map( function( variant ) { return [ variant.name, variant.label ] } ), details : x.details ?? null } };
+	};
+
+	// The attributes of the calls are those of the variant that is edited
+	const materialize = function( top, name ) {
+
+		const x = stateOf().extra;
+		const root = top[rootOf( top )];
+
+		if( root === undefined )
+			return;
+
+		calls( root, function( node ) {
+
+			if( node.o === undefined )
+				return;
+
+			const own = name === firstOf( x ) || node.v === undefined || node.v[name] === undefined ? {} : node.v[name];
+
+			Object.keys( node.o ).forEach( function( attribute ) {
+
+				const value = Object.hasOwn( own, attribute ) === true ? own[attribute] : node.o[attribute];
+
+				node.a = node.a ?? {};
+
+				if( value === null || value === undefined )
+					delete node.a[attribute];
+				else
+					node.a[attribute] = value;
+			} );
+		} );
+	};
+
+	// The sets of the answer are put on the calls they name, and the template's value of every attribute they name is kept beside it
+	const attach = function( top, list ) {
+
+		const root = top[rootOf( top )];
+
+		if( root === undefined )
+			return;
+
+		const by = {};
+
+		calls( root, function( node, place ) { by[place] = node } );
+
+		list.forEach( function( variant, at ) {
+
+			if( at === 0 )
+				return;
+
+			Object.keys( variant.set ?? {} ).forEach( function( place ) {
+
+				const node = by[place];
+
+				if( node === undefined )
+					return;
+
+				node.o = node.o ?? {};
+				node.v = node.v ?? {};
+				node.v[variant.name] = Object.assign( {}, variant.set[place] );
+				Object.keys( variant.set[place] ).forEach( function( attribute ) {
+					if( Object.hasOwn( node.o, attribute ) === false )
+						node.o[attribute] = ( node.a ?? {} )[attribute] ?? null;
+				} );
+			} );
+		} );
+	};
+
+	// The tree and the words of the draft in the form the server takes: no sets on the calls
+	const outOf = function( action, body ) {
+
+		const x = stateOf().extra;
+
+		if( Array.isArray( body.tree ) === true )
+			body.tree = body.tree.map( function( node ) { return cloned( node, action === 'save' || action === 'saveas' ) } );
+
+		if( ( action === 'save' || action === 'saveas' ) && x.vars !== undefined ) {
+
+			body.variants = setsOut( stateOf().top, x );
+			body.details = x.details;
+		}
+	};
+
+	// What is made of an answer of the server: the variants and the details as they are saved, the variant that was edited kept where it is still there
+	const tookFrom = function( response, previous ) {
+
+		const x = stateOf().extra;
+		const list = Array.isArray( response.alternatives ) === true ? response.alternatives : [];
+
+		x.vars = list.map( function( variant ) { return { name : variant.name, label : Object.assign( {}, variant.label ) } } );
+		x.details = response.details === undefined ? undefined : JSON.parse( JSON.stringify( response.details ) );
+		x.edited = x.vars.some( function( variant ) { return variant.name === previous.edited } ) === true ? previous.edited : firstOf( x );
+		attach( stateOf().top, list );
+		materialize( stateOf().top, x.edited );
+	};
+
+	const labelOf = function( variant ) {
+
+		const x = variant.label ?? {};
+
+		return String( x[Nino.admin.workLocale.current] ?? x.en_US ?? x[Object.keys( x )[0]] ?? '' ) || word('variants/standard');
+	};
+
+	// The value an attribute has when it is not written
+	const defaultOf = function( node, name ) {
+
+		const declared = ( ( stateOf().schemas[node.n] ?? {} ).attributes ?? {} )[name];
+
+		return declared === undefined ? '' : String( declared.default );
+	};
+
+	// An attribute of a call is changed: the template's, or - in a variant other than the standard, for a look - the set of that variant
+	const attributeOf = function( node, name, value ) {
+
+		const s = stateOf();
+		const x = s.extra;
+
+		if( varied() === false )
+			return false;
+
+		const declared = ( ( s.schemas[node.n] ?? {} ).attributes ?? {} )[name];
+
+		node.a = node.a ?? {};
+
+		if( x.edited === firstOf( x ) ) {
+
+			if( node.o !== undefined && Object.hasOwn( node.o, name ) === true )
+				node.o[name] = value;
+
+			return false;
+		}
+
+		if( declared === undefined || declared.class !== true )
+			return false;
+
+		node.o = node.o ?? {};
+		node.v = node.v ?? {};
+
+		if( Object.hasOwn( node.o, name ) === false )
+			node.o[name] = node.a[name] ?? null;
+
+		const set = node.v[x.edited] ?? {};
+		const template = node.o[name] === null ? defaultOf( node, name ) : String( node.o[name] );
+		const want = value === null ? defaultOf( node, name ) : String( value );
+
+		if( want === template ) {
+			delete set[name];
+
+			if( node.o[name] === null )
+				delete node.a[name];
+			else
+				node.a[name] = node.o[name];
+		}
+		else {
+			set[name] = want;
+			node.a[name] = value === null ? want : value;
+		}
+
+		if( Object.keys( set ).length === 0 )
+			delete node.v[x.edited];
+		else
+			node.v[x.edited] = set;
+
+		// The row says it is the variant's: the box is drawn again when this step is done
+		wn.setTimeout( function() { const box = stateOf().box; if( box !== null && box !== undefined && typeof box.draw === 'function' ) box.draw() }, 0 );
+
+		return true;
+	};
+
+	const quiet = function( text, className ) {
+
+		const note = el( 'small', 'nino-admin-hint '+ className, text );
+
+		return note;
+	};
+
+	// What a row of the look says in a variant: that it is the variant's - a dot and the way back - or that it is the template's, for every variant
+	const decorateOf = function( row, rel, names ) {
+
+		if( inVariant() === false )
+			return;
+
+		const s = stateOf();
+		const node = Nino.admin.builder.model.relNode( rel );
+
+		if( node === null || node === undefined )
+			return;
+
+		const kinds = names.map( function( name ) { return ( ( ( s.schemas[node.n] ?? {} ).attributes ?? {} )[name] ?? {} ).class === true } );
+		const own = ( node.v ?? {} )[s.extra.edited] ?? {};
+		const set = names.filter( function( name ) { return Object.hasOwn( own, name ) } );
+
+		if( kinds.every( function( looks ) { return looks === false } ) === true ) {
+			row.appendChild( quiet( word('variants/note-all'), 'builder-var-all' ) );
+			return;
+		}
+
+		// A row of a look writes the set of this variant: it says so, quietly, and where the set has a value for it, with a dot and the way back to the template
+		const mark = quiet( word('variants/here'), 'builder-var-here' );
+
+		row.appendChild( mark );
+
+		if( set.length === 0 )
+			return;
+
+		const dot = el( 'span', 'builder-device-dot builder-var-dot' );
+
+		dot.title = word('variants/set-dot');
+		dot.setAttribute( 'aria-hidden', 'true' );
+		row.classList.add('builder-var-set');
+		row.appendChild( dot );
+
+		const reset = Nino.adminUi.button( word('variants/reset'), function() {
+
+			editor().change( function() {
+
+				set.forEach( function( name ) {
+
+					const here = Nino.admin.builder.model.relNode( rel );
+
+					if( here.v !== undefined && here.v[s.extra.edited] !== undefined ) {
+
+						delete here.v[s.extra.edited][name];
+
+						if( Object.keys( here.v[s.extra.edited] ).length === 0 )
+							delete here.v[s.extra.edited];
+
+						if( Object.keys( here.v ).length === 0 )
+							delete here.v;
+					}
+
+					if( here.o[name] === null )
+						delete here.a[name];
+					else
+						here.a[name] = here.o[name];
+				} );
+			} );
+
+			wn.setTimeout( function() { if( s.box !== null && typeof s.box.draw === 'function' ) s.box.draw() }, 0 );
+		}, { small : true, className : 'builder-var-reset' } );
+
+		row.appendChild( reset );
+	};
+
+	// The sections that are not a look say once that they are the template's; the rows of a look say it of themselves, each where it writes
+	const noteOf = function( kind ) {
+
+		if( inVariant() === false || kind === 'look' )
+			return null;
+
+		const note = el( 'p', 'nino-admin-hint builder-var-note' );
+
+		note.appendChild( document.createTextNode( word('variants/note-all') ) );
+		note.appendChild( Nino.adminUi.fieldHelp( word('variants/note-help'), { field : note, name : word('variants/note-all') } ) );
+
+		return note;
+	};
+
+	const slugOf = function( text ) {
+
+		return String( text ).normalize('NFKD').replace( /[̀-ͯ]/g, '' ).toLowerCase().replace( /ß/g, 'ss' ).replace( /[^a-z0-9]+/g, '-' ).replace( /^-+|-+$/g, '' ).slice( 0, 40 ) || 'variante';
+	};
+
+	const switchTo = function( name ) {
+
+		const x = stateOf().extra;
+
+		if( x.edited === name )
+			return;
+
+		told = name;
+		editor().reshape( function() {
+			materialize( stateOf().top, name );
+			x.edited = name;
+		} );
+		paintVariant();
+	};
+
+	// The button of the bar says which variant is edited
+	const paintVariant = function() {
+
+		const s = stateOf();
+		const button = s.view !== null && s.view.bar.buttons !== undefined ? s.view.bar.buttons.variant : undefined;
+
+		if( button === undefined || button === null )
+			return;
+
+		const now = ( s.extra.vars ?? [] ).find( function( variant ) { return variant.name === s.extra.edited } );
+		const text = word( 'variants/button', now === undefined ? word('variants/standard') : labelOf( now ) );
+
+		const span = button.querySelector('span');
+
+		// The name of the button is the words it shows: a person who speaks to the page says what she reads
+		( span === null ? button : span ).textContent = text;
+		button.setAttribute( 'aria-label', text );
+		button.title = text;
+		button.dataset.variant = s.extra.edited ?? '';
+	};
+
+	const askNewVariant = function( theme, opener ) {
+
+		const x = stateOf().extra;
+
+		if( ( x.vars ?? [] ).length >= MAX_VARIANTS ) {
+			Nino.adminUi.say( word( 'variants/many', MAX_VARIANTS ) );
+			return;
+		}
+
+		const now = ( x.vars ?? [] ).find( function( variant ) { return variant.name === x.edited } ) ?? { label : {} };
+		const locales = ( stateOf().locales ?? [] ).map( function( entry ) { return entry.locale } );
+
+		Nino.adminUi.formDialog( {
+			title			: word('variants/new-title'),
+			message		: word( 'variants/new-note', labelOf( now ) ),
+			fields		: [ { key : 'name', type : 'locales', label : word('variants/name'), locales : locales, work : Nino.admin.workLocale.current, values : {}, required : false, maxLength : 80,
+				validate : function( value ) { return String( ( value ?? {} )[Nino.admin.workLocale.current] ?? '' ).trim() === '' ? word('variants/name-missing') : '' } } ],
+			submit		: word('variants/new-submit'),
+			cancel		: Nino.adminUi.text('/_admin/common/label/cancel'),
+			opener		: opener,
+			onSubmit	: function( values, ctl ) {
+
+				const label = {};
+
+				locales.forEach( function( locale ) { label[locale] = String( values.name[locale] ?? '' ).trim() === '' ? String( values.name[Nino.admin.workLocale.current] ).trim() : String( values.name[locale] ).trim() } );
+
+				let name = slugOf( label[Nino.admin.workLocale.current] );
+				let count = 2;
+
+				while( ( x.vars ?? [] ).some( function( variant ) { return variant.name === name } ) === true )
+					name = slugOf( label[Nino.admin.workLocale.current] )+ '-'+ ( count++ );
+
+				const from = x.edited;
+
+				told = name;
+				editor().change( function() {
+
+					const root = stateOf().top[rootOf( stateOf().top )];
+
+					x.vars.push( { name : name, label : label } );
+
+					// It begins as the variant that is edited: what that sets, it sets
+					calls( root, function( node ) {
+						if( from !== firstOf( x ) && node.v !== undefined && node.v[from] !== undefined ) {
+							node.v[name] = Object.assign( {}, node.v[from] );
+						}
+					} );
+
+					materialize( stateOf().top, name );
+					x.edited = name;
+				} );
+
+				ctl.close();
+				paintVariant();
+			},
+		} );
+	};
+
+	// Move, rename and delete: the first is the template, stays the first and is never taken away
+	const askManage = function( opener ) {
+
+		const x = stateOf().extra;
+		const box = el( 'div', 'builder-var-manage' );
+		const work = Nino.admin.workLocale.current;
+
+		const draw = function() {
+
+			box.innerHTML = '';
+
+			x.vars.forEach( function( variant, at ) {
+
+				const row = el( 'div', 'builder-var-row' );
+				const field = Nino.adminUi.textField( { key : 'var-'+ variant.name, label : at === 0 ? word('variants/standard-of') : word( 'variants/name-of', at ), maxLength : 80, value : String( variant.label[work] ?? labelOf( variant ) ) } );
+				const input = field.querySelector('input');
+
+				input.addEventListener( 'change', function() {
+
+					const text = input.value.trim();
+
+					if( text === '' )
+						return;
+
+					editor().change( function() {
+
+						const was = String( variant.label[work] ?? '' );
+
+						Object.keys( variant.label ).forEach( function( locale ) {
+							if( locale === work || variant.label[locale] === was )
+								variant.label[locale] = text;
+						} );
+					} );
+					paintVariant();
+				} );
+
+				row.appendChild( field );
+
+				if( at > 0 ) {
+
+					[ [ 'arrow-up', 'variants/up', -1 ], [ 'arrow-down', 'variants/down', 1 ] ].forEach( function( move ) {
+
+						const to = at + move[2];
+						const button = Nino.adminUi.iconButton( move[0], word( move[1], labelOf( variant ) ), function() {
+
+							if( to < 1 || to >= x.vars.length )
+								return;
+
+							editor().change( function() { x.vars.splice( to, 0, x.vars.splice( at, 1 )[0] ) } );
+							draw();
+						}, { small : true, disabled : to < 1 || to >= x.vars.length } );
+
+						row.appendChild( button );
+					} );
+
+					row.appendChild( Nino.adminUi.iconButton( 'trash-2', word( 'variants/delete', labelOf( variant ) ), function( event ) {
+
+						// confirm() does not pass `nested` on, and the question is asked of the open dialog of the management: choiceDialog() is asked itself
+						Nino.adminUi.choiceDialog( {
+							title		: word('variants/delete-title'),
+							message	: word( 'variants/delete-message', labelOf( variant ) ),
+							opener	: event.currentTarget,
+							nested	: true,
+							choices	: [ { value : 'no', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'yes', label : word('variants/delete-yes'), kind : 'danger' } ],
+							onChoose : function( value ) {
+
+								if( value !== 'yes' )
+									return;
+
+								editor().change( function() {
+
+									const root = stateOf().top[rootOf( stateOf().top )];
+
+									calls( root, function( node ) {
+										if( node.v !== undefined ) {
+											delete node.v[variant.name];
+
+											if( Object.keys( node.v ).length === 0 )
+												delete node.v;
+										}
+									} );
+
+									x.vars = x.vars.filter( function( other ) { return other.name !== variant.name } );
+
+									if( x.edited === variant.name ) {
+										told = firstOf( x );
+										x.edited = firstOf( x );
+										materialize( stateOf().top, x.edited );
+									}
+								} );
+								draw();
+								paintVariant();
+							},
+						} );
+					}, { small : true, danger : true } ) );
+				}
+
+				box.appendChild( row );
+			} );
+		};
+
+		draw();
+
+		Nino.adminUi.choiceDialog( {
+			title			: word('variants/manage-title'),
+			content		: box,
+			size			: 'form',
+			className	: 'builder-lightbox',
+			opener		: opener,
+			choices		: [ { value : 'close', label : Nino.adminUi.text('/_admin/common/label/close'), kind : 'secondary' } ],
+			onChoose	: function() { paintVariant() },
+		} );
+	};
+
+	// The variants of the block in a menu, with the way to a new one and to the management of them
+	const askVariant = function( theme, opener ) {
+
+		const x = stateOf().extra;
+		const items = ( x.vars ?? [] ).map( function( variant, at ) { return { value : variant.name, label : labelOf( variant ), description : at === 0 ? word('variants/standard-note') : '' } } );
+
+		if( theme !== true ) {
+			items.push( { value : '@new', label : word('variants/new') } );
+
+			if( varied() === true )
+				items.push( { value : '@manage', label : word('variants/manage') } );
+		}
+
+		Nino.adminUi.pickDialog( {
+			title		: word( theme === true ? 'variants/menu-title-view' : 'variants/menu-title' ),
+			items		: items,
+			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
+			size		: 'narrow',
+			opener	: opener,
+			onChoose	: function( value ) {
+
+				if( value === '@new' )
+					askNewVariant( theme, opener );
+				else if( value === '@manage' )
+					askManage( opener );
+				else
+					switchTo( value );
+			},
+		} );
+	};
+
+	// The picture places that no call of the draft reads: told from what the draft reads now - the sources the last preview named - and, before there is one, from what the sheet
+	// was opened with. The kernel holds no place that is not read, so such a place goes when the block is saved
+	const unusedNow = function() {
+
+		const s = stateOf();
+		const d = s.extra.details;
+
+		if( d === undefined || d === null )
+			return [];
+
+		const sources = Array.isArray( s.sources ) === true ? s.sources.filter( function( entry ) { return entry.kind === 'image' && typeof entry.key === 'string' } ) : [];
+		const top = s.top ?? [];
+		const root = top[rootOf( top )];
+		const base = root === undefined ? '' : String( ( root.a ?? {} ).id ?? '' );
+
+		if( Array.isArray( s.sources ) === false || s.sources.length === 0 || base === '' )
+			return Object.keys( d.images ).filter( function( name ) { return d.images[name].used === false } );
+
+		const read = new Set();
+
+		sources.forEach( function( entry ) {
+
+			const found = /^\/template\/[^/]+\/([^/]+)\/(.+)$/.exec( entry.key );
+
+			if( found === null )
+				return;
+
+			const inner = found[1] === base ? '' : ( found[1].indexOf( base+ '-' ) === 0 ? found[1].slice( base.length + 1 ) : found[1] );
+
+			read.add( ( inner === '' ? '' : inner+ '-' )+ found[2] );
+		} );
+
+		return Object.keys( d.images ).filter( function( name ) { return read.has( name ) === false } );
+	};
+
+	// The button of the details says, quietly, when places of pictures go with the next save
+	const paintDetails = function() {
+
+		const s = stateOf();
+		const button = s.view !== null && s.view.bar.buttons !== undefined ? s.view.bar.buttons.details : undefined;
+
+		if( button === undefined || button === null )
+			return;
+
+		const gone = unusedNow();
+		const was = button.querySelector('.builder-var-dot');
+
+		if( was !== null )
+			was.remove();
+
+		if( gone.length === 0 ) {
+			button.removeAttribute('data-notice');
+			button.title = word( 'details/button-of', localized( ( s.extra.details ?? { names : {} } ).names ) );
+			return;
+		}
+
+		const dot = el( 'span', 'builder-device-dot builder-var-dot' );
+
+		dot.setAttribute( 'aria-hidden', 'true' );
+		button.appendChild( dot );
+		button.dataset.notice = gone.join(' ');
+		button.title = word( 'details/falls-away', gone.join(', ') );
+	};
+
+	// The variant that was told last: a step back or forward may land in another variant than the one that is shown - the change it takes back was made there - and the bar says so
+	let told = null;
+
+	const painted = function() {
+
+		const s = stateOf();
+
+		paintVariant();
+		paintDetails();
+
+		if( s.extra.edited === undefined )
+			return;
+
+		if( told !== null && told !== s.extra.edited && s.view !== null && s.view.bar.line !== undefined ) {
+
+			const now = ( s.extra.vars ?? [] ).find( function( variant ) { return variant.name === s.extra.edited } );
+
+			s.view.bar.line.idle( word( 'variants/edited', now === undefined ? word('variants/standard') : labelOf( now ) ) );
+		}
+
+		told = s.extra.edited;
+	};
+
+	// The details of the block in a lightbox: its names and descriptions in each language, the category, the rank and the places of its pictures. Each change is a step of the undo,
+	// and is saved with the block
+	const askDetails = function( opener ) {
+
+		const x = stateOf().extra;
+		const d = x.details;
+
+		if( d === undefined || d === null )
+			return;
+
+		const locales = ( stateOf().locales ?? [] ).map( function( entry ) { return entry.locale } );
+		const work = Nino.admin.workLocale.current;
+		const holder = el( 'div', 'builder-box' );
+		// An undo puts the details back as another object: what is changed is always those of the draft as it is now
+		const set = function( make ) { editor().change( function() { make( stateOf().extra.details ) } ) };
+		const sections = [];
+
+		const rows = function( key, label, help, values, multiline, limit ) {
+
+			const handle = Nino.adminUi.localeRows( { key : key, label : label, help : help, locales : locales, work : work, values : values, required : false, maxLength : limit, multiline : multiline, rows : 3, onChange : function( locale, text ) { set( function( now ) { now[key === 'name' ? 'names' : 'descriptions'][locale] = text } ) } } );
+
+			return handle.el;
+		};
+
+		const body = function( parts ) {
+
+			const part = el( 'div', 'nino-admin-dialog-fields builder-box-body' );
+
+			parts.forEach( function( one ) { part.appendChild( one ) } );
+
+			return part;
+		};
+
+		sections.push( { key : 'name', label : word('details/name'), summary : String( d.names[work] ?? '' ), content : function() { return body( [ rows( 'name', word('details/name'), undefined, d.names, false, 80 ), rows( 'description', word('details/description'), undefined, d.descriptions, true, 240 ) ] ) } } );
+
+		sections.push( { key : 'order', label : word('details/order'), summary : word( 'cat/'+ d.category )+ ' · '+ d.rank, content : function() {
+
+			const category = Nino.adminUi.selectField( { key : 'category', label : word('details/category'), help : word('details/category-help'), options : CATEGORIES.map( function( one ) { return { value : one, label : word( 'cat/'+ one ) } } ), value : d.category, onChange : function( value ) { set( function( now ) { now.category = value } ) } } );
+			const rank = Nino.adminUi.numberField( { key : 'rank', label : word('details/rank'), help : word('details/rank-help'), value : d.rank, min : 0, max : 999 } );
+
+			rank.querySelector('input').addEventListener( 'change', function( event ) {
+
+				const number = Math.max( 0, Math.min( 999, Math.round( Number( event.target.value ) ) ) );
+
+				event.target.value = String( Number.isNaN( number ) === true ? 0 : number );
+				set( function( now ) { now.rank = Number.isNaN( number ) === true ? 0 : number } );
+			} );
+
+			return body( [ category, rank ] );
+		} } );
+
+		sections.push( { key : 'images', label : word('details/images'), summary : String( Object.keys( d.images ).length ), content : function() {
+
+			const list = el( 'div', 'builder-var-images' );
+
+			const draw = function() {
+
+				list.innerHTML = '';
+
+				if( Object.keys( stateOf().extra.details.images ).length === 0 )
+					list.appendChild( el( 'p', 'nino-admin-hint', word('details/images-none') ) );
+
+				Object.keys( stateOf().extra.details.images ).forEach( function( name ) {
+
+					const image = stateOf().extra.details.images[name];
+					const group = el( 'div', 'builder-var-image' );
+					const head = el( 'div', 'builder-var-image-head' );
+
+					head.appendChild( el( 'strong', '', name ) );
+
+					const lost = unusedNow().indexOf( name ) !== -1;
+
+					if( lost === true )
+						head.appendChild( el( 'span', 'nino-admin-badge', word('details/unused') ) );
+
+					group.appendChild( head );
+
+					const labels = Nino.adminUi.localeRows( { key : 'image-'+ name, label : word('details/image-label'), locales : locales, work : work, values : image.label, required : false, maxLength : 80, onChange : function( locale, text ) { set( function( now ) { now.images[name].label[locale] = text } ) } } );
+					const kind = Nino.adminUi.selectField( { key : 'placeholder-'+ name, label : word('details/placeholder'), help : word('details/placeholder-help'), options : d.placeholders.map( function( one ) { return { value : one, label : word( 'details/ph-'+ one.slice( one.lastIndexOf('/') + 1 ) ) } } ), value : image.placeholder, onChange : function( value ) { set( function( now ) { now.images[name].placeholder = value } ) } } );
+					const wide = Nino.adminUi.numberField( { key : 'width-'+ name, label : word('details/width'), value : image.width, min : 16, max : 4096 } );
+					const high = Nino.adminUi.numberField( { key : 'height-'+ name, label : word('details/height'), value : image.height, min : 16, max : 4096 } );
+
+					[ [ wide, 'width' ], [ high, 'height' ] ].forEach( function( pair ) {
+						pair[0].querySelector('input').addEventListener( 'change', function( event ) {
+
+							const number = Math.max( 16, Math.min( 4096, Math.round( Number( event.target.value ) ) ) );
+
+							event.target.value = String( Number.isNaN( number ) === true ? 16 : number );
+							set( function( now ) { now.images[name][pair[1]] = Number.isNaN( number ) === true ? 16 : number } );
+						} );
+					} );
+
+					[ labels.el, kind, wide, high ].forEach( function( one ) { group.appendChild( one ) } );
+
+					// A place no call of the block reads any more is taken away here; one that is read is made where the picture is put in
+					if( lost === true )
+						group.appendChild( Nino.adminUi.button( word( 'details/image-delete', name ), function() {
+							set( function( now ) { delete now.images[name] } );
+							draw();
+						}, { small : true, kind : 'danger' } ) );
+
+					list.appendChild( group );
+				} );
+			};
+
+			draw();
+
+			return list;
+		} } );
+
+		const accordion = Nino.adminUi.accordion( { id : 'blocks-details-acc', level : 3, open : 'name', sections : sections, onToggle : function() {} } );
+
+		holder.appendChild( accordion.el );
+
+		Nino.adminUi.choiceDialog( {
+			title			: word( 'details/title', labelOf( { label : d.names } ) ),
+			content		: holder,
+			size			: 'form',
+			className	: 'builder-lightbox',
+			opener		: opener,
+			choices		: [ { value : 'close', label : Nino.adminUi.text('/_admin/common/label/close'), kind : 'secondary' } ],
+			onChoose	: function() {},
+		} );
+	};
+
 	const adapterOf = function( key, theme, response ) {
+
+		told = null;
 
 		const title = localized( response.name );
 
@@ -488,7 +1361,17 @@
 			fail		: function( level, status, answer ) { Nino.admin.blocks.fail( level, status, answer ) },
 			back		: function() { return { parts : tabParts( theme === true ? 'theme' : 'project' ), name : word('title'), keep : false, block : false } },
 			reload	: function() { openBlock( key, theme ) },
+			// The variants and the details: what the editor keeps beside the tree, and how it sends and takes it
+			canon		: canon,
+			out			: outOf,
+			took		: tookFrom,
+			attribute	: attributeOf,
+			decorate	: decorateOf,
+			note		: noteOf,
+			painted	: painted,
 			buttons	: [ { key : 'saveas', label : word( theme === true ? 'saveas/button-theme' : 'saveas/button' ), name : word( theme === true ? 'saveas/name-theme' : 'saveas/name', title ), onPress : function() { askSaveAs( adapter ) } } ],
+			// What is about the block as a whole stands beside its name in the bar of the context: its details and the variant that is edited
+			context	: ( theme === true ? [] : [ { key : 'details', icon : 'settings-2', label : word('details/button'), name : word( 'details/button-of', title ), onPress : function( event ) { askDetails( stateOf().view.bar.buttons.details ) } } ] ).concat( [ { key : 'variant', icon : 'panels-top-left', label : word( 'variants/button', word('variants/standard') ), name : word( 'variants/button', word('variants/standard') ), onPress : function() { askVariant( theme, stateOf().view.bar.buttons.variant ) } } ] ),
 		};
 
 		return adapter;
@@ -675,6 +1558,7 @@
 			}
 
 			N.open = { tab : theme === true ? 'theme' : 'project', key : key, names : response.name };
+			paintVariant();
 
 			unloadList();
 

@@ -148,6 +148,60 @@ namespace Nino\Modules\Blocks {
 		}
 
 		/**
+		 *	A block with the id of its root and every id inside it made new, as a copy that is its own block has them: the blocks of one form are told apart by the id of their root,
+		 *	which a block that is put in on a page keeps. The words and the slots of a block are named from the root and follow of themselves. A block whose new ids would not be ids
+		 *	is given back as it is
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$block				As Library::block() answers it
+		 *	@param		string		$id						The new id of the root
+		 *
+		 *	@return 	array
+		 */
+		public static function reid( array &$appData, array $block, string $id ): array {
+
+			$was = (string) $block['id'];
+
+			if( $id === $was || strlen( $id ) > 32 || Tree::isId( $id ) === false )
+				return $block;
+
+			$registry = \Nino\Components::components( $appData );
+			$fits = true;
+			$walk = static function( array $node ) use ( &$walk, $registry, $was, $id, &$fits ): array {
+
+				$name = isset( $node['n'] ) === true && isset( $registry[$node['n']] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
+
+				if( $name !== '' && is_string( $node['a'][$name] ?? null ) === true && $node['a'][$name] !== '' ) {
+
+					$node['a'][$name] = $node['a'][$name] === $was ? $id : Tree::inner( $node['a'][$name], $was, $id );
+
+					if( strlen( $node['a'][$name] ) > 32 || Tree::isId( $node['a'][$name] ) === false )
+						$fits = false;
+				}
+
+				// A link to a place of the block goes to the new id
+				foreach( (array) ( $node['a'] ?? [] ) as $attribute => $value )
+					if( is_string( $value ) === true && ( $value === '#'. $was || str_starts_with( $value, '#'. $was. '-' ) ) )
+						$node['a'][$attribute] = '#'. ( $value === '#'. $was ? $id : Tree::inner( substr( $value, 1 ), $was, $id ) );
+
+				if( is_array( $node['c'] ?? null ) === true )
+					$node['c'] = array_map( static fn( array $child ): array => $walk( $child ), $node['c'] );
+
+				return $node;
+			};
+
+			$tree = array_map( static fn( array $node ): array => $walk( $node ), (array) $block['tree'] );
+
+			if( $fits === false )
+				return $block;
+
+			$block['tree'] = $tree;
+			$block['id'] = $id;
+
+			return $block;
+		}
+
+		/**
 		 *	The words and the slots of a block as the page they are drawn on has them: the key of each text and picture is below the namespace of the page and the id of its scope
 		 *
 		 *	@param		array			$block				As Library::block() answers it
@@ -282,6 +336,8 @@ namespace Nino\Modules\Blocks {
 				'findings'		=> Tree::findings( $appData, $nodes ),
 				'links'				=> [],
 				'variants'		=> [],
+				'details'			=> self::details( $appData, (string) ( $block['key'] ?? '' ), $locale, $block ),
+				'alternatives'	=> self::alternatives( $appData, (string) ( $block['key'] ?? '' ), $locale ),
 				'titles'			=> new \stdClass(),
 				'contentLocale'	=> $locale,
 				'native'			=> \Nino\Locales::getNativeLocale( $appData ),
@@ -290,6 +346,58 @@ namespace Nino\Modules\Blocks {
 				'level'				=> \Nino\Modules\Builder::LEVEL_DESIGN,
 				'dim'					=> (string) \Nino\Features::setting( $appData, 'builder', 'dim', 'frame' ),
 			];
+		}
+
+		/**
+		 *	The details of a block as the editor shows them: the name and the description in each language, the category, the rank and the places of the pictures, each with the
+		 *	words of its label, its kind of placeholder and its size, and whether a call of the block still reads it
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$key					'' for a draft of a block that is not there yet
+		 *	@param		string		$locale
+		 *	@param		array			$block				As Library::block() answers it
+		 *
+		 *	@return 	array
+		 */
+		public static function details( array &$appData, string $key, string $locale, array $block ): array {
+
+			$listed = $key === '' ? null : \Nino\Blocks::get( $appData, $key );
+
+			if( $listed === null )
+				return [ 'names' => new \stdClass(), 'descriptions' => new \stdClass(), 'category' => 'content', 'rank' => 0, 'images' => new \stdClass(), 'locales' => array_keys( (array) ( $block['texts'] ?? [] ) ), 'placeholders' => array_keys( \Nino\Images::PLACEHOLDERS ) ];
+
+			$read = [];
+
+			foreach( (array) ( $block['slots'] ?? [] ) as $slot )
+				if( ( $slot['kind'] ?? '' ) === 'image' )
+					$read[(string) $slot['name']] = true;
+
+			$images = [];
+
+			foreach( (array) ( $listed['images'] ?? [] ) as $name => $image )
+				$images[(string) $name] = [ 'placeholder' => (string) $image['placeholder'], 'width' => (int) $image['width'], 'height' => (int) $image['height'], 'label' => (object) array_map( 'strval', (array) $image['label'] ), 'used' => isset( $read[(string) $name] ) ];
+
+			return [
+				'names'					=> (object) array_map( 'strval', (array) $listed['name'] ),
+				'descriptions'	=> (object) array_map( 'strval', (array) $listed['description'] ),
+				'category'			=> (string) $listed['category'],
+				'rank'					=> (int) $listed['rank'],
+				'images'				=> $images === [] ? new \stdClass() : $images,
+				'locales'				=> array_map( 'strval', (array) $listed['locales'] ),
+				'placeholders'	=> array_keys( \Nino\Images::PLACEHOLDERS ),
+			];
+		}
+
+		/**
+		 *	The variants of a block for the editor: see Variants::listed()
+		 *
+		 *	@return 	array
+		 */
+		public static function alternatives( array &$appData, string $key, string $locale ): array
+		{
+			$listed = $key === '' ? null : \Nino\Blocks::get( $appData, $key );
+
+			return Variants::listed( $listed ?? [], $listed === null ? [ \Nino\Blocks::FALLBACK ] : array_map( 'strval', (array) $listed['locales'] ), $locale );
 		}
 
 		/**

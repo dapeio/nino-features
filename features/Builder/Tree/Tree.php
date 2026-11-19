@@ -388,6 +388,8 @@ namespace Nino\Modules\Builder {
 					'responsive'	=> ( $declared['responsive'] ?? false ) === true,
 					'min'					=> $declared['min'] ?? null,
 					'max'					=> $declared['max'] ?? null,
+					// Whether the register writes it as a class of the component: a look, which a variant of a block may set
+					'class'				=> ( $declared['class'] ?? false ) === true,
 				];
 
 			[ $variants, $standard, $variantLabels ] = self::variants( $appData, $name );

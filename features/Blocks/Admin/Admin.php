@@ -13,11 +13,12 @@ namespace Nino\Modules\Blocks {
 	//	blocks/list			the blocks of a source - the project, or the theme in use - and what the dialog of a new block offers to begin with
 	//	blocks/open			one block as a sheet of the editor: its tree between the frame of the site, its words and its slots, its stamp
 	//	blocks/preview	a draft of the sheet as a token, the query that names it and the address of the page it is drawn on
-	//	blocks/save			the sheet over the block of the project it was opened from, after the stamp it was opened with
+	//	blocks/save			the sheet over the block of the project it was opened from, after the stamp it was opened with - with the details of the block and its variants, which the
+	//							server builds block.json from itself and the kernel's \Nino\Blocks::validate() has the last word on
 	//	blocks/saveas		the sheet as a new block of the project under the key its name makes
 	//	blocks/create		a new block of the project: with a section, a row and a column, or the copy of any block of the library
 	//	blocks/duplicate	a block of the list as a new block of the project, with a name of its own
-	//	blocks/rename		the name of a block of the project in each language; the key stays
+	//	blocks/rename		the details of a block of the project - name and description in each language, category, rank - without the sheet; the key stays
 	//	blocks/remove		a block of the project taken away
 	//	blocks/offer		what the register offers at a place of the tree of the sheet
 	//	blocks/notation	the notation of the block and of a component, as the template has them written
@@ -364,7 +365,7 @@ namespace Nino\Modules\Blocks {
 			$blocks = [];
 
 			foreach( $tab === 'frames' ? [] : Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project' ) as $key => $block )
-				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'category' => (string) $block['category'],																																																																																																						'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'rank' => (int) $block['rank'] ];
+				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'description' => $block['description'], 'category' => (string) $block['category'], 'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'variantNames' => array_values( array_map( static fn( array $variant ): array => array_map( 'strval', (array) $variant['label'] ), (array) ( $block['alternatives'] ?? [] ) ) ), 'rank' => (int) $block['rank'] ];
 
 			usort( $blocks, static fn( array $one, array $other ): int => $one['rank'] <=> $other['rank'] ?: strcmp( $one['key'], $other['key'] ) );
 
@@ -481,6 +482,143 @@ namespace Nino\Modules\Blocks {
 		}
 
 		/**
+		 *	The details of a block as a request brings them over what the block has: the names and the descriptions in each language, the category, the rank and the places of the
+		 *	pictures. What the request does not bring stays as it is; what it brings is held to the rule of each - nothing is taken over as it comes
+		 *
+		 *	@param		array			$listed				The block as \Nino\Blocks::all() lists it
+		 *
+		 *	@return 	array|null								'names', 'descriptions', 'category', 'rank', 'images' (name => [ placeholder, width, height, label ] of those the request names); null after the answer
+		 */
+		private static function _details( array &$appData, array &$request, array $data, array $listed, string $locale ): ?array {
+
+			$given = is_array( $data['details'] ?? null ) === true ? $data['details'] : [];
+			$out = [ 'names' => array_map( 'strval', (array) $listed['name'] ), 'descriptions' => array_map( 'strval', (array) $listed['description'] ), 'category' => (string) $listed['category'], 'rank' => (int) $listed['rank'], 'images' => [] ];
+
+			if( array_key_exists( 'names', $given ) === true ) {
+
+				$out['names'] = self::_names( $appData, $request, $given['names'], 'name', $locale );
+
+				if( $out['names'] === null )
+					return null;
+			}
+
+			if( array_key_exists( 'descriptions', $given ) === true ) {
+
+				$locales = array_values( array_unique( array_merge( [ \Nino\Blocks::FALLBACK ], \Nino\Locales::getTextLocales( $appData ) ) ) );
+				$words = is_array( $given['descriptions'] ) === true ? $given['descriptions'] : [];
+				$text = [];
+
+				foreach( $locales as $one ) {
+
+					// A language the request says nothing of keeps the description it has; one it empties has the name where the kernel asks for a text, and nothing is made up of another language
+					$line = is_string( $words[$one] ?? null ) === true ? trim( $words[$one] ) : trim( (string) ( ( (array) $listed['description'] )[$one] ?? '' ) );
+					$line = $line === '' ? (string) ( $out['names'][$one] ?? reset( $out['names'] ) ) : $line;
+
+					if( mb_strlen( $line ) > \Nino\Blocks::MAX_DESCRIPTION || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $line ) === 1 ) {
+						self::_fail( $request, 400, 'the description is none', 'blocks_description', [ \Nino\Blocks::MAX_DESCRIPTION ], 'description' );
+						return null;
+					}
+
+					$text[$one] = $line;
+				}
+
+				$out['descriptions'] = $text;
+			}
+
+			if( array_key_exists( 'category', $given ) === true ) {
+
+				$out['category'] = self::_category( $request, is_string( $given['category'] ) === true ? $given['category'] : '' );
+
+				if( $out['category'] === null )
+					return null;
+			}
+
+			if( array_key_exists( 'rank', $given ) === true ) {
+
+				if( ( is_int( $given['rank'] ) === false && ( is_string( $given['rank'] ) === false || preg_match( '/^\d{1,3}$/D', $given['rank'] ) !== 1 ) ) || (int) $given['rank'] < 0 || (int) $given['rank'] > 999 ) {
+					self::_fail( $request, 400, 'the rank is a number from 0 to 999', 'blocks_rank', [], 'rank' );
+					return null;
+				}
+
+				$out['rank'] = (int) $given['rank'];
+			}
+
+			foreach( is_array( $given['images'] ?? null ) === true ? $given['images'] : [] as $name => $image ) {
+
+				$label = [];
+				$words = is_array( $image ) === true && is_array( $image['label'] ?? null ) === true ? $image['label'] : [];
+				$main = is_string( $words[$locale] ?? null ) === true ? trim( $words[$locale] ) : '';
+
+				foreach( array_values( array_unique( array_merge( [ \Nino\Blocks::FALLBACK ], \Nino\Locales::getTextLocales( $appData ) ) ) ) as $one ) {
+
+					$text = is_string( $words[$one] ?? null ) === true && trim( $words[$one] ) !== '' ? trim( $words[$one] ) : $main;
+
+					if( $text === '' || mb_strlen( $text ) > \Nino\Blocks::MAX_NAME || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $text ) === 1 ) {
+						self::_fail( $request, 400, 'the label of a picture is none', 'blocks_picture_label', [ (string) $name ], 'images' );
+						return null;
+					}
+
+					$label[$one] = $text;
+				}
+
+				$width = is_array( $image ) === true ? ( $image['width'] ?? null ) : null;
+				$height = is_array( $image ) === true ? ( $image['height'] ?? null ) : null;
+				$placeholder = is_array( $image ) === true && is_string( $image['placeholder'] ?? null ) === true ? $image['placeholder'] : '';
+
+				if( is_string( $name ) === false || preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D', $name ) !== 1 || is_int( $width ) === false || is_int( $height ) === false || $width < 16 || $width > \Nino\Blocks::MAX_SIDE || $height < 16 || $height > \Nino\Blocks::MAX_SIDE || isset( \Nino\Images::PLACEHOLDERS[$placeholder] ) === false ) {
+					self::_fail( $request, 400, 'a place of a picture is none', 'blocks_picture_place', [ (string) $name ], 'images' );
+					return null;
+				}
+
+				$out['images'][$name] = [ 'placeholder' => $placeholder, 'width' => $width, 'height' => $height, 'label' => $label ];
+			}
+
+			return $out;
+		}
+
+		/**
+		 *	What the details and the variants of a request do to the block.json that the sheet made: the rank, the places of the pictures that the tree reads, and the variants - made
+		 *	from the draft, or, where the request brings none, the ones the block has
+		 *
+		 *	@param		array			&$meta				block.json as the parts have it
+		 *	@param		array			$details			What _details() answered
+		 *	@param		array			$was					block.json as it is saved
+		 *	@param		array			$sheet
+		 *
+		 *	@return 	bool											false after the answer
+		 */
+		private static function _applied( array &$appData, array &$request, array &$meta, array $details, array $was, array $sheet, array $data, string $locale ): bool {
+
+			$meta['rank'] = $details['rank'];
+
+			foreach( $meta['images'] ?? [] as $name => $image )
+				if( isset( $details['images'][$name] ) === true )
+					$meta['images'][$name] = [ 'placeholder' => $details['images'][$name]['placeholder'], 'width' => $details['images'][$name]['width'], 'height' => $details['images'][$name]['height'], 'label' => $details['images'][$name]['label'] ];
+
+			if( array_key_exists( 'variants', $data ) === false ) {
+
+				if( isset( $was['variants'] ) === true )
+					$meta['variants'] = $was['variants'];
+
+				return true;
+			}
+
+			$built = Variants::built( $appData, $sheet['nodes'][$sheet['at']], $data['variants'], array_keys( (array) ( $meta['name'] ?? [] ) ), $locale );
+
+			if( isset( $built['failure'] ) === true ) {
+				self::_fail( $request, $built['failure'][0], $built['failure'][1], $built['failure'][2], $built['failure'][3], $built['failure'][4] );
+				return false;
+			}
+
+			if( $built['variants'] === null )
+				unset( $meta['variants'] );
+			else
+				$meta['variants'] = $built['variants'];
+
+			return true;
+		}
+
+		/**
 		 *	The parts of the block a sheet is, from the tree and the words the request brings: Custom::parts() against the words and the slots the block has. The names and the
 		 *	descriptions are the block's in each language - the ones given, never one language made into another -; the rank and the variants it has stay
 		 *
@@ -582,20 +720,23 @@ namespace Nino\Modules\Blocks {
 				return;
 
 			$listed = \Nino\Blocks::all( $appData )[$key];
-			$names = array_map( 'strval', (array) $listed['name'] );
-			$made = self::_parts( $appData, $request, $sheet, $block, $key, $names, array_map( 'strval', (array) $listed['description'] ), (string) $listed['category'] );
+			$details = self::_details( $appData, $request, $data, $listed, $locale );
+
+			if( $details === null || self::_distinct( $appData, $request, $details['names'], $key, 'name' ) === false )
+				return;
+
+			$made = self::_parts( $appData, $request, $sheet, $block, $key, $details['names'], $details['descriptions'], $details['category'] );
 
 			if( $made === null )
 				return;
 
-			// What the block names and the sheet does not touch stays: the rank, the variants - which the rule of the kernel holds to the new template
+			// What the block names and the sheet does not touch stays: the variants - which the rule of the kernel holds to the new template - unless the draft brings them
 			$old = Sheet::partsOf( $appData, $key );
 			$meta = json_decode( (string) $made['parts']['json'], true );
 			$was = is_array( $old ) === true ? json_decode( $old['json'], true ) : [];
 
-			foreach( [ 'rank', 'variants' ] as $keep )
-				if( isset( $was[$keep] ) === true )
-					$meta[$keep] = $was[$keep];
+			if( self::_applied( $appData, $request, $meta, $details, $was, $sheet, $data, $locale ) === false )
+				return;
 
 			$made['parts']['json'] = json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n";
 
@@ -661,12 +802,28 @@ namespace Nino\Modules\Blocks {
 				return;
 
 			$listed = \Nino\Blocks::all( $appData )[$from];
-			$made = self::_parts( $appData, $request, $sheet, $origin, $key, $names, array_map( 'strval', (array) $listed['description'] ), (string) $listed['category'] );
+			$details = self::_details( $appData, $request, $data, $listed, $locale );
+
+			if( $details === null )
+				return;
+
+			$made = self::_parts( $appData, $request, $sheet, $origin, $key, $names, $details['descriptions'], $details['category'] );
 
 			if( $made === null )
 				return;
 
-			$made['parts'] = self::_varied( $appData, $made['parts'], $key, $from );
+			// The draft brings its variants: they are the new block's. Without them the block it is made from gives its own where the new template still holds them
+			if( array_key_exists( 'variants', $data ) === true ) {
+
+				$meta = json_decode( (string) $made['parts']['json'], true );
+
+				if( self::_applied( $appData, $request, $meta, $details, [], $sheet, $data, $locale ) === false )
+					return;
+
+				$made['parts']['json'] = json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n";
+			}
+			else
+				$made['parts'] = self::_varied( $appData, $made['parts'], $key, $from );
 
 			if( self::_checked( $appData, $request, $key, $made['parts'] ) === null )
 				return;
@@ -749,6 +906,10 @@ namespace Nino\Modules\Blocks {
 			if( $shell === null )
 				return;
 
+			// A copy is its own block and is told from its template by the id of its root: a block that is put in on a page keeps that id, and blocks of one form have one each
+			if( $from !== '' )
+				$block = Sheet::reid( $appData, $block, $key );
+
 			$nodes = Tree::read( $appData, Sheet::source( $appData, $block['tree'] ) );
 			$state = Sheet::state( $block, $shell['template'], $locale );
 			$at = Sheet::rootAt( $nodes );
@@ -828,8 +989,18 @@ namespace Nino\Modules\Blocks {
 				return;
 			}
 
+			// The details beside the name - the description, the category, the rank - are the block's when the request brings them
+			$more = array_filter( [ 'descriptions' => $data['description'] ?? null, 'category' => $data['category'] ?? null, 'rank' => $data['rank'] ?? null ], static fn( mixed $value ): bool => $value !== null );
+			$details = self::_details( $appData, $request, [ 'details' => $more ], \Nino\Blocks::all( $appData )[$key], $locale );
+
+			if( $details === null )
+				return;
+
 			$meta = json_decode( $parts['json'], true );
 			$meta['name'] = $names + (array) $meta['name'];
+			$meta['description'] = $details['descriptions'] + (array) $meta['description'];
+			$meta['category'] = $details['category'];
+			$meta['rank'] = $details['rank'];
 			$parts['json'] = json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n";
 
 			if( self::_checked( $appData, $request, $key, $parts ) === null )

@@ -324,7 +324,7 @@ namespace Nino\Modules\Builder {
 				'address'		=> self::_address( $appData, $template, $locale, \Nino\Admin\Admin::postString( $data, 'page' ) ),
 				'findings'	=> $prepared['findings'],
 				'notation'	=> $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ? self::_notation( $appData, $prepared['tree'], $data['look'] ?? null ) : [],
-			] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'variants' => Library::variants( $appData, $prepared['tree'], \Nino\Components::components( $appData ) ) ] : [] ) + ( \Nino\Modules\Builder::bridge( $appData ) === true ? [ 'own' => Library::owned( $appData, $prepared['tree'], \Nino\Components::components( $appData ) ) ] : [] ) );
+			] + ( $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? [ 'variants' => Library::variants( $appData, $prepared['tree'], \Nino\Components::components( $appData ), is_array( $data['inserted'] ?? null ) === true ? $data['inserted'] : [] ) ] : [] ) + ( \Nino\Modules\Builder::bridge( $appData ) === true ? [ 'own' => Library::owned( $appData, $prepared['tree'], \Nino\Components::components( $appData ) ) ] : [] ) );
 		}
 
 		public static function apiSave( array &$appData, array &$request ): void {
@@ -667,7 +667,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			$node = $canonical[1][(int) $at];
-			$origin = Library::origin( $appData, $node, $registry );
+			$origin = Library::origin( $appData, $node, $registry, is_array( $data['inserted'] ?? null ) === true ? $data['inserted'] : [] );
 
 			if( $origin === null || array_key_exists( $name, array_column( $origin['items'], 1, 0 ) ) === false ) {
 				self::_fail( $request, [ 403, 'the block has no such variant', 'builder_variant', [], 'name' ] );

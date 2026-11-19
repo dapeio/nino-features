@@ -1676,4 +1676,11 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 }
 
 
+{
+	// The three choices of a setting with a value for each width stand one under the other, each with its device in front, where the box is too narrow for them side by side
+	const narrow = /@container \(max-width: 40rem\) \{[\s\S]*?\.builder-widths-grid \{\s*grid-template-columns: minmax\(0, 1fr\);[\s\S]*?\.builder-widths-column \{\s*grid-template-columns: auto minmax\(0, 1fr\);/.test( sheet );
+
+	check( 'the choices of the three widths stand one under the other, the device in front of each, where their box is narrower than 40rem - and the box is the container that is asked', narrow === true && /\.builder-lightbox \.builder-widths-set \{\s*container-type: inline-size;/.test( sheet ) );
+}
+
 done();

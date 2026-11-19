@@ -109,8 +109,8 @@ $script = (string) file_get_contents( $feature. '/assets/admin.js' );
 
 preg_match_all( "/word\\(\\s*'([a-z][a-z\\/-]*)'/", $script, $asked );
 $asked = array_unique( $asked[1] );
-$dynamic = [ 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'rename/title', 'rename/submit', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'error/load', 'frames/header', 'frames/footer' ];
-$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'frames/' && isset( $words['de_DE']['[[/_admin/blocks/'. $key. ']]'], $words['en_US']['[[/_admin/blocks/'. $key. ']]'] ) === false );
+$dynamic = [ 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'details/ph-landscape', 'details/ph-mark', 'error/load', 'frames/header', 'frames/footer' ];
+$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'frames/' && $key !== 'details/ph-' && isset( $words['de_DE']['[[/_admin/blocks/'. $key. ']]'], $words['en_US']['[[/_admin/blocks/'. $key. ']]'] ) === false );
 $sentence = static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/'. $code. ']]'], $words['en_US']['[[/_admin/error/'. $code. ']]'] );
 $codes = [ 'blocks_language', 'blocks_shell', 'blocks_unknown', 'blocks_name', 'blocks_category', 'blocks_taken', 'blocks_invalid', 'blocks_refused', 'blocks_tree', 'blocks_place', 'blocks_preview', 'blocks_write', 'blocks_key', 'blocks_block', 'blocks_id', 'blocks_locked', 'blocks_html', 'blocks_foreign', 'blocks_loop', 'blocks_frame', 'blocks_address', 'blocks_picture', 'blocks_empty', 'blocks_long' ];
 

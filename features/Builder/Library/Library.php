@@ -185,20 +185,27 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Which block of the catalogue a block of a page is, for a block that has variants: the first block that \Nino\Blocks offers for a page that has variants, whose places the
-		 *	tree has and whose calls it is - the rule of the Tree for a block that was put in, with the attributes left out. It is told from the tree and from nothing a request names;
-		 *	a block with a call put in, taken out or named another, or another source, is none
+		 *	Which block of the catalogue a block of a page is, for a block that has variants: a block that \Nino\Blocks offers for a page that has variants, whose places the tree has and
+		 *	whose calls it is - the rule of the Tree for a block that was put in, with the attributes left out. It is told from the tree; a request may only name which of the blocks of
+		 *	that form it put in, and only one of them is taken. Where several blocks have the form - the ids inside them are then the same - the one put in this session is it, else the one whose variant the
+		 *	calls are in; where that does not decide and the blocks have variants of their own there is no
+		 *	answer, never the variants of a block the page does not have. A block with a call put in, taken out or named another, or another source, is none
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$node					The root of a block of the page
 		 *	@param		array			$registry
+		 *	@param		array			$inserted			id of the root of a block put in this session => its key
 		 *
 		 *	@return 	array|null								[ 'key', 'block' (as \Nino\Blocks::get() answers it), 'current' (the name of the variant, null where it is its own), 'items' => [ [ name, label ] ] ] - null where no block of the catalogue with variants is it
 		 */
-		public static function origin( array &$appData, array $node, array $registry ): ?array {
+		public static function origin( array &$appData, array $node, array $registry, array $inserted = [] ): ?array {
 
 			if( ( $node['n'] ?? '' ) !== self::PAGE || isset( $node['a'] ) === false )
 				return null;
+
+			$name = isset( $registry[$node['n']] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
+			$page = $name === '' ? '' : (string) ( $node['a'][$name] ?? '' );
+			$found = [];
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $listed ) {
 
@@ -216,15 +223,43 @@ namespace Nino\Modules\Builder {
 				if( Tree::likeBlock( self::_shape( $node, $registry ), self::_shape( $own['tree'][0], $registry ), $registry ) === false )
 					continue;
 
-				$items = [];
-
-				foreach( $block['alternatives'] as $name => $variant )
-					$items[] = [ (string) $name, $variant['label'] ];
-
-				return [ 'key' => (string) $key, 'block' => $block, 'current' => \Nino\Blocks::variantOf( $block, [ $node ] ), 'items' => $items ];
+				$found[(string) $key] = [ 'block' => $block ];
 			}
 
-			return null;
+			if( $found === [] )
+				return null;
+
+			// Blocks of one form are told apart by their ids first - the ids inside a block put in are the id of its root and what follows it, so a block is only the block whose ids the calls
+			// have - then by the block that was put in this very session, then by the one whose variant the calls are in. Where that does not decide and the blocks have variants of
+			// their own, no block is chosen: the variants of a block that the page does not have are worse than none
+			if( count( $found ) > 1 ) {
+
+				$hinted = $page !== '' && is_string( $inserted[$page] ?? null ) === true ? (string) $inserted[$page] : '';
+
+				if( $hinted !== '' && isset( $found[$hinted] ) === true )
+					$found = [ $hinted => $found[$hinted] ];
+			}
+
+			if( count( $found ) > 1 ) {
+
+				$named = array_filter( $found, static fn( array $one ): bool => \Nino\Blocks::variantOf( $one['block'], [ $node ] ) !== null );
+				$pool = count( $named ) === 1 ? $named : ( $named === [] ? $found : $named );
+				$sets = array_unique( array_map( static fn( array $one ): string => (string) json_encode( $one['block']['alternatives'] ), $pool ) );
+
+				if( count( $pool ) > 1 && count( $sets ) > 1 )
+					return null;
+
+				$found = [ array_key_first( $pool ) => reset( $pool ) ];
+			}
+
+			$key = (string) array_key_first( $found );
+			$block = $found[$key]['block'];
+			$items = [];
+
+			foreach( $block['alternatives'] as $one => $variant )
+				$items[] = [ (string) $one, $variant['label'] ];
+
+			return [ 'key' => $key, 'block' => $block, 'current' => \Nino\Blocks::variantOf( $block, [ $node ] ), 'items' => $items ];
 		}
 
 		/**
@@ -292,12 +327,12 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array											[ [ at, key, current, items => [ [ name, label ] ] ] ]
 		 */
-		public static function variants( array &$appData, array $nodes, array $registry ): array {
+		public static function variants( array &$appData, array $nodes, array $registry, array $inserted = [] ): array {
 
 			$out = [];
 
 			foreach( $nodes as $at => $node )
-				if( isset( $node['n'] ) === true && ( $origin = self::origin( $appData, $node, $registry ) ) !== null )
+				if( isset( $node['n'] ) === true && ( $origin = self::origin( $appData, $node, $registry, $inserted ) ) !== null )
 					$out[] = [ 'at' => (int) $at, 'key' => $origin['key'], 'current' => $origin['current'], 'items' => $origin['items'] ];
 
 			return $out;

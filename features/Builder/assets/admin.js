@@ -79,6 +79,7 @@
 		saving		: false,
 		dropped		: null,
 		own			: {},
+		extra		: {},
 		bridge		: false,
 		template	: '',
 		frame			: false,
@@ -489,11 +490,13 @@
 	};
 
 	const snap = function() {
-		return { top : clone( S.top ), texts : clone( S.texts ), copies : clone( S.copies ), inserted : clone( S.inserted ), pictures : clone( S.pictures ) };
+		return { top : clone( S.top ), texts : clone( S.texts ), copies : clone( S.copies ), inserted : clone( S.inserted ), pictures : clone( S.pictures ), extra : clone( S.extra ?? {} ) };
 	};
 
+	// What the draft is for the question whether it was changed: a sheet that keeps more than the tree - the variants of a block, its details - says in its adapter which of it is
+	// the draft and which is only how it is looked at
 	const stateOf = function() {
-		return JSON.stringify( [ S.top, S.texts, S.pictures ] );
+		return JSON.stringify( typeof S.adapter.canon === 'function' ? [ S.adapter.canon( S.top, S.extra ), S.texts, S.pictures ] : [ S.top, S.texts, S.pictures ] );
 	};
 
 	const isDirty = function() {
@@ -529,6 +532,15 @@
 		changed( reload !== false );
 	};
 
+	// What is made of the draft without being a change of it - which variant of a block is edited, and so which of its values stands in the attributes: the page is drawn again
+	// and the views are painted, and nothing is kept for the undo and nothing is said to be unsaved
+	const reshape = function( make ) {
+
+		make();
+		changed( true );
+		redrawBox();
+	};
+
 	const changed = function( reload ) {
 
 		if( reload === true && S.view !== null ) {
@@ -553,6 +565,7 @@
 		S.copies = now.copies;
 		S.inserted = now.inserted;
 		S.pictures = now.pictures;
+		S.extra = now.extra ?? {};
 		changed( true );
 		redrawBox();
 
@@ -3150,6 +3163,10 @@
 		S.stale = false;
 		S.editing = null;
 
+		// What a sheet says of the sources of the page it has - the picture places that are read - is told again when they are new
+		if( typeof S.adapter.painted === 'function' && S.view !== null )
+			S.adapter.painted();
+
 		if( S.mode === 'advanced' ) {
 			instrumentAdvanced( frame, doc );
 			return;
@@ -3335,6 +3352,10 @@
 			return;
 
 		paintBox();
+
+		// A sheet that says more in its bar than the draft - the variant that is edited - says it again with every paint
+		if( typeof S.adapter.painted === 'function' )
+			S.adapter.painted();
 
 		if( S.mode === 'advanced' ) {
 			paintAdvanced();
@@ -3758,7 +3779,14 @@
 	S.adapter = pageAdapter;
 
 	const api = function( action, payload, done, extra ) {
-		S.adapter.call( action, Object.assign( S.adapter.base(), payload ), done, extra );
+
+		const body = Object.assign( S.adapter.base(), payload );
+
+		// A sheet that keeps more than a tree puts it into what it sends, and sends the tree in the form the server takes
+		if( typeof S.adapter.out === 'function' )
+			S.adapter.out( action, body );
+
+		S.adapter.call( action, body, done, extra );
 	};
 
 	// The pictures a person chose, as the server takes them: the slot a source reads and the file that was made for it
@@ -3790,7 +3818,15 @@
 	// What the server answers after a save or a restore, and an open: the page as it stands now
 	const take = function( response ) {
 
+		const previous = S.extra ?? {};
+
 		S.top = normalize( fixAttrs( response.tree ) );
+		S.extra = {};
+
+		// What a sheet keeps beside the tree is made from the answer, before the draft is told from the saved
+		if( typeof S.adapter.took === 'function' )
+			S.adapter.took( response, previous );
+
 		S.shared = response.shared ?? S.shared;
 		S.uses = response.uses ?? S.uses;
 		S.level = response.level ?? S.level;
@@ -4120,6 +4156,18 @@
 		pictured( tools.widths.el, DEVICES.map( function( device ) { return device.glyph } ) );
 		S.tools = tools;
 
+		// What a sheet puts beside the name of the sheet - an icon and a word each, for what is about the sheet as a whole
+		const beside = {};
+		const besideList = ( S.adapter.context ?? [] ).map( function( entry ) {
+
+			const one = Nino.adminUi.button( entry.label, function( event ) { entry.onPress( event ) }, { small : true, icon : entry.icon, name : entry.name, className : 'builder-context-button' } );
+
+			one.dataset.key = entry.key;
+			beside[entry.key] = one;
+
+			return one;
+		} );
+
 		const context = Nino.adminUi.contextBar( {
 			panel	: Nino.adminUi.panelName( level ),
 			panelLabel	: false,
@@ -4130,6 +4178,7 @@
 				href		: S.adapter.href( home ),
 				onClick	: function() { leaveExtended( advanced, way ) },
 			},
+			icons	: besideList,
 			tools	: tools.el,
 			within	: level,
 		} );
@@ -4158,6 +4207,11 @@
 		buttons.redo = bar.buttons.redo;
 
 		( S.adapter.buttons ?? [] ).forEach( function( extra ) { buttons[extra.key] = bar.buttons[extra.key] } );
+
+		Object.keys( beside ).forEach( function( key ) {
+			bar.buttons[key] = beside[key];
+			buttons[key] = beside[key];
+		} );
 
 		// A sheet that is only looked at has nothing to save, and says so beside the state: a quiet badge with the reason as its tooltip and for a screen reader
 		if( S.adapter.readOnly === true )
@@ -4423,6 +4477,7 @@
 		S.undo = [];
 		S.redo = [];
 		S.name = adapter.name ?? '';
+		S.extra = {};
 		take( draft );
 
 		const block = S.top.find( function( node ) { return kindOf( node ) === 'block' } );
@@ -4463,6 +4518,7 @@
 
 		S.sheet = 'page';
 		S.frame = false;
+		S.extra = {};
 		S.adapter = pageAdapter;
 		S.ready = false;
 		S.built = false;
@@ -6594,6 +6650,10 @@
 
 		change( function() {
 
+			// A sheet with variants takes the attribute where it belongs - the template, or the set of the variant that is edited
+			if( typeof S.adapter.attribute === 'function' && S.adapter.attribute( relNode( rel ), name, value ) === true )
+				return;
+
 			const attrs = ensureAttrs( relNode( rel ) );
 
 			if( value === null )
@@ -7535,6 +7595,13 @@
 	};
 
 	// How it looks and where it stands: the variant and the settings of the schema - not what a call reads, which is its content, and not its id
+	// What a sheet with variants says at a row of the look: that the value is the template's - for every variant - or the set of the variant that is edited, with the way back
+	const decorate = function( row, rel, names ) {
+
+		if( typeof S.adapter.decorate === 'function' )
+			S.adapter.decorate( row, rel, names );
+	};
+
 	const lookRows = function( rel ) {
 
 		const node = relNode( rel );
@@ -7545,8 +7612,10 @@
 		if( rel === 'root' && S.frame === false && variantOfBlock( rootAt() ) !== undefined )
 			rows.push( blockVariantField( rootAt() ) );
 
-		if( schema.variants.length > 0 )
-			rows.push( variantField( rel, node, schema, rows.length > 0 ) );
+		if( schema.variants.length > 0 ) {
+			rows.push( variantField( rel, node, schema, rows.length > 0 || typeof S.adapter.note === 'function' ) );
+			decorate( rows[rows.length - 1], rel, [ 'variant' ] );
+		}
 
 		const shown = Object.keys( schema.attributes ).filter( function( name ) {
 			return [ 'text', 'link', 'image', 'id' ].indexOf( schema.attributes[name].type ) === -1 && ( schema.loop !== true || LOOP_ATTRIBUTES.indexOf( name ) === -1 );
@@ -7561,13 +7630,16 @@
 
 			if( widthy.length > 1 && widthy.indexOf( name ) !== -1 ) {
 
-				if( widthy[0] === name )
+				if( widthy[0] === name ) {
 					rows.push( widthGroup( rel, widthy ) );
+					decorate( rows[rows.length - 1], rel, widthy );
+				}
 
 				return;
 			}
 
 			rows.push( attributeField( rel, name, schema.attributes[name] ) );
+			decorate( rows[rows.length - 1], rel, [ name ] );
 		} );
 
 		return rows;
@@ -7809,9 +7881,14 @@
 		}
 
 		const holder = el( 'div', 'builder-box' );
-		const body = function( rows ) {
+		const body = function( rows, kind ) {
 
 			const part = el( 'div', 'nino-admin-dialog-fields builder-box-body' );
+			const note = typeof S.adapter.note === 'function' ? S.adapter.note( kind ) : null;
+
+			// A sheet with variants says of what is not a look that it is the same for every variant
+			if( note !== null && note !== undefined )
+				part.appendChild( note );
 
 			rows.forEach( function( row ) { part.appendChild( row ) } );
 
@@ -7842,17 +7919,17 @@
 			// The background of a section: only the settings of it that the register names - the ground, the picture, whether it shows, whether it is dimmed - and the picture itself
 			if( only !== undefined ) {
 
-				sections.push( { key : 'background', label : word('bg/title'), content : function() { return body( backgroundRows( at, rel, only ) ) } } );
+				sections.push( { key : 'background', label : word('bg/title'), content : function() { return body( backgroundRows( at, rel, only ), 'background' ) } } );
 				box.open = 'background';
 			}
 			else if( reads.some( function( read ) { return read.where !== 'own' } ) === true )
-				sections.push( { key : 'source', label : word('box/source'), content : function() { return body( sourceRows( rel, reads ) ) } } );
+				sections.push( { key : 'source', label : word('box/source'), content : function() { return body( sourceRows( rel, reads ), 'source' ) } } );
 
 			if( only === undefined && plan.length > 0 )
-				sections.push( { key : 'content', label : word('box/content'), summary : ownText( now, rel, 40 ), content : function() { return body( contentRows( rel, plan ) ) } } );
+				sections.push( { key : 'content', label : word('box/content'), summary : ownText( now, rel, 40 ), content : function() { return body( contentRows( rel, plan ), 'content' ) } } );
 
 			if( only === undefined && S.level >= 2 && lookRows( rel ).length > 0 )
-				sections.push( { key : 'look', label : word('box/look'), summary : variantSummary( now ), content : function() { return body( lookRows( rel ) ) } } );
+				sections.push( { key : 'look', label : word('box/look'), summary : variantSummary( now ), content : function() { return body( lookRows( rel ), 'look' ) } } );
 
 			if( only === undefined && S.level >= 2 )
 				sections.push( { key : 'advanced', label : word('box/advanced'), content : function() { return body( advancedRows( rel, box ) ) } } );
@@ -8562,7 +8639,7 @@
 			undo : undo, redo : redo, isDirty : isDirty, nodeAt : nodeAt, templateOf : templateOf, addressOf : addressOf,
 			items : items, titleOf : titleOf, settle : settle, free : free, possible : possible, points : points, insert : insert, insertedNow : insertedNow, tileFrame : tileFrame,
 			targetOf : targetOf, rootAt : rootAt, absOf : absOf, itemsNow : itemsNow, siblingAt : siblingAt, moveComponent : moveComponent, removeComponent : removeComponent,
-			addComponent : addComponent, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
+			addComponent : addComponent, relNode : relNode, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
 			glyphOf : glyphOf, glyph : glyph, pictured : pictured, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
@@ -8588,7 +8665,7 @@
 		 */
 		editor : {
 			open : openSheet, close : closeSheet, view : build, properties : openProperties, source : openSource, change : change, undo : undo, redo : redo, save : save,
-			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, replace : replaceFrame, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
+			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, replace : replaceFrame, reshape : reshape, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
 		},
 
 		go : function( parts, options ) {
