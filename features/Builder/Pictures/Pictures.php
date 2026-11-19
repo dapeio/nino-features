@@ -24,7 +24,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	bool
 		 */
 		public static function isStaged( string $uri, string $file ): bool {
-			return preg_match( '#^'. preg_quote( ltrim( $uri, '/' ), '#' ). '\.s[0-9a-f]{12}\.[0-9]+x[0-9]+\.(?:webp|png|jpg)$#D', $file ) === 1;
+			return preg_match( '#^'. preg_quote( ltrim( $uri, '/' ), '#' ). '\.s[0-9a-f]{12}\.[0-9]+x[0-9]+\.(?:webp|png|jpg|svg)$#D', $file ) === 1;
 		}
 
 		/**
@@ -41,6 +41,50 @@ namespace Nino\Modules\Builder {
 		public static function stage( array &$appData, string $uri, string $bytes, int $width, int $height ): string|false {
 
 			$file = \Nino\Images::process( $appData, $bytes, $width, $height, ltrim( $uri, '/' ). '.s'. bin2hex( random_bytes( 6 ) ) );
+
+			if( $file === false )
+				return false;
+
+			if( self::isStaged( $uri, $file ) === false ) {
+				\Nino\Images::delete( $appData, $file );
+				return false;
+			}
+
+			return $file;
+		}
+
+		/**
+		 *	The picture a block has of its own for a slot, made the file of the slot of the page it is put in: a raster picture through the kernel as an upload is made, a svg as
+		 *	the picture that was cleaned, under a name that comes of the slot and the bytes - the same picture is the same file, so that a draft that is drawn again makes no more
+		 *	files. The bytes are what Library::picture() read from the block, never anything of a request
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$uri					A slot of the namespace of the page
+		 *	@param		array			$picture			As Library::picture() answers
+		 *	@param		int				$width				The size of the slot
+		 *	@param		int				$height
+		 *
+		 *	@return 	string|false							The file below /images/; false where the kernel made none
+		 */
+		public static function stageOwn( array &$appData, string $uri, array $picture, int $width, int $height ): string|false {
+
+			if( \Nino\Images::isSlotUri( $uri ) === false || $width < 1 || $height < 1 || $width > self::MAX_SIDE || $height > self::MAX_SIDE || is_string( $picture['bytes'] ?? null ) === false )
+				return false;
+
+			$base = ltrim( $uri, '/' ). '.s'. substr( hash( 'sha256', $uri. "\0". $picture['bytes'] ), 0, 12 );
+
+			if( ( $picture['type'] ?? '' ) === 'svg' ) {
+
+				$file = $base. '.'. $width. 'x'. $height. '.svg';
+
+				return ( \Nino\Images::read( $appData, $file ) !== false || \Nino\Images::restore( $appData, $file, $picture['bytes'] ) === true ) && self::isStaged( $uri, $file ) === true ? $file : false;
+			}
+
+			foreach( [ 'webp', 'png', 'jpg' ] as $type )
+				if( \Nino\Images::read( $appData, $base. '.'. $width. 'x'. $height. '.'. $type ) !== false )
+					return $base. '.'. $width. 'x'. $height. '.'. $type;
+
+			$file = \Nino\Images::process( $appData, $picture['bytes'], $width, $height, $base );
 
 			if( $file === false )
 				return false;
@@ -147,7 +191,7 @@ namespace Nino\Modules\Builder {
 
 				$file = 'template/'. $template. '/'. basename( dirname( (string) $path ) ). '/'. basename( (string) $path );
 
-				if( preg_match( '#^template/[a-z0-9-]+/[a-z0-9_-]+/[a-z0-9_-]+\.s[0-9a-f]{12}\.[0-9]+x[0-9]+\.(?:webp|png|jpg)$#D', $file ) !== 1 || isset( $read[$file] ) === true || is_file( (string) $path ) === false )
+				if( preg_match( '#^template/[a-z0-9-]+/[a-z0-9_-]+/[a-z0-9_-]+\.s[0-9a-f]{12}\.[0-9]+x[0-9]+\.(?:webp|png|jpg|svg)$#D', $file ) !== 1 || isset( $read[$file] ) === true || is_file( (string) $path ) === false )
 					continue;
 
 				if( $all === null ? time() - (int) filemtime( (string) $path ) < self::TTL : in_array( $file, $all, true ) === false )

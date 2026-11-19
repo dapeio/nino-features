@@ -3885,6 +3885,12 @@
 				S.pendingVariants = response.variants ?? [];
 				S.own = response.own ?? {};
 
+				// The pictures a block has of its own were made for the draft: a draft that is thrown away gives them up like the pictures that were uploaded
+				( response.staged ?? [] ).forEach( function( file ) {
+					if( S.staged.indexOf( file ) === -1 )
+						S.staged.push( file );
+				} );
+
 				if( S.mode === 'advanced' && S.tree !== null )
 					S.tree.update( itemsNow() );
 			}

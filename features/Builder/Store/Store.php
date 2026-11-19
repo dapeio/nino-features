@@ -339,6 +339,7 @@ namespace Nino\Modules\Builder {
 			// The slots of the blocks that were put in: each picture of the block is a slot of the namespace of its new id, with the size and the name the block says and
 			// the picture of the kernel as its file. Where the page has the slot already - it was copied above, or the id was the page's - nothing is made
 			$pictures = [];
+			$staged = [];
 			$locale = \Nino\Locales::getNativeLocale( $appData );
 
 			foreach( $fresh as $id => $block ) {
@@ -352,6 +353,20 @@ namespace Nino\Modules\Builder {
 
 					$file = ltrim( $place['key'], '/' ). '.svg';
 					$label = (string) ( $spec['label'][$locale] ?? $spec['label'][\Nino\Blocks::FALLBACK] ?? reset( $spec['label'] ) );
+
+					// A slot that the block has a picture of its own for has that picture to begin with, for the one who designs: made from what the server reads of the block, as a
+					// picture of the slot is made of an upload. The page owns it from then on - the block that changes later changes nothing of it. Any other slot has the placeholder
+					$own = $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? \Nino\Modules\Builder\Library::picture( $appData, (string) $block['key'], (string) $place['name'] ) : null;
+					$made = $own === null ? false : \Nino\Modules\Builder\Pictures::stageOwn( $appData, $place['key'], $own, (int) $spec['width'], (int) $spec['height'] );
+
+					if( $made !== false ) {
+
+						$slots[$place['key']] = [ 'label' => $label, 'width' => $spec['width'], 'height' => $spec['height'], 'filename' => $made ];
+						$shown[$place['key']] = $slots[$place['key']];
+						$staged[] = $made;
+						continue;
+					}
+
 					$slots[$place['key']] = [ 'label' => $label, 'width' => $spec['width'], 'height' => $spec['height'], 'filename' => $file ];
 					$files[$file] = $spec['placeholder'];
 					$pictures[$place['key']] = $spec['placeholder'];
@@ -366,7 +381,7 @@ namespace Nino\Modules\Builder {
 
 			$draft = $pictures === [] ? $source : \Nino\Markup::write( \Nino\Modules\Builder\Tree::shown( $nodes, $sources, $pictures ), \Nino\Components::containers( $appData ) );
 
-			return [ 'source' => $source, 'draft' => $draft, 'tree' => $nodes, 'sources' => $sources, 'formats' => $formats, 'texts' => $kept, 'raw' => $raw, 'reads' => array_keys( $reads ), 'images' => array_keys( $images ), 'slots' => $slots, 'shown' => $shown, 'files' => $files, 'registry' => $registry, 'findings' => $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? \Nino\Modules\Builder\Tree::findings( $appData, $nodes ) : [] ];
+			return [ 'source' => $source, 'draft' => $draft, 'tree' => $nodes, 'sources' => $sources, 'formats' => $formats, 'texts' => $kept, 'raw' => $raw, 'reads' => array_keys( $reads ), 'images' => array_keys( $images ), 'slots' => $slots, 'shown' => $shown, 'staged' => $staged, 'files' => $files, 'registry' => $registry, 'findings' => $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? \Nino\Modules\Builder\Tree::findings( $appData, $nodes ) : [] ];
 		}
 
 		/**

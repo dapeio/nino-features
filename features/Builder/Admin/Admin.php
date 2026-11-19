@@ -321,6 +321,7 @@ namespace Nino\Modules\Builder {
 				'query'			=> \Nino\Preview::QUERY. '='. $token,
 				'ttl'				=> \Nino\Preview::TTL,
 				'sources'		=> $prepared['sources'],
+				'staged'		=> $prepared['staged'],
 				'address'		=> self::_address( $appData, $template, $locale, \Nino\Admin\Admin::postString( $data, 'page' ) ),
 				'findings'	=> $prepared['findings'],
 				'notation'	=> $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ? self::_notation( $appData, $prepared['tree'], $data['look'] ?? null ) : [],
@@ -560,7 +561,7 @@ namespace Nino\Modules\Builder {
 				return;
 
 			[ $template, , , $locale ] = $opened;
-			$tile = Store::named( $template )['frame'] === true ? null : Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale );
+			$tile = Store::named( $template )['frame'] === true ? null : Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale, $level >= \Nino\Modules\Builder::LEVEL_DESIGN );
 
 			if( $tile === null ) {
 				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );

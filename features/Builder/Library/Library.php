@@ -153,6 +153,60 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The picture a block has of its own for a slot, as the server reads it from the folder of the block - the bytes never come from a request. A svg is the picture that
+		 *	\Nino\Images::cleanSvg() rebuilds of it; a raster picture is read against the type its ending says and the size the kernel allows a picture of a block
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The block, as \Nino\Blocks lists it
+		 *	@param		string		$slot					The name of the slot of block.json
+		 *
+		 *	@return 	array|null								[ 'bytes', 'type' (svg, webp, png or jpg) ]; null where the block has no picture of its own for the slot or it cannot be read
+		 */
+		public static function picture( array &$appData, string $key, string $slot ): ?array {
+
+			$block = \Nino\Blocks::get( $appData, $key );
+			$relative = $block === null ? null : ( $block['pictures'][$slot] ?? null );
+
+			if( is_string( $relative ) === false || preg_match( '#^images/([a-z0-9]+(?:-[a-z0-9]+)*)\.(svg|webp|png|jpg)$#D', $relative, $found ) !== 1 || $found[1] !== $slot )
+				return null;
+
+			$origin = (string) ( \Nino\Blocks::all( $appData )[$key]['origin'] ?? '' );
+
+			foreach( \Nino\Blocks::roots( $appData ) as $root ) {
+
+				if( (string) $root['origin'] !== $origin )
+					continue;
+
+				$dir = realpath( rtrim( (string) $root['dir'], '/' ). '/'. $key );
+				$own = (string) ( $root['own'] ?? '' ) === '' ? '' : realpath( (string) $root['own'] );
+				$path = $dir === false ? false : realpath( $dir. '/'. $relative );
+
+				if( $dir === false || $path === false || is_link( $dir. '/'. $relative ) === true || str_starts_with( $path, $dir. '/images/' ) === false || ( $own !== '' && $own !== false && str_starts_with( $dir, $own. '/' ) === false ) || is_file( $path ) === false )
+					return null;
+
+				$size = (int) @filesize( $path );
+				$bytes = $size > 0 && $size <= \Nino\Blocks::MAX_PICTURE ? @file_get_contents( $path ) : false;
+
+				if( is_string( $bytes ) === false )
+					return null;
+
+				if( $found[2] === 'svg' ) {
+
+					$clean = \Nino\Images::cleanSvg( $bytes );
+
+					return $clean === null ? null : [ 'bytes' => $clean, 'type' => 'svg' ];
+				}
+
+				$info = \Nino\Images::size( $bytes );
+				$types = [ 'webp' => IMAGETYPE_WEBP, 'png' => IMAGETYPE_PNG, 'jpg' => IMAGETYPE_JPEG ];
+
+				return $info !== false && $info['type'] === $types[$found[2]] && $info['width'] <= \Nino\Blocks::MAX_SIDE && $info['height'] <= \Nino\Blocks::MAX_SIDE ? [ 'bytes' => $bytes, 'type' => $found[2] ] : null;
+			}
+
+			return null;
+		}
+
+		/**
 		 *	The blocks of a page that are blocks of the catalogue that were put in: for each top-level block whose id is not in $taken the first block that \Nino\Blocks
 		 *	offers for a page that it is the tree of, as the rule of the Tree holds a new block to it
 		 *
@@ -397,10 +451,11 @@ namespace Nino\Modules\Builder {
 		 *	@param		string		$template			The page the dialog is on, whose place in the site the draft takes
 		 *	@param		string		$key
 		 *	@param		string		$locale
+		 *	@param		bool			$own					Whether the pictures a block has of its own are drawn - for the one who may put the block in
 		 *
-		 *	@return 	array|null								[ 'template', 'source', 'fills', 'locale' ], the draft; null for a key that \Nino\Blocks does not offer for a page
+		 *	@return 	array|null								[ 'template', 'source', 'fills', 'slots', 'locale' ], the draft; null for a key that \Nino\Blocks does not offer for a page
 		 */
-		public static function tile( array &$appData, string $template, string $key, string $locale ): ?array {
+		public static function tile( array &$appData, string $template, string $key, string $locale, bool $own = false ): ?array {
 
 			$block = self::block( $appData, $key );
 
@@ -410,11 +465,22 @@ namespace Nino\Modules\Builder {
 			$registry = \Nino\Components::components( $appData );
 			$fills = [];
 			$pictures = [];
+			$slots = [];
 
 			foreach( self::places( $block, (string) $block['id'], $template ) as $place ) {
 
 				if( $place['kind'] === 'image' ) {
-					$pictures[$place['key']] = (string) ( $block['images'][$place['name']]['placeholder'] ?? '' );
+
+					// The picture a block has of its own for a slot is the picture of the tile, for the one who may put the block in: made as the page makes it, under a name that comes of the bytes
+					$spec = $block['images'][$place['name']] ?? null;
+					$picture = $own === true && $spec !== null ? self::picture( $appData, $key, (string) $place['name'] ) : null;
+					$file = $picture === null ? false : Pictures::stageOwn( $appData, $place['key'], $picture, (int) $spec['width'], (int) $spec['height'] );
+
+					if( $file !== false )
+						$slots[$place['key']] = [ 'label' => (string) ( $spec['label'][$locale] ?? reset( $spec['label'] ) ), 'width' => $spec['width'], 'height' => $spec['height'], 'filename' => $file ];
+					else
+						$pictures[$place['key']] = (string) ( $spec['placeholder'] ?? '' );
+
 					continue;
 				}
 
@@ -427,7 +493,7 @@ namespace Nino\Modules\Builder {
 			$root = Tree::shown( $block['tree'], Tree::sources( $block['tree'], $registry, $template ), array_filter( $pictures ) );
 			$page = \Nino\Feature::template( $appData, '/features/Builder/templates', 'tile' );
 
-			return [ 'template' => $template, 'source' => str_replace( '[[block]]', \Nino\Markup::write( $root, \Nino\Components::containers( $appData ) ), $page ), 'fills' => $fills, 'locale' => $locale ];
+			return [ 'template' => $template, 'source' => str_replace( '[[block]]', \Nino\Markup::write( $root, \Nino\Components::containers( $appData ) ), $page ), 'fills' => $fills, 'slots' => $slots, 'locale' => $locale ];
 		}
 
 		/**

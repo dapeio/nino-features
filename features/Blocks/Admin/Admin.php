@@ -1400,7 +1400,7 @@ namespace Nino\Modules\Blocks {
 			$data = \Nino\Admin\Admin::postData();
 			$shell = self::_shell( $appData, $request, $locale );
 			$key = \Nino\Admin\Admin::postString( $data, 'key' );
-			$tile = $shell === null || isset( Sheet::listed( $appData, '' )[$key] ) === false ? null : Library::tile( $appData, $shell['template'], $key, $locale );
+			$tile = $shell === null || isset( Sheet::listed( $appData, '' )[$key] ) === false ? null : Library::tile( $appData, $shell['template'], $key, $locale, true );
 
 			if( $shell === null )
 				return;
