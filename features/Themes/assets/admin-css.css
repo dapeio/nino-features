@@ -1,0 +1,32 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	Themes						What the tab "Own CSS" needs beyond the design system: the field of code takes the height of the column it stands in, and
+ *										its counter stands under it. Scoped to the mount of the tab.
+ *
+ *	@package					Dape/Nino
+ *	@author						David Perchermeier <mail@dape.io>
+ *	@link							https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+#themes-css-list .themes-css-column {
+	display: flex;
+	flex-direction: column;
+	gap: var( --nino-admin-space-2 );
+	min-width: 0;
+}
+
+#themes-css-list .themes-css-field textarea {
+	min-height: 24rem;
+	resize: vertical;
+}
+
+#themes-css-list .themes-css-size {
+	margin: 0;
+	text-align: right;
+}
+
+}

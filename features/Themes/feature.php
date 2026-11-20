@@ -83,6 +83,10 @@ return [
 				'en_US' => 'The fonts of public/fonts/ with their licence and their place in the brand, and the signed list of the repository, loaded on the button alone, to install a family from.',
 				'de_DE' => 'Die Schriften aus public/fonts/ mit Lizenz und ihrem Platz in der Marke, dazu die signierte Liste des Repositorys, geladen nur auf Knopfdruck, um eine Familie zu installieren.',
 			],
+			'Themes > Own CSS' => [
+				'en_US' => 'One field for private/assets/style.css, the stylesheet of the project, under every theme; the right /_admin/themes/css alone opens this tab, so an account with only that right lands in it.',
+				'de_DE' => 'Ein Feld für private/assets/style.css, das Stylesheet des Projekts unter jedem Theme; das Recht /_admin/themes/css allein öffnet diesen Reiter, ein Konto nur mit ihm landet direkt darin.',
+			],
 			'Themes > Settings' => [
 				'en_US' => 'The form of the two settings of the repository, its address and its public key, which the workbench draws from the manifest; it needs the right /_admin/features/manage.',
 				'de_DE' => 'Das Formular der zwei Einstellungen des Repositorys, Adresse und öffentlicher Schlüssel, das die Werkbank aus dem Manifest zeichnet; es braucht das Recht /_admin/features/manage.',
@@ -114,6 +118,10 @@ return [
 			'public/fonts/<slug>/' => [
 				'en_US' => 'A family installed from the repository: .woff2 files, LICENSE.txt and font.json, checked against the signed list and moved into place whole; a folder put there by hand is not replaced.',
 				'de_DE' => 'Eine aus dem Repository installierte Familie: .woff2-Dateien, LICENSE.txt und font.json, gegen die signierte Liste geprüft und als Ganzes abgelegt; ein Ordner von Hand wird nicht ersetzt.',
+			],
+			'assets/style.css' => [
+				'en_US' => 'The stylesheet of the project that every site has, kept in the layer project after the theme and written in the tab Own CSS; the kernel loads it with Themes off, and no theme or package holds it.',
+				'de_DE' => 'Das Stylesheet des Projekts, das jede Site hat, in der Lage project nach dem Theme und im Reiter Eigenes CSS geschrieben; der Kernel lädt es auch ohne Themes, kein Theme oder Paket enthält es.',
 			],
 			'data/theme/.fonts/' => [
 				'en_US' => 'The list of the repository as it was fetched last, with its signature, and the lock of an install; a backup does not carry them.',

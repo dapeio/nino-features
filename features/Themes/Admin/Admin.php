@@ -55,10 +55,10 @@ namespace Nino\Modules\Themes {
 			return [ 'themes', '/_admin/themes/nav', 60 ];
 		}
 
-		// The one tab the panel brings: the fonts of the project (see Typefaces). The tab of the settings, which the registry attaches to a
+		// The tabs the panel brings: the fonts of the project (see Typefaces) and its own css (see ProjectCss), which has a right of its own. The tab of the settings, which the registry attaches to a
 		// feature that declares some, comes after it
 		public static function tabs(): array {
-			return [ Typefaces::class ];
+			return [ Typefaces::class, ProjectCss::class ];
 		}
 
 		// The mounts of the panel: its list of themes and the screen of one theme, which assets/admin.js draws
@@ -140,17 +140,28 @@ namespace Nino\Modules\Themes {
 			foreach( Brand::fonts( $appData ) as $slug => $font )
 				$fonts[] = [ 'key' => $slug, 'name' => $font['name'], 'system' => $font['system'] ];
 
-			// The pages of the site a preview may show: the paths of the routes that answer html, as the kernel lists them
+			\Nino\Preview::tidy( $appData );
+			self::_dropOld( $appData );
+
+			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'package' => [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => self::pages( $appData ) ] + self::_state( $appData, $state ) );
+		}
+
+		/**
+		 *	The pages of the site a preview may show: the paths of the routes that answer html, as the kernel lists them
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											[ [ 'path' => ..., 'title' => ... ], ... ], at most PAGES
+		 */
+		public static function pages( array &$appData ): array {
+
 			$pages = [];
 
 			foreach( \Nino\Http::pages( (array) ( $appData['/nino/http/routes'] ?? [] ) ) as $page )
 				if( $page['html'] === true && $page['wildcard'] === false && $page['status'] < 400 && isset( $pages[$page['path']] ) === false )
 					$pages[$page['path']] = [ 'path' => $page['path'], 'title' => trim( \Nino\Html::renderTextfill( $appData, '/_nino/webpage'. $page['uri']. '/title' ) ) ];
 
-			\Nino\Preview::tidy( $appData );
-			self::_dropOld( $appData );
-
-			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'package' => [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => array_slice( array_values( $pages ), 0, self::PAGES ) ] + self::_state( $appData, $state ) );
+			return array_slice( array_values( $pages ), 0, self::PAGES );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -169,7 +180,7 @@ namespace Nino\Modules\Themes {
 
 			$plan = Compiler::plan( $appData, $theme['mix'], $state['brand'] );
 
-			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => $theme['mix'], 'stamp' => $theme['kind'] === 'own' ? self::_stamp( $theme['mix'] ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => self::_wired( $theme['mix'] ), 'stamp' => $theme['kind'] === 'own' ? self::_stamp( $theme['mix'] ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {
@@ -801,6 +812,22 @@ namespace Nino\Modules\Themes {
 			\Nino\Preview::tidy( $appData );
 
 			\Nino\Http::ok( $request, [ 'saved' => true, 'theme' => $theme, 'applied' => ( $state['active']['theme'] ?? '' ) === $theme, 'stamp' => str_starts_with( $theme, 'own:' ) === true && isset( $state['own'][substr( $theme, 4 )] ) === true ? self::_stamp( $state['own'][substr( $theme, 4 )] ) : '' ] + self::_state( $appData, $state ) );
+		}
+
+		/**
+		 *	A mix as it goes over the wire: the parts are a map, and an empty one stays a map - PHP has no empty map, json_encode() writes [] for it, which a
+		 *	client takes for a list and sends no parts with the next save
+		 *
+		 *	@param		array			$mix					An own theme or a theme as a mix
+		 *
+		 *	@return 	array
+		 */
+		private static function _wired( array $mix ): array {
+
+			if( ( $mix['parts'] ?? null ) === [] )
+				$mix['parts'] = new \stdClass();
+
+			return $mix;
 		}
 
 		/**

@@ -55,6 +55,10 @@ namespace Nino\Modules {
 		// The right to work in the panel and through its API; the Editor role does not get it by itself
 		public const string PERM = '/_admin/themes/manage';
 
+		// The right to write the own css of the project (see ProjectCss): css that nobody has checked is on every page, which is more than to choose a theme,
+		// so the right of the panel is not enough and no role gets this one by itself
+		public const string CSS_PERM = '/_admin/themes/css';
+
 		// The kind of the drafts of a preview - a session holds five of them - and of the thumbnails of the list, which are a kind of their own: five
 		// previews are what a person works with, and a list of themes is as many pictures as there are themes
 		public const string KIND = 'themes';
@@ -69,6 +73,12 @@ namespace Nino\Modules {
 		// The stylesheet this feature writes: the file the kernel puts in the layer nino.theme
 		public const string SHEET = '/assets/theme.css';
 
+		// The stylesheet of the project, the file the kernel gives every site for its own css - the layer project, the last of the four, after the theme - and that the
+		// tab "Own CSS" writes: it is no file of this feature, the bundle has it with the feature off as well, and no theme, last state or package holds it. The
+		// kind of its drafts is a kind of its own
+		public const string PROJECT_SHEET = '/assets/style.css';
+		public const string CSS_KIND = 'themes-css';
+
 		// The style element a preview draws in the place of the link to the bundle; what stands before its token is how it begins
 		private const string PREVIEW_STYLE = '<style data-nino-theme-preview>[[css]]</style>';
 
@@ -79,6 +89,8 @@ namespace Nino\Modules {
 		private static string $_mark = '';
 		private static string $_demo = '';
 		private static bool $_picture = false;
+		// The draft of the own css of the project that this request is asked to show, null for none
+		private static ?string $_project = null;
 
 		public static function init( array &$appData ): void {
 
@@ -172,6 +184,21 @@ namespace Nino\Modules {
 			self::$_mark = '';
 			self::$_demo = '';
 			self::$_picture = false;
+			self::$_project = null;
+
+			// The draft of the own css: a token of its own kind, held by an account that has the right to write it. The bundle of this request has the text in
+			// place of the file; the theme is the one that is saved
+			$project = \Nino\Preview::held( $appData, $request, self::CSS_KIND, self::CSS_PERM );
+
+			if( $project !== null && is_string( $project['data']['css'] ?? null ) === true ) {
+
+				self::$_project = $project['data']['css'];
+
+				if( in_array( [ self::class, 'previewCss' ], \Nino\Callbacks::registered( $appData, '/nino/shortcodes/assets/output/css' ), true ) === false )
+					\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/css', [ self::class, 'previewCss' ] );
+
+				return;
+			}
 
 			$held = \Nino\Preview::held( $appData, $request, self::KIND, self::PERM );
 
@@ -274,25 +301,31 @@ namespace Nino\Modules {
 			if( self::$_link === null && str_starts_with( $template, (string) strstr( self::PREVIEW_STYLE, '[[css]]', true ) ) === false )
 				self::$_link = $template;
 
-			if( self::$_draft === null )
+			if( self::$_draft === null && self::$_project === null )
 				return self::$_link ?? $template;
-
-			$draft = self::$_draft['css'];
 
 			$target = '/.cache/style.css';
 			$list = $appData['/nino/html/assets'][$target] ?? [];
+			$swap = [];
 
-			// The file as the list spells it, which is what the bundle matches a replacement by; one that is not on it yet is, for
-			// this call
-			\Nino\Html::addAsset( $appData, $target, self::SHEET );
-			$own = \Nino\Filesystem::path( $appData, self::SHEET );
-			$named = self::SHEET;
+			// A file as the list spells it, which is what the bundle matches a replacement by; one that is not on it yet is, for this call
+			foreach( [ self::SHEET => self::$_draft['css'] ?? null, self::PROJECT_SHEET => self::$_project ] as $sheet => $text ) {
 
-			foreach( \Nino\Html::getAssets( $appData, $target ) as $file )
-				if( \Nino\Filesystem::path( $appData, $file ) === $own )
-					$named = $file;
+				if( $text === null )
+					continue;
 
-			$bundle = \Nino\Modules\Assets::stylesheet( $appData, $target, [ $named => $draft ] );
+				\Nino\Html::addAsset( $appData, $target, $sheet );
+				$own = \Nino\Filesystem::path( $appData, $sheet );
+				$named = $sheet;
+
+				foreach( \Nino\Html::getAssets( $appData, $target ) as $file )
+					if( \Nino\Filesystem::path( $appData, $file ) === $own )
+						$named = $file;
+
+				$swap[$named] = $text;
+			}
+
+			$bundle = \Nino\Modules\Assets::stylesheet( $appData, $target, $swap );
 			$appData['/nino/html/assets'][$target] = $list;
 
 			// The outline is no layer: it stands over every rule of the bundle, which is what a mark is for

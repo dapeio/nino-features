@@ -965,6 +965,21 @@ $richCard = array_values( array_filter( $listed['themes'], static fn( array $one
 check( 'the card of an installed theme says what its frames read, as the preview does, and how long its css is - the keys as text of a list, once for each frame',
 	( $richCard['css']['lines'] ?? 0 ) === 2 && array_key_exists( 'why', $richCard['css'] ?? [] ) === true && $richCard['css']['why'] === null && array_column( $richCard['frames'] ?? [], 'key' ) === [ 'rich-foot' ] && in_array( '/project/company/general/name', array_column( $richCard['frames'][0]['reads'] ?? [], 'key' ), true ) === true && array_key_exists( 'text', $richCard['frames'][0]['reads'][0] ?? [] ) === true && $richCard['frames'][0]['reads'][0]['text'] === null );
 
+// the own css of the project is the project's and not a theme's: a package that is put in place, applied and taken away leaves it as it is
+\Nino\Filesystem::putFileContent( $site, '/assets/style.css', ".project-own-mark { color: rgb( 1 2 3 ); }\n" );
+$projectSheet = ninoSandboxDir( $site ). '/private/assets/style.css';
+$projectHash = hash_file( 'sha256', $projectSheet );
+$projectTime = filemtime( $projectSheet );
+upChoose( $site, upPack( upLight( 'own-css-probe', '1.0.0' ) ) );
+[ $putStatus ] = upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+upCall( $site, 'themes/apply', [ 'theme' => 'own-css-probe' ] );
+[ $goneStatus ] = upCall( $site, 'themes/apply', [ 'theme' => 'nino' ] );
+[ $restoreStatus ] = upCall( $site, 'themes/restore', [ 'base' => \Nino\Modules\Themes\Store::stamp( $site ) ] );
+
+check( 'a theme package that is uploaded, put in place, put on, taken off and a last state that is restored leave the own css of the project as it is - its bytes and its time - and does not carry it',
+	$putStatus === 200 && $goneStatus === 200 && $restoreStatus === 200 && hash_file( 'sha256', $projectSheet ) === $projectHash && filemtime( $projectSheet ) === $projectTime
+	&& array_filter( upFiles( ninoSandboxDir( $site ). '/private/packages' ), static fn( string $hash, string $path ): bool => str_contains( $path, 'style.css' ), ARRAY_FILTER_USE_BOTH ) === [] );
+
 // every refusal has its sentence in both languages
 $sayings = [ 'de_DE' => require dirname( __DIR__ ). '/text/de_DE.php', 'en_US' => require dirname( __DIR__ ). '/text/en_US.php' ];
 $codes = array_merge(

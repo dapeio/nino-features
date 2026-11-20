@@ -1165,6 +1165,12 @@ check( 'a theme of a package is not deleted by it', $status === 409 && $body['co
 [ $status, $body ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:nothing' ] );
 check( 'one that is not there is 404', $status === 404 && $body['code'] === 'themes_unknown' );
 
+[ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Hollow', [] ) ] );
+[ $openStatus, $opened ] = themesCall( $site, 'themes/open', [ 'theme' => 'own:hollow' ] );
+themesCall( $site, 'themes/delete', [ 'theme' => 'own:hollow' ] );
+check( 'an own theme saved with no parts is opened with its parts as a map: an empty map stays an object on the wire, not a list the editor would take for none',
+	$status === 200 && $openStatus === 200 && is_object( $opened['mix']['parts'] ?? null ) === true && str_contains( (string) json_encode( $opened['mix'] ), '"parts":{}' ) === true );
+
 [ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'FREE and EASY', [] ) ] );
 check( 'a name that a card has is taken, whatever its case: 409 and the name of that card', $status === 409 && $body['code'] === 'themes_name_taken' && $body['params'] === [ 'Free and easy' ] && $body['field'] === 'name' );
 foreach( [ '', '   ', '!!!', str_repeat( 'x', 61 ), "two\nlines", "nul\0byte" ] as $name ) {

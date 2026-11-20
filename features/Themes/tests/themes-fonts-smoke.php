@@ -236,8 +236,8 @@ check( 'A. the fonts have five actions of their own beside the fifteen of the th
 
 $panels = \Nino\Admin\Admin::panels( $site );
 $tabs = $panels['themes']['tabs'] ?? [];
-check( 'A. the pane of the themes has three tabs and one strip, the kernel\'s: the panel\'s own screen, the fonts - a tab the panel brings, under the right of the panel - and last the settings, which the registry attaches for the two settings of the manifest under the right of the features',
-	\Nino\Modules\Themes\Admin::tabs() === [ Typefaces::class ] && array_keys( $tabs ) === [ 'themes-fonts', 'themes-settings' ] && $tabs['themes-fonts']['class'] === Typefaces::class && $tabs['themes-fonts']['perm'] === '/_admin/themes/manage' && $tabs['themes-fonts']['parent'] === 'themes'
+check( 'A. the pane of the themes has four tabs and one strip, the kernel\'s: the panel\'s own screen, the fonts - a tab the panel brings, under the right of the panel -, the own css - a tab the panel brings, under a right of its own - and last the settings, which the registry attaches for the two settings of the manifest under the right of the features',
+	\Nino\Modules\Themes\Admin::tabs() === [ Typefaces::class, \Nino\Modules\Themes\ProjectCss::class ] && array_keys( $tabs ) === [ 'themes-fonts', 'themes-css', 'themes-settings' ] && $tabs['themes-fonts']['class'] === Typefaces::class && $tabs['themes-fonts']['perm'] === '/_admin/themes/manage' && $tabs['themes-fonts']['parent'] === 'themes'
 	&& $tabs['themes-fonts']['panes'] === [ 'themes-fonts-list' ] && $tabs['themes-fonts']['tab'] === '/_admin/themes/fonts/tab/fonts' && $tabs['themes-settings']['class'] === \Nino\Modules\Features\Settings::class && $tabs['themes-settings']['perm'] === '/_admin/features/manage'
 	&& $tabs['themes-settings']['feature'] === 'themes' && $panels['themes']['own'] === true );
 
