@@ -206,6 +206,13 @@ namespace Nino\Modules\Builder {
 				$ends[$at] = is_array( $call ) === true && is_string( $call['s'] ?? null ) === true && preg_match( '#^/templates/([a-z][a-z0-9-]*)$#D', $call['s'], $found ) === 1
 					&& is_file( \Nino\Filesystem::path( $appData, '/templates/'. $found[1]. '.tpl' ) ) === true ? [ 'n' => 'template', 's' => $call['s'], 'a' => [], 'c' => null ] : null;
 
+			// Where the scaffold of the site carries [[header]] and [[footer]] a new page calls its frame - the standard one, the page chooses another later - and not the scaffold
+			$framed = Store::framed( $appData );
+
+			foreach( [ 'header', 'footer' ] as $at => $side )
+				if( $ends[$at] !== null && ( $framed[$side] ?? false ) === true && is_file( \Nino\Filesystem::path( $appData, '/templates/'. Store::FRAMES[$side]. '.tpl' ) ) === true )
+					$ends[$at] = [ 'n' => 'frame', 's' => '/templates/'. Store::FRAMES[$side], 'a' => [], 'c' => null ];
+
 			return $ends;
 		}
 

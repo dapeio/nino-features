@@ -47,6 +47,9 @@ namespace Nino\Modules\Builder {
 				'builder/frametextssave'	=> [ self::class, 'apiFrameTextsSave' ],
 				'builder/framechoices'	=> [ self::class, 'apiFrameChoices' ],
 				'builder/frametile'	=> [ self::class, 'apiFrameTile' ],
+				'builder/pageframes'	=> [ self::class, 'apiPageFrames' ],
+				'builder/pageframetile'	=> [ self::class, 'apiPageFrameTile' ],
+				'builder/scaffold'	=> [ self::class, 'apiScaffold' ],
 				'builder/framechoose'	=> [ self::class, 'apiFrameChoose' ],
 				'builder/framerestore'	=> [ self::class, 'apiFrameRestore' ],
 				'builder/create'	=> [ self::class, 'apiCreate' ],
@@ -126,6 +129,7 @@ namespace Nino\Modules\Builder {
 				'builder/frametextssave'	=> 'Save Frame Texts '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/restore'	=> 'Restore Last Page State '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/framechoose'	=> 'Choose Frame Block '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ). ' '. Store::shown( \Nino\Admin\Admin::postString( $data, 'key' ) ),
+				'builder/scaffold'	=> 'Turn Scaffold '. Store::shown( \Nino\Admin\Admin::postString( $data, 'side' ) ),
 				'builder/framerestore'	=> 'Restore Last Frame State '. Store::shown( \Nino\Admin\Admin::postString( $data, 'template' ) ),
 				'builder/upload'	=> 'Upload Page Picture '. Store::shown( \Nino\Admin\Admin::postString( $data, 'uri' ) ),
 				'builder/create'	=> 'Create Page '. Store::shown( is_array( $data['addresses'] ?? null ) === true ? implode( ' ', array_filter( array_map( 'strval', array_slice( array_values( $data['addresses'] ), 0, 3 ) ), 'is_string' ) ) : '' ),
@@ -1301,6 +1305,176 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $template;
+		}
+
+		/**
+		 *	What a page chooses for its frame: of the header and of the footer the choice it has now - the standard one, none, or the word of a named frame - and what there is to choose from,
+		 *	and whether the scaffold of the site carries the place for the choice at all. The door is the one of the design of a page
+		 */
+		public static function apiPageFrames( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
+
+			if( $level === null )
+				return;
+
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			$current = [ 'header' => null, 'footer' => null ];
+			$locked = [ 'header' => false, 'footer' => false ];
+
+			foreach( Tree::read( $appData, (string) $opened[1]['source'] ) as $node ) {
+
+				if( ( $choice = Tree::frameChoice( $node ) ) !== null )
+					$current[$choice[0]] = $choice[1];
+				else if( ( $node['n'] ?? '' ) === 'template' && in_array( $node['s'] ?? '', Tree::FRAME_CALLS, true ) === true ) {
+
+					$side = $node['s'] === Tree::FRAME_CALLS[0] ? 'header' : 'footer';
+					$current[$side] = 'default';
+
+					// A call of the scaffold with an attribute or a content is one that cannot be rewritten as the call of a frame without changing what it does
+					if( ( $node['a'] ?? [] ) !== [] || ( $node['c'] ?? null ) !== null )
+						$locked[$side] = true;
+				}
+				else if( ( $node['n'] ?? '' ) === 'frame' && preg_match( '#^/templates/frame-(header|footer)(?:-|$)#', (string) ( $node['s'] ?? '' ), $found ) === 1 )
+					$locked[$found[1]] = true;
+			}
+
+			$words = [ 'header' => [], 'footer' => [] ];
+
+			foreach( Store::frames( $appData ) as $key => $template )
+				$words[(string) Store::side( $template )][] = $key === Store::side( $template ) ? 'default' : substr( $template, strlen( 'frame-'. Store::side( $template ) ) + 1 );
+
+			$framed = Store::framed( $appData );
+			$sides = [];
+
+			foreach( [ 'header', 'footer' ] as $side ) {
+
+				// The frame the page chooses is a file the site has no more: the website draws the standard one, and the page says which word it is
+				$gone = $current[$side] !== null && in_array( $current[$side], [ 'default', 'none' ], true ) === false && in_array( $current[$side], $words[$side], true ) === false;
+				$sides[$side] = [ 'locked' => $locked[$side], 'missing' => $gone, 'current' => $current[$side], 'options' => array_merge( array_values( array_filter( $words[$side], static fn( string $word ): bool => $word !== 'default' || is_file( \Nino\Filesystem::path( $appData, '/templates/'. Store::FRAMES[$side]. '.tpl' ) ) === true ) ), [ 'none' ] ), 'framed' => ( $framed[$side] ?? false ) === true ];
+			}
+
+			\Nino\Http::ok( $request, [ 'sides' => $sides, 'level' => $level ] );
+		}
+
+		/**
+		 *	The picture of a frame for the choice of a page: the scaffold with that frame in it and the other side empty, drawn the way the tiles of the blocks are. The side and the word are
+		 *	what the request names; the call is built here, from a word of a frame of the site and no other
+		 */
+		public static function apiPageFrameTile( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
+
+			if( $level === null )
+				return;
+
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$side = \Nino\Admin\Admin::postString( $data, 'side' );
+			$word = \Nino\Admin\Admin::postString( $data, 'word' );
+			$template = $word === 'default' ? ( Store::FRAMES[$side] ?? '' ) : ( Store::FRAMES[$side] ?? 'x' ). '-'. $word;
+
+			if( isset( Store::FRAMES[$side] ) === false || Store::isFrame( $appData, $template ) === false ) {
+				self::_fail( $request, [ 404, 'there is no such frame', 'builder_unknown', [], 'word' ] );
+				return;
+			}
+
+			$call = static fn( string $of, string $name ): string => '[frame /templates/'. $name. ']';
+			$source = $call( 'header', $side === 'header' ? $template : 'frame-header-none' ). "\n". $call( 'footer', $side === 'footer' ? $template : 'frame-footer-none' ). "\n";
+			$tile = [ 'template' => $opened[0], 'source' => $source, 'fills' => [], 'slots' => [], 'locale' => $opened[3] ];
+			$token = \Nino\Preview::issue( $appData, Library::KIND, self::perm(), $tile, \Nino\Admin\Admin::postString( $data, 'token' ), Library::TILES );
+
+			if( $token === '' ) {
+				self::_fail( $request, [ 500, 'the preview could not be written', 'builder_preview', [], '' ] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'address' => self::_address( $appData, $opened[0], $opened[3] ) ] );
+		}
+
+		/**
+		 *	The scaffold of a site that is older - html-header.tpl or html-footer.tpl draws its frame by [template /templates/frame-header] - turned to the one that carries the place for the choice of
+		 *	a page, [[header]] or [[footer]]: that one call and nothing else, only where the file holds it exactly once and the scaffold does not carry the place yet. The door is the one that writes a
+		 *	frame: the right of this panel and the step of the design
+		 */
+		public static function apiScaffold( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return;
+
+			if( \Nino\Modules\Builder::level( $appData ) < \Nino\Modules\Builder::LEVEL_DESIGN ) {
+				self::_fail( $request, self::_level() );
+				return;
+			}
+
+			$side = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'side' );
+
+			if( isset( Store::FRAMES[$side] ) === false ) {
+				self::_fail( $request, [ 400, 'the request names no side of the page', 'builder_unknown', [], 'side' ] );
+				return;
+			}
+
+			$file = '/templates/html-'. $side. '.tpl';
+			$call = '/templates/'. Store::FRAMES[$side];
+			$old = '[template '. $call. ']';
+			$new = '[['. $side. ']]';
+			$source = \Nino\Filesystem::getFileContent( $appData, $file, null );
+			$framed = Store::framed( $appData );
+
+			// What is in a comment of html is blanked, to the byte, before the text is searched: the place of the call is the place in the text, and a call that the notation reads inside a
+			// comment is none that the turn counts
+			$bare = is_string( $source ) === true ? (string) preg_replace_callback( '/<!--.*?-->/s', static fn( array $found ): string => str_repeat( ' ', strlen( $found[0] ) ), $source ) : '';
+
+			// The calls are read as the notation reads them: a call that is written in another way - with an attribute, with blanks - is one the text search would not find, which the turn
+			// does not touch: it is told, with the two lines to do by hand
+			$real = 0;
+			$walk = static function( array $nodes ) use ( &$walk, &$real, $call, $bare ): void {
+
+				foreach( $nodes as $node )
+					if( isset( $node['n'] ) === true ) {
+
+						if( $node['n'] === 'template' && ( $node['s'] ?? '' ) === $call && ( $bare[(int) ( $node['o'] ?? -1 )] ?? '' ) === '[' )
+							$real++;
+
+						if( is_array( $node['c'] ?? null ) === true )
+							$walk( $node['c'] );
+					}
+			};
+
+			if( is_string( $source ) === true )
+				$walk( \Nino\Markup::parse( $source, \Nino\Components::containers( $appData ) ) );
+
+			$at = strpos( $bare, $old );
+
+			if( is_string( $source ) === false || ( $framed[$side] ?? false ) === true || $real !== 1 || $at === false || substr_count( $bare, $old ) !== 1 ) {
+				self::_fail( $request, [ 409, 'the scaffold does not carry the call exactly once', 'builder_scaffold', [ 'html-'. $side. '.tpl', $old, $new ], 'side' ] );
+				return;
+			}
+
+			// The file as it was is kept beside the others of the Builder, so that there is a way back; and the turn is the turn of the notation too: where the scaffold does not carry the
+			// place afterwards, the file is as it was
+			$kept = Store::SCAFFOLD. '/html-'. $side. '.tpl';
+			\Nino\Filesystem::putFileContent( $appData, $kept, $source );
+			\Nino\Filesystem::putFileContent( $appData, $file, substr_replace( $source, $new, $at, strlen( $old ) ) );
+			unset( $appData['./nino/html/cache'] );
+			$now = Store::framed( $appData );
+
+			if( ( $now[$side] ?? false ) !== true ) {
+
+				\Nino\Filesystem::putFileContent( $appData, $file, $source );
+				self::_fail( $request, [ 409, 'the scaffold does not carry the call exactly once', 'builder_scaffold', [ 'html-'. $side. '.tpl', $old, $new ], 'side' ] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'side' => $side, 'kept' => 'private'. $kept ] );
 		}
 
 		/**

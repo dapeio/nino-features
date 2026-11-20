@@ -945,4 +945,108 @@ check( 'P6. the bar of a section shows the id and not the word Section: the id i
 } )() );
 
 
+// --- the frames of a page --------------------------------------------------------------------------------------------------
+
+fresh();
+S.sheet = 'page';
+S.oldIds = new Set( [ 'hero', 'start' ] );
+
+const frameCalls = function() {
+	return S.top.filter( function( node ) { return node.n === 'template' || node.n === 'frame' } ).map( function( node ) { return node.n+ ' '+ node.s } );
+};
+
+check( 'F285. a call of the frame of a page says its side and what it chooses: the call of the scaffold is the standard frame, [frame /templates/frame-header] too, a word is the word, none is none - and what is no call of a frame is none',
+	builder.sideOfCall( { n : 'template', s : '/templates/html-header' } ) === 'header' && builder.sideOfCall( { n : 'frame', s : '/templates/frame-footer-klein' } ) === 'footer' && builder.sideOfCall( { n : 'template', s : '/templates/other' } ) === null && builder.sideOfCall( { n : 'frame', s : '/templates/page-x' } ) === null
+	&& builder.choiceOfCall( { n : 'template', s : '/templates/html-header' } ) === 'default' && builder.choiceOfCall( { n : 'frame', s : '/templates/frame-header' } ) === 'default' && builder.choiceOfCall( { n : 'frame', s : '/templates/frame-header-landing' } ) === 'landing'
+	&& builder.choiceOfCall( { n : 'frame', s : '/templates/frame-footer-none' } ) === 'none' && builder.frameWord( 'landing' ) === 'landing' );
+
+check( 'F285. the choice of both frames is written in ONE step of the undo, and the undo brings back both calls: the page that called the scaffold calls its frames - the header with the word, the footer with none - and the rest of the page is not touched',
+	( function() {
+		const before = JSON.stringify( S.top );
+		const steps = S.undo.length;
+		const ok = builder.setFrames( { header : 'landing', footer : 'none' } );
+		const now = frameCalls();
+		const rest = JSON.stringify( S.top.filter( function( node ) { return node.n !== 'frame' && node.n !== 'template' } ) ) === JSON.stringify( JSON.parse( before ).filter( function( node ) { return node.n !== 'frame' && node.n !== 'template' } ) );
+
+		builder.undo();
+
+		return ok === true && now.join() === 'frame /templates/frame-header-landing,frame /templates/frame-footer-none' && rest === true && S.undo.length === steps && JSON.stringify( S.top ) === before;
+	} )() );
+
+check( 'F285. the first change of a page that calls the scaffold itself writes both calls as the call of the frame - the side that was not changed with the standard frame - and a choice that changes nothing writes none',
+	( function() {
+		fresh();
+		S.sheet = 'page';
+		const none = builder.setFrames( { header : 'default', footer : 'default' } );
+		const unchanged = JSON.stringify( S.top );
+		const some = builder.setFrames( { header : 'landing' } );
+
+		return none === false && some === true && frameCalls().join() === 'frame /templates/frame-header-landing,frame /templates/frame-footer' && unchanged.indexOf( 'html-header' ) !== -1;
+	} )() );
+
+check( 'F285. a choice that is the choice is no change and makes no step; a word that is not a word - a path, a capital, a space, a second hyphen - is no choice; the one who may not design and a frame of the site change nothing',
+	( function() {
+		fresh();
+		S.sheet = 'page';
+		builder.setFrames( { header : 'landing' } );
+		const steps = S.undo.length;
+		const before = JSON.stringify( S.top );
+		const same = builder.setFrames( { header : 'landing' } );
+		const bad = [ '../x', 'Landing', 'a b', 'a--b', '', '/templates/x' ].map( function( word ) { return builder.setFrames( { header : word } ) } );
+
+		S.level = 1;
+		const content = builder.setFrames( { footer : 'none' } );
+		S.level = 2;
+		S.frame = true;
+		const frame = builder.setFrames( { footer : 'none' } );
+		S.frame = false;
+
+		return same === false && bad.every( function( one ) { return one === false } ) && content === false && frame === false && S.undo.length === steps && JSON.stringify( S.top ) === before;
+	} )() );
+
+check( 'F285. the lightbox "Frames of this page" is the workbench\'s dialog with one choice of tiles for the header and one for the footer - the standard frame, the frames of the site, none -, the chosen tile marked, one main answer that sets both; beside the name of the page, for the one who designs, with an icon and the name as its words',
+	( function() {
+		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
+
+		return /Nino\.adminUi\.iconButton\( 'panels-top-left', word\('frames\/page'\)/.test( script ) === true && /S\.sheet === 'page' && S\.frame === false && advanced === false && builds\(\) === true/.test( script ) === true
+			&& /api\( 'pageframes', \{\}/.test( script ) === true && /api\( 'pageframetile', \{ side : entry\.side, word : entry\.word \}/.test( script ) === true && /set\.setAttribute\( 'role', 'radiogroup' \)/.test( script ) === true
+			&& /item\.setAttribute\( 'role', 'radio' \)/.test( script ) === true && /'aria-checked', item === chosen \? 'true' : 'false'/.test( script ) === true && /if\( value === 'set' \)\s*setFrames\( picks \)/.test( script ) === true
+			&& /api\( 'scaffold', \{ side : side \}/.test( script ) === true && /Nino\.adminUi\.confirm\( 'destructive', \{[\s\S]{0,260}nested\s*: true/.test( script ) === true;
+	} )() );
+
+check( 'F285. an arrow key in a group of tiles leads to the tile it points at, in all four directions: Left and Right along the tiles, Up and Down to the line over or under at the middle that is nearest, Home and End to the ends, and nowhere past them',
+	( function() {
+		const tile = function( left, top ) { return { getBoundingClientRect : function() { return { left : left, top : top, width : 100, height : 60 } } } };
+		// Three in a line and two under them: the second line is shifted to the right by a third of a tile
+		const tiles = [ tile( 0, 0 ), tile( 110, 0 ), tile( 220, 0 ), tile( 30, 70 ), tile( 140, 70 ) ];
+		const go = function( at, key ) { return builder.tileTo( tiles, at, key ) };
+
+		return go( 0, 'ArrowRight' ) === 1 && go( 1, 'ArrowLeft' ) === 0 && go( 4, 'ArrowRight' ) === -1 && go( 0, 'ArrowLeft' ) === -1 && go( 2, 'Home' ) === 0 && go( 0, 'End' ) === 4
+			&& go( 0, 'ArrowDown' ) === 3 && go( 1, 'ArrowDown' ) === 4 && go( 2, 'ArrowDown' ) === 4 && go( 3, 'ArrowUp' ) === 0 && go( 4, 'ArrowUp' ) === 1 && go( 0, 'ArrowUp' ) === -1 && go( 4, 'ArrowDown' ) === -1
+			&& builder.tileTo( [ {  getBoundingClientRect : function() { return {} } }, { getBoundingClientRect : function() { return {} } } ], 0, 'ArrowDown' ) === 1;
+	} )() );
+
+check( 'F285. a frame that the page names and the site does not have marks no tile - the first one is not marked in its place - and a frame that is there marks its own',
+	builder.markedFrame( [ 'default', 'landing', 'none' ], 'gone' ) === null && builder.markedFrame( [ 'default', 'landing', 'none' ], 'landing' ) === 'landing' && builder.markedFrame( [ 'default', 'none' ], 'default' ) === 'default' );
+
+check( 'F285. the choice does not touch the call of the scaffold that has an attribute: it is not written as the call of a frame when the other side is changed',
+	( function() {
+		fresh();
+		S.sheet = 'page';
+		S.top = [ { n : 'template', s : '/templates/html-header', a : { class : 'x' }, c : null }, { t : '\n' }, { n : 'template', s : '/templates/html-footer', a : {}, c : null } ];
+		const ok = builder.setFrames( { footer : 'none' } );
+
+		return ok === true && JSON.stringify( S.top[0] ) === JSON.stringify( { n : 'template', s : '/templates/html-header', a : { class : 'x' }, c : null } ) && frameCalls().join() === 'template /templates/html-header,frame /templates/frame-footer-none';
+	} )() );
+
+check( 'F285. the scaffold that was turned draws the lightbox anew from what the site says, and the answer names where the old text is kept; the notes of a side that cannot be chosen and of a frame that is missing stand in a class of the feature, and the (?) of the lightbox holds its explanation; the keys of a group are the keys of the tiles',
+	( function() {
+		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
+		const css = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.css' ), 'utf8' );
+
+		return /reload = true;\s*if\( opened !== null \)\s*opened\.close\( 'cancel' \)/.test( script ) === true && /else if\( reload === true \)\s*openPageFrames\( opener \)/.test( script ) === true && /word\( 'frames\/scaffold-done', answer\.kept \)/.test( script ) === true
+			&& /const to = tileTo\( items, at, event\.key \);\s*if\( to !== -1 \)/.test( script ) === true && /info\.locked === true/.test( script ) === true && /info\.missing === true/.test( script ) === true && /tools\s*: Nino\.adminUi\.fieldHelp\( word\('frames\/page-note'\)/.test( script ) === true
+			&& /\.builder-framechoice-note \{/.test( css ) === true && /nino-admin-pick-set \.nino-admin-hint/.test( css ) === false;
+	} )() );
+
 done();

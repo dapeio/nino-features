@@ -337,7 +337,7 @@ function world( options ) {
 
 	check( 'A. the page is opened by the row, and the table says so with its sign', w.rows().every( function( row ) { return findAll( row, function( el ) { return el.className === 'nino-admin-row-chev' } ).length === 1 } ) );
 	check( 'A. the list of the pages has no list of the frames: they are written in the editor of the blocks', ( function() {
-		return findAll( w.list, function( el ) { return el.tagName === 'A' && /@(?:header|footer)/.test( String( el.href ) ) } ).length === 0 && textOf( w.list ).indexOf( W('hint/frame-short') ) === -1;
+		return findAll( w.list, function( el ) { return el.tagName === 'A' && /@(?:header|footer)/.test( String( el.href ) ) } ).length === 0 && textOf( w.list ).indexOf( W('frames/default') ) === -1;
 	} )() );
 	check( 'A. the bar of the list has one main button - New page - and nothing else, and the button of the old place is gone', ( function() {
 		const buttons = findAll( bar ?? element('div'), function( el ) { return el.tagName === 'BUTTON' } );

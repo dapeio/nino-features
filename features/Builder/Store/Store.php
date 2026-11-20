@@ -15,6 +15,9 @@ namespace Nino\Modules\Builder {
 		// Where the last state of a template is kept: private/data/builder/previous/<template>.php
 		public const string PREVIOUS = '/data/builder/previous';
 
+		// Where the scaffold of a site is kept as it was before a turn of it: private/data/builder/scaffold/html-header.tpl and html-footer.tpl, the way back by hand
+		public const string SCAFFOLD = '/data/builder/scaffold';
+
 		// The lock that the writers of the Builder of a page - a save, a page that is made, a page that is copied - take one after the other: nothing else holds it, so
 		// no write of a file lets it go
 		public const string LOCK = '/data/builder/pages.lock';
@@ -90,12 +93,33 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	Whether the scaffolds of the site hold the places of their frames - \Nino\Modules\Template::framed(), asked through a callable, since a kernel before the call of
+		 *	the frames has no such method
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											'header' => bool, 'footer' => bool - or [] where the kernel does not say
+		 */
+		public static function framed( array &$appData ): array {
+
+			$call = self::_kernelCall( 'framed' );
+
+			if( is_callable( $call ) === false )
+				return [];
+
+			/** @var mixed $answer */
+			$answer = call_user_func_array( $call, [ &$appData ] );
+
+			return is_array( $answer ) === true ? $answer : [];
+		}
+
+		/**
 		 *	The call of the kernel that lists the frames, as class and method
 		 *
 		 *	@return 	array{string, string}
 		 */
-		private static function _kernelCall(): array {
-			return [ '\\Nino\\Modules\\Template', 'frames' ];
+		private static function _kernelCall( string $method = 'frames' ): array {
+			return [ '\\Nino\\Modules\\Template', $method ];
 		}
 
 		/**

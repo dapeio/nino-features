@@ -954,7 +954,7 @@
 	const titleOf = function( node, whole ) {
 
 		if( kindOf( node ) !== 'block' )
-			return node.n === 'template' ? word('word/frame') : ( kindOf( node ) === 'call' ? word( 'word/call', node.n ) : word('word/free') );
+			return isCall( node ) === true ? word('word/frame') : ( kindOf( node ) === 'call' ? word( 'word/call', node.n ) : word('word/free') );
 
 		// A header and a footer are what they are called: the first words in them are a button or a link
 		// A name is the kind and the first words: where they are longer than a name is, the kind and the id - the whole of the words is the title of the name
@@ -983,7 +983,7 @@
 			if( kind === 'gap' || ( node.t !== undefined && /^\s*(?:<!--[\s\S]*?-->\s*)+$/.test( node.t ) === true ) )
 				return;
 
-			const row = kind === 'block' ? 'block' : ( node.n === 'template' ? 'frame' : 'free' );
+			const row = kind === 'block' ? 'block' : ( isCall( node ) === true ? 'frame' : 'free' );
 			const before = list[list.length - 1];
 
 			if( row === 'free' && before !== undefined && before.kind === 'free' && S.top.slice( before.last + 1, at ).every( function( between ) { return kindOf( between ) === 'gap' } ) === true ) {
@@ -1124,6 +1124,33 @@
 	// --- the outline: the blocks of the page as the tree of the workbench, and as the strip it folds to ------------
 
 	// The key a block has in every view that shows it - the outline, its strip, the page in the frame -: its id, and where it has none the place it stands at. The
+	// The call of the frame of a page: the scaffold called directly - [template /templates/html-header] - or the frame - [frame /templates/frame-header-landing]
+	const isCall = function( node ) {
+		return node.n === 'template' || node.n === 'frame';
+	};
+
+	// Which side a call of the frame of a page is of, null for another template: by the template it names, the scaffold's or the frame's
+	const sideOfCall = function( node ) {
+
+		if( node.n === 'template' )
+			return node.s === FRAME_CALLS[0] ? 'header' : ( node.s === FRAME_CALLS[1] ? 'footer' : null );
+
+		const found = node.n === 'frame' ? /^\/templates\/frame-(header|footer)(?:-|$)/.exec( String( node.s ?? '' ) ) : null;
+
+		return found === null ? null : found[1];
+	};
+
+	// What a call of the frame of a page chooses: 'default' - the standard frame, which the call of the scaffold has too -, 'none' or the word of a frame
+	const choiceOfCall = function( node ) {
+
+		if( node.n !== 'frame' )
+			return 'default';
+
+		const found = /^\/templates\/frame-(?:header|footer)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec( String( node.s ?? '' ) );
+
+		return found === null ? 'default' : found[1];
+	};
+
 	// calls of the two frames have a key of their own
 	const keyAt = function( at ) {
 
@@ -1135,14 +1162,14 @@
 		if( kindOf( node ) === 'block' )
 			return idOf( node ) !== '' ? idOf( node ) : '@'+ at;
 
-		if( node.n !== 'template' )
+		if( isCall( node ) === false )
 			return '@'+ at;
 
 		// The first call of a frame on the top level is the head, the last the foot, and what stands between is a template of its own: no second head
 		const calls = [];
 
 		S.top.forEach( function( other, index ) {
-			if( other.n === 'template' )
+			if( isCall( other ) === true )
 				calls.push( index );
 		} );
 
@@ -1246,13 +1273,18 @@
 	const ACTION_ICONS = { insert : 'plus', up : 'arrow-up', down : 'arrow-down', copy : 'copy', remove : 'trash-2' };
 
 	// What a row of the outline is: its key, the word it shows - the id of a block, the name of a frame -, the full name for a hint, the icon and its type
+	// What a choice of a frame is called: "Standard", "None", or the word of the frame
+	const frameWord = function( choice ) {
+		return choice === 'default' ? word('frames/default') : ( choice === 'none' ? word('frames/none') : choice );
+	};
+
 	const rowOf = function( item ) {
 
 		const node = item.node;
 		const key = keyAt( item.at );
 
 		if( item.kind === 'frame' && ( key === '@header' || key === '@footer' ) )
-			return { key : key, label : word( key === '@footer' ? 'word/frame-footer' : 'word/frame-header' ), detail : word('hint/frame-short'), name : '', icon : key === '@footer' ? 'panel-bottom' : 'panel-top', locked : false };
+			return { key : key, label : word( key === '@footer' ? 'word/frame-footer' : 'word/frame-header' ), detail : frameWord( choiceOfCall( node ) ), name : '', icon : key === '@footer' ? 'panel-bottom' : 'panel-top', locked : false };
 
 		// A template that is put in the middle of the page has its name and an id of its own
 		if( item.kind === 'frame' )
@@ -1315,9 +1347,9 @@
 		if( S.sheet !== 'page' || S.frame === true || builds() === false || Array.isArray( S.top ) === false )
 			return [];
 
-		return [ [ 'header', FRAME_CALLS[0] ], [ 'footer', FRAME_CALLS[1] ] ].filter( function( pair ) {
-			return S.top.some( function( node ) { return node.n === 'template' && node.s === pair[1] } ) === false;
-		} ).map( function( pair ) { return pair[0] } );
+		return [ 'header', 'footer' ].filter( function( side ) {
+			return S.top.some( function( node ) { return sideOfCall( node ) === side } ) === false;
+		} );
 	};
 
 	// The call of the head or of the foot is put back where it belongs: the head behind the note of the page, the foot at its end
@@ -1336,6 +1368,298 @@
 				S.top = normalize( S.top.slice( 0, S.top[0] !== undefined && S.top[0].t !== undefined ? 1 : 0 ).concat( [ call, { t : '\n' } ], S.top.slice( S.top[0] !== undefined && S.top[0].t !== undefined ? 1 : 0 ) ) );
 		} );
 		told( word( 'frame/restored-'+ which ) );
+	};
+
+	/**
+	 *	The frames a page chooses, written into its draft: the call of the head and the call of the foot become the call of the frame - [frame /templates/frame-header-landing] - with the
+	 *	word that is chosen, in ONE step of the undo; the call that is not there is put where it belongs. The word is one of the choices the server offered and the server holds the call to it
+	 *	again when it draws and saves
+	 *
+	 *	@param		{Object}		choices				{ header : 'default' | 'none' | the word, footer : ... } - a side that is left out is as it is
+	 *
+	 *	@return		{boolean}										Whether the draft changed
+	 */
+	const setFrames = function( choices ) {
+
+		if( builds() === false || S.frame === true || S.sheet !== 'page' )
+			return false;
+
+		const wanted = {};
+
+		[ 'header', 'footer' ].forEach( function( side ) {
+
+			if( typeof choices[side] !== 'string' || /^(?:default|none|[a-z0-9]+(?:-[a-z0-9]+)*)$/.test( choices[side] ) === false )
+				return;
+
+			const have = S.top.find( function( node ) { return sideOfCall( node ) === side } );
+
+			if( have === undefined || choiceOfCall( have ) !== choices[side] )
+				wanted[side] = { n : 'frame', s : '/templates/frame-'+ side+ ( choices[side] === 'default' ? '' : '-'+ choices[side] ), a : {}, c : null };
+		} );
+
+		if( Object.keys( wanted ).length === 0 )
+			return false;
+
+		// The first change of a page that calls the scaffold itself writes both calls as the call of the frame - the other side with the standard frame it had
+		[ 'header', 'footer' ].forEach( function( side ) {
+
+			const have = S.top.find( function( node ) { return sideOfCall( node ) === side } );
+
+			if( wanted[side] === undefined && have !== undefined && have.n === 'template' && Object.keys( have.a ?? {} ).length === 0 && ( have.c ?? null ) === null )
+				wanted[side] = { n : 'frame', s : '/templates/frame-'+ side, a : {}, c : null };
+		} );
+
+		change( function() {
+
+			[ 'header', 'footer' ].forEach( function( side ) {
+
+				if( wanted[side] === undefined )
+					return;
+
+				const at = S.top.findIndex( function( node ) { return sideOfCall( node ) === side } );
+
+				if( at !== -1 )
+					S.top[at] = wanted[side];
+				else if( side === 'footer' )
+					S.top = normalize( S.top.concat( [ { t : '\n' }, wanted[side], { t : '\n' } ] ) );
+				else
+					S.top = normalize( S.top.slice( 0, S.top[0] !== undefined && S.top[0].t !== undefined ? 1 : 0 ).concat( [ wanted[side], { t : '\n' } ], S.top.slice( S.top[0] !== undefined && S.top[0].t !== undefined ? 1 : 0 ) ) );
+			} );
+		} );
+
+		return true;
+	};
+
+	/**
+	 *	The tile of the choice that is marked: the choice the page has where it is one of the tiles, none where the frame it names is not there - nothing is marked for what is not shown
+	 *
+	 *	@param		{Array}			options				The words of the tiles
+	 *	@param		{string}		choice				What the page has chosen
+	 *
+	 *	@return		{string|null}
+	 */
+	const markedFrame = function( options, choice ) {
+		return options.indexOf( choice ) === -1 ? null : choice;
+	};
+
+	/**
+	 *	The tile an arrow key leads to in a group of tiles, as the lists of the workbench do it: Left and Right go along the tiles, Up and Down to the tile in the line over or under
+	 *	the one that has the focus - the one whose middle is nearest -, Home and End to the ends. Where the boxes cannot say where the tiles stand, the keys go along the tiles
+	 *
+	 *	@param		{Array}			tiles
+	 *	@param		{number}		at						The tile that has the focus
+	 *	@param		{string}		key
+	 *
+	 *	@return		{number}										The tile, -1 where the key leads nowhere
+	 */
+	const tileTo = function( tiles, at, key ) {
+
+		const boxes = tiles.map( function( tile ) { return tile.getBoundingClientRect() } );
+
+		if( ( key !== 'ArrowUp' && key !== 'ArrowDown' ) || boxes.some( function( box ) { return typeof box.top !== 'number' } ) === true )
+			return roveTo( tiles.length, at, key );
+
+		const down = key === 'ArrowDown';
+		const over = boxes.map( function( box, index ) { return index } ).filter( function( index ) { return down === true ? boxes[index].top > boxes[at].top + 1 : boxes[index].top < boxes[at].top - 1 } );
+
+		if( over.length === 0 )
+			return -1;
+
+		const line = over.reduce( function( best, index ) { return down === true ? Math.min( best, boxes[index].top ) : Math.max( best, boxes[index].top ) }, down === true ? Infinity : -Infinity );
+		const middle = function( index ) { return boxes[index].left + boxes[index].width / 2 };
+
+		return over.filter( function( index ) { return Math.abs( boxes[index].top - line ) < 1 } ).reduce( function( best, index ) { return Math.abs( middle( index ) - middle( at ) ) < Math.abs( middle( best ) - middle( at ) ) ? index : best } );
+	};
+
+	/**
+	 *	"Frames of this page": the lightbox beside the name of the page. The header and the footer are two groups, each a choice of ONE tile - the standard frame, the frames of the site by their
+	 *	word, none - with the picture of the page in the frame; the one the page has now is marked. The main answer sets both in one step of the undo. Where the scaffold of the site does not
+	 *	carry the place for the choice, the lightbox says so and offers to turn it
+	 *
+	 *	@param		{Element}		opener
+	 */
+	const openPageFrames = function( opener ) {
+
+		if( S.sheet !== 'page' || S.frame === true || builds() === false || S.stale === true || S.editing !== null )
+			return;
+
+		api( 'pageframes', {}, function( status, response ) {
+
+			if( status !== 200 ) {
+				Nino.adminUi.say( Nino.adminUi.api.errorText( status, response, '/_admin/builder/error/frame' ), { kind : 'error' } );
+				return;
+			}
+
+			const root = el( 'div', 'nino-admin-pick builder-framechoice' );
+			let opened = null;
+			let reload = false;
+			const list = el( 'div', 'nino-admin-pick-list nino-admin-pick-list--tiles' );
+			const picks = {};
+			const faces = [];
+			root.appendChild( list );
+
+			[ 'header', 'footer' ].forEach( function( side ) {
+
+				const info = response.sides[side];
+				const group = el( 'div', 'nino-admin-pick-group' );
+				const title = el( 'h3', 'nino-admin-pick-group-title', word( 'frame/'+ side ) );
+				const set = el( 'div', 'nino-admin-pick-set' );
+
+				title.id = 'builder-framechoice-'+ side;
+				group.setAttribute( 'role', 'group' );
+				group.setAttribute( 'aria-labelledby', title.id );
+				group.dataset.side = side;
+				group.appendChild( title );
+				group.appendChild( set );
+				list.appendChild( group );
+
+				if( info.framed !== true ) {
+
+					const turn = Nino.adminUi.button( word('frames/scaffold-turn'), function() {
+
+						Nino.adminUi.confirm( 'destructive', {
+							title		: word('frames/scaffold-turn'),
+							message	: word( 'frames/scaffold-ask', 'html-'+ side+ '.tpl' ),
+							yes			: word('frames/scaffold-turn'),
+							no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+							kind		: 'danger',
+							nested	: true,
+							opener	: turn,
+							onChoose	: function() {
+
+								api( 'scaffold', { side : side }, function( code, answer ) {
+
+									if( code === 200 ) {
+
+										// The lightbox is drawn anew from what the site says after the turn, so that the tiles of the side are there
+										Nino.adminUi.say( word( 'frames/scaffold-done', answer.kept ) );
+										reload = true;
+
+										if( opened !== null )
+											opened.close( 'cancel' );
+									}
+									else
+										Nino.adminUi.say( Nino.adminUi.api.errorText( code, answer, '/_admin/builder/error/frame' ), { kind : 'error' } );
+								} );
+							},
+						} );
+					}, { className : 'nino-admin-btn--small' } );
+
+					set.appendChild( el( 'p', 'nino-admin-hint builder-framechoice-note', word( 'frames/scaffold-note', 'html-'+ side+ '.tpl' ) ) );
+					set.appendChild( turn );
+
+					return;
+				}
+
+				// A call of the scaffold that has an attribute cannot be written as the call of a frame without changing what it does: the page keeps it and the choice is not offered
+				if( info.locked === true ) {
+					set.appendChild( el( 'p', 'nino-admin-hint builder-framechoice-note', word('frames/locked-note') ) );
+					return;
+				}
+
+				const have = S.top.find( function( node ) { return sideOfCall( node ) === side } );
+
+				picks[side] = have === undefined ? 'default' : choiceOfCall( have );
+				set.setAttribute( 'role', 'radiogroup' );
+				set.setAttribute( 'aria-labelledby', title.id );
+
+				const items = [];
+
+				if( info.missing === true )
+					set.appendChild( el( 'p', 'nino-admin-hint builder-framechoice-note', word( 'frames/missing-note', info.current ) ) );
+
+				info.options.forEach( function( choice ) {
+
+					const item = el( 'button', 'nino-admin-pick-item nino-admin-pick-item--tile builder-framechoice-item' );
+					const face = el( 'span', 'nino-admin-pick-image' );
+					const text = el( 'span', 'nino-admin-pick-text' );
+
+					item.type = 'button';
+					item.setAttribute( 'role', 'radio' );
+					item.dataset.word = choice;
+					text.appendChild( el( 'strong', 'nino-admin-pick-label', frameWord( choice ) ) );
+					item.appendChild( face );
+					item.appendChild( text );
+
+					if( choice !== 'none' ) {
+						face.dataset.block = side+ ':'+ choice;
+						faces.push( { face : face, side : side, word : choice } );
+					}
+
+					items.push( item );
+					set.appendChild( item );
+				} );
+
+				const mark = function( chosen, focus ) {
+
+					picks[side] = chosen.dataset.word;
+					items.forEach( function( item ) {
+						item.setAttribute( 'aria-checked', item === chosen ? 'true' : 'false' );
+						item.tabIndex = item === chosen ? 0 : -1;
+					} );
+
+					if( focus === true )
+						chosen.focus();
+				};
+
+				// A frame the page names that the site does not have marks no tile: the site draws the standard one, which is no choice of the page, and the tab key stops at the first tile
+				const marked = markedFrame( info.options, picks[side] );
+
+				if( marked === null )
+					items.forEach( function( item, at ) {
+						item.setAttribute( 'aria-checked', 'false' );
+						item.tabIndex = at === 0 ? 0 : -1;
+					} );
+				else
+					mark( items.find( function( item ) { return item.dataset.word === marked } ), false );
+
+				items.forEach( function( item, at ) {
+
+					item.addEventListener( 'click', function() { mark( item, false ) } );
+					item.addEventListener( 'keydown', function( event ) {
+
+						const to = tileTo( items, at, event.key );
+
+						if( to !== -1 ) {
+							event.preventDefault();
+							mark( items[to], true );
+						}
+					} );
+				} );
+			} );
+
+			const some = [ 'header', 'footer' ].some( function( side ) { return response.sides[side].framed === true && response.sides[side].locked !== true } );
+			const shown = Nino.adminUi.choiceDialog( {
+				title		: word('frames/page-title'),
+				message	: word('frames/page-note'),
+				tools		: Nino.adminUi.fieldHelp( word('frames/page-note'), { field : root, name : word('frames/page-title') } ),
+				content	: root,
+				size		: 'wide',
+				opener	: opener,
+				choices	: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ].concat( some === true ? [ { value : 'set', label : word('frames/page-set'), kind : 'primary' } ] : [] ),
+				onOpen	: function( handle ) { opened = handle },
+				onChoose	: function( value ) {
+
+					if( value === 'set' )
+						setFrames( picks );
+					else if( reload === true )
+						openPageFrames( opener );
+				},
+			} );
+
+			if( shown === false )
+				return;
+
+			// The picture of each frame: the page in it, drawn as the tiles of the blocks are
+			faces.forEach( function( entry ) {
+
+				api( 'pageframetile', { side : entry.side, word : entry.word }, function( code, answer ) {
+
+					if( code === 200 && entry.face.isConnected === true && entry.face.querySelector('iframe') === null )
+						tileFrame( entry.face, { address : answer.address, query : answer.query }, S.dir );
+				} );
+			} );
+		} );
 	};
 
 	// The full name of a block is the hint of its row: the tree has the id in it, and a long id its own
@@ -4470,6 +4794,16 @@
 
 			return one;
 		} );
+
+		// "Frames of this page": for the one who designs a page - the header and the footer it has - beside its name
+		if( S.sheet === 'page' && S.frame === false && advanced === false && builds() === true ) {
+
+			const frames = Nino.adminUi.iconButton( 'panels-top-left', word('frames/page'), function( event ) { openPageFrames( event.currentTarget ) }, { small : true, className : 'builder-context-button' } );
+
+			frames.dataset.key = 'frames';
+			beside.frames = frames;
+			besideList.push( frames );
+		}
 
 		const context = Nino.adminUi.contextBar( {
 			panel	: Nino.adminUi.panelName( level ),
@@ -10217,7 +10551,7 @@
 			addComponent : addComponent, relNode : relNode, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, PEN_INSET : PEN_INSET, markBox : markBox, boxOf : boxOf, aimFor : aimFor, seamAt : seamAt, renameBlock : renameBlock, identProblem : identProblem, identWhy : identWhy, sectionPen : sectionPen, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, tileTo : tileTo, markedFrame : markedFrame, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, PEN_INSET : PEN_INSET, markBox : markBox, boxOf : boxOf, aimFor : aimFor, seamAt : seamAt, renameBlock : renameBlock, setFrames : setFrames, sideOfCall : sideOfCall, choiceOfCall : choiceOfCall, frameWord : frameWord, identProblem : identProblem, identWhy : identWhy, sectionPen : sectionPen, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		/**

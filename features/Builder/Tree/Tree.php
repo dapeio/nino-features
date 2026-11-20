@@ -824,6 +824,14 @@ namespace Nino\Modules\Builder {
 			if( self::twice( $new, $registry ) !== null )
 				return 'ids';
 
+			// The call of the frame of a page - [frame /templates/frame-header-landing] - is the call of its head or of its foot with a choice in it: the choice is the server's to check, the
+			// call is the same call as the scaffold's for every rule below
+			if( self::framesRefused( $appData, $old, $new ) === true )
+				return 'frame';
+
+			$old = self::unframed( $old );
+			$new = self::unframed( $new );
+
 			// The calls of the head and of the foot of the site are the page's frame: no step leaves them out, and where one is missing it is put back - once, and where it belongs
 			$put = self::_framed( $old, $new );
 
@@ -905,6 +913,80 @@ namespace Nino\Modules\Builder {
 
 		// The calls a page has for the head and the foot of the site, by the template they name
 		public const array FRAME_CALLS = [ '/templates/html-header', '/templates/html-footer' ];
+
+		/**
+		 *	The side and the choice a call of the frame of a page says - [frame /templates/frame-header-landing] -: the argument is the whole of what is read, in the form of a frame and of no
+		 *	other, and the call has no attribute and holds nothing
+		 *
+		 *	@param		array			$node
+		 *
+		 *	@return 	array|null								[ 'header' or 'footer', 'default', 'none' or the word ]; null for a node that is no such call
+		 */
+		public static function frameChoice( array $node ): ?array {
+
+			if( ( $node['n'] ?? '' ) !== 'frame' || is_string( $node['s'] ?? null ) === false || ( $node['a'] ?? [] ) !== [] || ( $node['c'] ?? null ) !== null )
+				return null;
+
+			if( preg_match( '#^/templates/frame-(header|footer)(?:-([a-z0-9]+(?:-[a-z0-9]+)*))?$#D', $node['s'], $found ) !== 1 )
+				return null;
+
+			$word = $found[2] ?? 'default';
+
+			return $word === 'default' && isset( $found[2] ) === true || strlen( $word ) > \Nino\Modules\Builder\Store::FRAME_WORD_MAX ? null : [ $found[1], $word ];
+		}
+
+		/**
+		 *	Whether the tree has a call of a frame that is none the site has: a call that is not in the old tree to the byte must be the call of a frame of the form - the standard one, none, or a
+		 *	word of a frame that the site has - and the call that is there is left as it is
+		 */
+		public static function framesRefused( array &$appData, array $old, array $new ): bool {
+
+			$was = [];
+
+			foreach( $old as $node )
+				if( ( $node['n'] ?? '' ) === 'frame' )
+					$was[(string) json_encode( $node )] = ( $was[(string) json_encode( $node )] ?? 0 ) + 1;
+
+			$words = [ 'header' => [], 'footer' => [] ];
+
+			foreach( \Nino\Modules\Builder\Store::frames( $appData ) as $template )
+				$words[(string) \Nino\Modules\Builder\Store::side( $template )][] = substr( $template, strlen( 'frame-'. \Nino\Modules\Builder\Store::side( $template ) ) + 1 );
+
+			foreach( $new as $node ) {
+
+				if( ( $node['n'] ?? '' ) !== 'frame' )
+					continue;
+
+				$code = (string) json_encode( $node );
+
+				if( ( $was[$code] ?? 0 ) > 0 ) {
+					$was[$code]--;
+					continue;
+				}
+
+				$choice = self::frameChoice( $node );
+
+				if( $choice === null || ( $choice[1] !== 'default' && $choice[1] !== 'none' && in_array( $choice[1], $words[$choice[0]], true ) === false ) )
+					return true;
+			}
+
+			return false;
+		}
+
+		/**
+		 *	The top level of a tree with every call of a frame read as the call of the scaffold of its side - the head or the foot - for the rules that ask where the head and the foot
+		 *	are and what a page leaves of the pieces of the old one
+		 */
+		public static function unframed( array $nodes ): array {
+
+			foreach( $nodes as $at => $node )
+				if( ( $side = self::frameChoice( $node )[0] ?? null ) !== null ) {
+					$nodes[$at]['n'] = 'template';
+					$nodes[$at]['s'] = self::FRAME_CALLS[$side === 'header' ? 0 : 1];
+				}
+
+			return $nodes;
+		}
 
 		/**
 		 *	The frame of a page - the call of its head and the call of its foot - as a person who designs leaves it: every call of the frame that the old tree has is in the new one,
