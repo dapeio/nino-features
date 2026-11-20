@@ -17,6 +17,10 @@ namespace Nino\Modules\Themes {
 	//	themes/apply		the website shows a theme
 	//	themes/restore	the last state in place of this one, and this one in place of the last - asked with the state it was seen in
 	//	themes/delete		an own theme
+	//	themes/upload-check	a theme package that was chosen, read and checked, and what is in it - nothing is written; the bytes are held for this session and this account
+	//	themes/upload		the package that was shown, read and checked again from the held bytes and put in place, a theme of the panel replaced only where asked
+	//	themes/upload-drop	the bytes that are held for a preview that was left: let go of
+	//	themes/remove		a theme that was uploaded here, taken away - not the one of the website, not one an own theme takes parts from
 	class Admin {
 
 		// How many pages of the site a list names for the preview
@@ -40,6 +44,10 @@ namespace Nino\Modules\Themes {
 				'themes/apply'		=> [ self::class, 'apiApply' ],
 				'themes/restore'	=> [ self::class, 'apiRestore' ],
 				'themes/delete'		=> [ self::class, 'apiDelete' ],
+				'themes/upload-check'	=> [ self::class, 'apiUploadCheck' ],
+				'themes/upload'		=> [ self::class, 'apiUpload' ],
+				'themes/upload-drop'	=> [ self::class, 'apiUploadDrop' ],
+				'themes/remove'		=> [ self::class, 'apiRemove' ],
 			];
 		}
 
@@ -80,14 +88,19 @@ namespace Nino\Modules\Themes {
 				'themes/apply'		=> 'Apply Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				'themes/restore'	=> 'Restore Last Theme State',
 				'themes/delete'		=> 'Delete Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
+				'themes/upload'		=> 'Upload Theme',
+				'themes/remove'		=> 'Remove Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				default						=> '',
 			};
 		}
 
 		public static function apiList( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
+
+			// The list is where a theme that was put in place by hand over an uploaded one is told from it: the marks are held to their folders
+			Upload::sweepMarks( $appData, true );
 
 			$read = Reader::read( $appData );
 			$state = Store::read( $appData );
@@ -100,7 +113,9 @@ namespace Nino\Modules\Themes {
 				foreach( $theme['parts'] as $group => $part )
 					$parts[$group] = [ 'ok' => $part['ok'], 'problem' => $part['problem'], 'why' => Reader::explain( $part['problem'] ) ];
 
-				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
+				$origin = Upload::origin( $appData, (string) $key );
+				$removable = $origin === 'uploaded' && Upload::mayChange( $appData, (string) $key );
+				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'origin' => $origin, 'removable' => $removable, 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
 			}
 
 			// An own theme says where each of its parts comes from, so that a card can say what it is made of
@@ -132,12 +147,12 @@ namespace Nino\Modules\Themes {
 			\Nino\Preview::tidy( $appData );
 			self::_dropOld( $appData );
 
-			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => array_slice( array_values( $pages ), 0, self::PAGES ) ] + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'package' => [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => array_slice( array_values( $pages ), 0, self::PAGES ) ] + self::_state( $appData, $state ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -156,7 +171,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiPreview( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -188,7 +203,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiThumb( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -221,7 +236,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiSave( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -274,7 +289,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiSaveAs( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -302,7 +317,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiDuplicate( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -347,7 +362,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiBrand( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -368,7 +383,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiApply( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -402,7 +417,7 @@ namespace Nino\Modules\Themes {
 
 		public static function apiRestore( array &$appData, array &$request ): void {
 
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();
@@ -418,9 +433,142 @@ namespace Nino\Modules\Themes {
 			}
 		}
 
-		public static function apiDelete( array &$appData, array &$request ): void {
+		/**
+		 *	The guard of the actions of the upload: the right of the panel, and the bytes of a preview that was left are let go of when their time is out
+		 */
+		private static function _gate( array &$appData, array &$request ): bool {
 
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::perm() ) === false )
+				return false;
+
+			// The bytes of a preview that was left are let go of when their time is out, whatever the action is; and a mark whose theme is gone - taken away where the packages are managed - goes with it
+			Upload::sweep();
+			Upload::sweepMarks( $appData );
+
+			return true;
+		}
+
+		/**
+		 *	The locale a name is told in: the one the panel asks for, else the native one of the site
+		 */
+		private static function _locale( array &$appData, array $data ): string {
+
+			$asked = \Nino\Admin\Admin::postString( $data, 'locale' );
+
+			return preg_match( '/^[a-z]{2}_[A-Z]{2}$/D', $asked ) === 1 ? $asked : \Nino\Locales::getNativeLocale( $appData );
+		}
+
+		/**
+		 *	A package that was chosen: read in memory, held to the rule of the catalogue's themes, and shown. Nothing is written and nothing of the file is kept but its bytes,
+		 *	which are held in the session of the one who sent them, for a quarter of an hour, under a key that is made here
+		 */
+		public static function apiUploadCheck( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, \Nino\Admin\Admin::postData() );
+			$failure = \Nino\Admin\Admin::uploadError( $_FILES['file'] ?? null );
+
+			if( $failure !== null ) {
+				self::_fail( $request, [ $failure['status'], $failure['error'], $failure['code'], $failure['params'], 'file' ] );
+				return;
+			}
+
+			$tmp = $_FILES['file']['tmp_name'] ?? null;
+			$size = is_string( $tmp ) === true ? (int) @filesize( $tmp ) : 0;
+
+			if( is_string( $tmp ) === false || $size < 1 ) {
+				self::_fail( $request, [ 400, 'the file is empty', 'themes_upload_nofile', [], 'file' ] );
+				return;
+			}
+
+			if( $size > \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ) {
+				self::_fail( $request, [ 400, 'the file is none a theme package comes in', 'themes_upload_large', [ \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'file' ] );
+				return;
+			}
+
+			// Read from where php put it, and never written: nothing of the file is left behind when the request ends, and no name of the request is a path
+			$bytes = (string) @file_get_contents( $tmp );
+			$read = Upload::read( $appData, $bytes );
+
+			if( isset( $read['failure'] ) === true ) {
+				self::_fail( $request, $read['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'id' => Upload::hold( $appData, $bytes ), 'seconds' => Upload::HOLD, 'theme' => Upload::listed( $appData, $read, $locale ) ] );
+		}
+
+		/**
+		 *	A preview that was left lets go of the bytes that are held for it, when the key is the one that is held
+		 */
+		public static function apiUploadDrop( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			if( Upload::held( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'id' ) ) !== null )
+				Upload::release();
+
+			\Nino\Http::ok( $request );
+		}
+
+		/**
+		 *	The package that was shown, put in place: read and held to the rule AGAIN from the bytes that are held - what the request says of it is the key and whether to replace,
+		 *	and nothing of the package. The theme is in the list afterwards and is not applied
+		 */
+		public static function apiUpload( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$bytes = Upload::held( $appData, \Nino\Admin\Admin::postString( $data, 'id' ) );
+
+			if( $bytes === null ) {
+				self::_fail( $request, [ 403, 'there is no such package held for this session', 'themes_upload_unknown', [], 'id' ] );
+				return;
+			}
+
+			$done = Upload::install( $appData, $bytes, ( $data['replace'] ?? false ) === true, self::_locale( $appData, $data ) );
+
+			// The bytes are let go of once the package is written or is refused; where another change of the packages was at work they stay, and the person asks again
+			if( ( $done['failure'][2] ?? '' ) !== 'themes_upload_package_busy' )
+				Upload::release();
+
+			if( isset( $done['failure'] ) === true ) {
+				self::_fail( $request, $done['failure'] );
+				return;
+			}
+
+			\Nino\Preview::tidy( $appData );
+			\Nino\Http::ok( $request, [ 'installed' => $done ] + self::_state( $appData, Store::read( $appData ) ) );
+		}
+
+		/**
+		 *	A theme that was uploaded here, taken away
+		 */
+		public static function apiRemove( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$theme = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'theme' );
+			$failed = Upload::remove( $appData, $theme, self::_locale( $appData, \Nino\Admin\Admin::postData() ) );
+
+			if( $failed !== null ) {
+				self::_fail( $request, $failed['failure'] );
+				return;
+			}
+
+			\Nino\Preview::tidy( $appData );
+			\Nino\Http::ok( $request, [ 'removed' => true ] + self::_state( $appData, Store::read( $appData ) ) );
+		}
+
+		public static function apiDelete( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
 				return;
 
 			$data = \Nino\Admin\Admin::postData();

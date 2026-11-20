@@ -143,7 +143,7 @@ const CHANGED = '\u25CF '+ W('state/changed');
 
 	// The keys put together from a name or read by the panel of the shell: the sections of the page, the three widths, the two states, the plurals of a summary, the failure of a load
 	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button' ]
-		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary', 'on-second' ].map( function( role ) { return 'role/'+ role } ) )
+		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'shipped', 'catalogue', 'uploaded', 'project' ].map( function( origin ) { return 'chip/'+ origin } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary', 'on-second' ].map( function( role ) { return 'role/'+ role } ) )
 		.forEach( function( key ) { asked.add( key ) } );
 
 	// The reasons the API gives by code: each code of the reader has its words
@@ -303,9 +303,9 @@ function listAnswer( active, extra, pages, demos, copies ) {
 
 	return Object.assign( {
 		themes : [
-			{ key : 'nino', kind : 'theme', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'nino' },
-			{ key : 'craft', kind : 'theme', version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
-			{ key : 'rest', kind : 'theme', version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
+			{ key : 'nino', kind : 'theme', origin : 'shipped', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'nino' },
+			{ key : 'craft', kind : 'theme', origin : 'uploaded', removable : true, version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
+			{ key : 'rest', kind : 'theme', origin : 'catalogue', version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
 			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : 'craft@1.0.0', header : 'standard' }, active : active === 'own:lindner' },
 		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
@@ -680,6 +680,166 @@ function world( options ) {
 	const craft = cards.find( function( card ) { return card.dataset.theme === 'craft' } );
 
 	check( 'B. in German the words are the German ones, and so is the name that has a German one', w.text( craft ).indexOf( words.de['/_admin/themes/label/edit'] ) !== -1 && w.text( w.byTag( cards.find( function( card ) { return card.dataset.theme === 'rest' } ), 'h3' )[0] ) === '<b>Ruhe</b>' );
+}
+
+// --- B2. a theme that was uploaded -----------------------------------------------------------------------------------
+
+{
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const cards = w.byTag( w.list, 'article' );
+	const card = function( key ) { return cards.find( function( one ) { return one.dataset.theme === key } ) };
+	const removeOf = function( key ) { return findAll( card( key ), function( b ) { return b.dataset.remove === key } ) };
+	const upload = findAll( w.list, function( node ) { return node.id === 'themes-upload' } );
+
+	check( 'B. the list has the button that chooses a theme package, and each card says where its theme comes from - the feature, the catalogue, an upload - in a chip',
+		upload.length === 1 && w.text( upload[0] ) === W('label/upload') && w.text( card('nino') ).indexOf( W('chip/shipped') ) !== -1 && w.text( card('rest') ).indexOf( W('chip/catalogue') ) !== -1 && w.text( card('craft') ).indexOf( W('chip/uploaded') ) !== -1 );
+	check( 'B. only the card of a theme that was uploaded has a button to remove it: the theme of the feature and the one of the catalogue are taken away where they were put, and an own theme has its Delete',
+		removeOf('craft').length === 1 && removeOf('nino').length === 0 && removeOf('rest').length === 0 && removeOf('own:lindner').length === 0 );
+
+	w.state.confirm = true;
+	fire( removeOf('craft')[0], 'click' );
+
+	const asked = w.dialogs.length === 1 && w.dialogs[0].open === true && w.requests.length === 0;
+
+	pressed( w, CANCEL );
+
+	const nothing = w.requests.length === 0;
+
+	fire( removeOf('craft')[0], 'click' );
+	pressed( w, W('label/remove') );
+
+	const sent = w.requests.map( function( request ) { return request.action+ ' '+ JSON.stringify( request.payload ) } );
+
+	check( 'B. the removal is asked first, as a thing that cannot be taken back: the answer no sends nothing, and yes sends the key of the theme and nothing else', asked === true && nothing === true && sent.join() === 'themes/remove {"theme":"craft"}', sent.join() );
+
+	w.answer( 409, { error : 'the theme of the website is not removed', code : 'themes_upload_in_use_active', params : [ 'Craft' ], field : 'theme' } );
+
+	check( 'B. a removal that the server refuses is said in the line of the list in the words of the panel for its code, and the card is still there',
+		w.text( w.byClass( w.list, 'themes-say' )[0] ) === Wp( 'api/themes_upload_in_use_active', 'Craft' ) && w.byTag( w.list, 'article' ).some( function( one ) { return one.dataset.theme === 'craft' } ), w.text( w.byClass( w.list, 'themes-say' )[0] ) );
+}
+
+{
+	// the button to remove is the one of a card whose theme this account may remove; and where it was removed, the focus is on the button that chooses a package
+	const w = world( { active : 'nino' } );
+	const shown = listAnswer( 'nino' ).themes;
+
+	shown.find( function( theme ) { return theme.key === 'craft' } ).removable = false;
+	w.at( '#themes' );
+	w.requests.length = 0;
+	w.panel.reload();
+	w.serve( { listExtra : { themes : shown } } );
+
+	const craft = w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === 'craft' } );
+
+	check( 'B. a theme that was uploaded and that this account may not remove - the list says so - has no button to remove it',
+		findAll( craft, function( node ) { return node.dataset.remove !== undefined } ).length === 0 );
+
+	const gone = world( { active : 'nino' } );
+
+	gone.at( '#themes' );
+	fire( findAll( gone.list, function( node ) { return node.dataset.remove === 'craft' } )[0], 'click' );
+	pressed( gone, W('label/remove') );
+	gone.answer( 200, { removed : true } );
+	gone.serve();
+
+	check( 'B. where a theme was removed the focus is on the button that chooses a package: the card that had the button is gone',
+		findAll( gone.list, function( node ) { return node.id === 'themes-upload' } )[0].focused === true );
+}
+
+// --- B3. the dialogs of a theme package -------------------------------------------------------------------------------
+
+/** The package as the preview of the server tells it: a theme that is installed in a lower version, two blocks - one comes in, one stays outside - and a licence that holds markup */
+function previewOfTheme( change ) {
+
+	return { id : 'a'.repeat( 32 ), seconds : 900, theme : Object.assign( {
+		key : 'second', version : '1.3.0', name : 'Second <b>look</b>', description : 'Warm.', picture : '', parts : [ { group : 'section', ok : true, why : null } ],
+		blocks : [ { key : 'in-one', name : 'One', category : 'content', frame : false, state : 'in', origin : '', theme : '' }, { key : 'out-one', name : 'Two', category : 'content', frame : false, state : 'out', origin : 'Basis', theme : '' } ],
+		frames : 0, fonts : [], licence : 'Free <b>text</b>\n', installed : { origin : 'uploaded', version : '1.2.0', replace : true }, refused : [], canInstall : true,
+	}, change ?? {} ) };
+}
+
+/** The dialog that chooses the file, a file chosen and checked, and the answer of the server: the preview is the dialog that is open */
+function previewDialog( w, preview ) {
+
+	fire( findAll( w.list, function( node ) { return node.id === 'themes-upload' } )[0], 'click' );
+
+	const input = findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' && node.type === 'file' } )[0];
+
+	input.files = [ { name : 'second.tar.gz', size : 2048 } ];
+	fire( input, 'change' );
+	pressed( w, W('upload/check') );
+	w.answer( 200, preview );
+
+	return w.dialogs[w.dialogs.length - 1];
+}
+
+{
+	// the preview: the words of the package are text, each block says what the kernel does with it, the licence is a field that is read and not changed
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const dialog = previewDialog( w, previewOfTheme() );
+	const licence = findAll( dialog, function( node ) { return node.tagName === 'TEXTAREA' } )[0];
+	const toggle = findAll( dialog, function( node ) { return node.id === 'themes-upload-licence-toggle' } )[0];
+
+	check( 'B. the preview of a package says what the kernel does with each block - the one comes into the library, the other stays outside and names the origin that has its key - and a name is text and never markup',
+		w.text( dialog ).indexOf( Wp( 'upload/block-in', 'One' ) ) !== -1 && w.text( dialog ).indexOf( Wp( 'upload/block-out', 'Two', 'Basis' ) ) !== -1 && w.byTag( dialog, 'b' ).length === 0 && w.text( dialog ).indexOf( 'Second <b>look</b>' ) !== -1 );
+	check( 'B. the licence is a field that is read and not changed, whatever it holds, and it has the name of the button that shows it',
+		licence !== undefined && licence.readOnly === true && licence.value === 'Free <b>text</b>\n' && toggle !== undefined && licence.getAttribute('aria-labelledby') === toggle.id && toggle.getAttribute('aria-expanded') === 'false' );
+
+	check( 'B. the check sends the file and the language and nothing else: no key of the package, no choice',
+		JSON.stringify( w.sent.filter( function( request ) { return request.action === 'themes/upload-check' } ).map( function( request ) { return request.payload } ) ) === '[{"locale":""}]' );
+
+	pressed( w, CANCEL );
+
+	check( 'B. a preview that is left - Cancel - lets go of the bytes that are held for it: upload-drop with the key of the preview, and nothing is written',
+		w.requests.map( function( request ) { return request.action+ ' '+ request.payload.id } ).join() === 'themes/upload-drop '+ 'a'.repeat( 32 ) );
+}
+
+{
+	// the box: a theme that was uploaded is replaced only with the tick, and the request says which it is
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	previewDialog( w, previewOfTheme() );
+	pressed( w, W('upload/submit-replace') );
+
+	const ask = w.text( w.dialogs[w.dialogs.length - 1] ).indexOf( W('upload/replace-ask') ) !== -1;
+	const none = w.requests.length === 0;
+
+	const box = findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } )[0];
+
+	box.checked = true;
+	fire( box, 'change' );
+	pressed( w, W('upload/submit-replace') );
+
+	check( 'B. Replace without the tick sends nothing and says at the box what to do - and with the tick the request is upload with the key and replace as true, and nothing of the package',
+		ask === true && none === true && w.requests.map( function( request ) { return request.action+ ' '+ JSON.stringify( request.payload ) } ).join() === 'themes/upload {"id":"'+ 'a'.repeat( 32 )+ '","replace":true,"locale":""}', w.requests.map( function( request ) { return request.action+ ' '+ JSON.stringify( request.payload ) } ).join() );
+}
+
+{
+	// a package that is new: Install sends replace as false; a package that may not be put in has no button for it, and says why
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	previewDialog( w, previewOfTheme( { installed : null } ) );
+	pressed( w, W('upload/submit') );
+
+	const sent = w.requests.map( function( request ) { return request.action+ ' '+ request.payload.replace } ).join();
+	const refusing = world( { active : 'nino' } );
+
+	refusing.at( '#themes' );
+
+	const dialog = previewDialog( refusing, previewOfTheme( { canInstall : false, refused : [ { code : 'needs_right', params : [ 'Second' ] } ], installed : null } ) );
+
+	check( 'B. a new package is put in with replace as false; a package that may not be put in - the account lacks the right - has no button to install it and says why, in the sentence of the refusal',
+		sent === 'themes/upload false' && findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim() === W('upload/submit') } ).length === 0 && refusing.text( dialog ).indexOf( Wp( 'api/themes_upload_needs_right', 'Second' ) ) !== -1 );
 }
 
 // --- C. one theme --------------------------------------------------------------------------------------------------------

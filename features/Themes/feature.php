@@ -20,8 +20,8 @@ return [
 				'de_DE' => 'Ein Theme ist ein Ordner mit Schlüssel, Version, Name, Beschreibung und Vorschlägen für die Marke; nichts darin ist Code, und das Feature liest nur theme.json, part.json und part.css.',
 			],
 			'private/packages/themes/<key>/' => [
-				'en_US' => 'A theme installed from the catalogue is a folder like the one of a theme that comes with the feature, and the kernel puts it here; themes come with the feature, from a package or from the hook.',
-				'de_DE' => 'Ein aus dem Katalog installiertes Theme ist ein Ordner wie der eines mitgelieferten Themes, und der Kernel legt ihn hier ab; Themes kommen mit dem Feature, aus einem Paket oder vom Hook.',
+				'en_US' => 'A theme from the catalogue or from an upload is a folder like the one of a shipped theme, and the kernel puts it here.',
+				'de_DE' => 'Ein Theme aus dem Katalog oder aus einem Upload ist ein Ordner wie der eines mitgelieferten Themes, und der Kernel legt ihn hier ab.',
 			],
 			'a theme with the key of an earlier folder' => [
 				'en_US' => 'Themes are read from the feature, then from the packages, then from the folders of the hook, and a key that an earlier folder has is not read and is named in the list of what was refused.',
@@ -75,6 +75,10 @@ return [
 				'en_US' => 'The screen of the workbench for the themes: the list, and for a theme its groups, brand, settings and own css beside a preview of the draft or a demo; the right is /_admin/themes/manage.',
 				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, und je Theme Gruppen, Marke, Einstellungen und eigenes CSS neben einer Vorschau des Entwurfs oder einer Demo; das Recht: /_admin/themes/manage.',
 			],
+			'Themes > Upload theme' => [
+				'en_US' => 'A theme package (.tar.gz) is checked and shown first; one uploaded here is replaced by a higher version and removed here, and blocks ask the right of the features too.',
+				'de_DE' => 'Ein Theme-Paket (.tar.gz) wird zuerst geprüft und gezeigt; ein hier hochgeladenes wird durch eine höhere Version ersetzt und hier entfernt, Blocks verlangen auch das Recht der Features.',
+			],
 			'Themes > Fonts' => [
 				'en_US' => 'The fonts of public/fonts/ with their licence and their place in the brand, and the signed list of the repository, loaded on the button alone, to install a family from.',
 				'de_DE' => 'Die Schriften aus public/fonts/ mit Lizenz und ihrem Platz in der Marke, dazu die signierte Liste des Repositorys, geladen nur auf Knopfdruck, um eine Familie zu installieren.',
@@ -104,8 +108,8 @@ return [
 				'de_DE' => 'Das Stylesheet der Lage nino.theme, vom Compiler geschrieben mit Marke, Reglerstufen, Teilen und eigenem CSS; eine Datei, die jemand anderes schrieb, wird nur auf Anweisung ersetzt.',
 			],
 			'data/theme/' => [
-				'en_US' => 'The state, the last state, the own themes, the brand and a copy of every part in use, which the backup carries and an update does not change.',
-				'de_DE' => 'Der Stand, der letzte Stand, die eigenen Themes, die Marke und eine Kopie jedes verwendeten Teils, die das Backup mitnimmt und ein Update nicht ändert.',
+				'en_US' => 'The state, the last state, the own themes, the brand, the copies of the parts in use and the keys of uploaded themes, which the backup carries and an update does not change.',
+				'de_DE' => 'Der Stand, der letzte Stand, die eigenen Themes, die Marke, die Kopien der verwendeten Teile und die Schlüssel hochgeladener Themes, die das Backup mitnimmt und ein Update nicht ändert.',
 			],
 			'public/fonts/<slug>/' => [
 				'en_US' => 'A family installed from the repository: .woff2 files, LICENSE.txt and font.json, checked against the signed list and moved into place whole; a folder put there by hand is not replaced.',

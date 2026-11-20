@@ -306,8 +306,8 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( dirnam
 check( 'no file of the feature names a glob flag that only some systems define'. ( $named === [] ? '' : ' - '. implode( ', ', $named ) ), $named === [] );
 
 $panels = \Nino\Admin\Admin::panels( $appData );
-check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its eleven actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
-	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/thumb', 'themes/save', 'themes/save-as', 'themes/duplicate', 'themes/brand', 'themes/apply', 'themes/restore', 'themes/delete' ]
+check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its fifteen actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
+	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/thumb', 'themes/save', 'themes/save-as', 'themes/duplicate', 'themes/brand', 'themes/apply', 'themes/restore', 'themes/delete', 'themes/upload-check', 'themes/upload', 'themes/upload-drop', 'themes/remove' ]
 	&& array_diff( array_keys( \Nino\Modules\Themes\Admin::actions() ), array_keys( \Nino\Admin\Admin::actions( $appData ) ) ) === [] );
 
 $source = (string) file_get_contents( $featureDir. '/Admin/Admin.php' ). (string) file_get_contents( $featureDir. '/Store/Store.php' );
@@ -1543,6 +1543,10 @@ $every = [
 	'themes/apply'		=> [ 'theme' => 'craft-probe' ],
 	'themes/restore'	=> [],
 	'themes/delete'		=> [ 'theme' => 'own:x' ],
+	'themes/upload-check'	=> [],
+	'themes/upload'		=> [ 'id' => '0000000000000000' ],
+	'themes/upload-drop'	=> [ 'id' => '0000000000000000' ],
+	'themes/remove'		=> [ 'theme' => 'craft-probe' ],
 ];
 $answers = [];
 
@@ -1551,8 +1555,8 @@ foreach( $every as $action => $data ) {
 	$answers[$action] = [ $status, $body ];
 }
 
-check( 'Nr. 9: an account that has not the right - the Editor of the starter site has not - gets 403 on every one of the eleven actions, and nothing is read or written: no state, no stylesheet, no draft, no cache of the themes, nothing held by the session',
-	count( $answers ) === 11 && array_filter( $answers, static fn( array $answer ): bool => $answer[0] !== 403 ) === [] && is_dir( $state ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false
+check( 'Nr. 9: an account that has not the right - the Editor of the starter site has not - gets 403 on every one of the fifteen actions, and nothing is read or written: no state, no stylesheet, no draft, no cache of the themes, nothing held by the session',
+	count( $answers ) === 15 && array_filter( $answers, static fn( array $answer ): bool => $answer[0] !== 403 ) === [] && is_dir( $state ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false
 	&& is_dir( ninoSandboxDir( $site ). '/private/data/theme/.cache' ) === false && isset( $_SESSION[$site['./nino/uid']]['/nino/preview/themes'] ) === false && isset( $_SESSION[$site['./nino/uid']]['/nino/preview/themes-pictures'] ) === false );
 
 \Nino\Auth::logoutUser( $site );

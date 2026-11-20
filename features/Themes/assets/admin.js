@@ -3510,6 +3510,306 @@
 		} );
 	};
 
+	// --- a theme package that is chosen: checked and shown, then put in place; and a theme that was uploaded, taken away -----------------
+
+	// The language the names of the package are asked for in: the one the workbench works in, where it has one
+	const uploadLocale = function() {
+		return typeof Nino.admin.workLocale === 'object' && Nino.admin.workLocale !== null && typeof Nino.admin.workLocale.current === 'string' ? Nino.admin.workLocale.current : '';
+	};
+
+	// Everything the package says of itself is set as text: a name, a description and a licence are the words of whoever made it
+	const previewOf = function( theme, pick ) {
+
+		const holder = el( 'div', 'themes-upload' );
+		const say = function( text, className ) {
+
+			const line = el( 'p', className ?? 'nino-admin-hint', text );
+
+			holder.appendChild( line );
+
+			return line;
+		};
+
+		if( theme.picture !== '' ) {
+
+			const picture = el( 'img', 'themes-upload-picture' );
+
+			picture.alt = word('upload/picture');
+			picture.width = 192;
+			picture.src = theme.picture;
+			holder.appendChild( picture );
+		}
+
+		// The name and the version first, set in a strong text
+		const pack = say( '', 'themes-upload-pack' );
+
+		pack.appendChild( el( 'strong', '', word( 'upload/pack', theme.name, theme.version ) ) );
+		say( word( 'upload/key', theme.key ) );
+
+		if( theme.description !== '' )
+			say( theme.description );
+
+		say( word( 'upload/facts', theme.parts.length, theme.blocks.length, theme.frames ) );
+
+		theme.parts.filter( function( part ) { return part.ok === false } ).forEach( function( part ) {
+			say( word( 'upload/part-rests', groupLabelOf( part.group ), reasonText( part.why ) ), 'nino-admin-hint themes-upload-warn' );
+		} );
+
+		// What the kernel does with each block of the package, as it asked: it comes into the library, or another origin has the key and the block stays outside
+		theme.blocks.forEach( function( block ) {
+
+			if( block.state === 'in' )
+				say( word( 'upload/block-in', block.name ) );
+			else if( block.state === 'out' )
+				say( word( 'upload/block-out', block.name, block.origin ), 'nino-admin-hint themes-upload-warn' );
+		} );
+
+		// What stands in the way of the write, in the words of the refusal the write would answer with
+		theme.refused.forEach( function( why ) {
+			say( Nino.adminUi.api.errorText( 409, { code : 'themes_upload_'+ why.code, params : why.params }, '/_admin/themes/error/upload' ), 'nino-admin-error themes-upload-refused' );
+		} );
+
+		if( theme.fonts.length > 0 )
+			say( word( 'upload/fonts', theme.fonts.join(', ') ), 'nino-admin-hint themes-upload-warn' );
+
+		if( theme.installed !== null ) {
+
+			const there = theme.installed;
+
+			if( there.origin === 'uploaded' )
+				say( word( 'upload/there', there.version ), 'nino-admin-hint themes-upload-warn' );
+
+			if( there.replace === true ) {
+
+				const tick = Nino.adminUi.checkField( { key : 'replace', label : word('upload/replace'), checked : false, className : 'nino-admin-field themes-upload-replace', onChange : function( on ) {
+					pick.replace = on;
+					pick.ask.textContent = '';
+				} } );
+
+				pick.box = tick.querySelector('input');
+				pick.ask = el( 'p', 'nino-admin-error themes-upload-ask' );
+				holder.appendChild( tick );
+				holder.appendChild( pick.ask );
+			}
+		}
+
+		if( theme.licence !== '' ) {
+
+			// The licence is text in a field that is read and not changed - its value is text whatever it holds - behind a button that shows it
+			const text = el( 'textarea', 'nino-admin-code admin-hidden' );
+			const toggle = Nino.adminUi.button( word('upload/licence'), function() {
+
+				const shown = text.classList.contains('admin-hidden') === true;
+
+				text.classList.toggle( 'admin-hidden', shown === false );
+				toggle.setAttribute( 'aria-expanded', shown === true ? 'true' : 'false' );
+			}, { className : 'nino-admin-btn--small' } );
+
+			text.readOnly = true;
+			text.rows = 8;
+			text.value = theme.licence;
+			toggle.setAttribute( 'aria-expanded', 'false' );
+			toggle.id = 'themes-upload-licence-toggle';
+			text.setAttribute( 'aria-labelledby', toggle.id );
+			holder.appendChild( toggle );
+			holder.appendChild( text );
+		}
+
+		return holder;
+	};
+
+	// What was installed, and what the kernel left out or let rest; a font the theme names that the project has not, with the way to the tab of the fonts
+	const askUploadDone = function( done, theme, opener ) {
+
+		const holder = el( 'div', 'themes-upload' );
+		const choices = [ { value : 'close', label : word('upload/close'), kind : theme.fonts.length > 0 ? 'secondary' : 'primary' } ];
+
+		holder.appendChild( el( 'p', '', done.replaced === true ? word( 'upload/done-replaced', done.name, done.version ) : word( 'upload/done', done.name, done.version ) ) );
+		holder.appendChild( el( 'p', 'nino-admin-hint', word( 'upload/blocks-in', done.blocks.length ) ) );
+
+		done.parts.forEach( function( part ) {
+			holder.appendChild( el( 'p', 'nino-admin-hint themes-upload-warn', word( 'upload/part-rests', groupLabelOf( part.group ), reasonText( part.why ) ) ) );
+		} );
+
+		done.left.forEach( function( block ) {
+			holder.appendChild( el( 'p', 'nino-admin-hint themes-upload-warn', block.origin !== '' ? word( 'upload/block-out', block.name, block.origin ) : word( 'upload/block-rejected', block.name ) ) );
+		} );
+
+		if( theme.fonts.length > 0 ) {
+			holder.appendChild( el( 'p', 'nino-admin-hint themes-upload-warn', word( 'upload/fonts', theme.fonts.join(', ') ) ) );
+			choices.push( { value : 'fonts', label : word('upload/fonts-link'), kind : 'primary' } );
+		}
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('upload/done-title'),
+			content	: holder,
+			opener	: opener,
+			choices	: choices,
+			onChoose	: function( value ) {
+
+				// The tab of the fonts is a button of the strip of the pane: the shell moves to it as it does for a click
+				if( value === 'fonts' ) {
+
+					const tab = dc.getElementById('admin-tabbutton-themes-fonts');
+
+					if( tab !== null ) {
+						tab.click();
+						tab.focus();
+					}
+
+					return;
+				}
+
+				land( dc.getElementById('themes-list').querySelector( '[data-edit="'+ done.key+ '"]' ), opener );
+			},
+		} );
+	};
+
+	// The package as it was shown: put in place on Install, let go of on anything else
+	const askUploadPreview = function( preview, opener ) {
+
+		const pick = { replace : false, box : null, ask : null };
+		const theme = preview.theme;
+		const replacing = theme.installed !== null && theme.installed.replace === true;
+		const choices = [ { value : 'cancel', label : theme.canInstall === true ? Nino.adminUi.text('/_admin/common/label/cancel') : word('upload/close'), kind : theme.canInstall === true ? 'secondary' : 'primary' } ];
+
+		// Where the package may not be put in, there is nothing to press: the preview says why
+		if( theme.canInstall === true )
+			choices.push( { value : 'install', label : replacing === true ? word('upload/submit-replace') : word('upload/submit'), kind : 'primary' } );
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('upload/preview-title'),
+			content	: previewOf( theme, pick ),
+			size		: 'form',
+			opener	: opener,
+			choices	: choices,
+			guard		: function( value ) {
+
+				// A theme that was uploaded is replaced only on the person's word: the line at the box says so, and the focus is on the box
+				if( value === 'install' && replacing === true && pick.replace !== true ) {
+
+					pick.ask.textContent = word('upload/replace-ask');
+					pick.box.focus();
+
+					return false;
+				}
+
+				return true;
+			},
+			onChoose	: function( value ) {
+
+				// A preview that is left lets go of the bytes that are held for it
+				if( value !== 'install' ) {
+					Nino.admin.themes.call( 'upload-drop', { id : preview.id }, function() {} );
+					return;
+				}
+
+				Nino.admin.themes.call( 'upload', { id : preview.id, replace : pick.replace === true, locale : uploadLocale() }, function( status, response ) {
+
+					if( status !== 200 ) {
+						Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/upload' ) );
+						return;
+					}
+
+					refreshList( function() { askUploadDone( response.installed, theme, opener ) } );
+				} );
+			},
+		} );
+	};
+
+	// The file is chosen in a dialog and read by the server, which answers what is in it and holds the bytes; nothing is written before Install
+	const askUpload = function( opener ) {
+
+		const holder = el( 'div', 'themes-upload' );
+		const bytes = S.list !== null && S.list.package !== undefined ? S.list.package.bytes : 0;
+		const file = Nino.adminUi.fileField( { key : 'file', label : word('upload/file'), accept : '.gz,.tgz,application/gzip', maxBytes : bytes, note : word( 'upload/limits', Math.round( bytes / 1048576 )+ ' MiB' ), button : word('upload/file-button') } );
+		let preview = null;
+
+		holder.appendChild( el( 'p', '', word('upload/note') ) );
+		holder.appendChild( file.el );
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('upload/title'),
+			content	: holder,
+			size		: 'form',
+			focus		: file.button,
+			opener	: opener,
+			choices	: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'check', label : word('upload/check'), kind : 'primary' } ],
+			guard		: function( value, handle ) {
+
+				if( value !== 'check' || preview !== null )
+					return true;
+
+				const chosen = file.value();
+
+				if( chosen === null ) {
+					file.error( word('upload/no-file') );
+					return false;
+				}
+
+				handle.buttons.check.disabled = true;
+				file.clearError();
+
+				Nino.admin.themes.call( 'upload-check', { locale : uploadLocale() }, function( status, response ) {
+
+					handle.buttons.check.disabled = false;
+
+					if( status !== 200 ) {
+						file.error( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/upload' ) );
+						return;
+					}
+
+					preview = response;
+					handle.close( 'check' );
+				}, { file : chosen } );
+
+				return false;
+			},
+			onChoose	: function( value ) {
+
+				if( value === 'check' && preview !== null )
+					askUploadPreview( preview, opener );
+			},
+		} );
+	};
+
+	// A theme that was uploaded here is taken away - asked as the thing it is, and refused by the server where the website shows it or an own theme takes parts from it
+	const removeUploaded = function( theme, opener ) {
+
+		const name = localized( theme.name );
+
+		Nino.adminUi.confirm( 'destructive', {
+			title		: word( 'confirm/remove-title', name ),
+			message	: word('confirm/remove'),
+			yes			: word('label/remove'),
+			no			: Nino.content.getText('/_admin/common/label/cancel'),
+			kind		: 'danger',
+			visitors	: false,
+			opener	: opener,
+			onChoose	: function( ok ) {
+
+				if( ok !== true )
+					return;
+
+				Nino.admin.themes.call( 'remove', { theme : theme.key }, function( status, response ) {
+
+					if( status !== 200 ) {
+						Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/remove' ) );
+						return;
+					}
+
+					refreshList( function() {
+
+						Nino.admin.themes.say( word( 'msg/removed', name ) );
+
+						// The card is gone, and so is the button that was pressed: the focus is on the button that chooses a package
+						land( dc.getElementById('themes-upload'), null );
+					} );
+				} );
+			},
+		} );
+	};
+
 	const cardOf = function( theme ) {
 
 		const card = el( 'article', 'nino-admin-card themes-card' );
@@ -3534,6 +3834,9 @@
 			chip( word('chip/active'), 'ok' );
 
 		chip( theme.kind === 'own' ? word('chip/own') : word( 'chip/package', theme.version ), 'muted' );
+
+		if( theme.kind === 'theme' && theme.origin !== undefined && theme.origin !== '' )
+			chip( word( 'chip/'+ theme.origin ), 'muted' );
 
 		if( resting.length > 0 )
 			chip( word( 'chip/rests', resting.length ), 'warn' );
@@ -3592,6 +3895,14 @@
 			actions.appendChild( use );
 		}
 
+		if( theme.kind === 'theme' && theme.origin === 'uploaded' && theme.removable === true ) {
+
+			const away = Nino.adminUi.button( word('label/remove'), function() { removeUploaded( theme, away ) }, { className : 'nino-admin-btn--small' } );
+
+			away.dataset.remove = theme.key;
+			actions.appendChild( away );
+		}
+
 		card.appendChild( actions );
 
 		return card;
@@ -3635,6 +3946,13 @@
 		say.setAttribute( 'role', 'status' );
 		say.id = 'themes-say';
 		mount.appendChild( say );
+
+		// The theme package that is chosen: the only thing the list has beside its cards
+		const bar = el( 'div', 'nino-admin-actions themes-list-actions' );
+		const upload = Nino.adminUi.button( word('label/upload'), function() { askUpload( upload ) }, { kind : 'secondary', id : 'themes-upload' } );
+
+		bar.appendChild( upload );
+		mount.appendChild( bar );
 
 		if( data.foreign === true )
 			mount.appendChild( Nino.adminUi.notice( word( data.unreadable === true ? 'msg/unreadable' : 'msg/foreign' ) ) );

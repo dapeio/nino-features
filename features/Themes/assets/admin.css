@@ -382,4 +382,14 @@
 	}
 }
 
+/* The bar over the cards: the one button that chooses a theme package */
+#themes-app .themes-list-actions {
+	margin-block-end: .75rem;
+}
+
+/* The dialogs of a theme package stand in the shell, in the workbench's root and not in the panel: what a package says of itself is the words of whoever made it, and a name
+   that has no space in it breaks where the dialog ends and does not push the dialog wider */
+#admin-page-wrap .themes-upload p {
+	overflow-wrap: anywhere;
+}
 }

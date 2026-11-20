@@ -230,8 +230,8 @@ $site = fontsSite();
 ninoUser( $site, 'designer@example.com' );
 
 $actions = array_keys( Typefaces::actions() );
-check( 'A. the fonts have five actions of their own beside the eleven of the themes, each is one the workbench dispatches and each is a method of Typefaces',
-	$actions === [ 'themes/fonts', 'themes/fonts-load', 'themes/fonts-install', 'themes/fonts-remove', 'themes/fonts-license' ] && count( \Nino\Modules\Themes\Admin::actions() ) === 11 && array_intersect( $actions, array_keys( \Nino\Modules\Themes\Admin::actions() ) ) === []
+check( 'A. the fonts have five actions of their own beside the fifteen of the themes, each is one the workbench dispatches and each is a method of Typefaces',
+	$actions === [ 'themes/fonts', 'themes/fonts-load', 'themes/fonts-install', 'themes/fonts-remove', 'themes/fonts-license' ] && count( \Nino\Modules\Themes\Admin::actions() ) === 15 && array_intersect( $actions, array_keys( \Nino\Modules\Themes\Admin::actions() ) ) === []
 	&& array_diff( $actions, array_keys( \Nino\Admin\Admin::actions( $site ) ) ) === [] && array_filter( Typefaces::actions(), static fn( array $target ): bool => is_callable( $target ) === false ) === [] );
 
 $panels = \Nino\Admin\Admin::panels( $site );
