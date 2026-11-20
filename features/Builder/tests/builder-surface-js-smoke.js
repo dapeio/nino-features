@@ -882,39 +882,57 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return button !== undefined && inside === true && closed === true && shown === true && only === true && none === true;
 	} )() );
 
-	check( 'I. 5 and 6: the pencil is always INSIDE the mark of its component - at its top corner on the right, the mark growing to the right or upward where a word would be under it - and covers no word, for the boxes of ten kinds of components at a wide and a narrow window; the mark of the component the pencil is for is stronger than the fine marks round what holds it, and neither moves with prefers-reduced-motion', ( function() {
+	check( 'I. 2: the pencil is always INSIDE the frame of its component, in its top corner on the right - never outside it, never at another corner - and the frame is the border box of the component and nothing more: for twelve kinds of components, at a wide and a narrow window, scrolled and not', ( function() {
 		const model = opened().panel.model;
-		const kinds = [ { w : 400, h : 60, words : true }, { w : 160, h : 48, words : true }, { w : 600, h : 100, words : true }, { w : 300, h : 200, words : false }, { w : 320, h : 180, words : false }, { w : 380, h : 40, words : false }, { w : 1200, h : 300, words : false }, { w : 1200, h : 120, words : false }, { w : 1100, h : 500, words : false }, { w : 350, h : 400, words : false } ];
+		const kinds = [ { w : 400, h : 60 }, { w : 160, h : 48 }, { w : 600, h : 100 }, { w : 300, h : 200 }, { w : 320, h : 180 }, { w : 380, h : 40 }, { w : 1200, h : 300 }, { w : 1200, h : 120 }, { w : 1100, h : 500 }, { w : 120, h : 20 }, { w : 20, h : 20 }, { w : 3000, h : 40 } ];
 		const bad = [];
 
 		[ 1280, 390 ].forEach( function( width ) {
 
-			const view = { top : 0, left : 0, width : width };
+			[ 0, 150 ].forEach( function( scrolled ) {
 
-			kinds.forEach( function( kind, at ) {
+				const view = { top : scrolled, left : 0, width : width };
 
-				const box = { top : 200 + at * 3, left : 16, width : Math.min( kind.w, width - 32 ), height : kind.h };
-				const words = kind.words === true ? [ { top : box.top + 4, left : box.left + 2, width : box.width - 4, height : box.height - 8 } ] : [ { top : box.top + 4, left : box.left + 2, width : Math.min( 80, box.width - 4 ), height : 16 } ];
-				const spot = model.penSpot( box, 26, view, false, words );
-				const pen = { left : spot.left, top : spot.top, right : spot.left + 26, bottom : spot.top + 26 };
-				const mark = spot.mark;
-				const within = pen.left >= mark.left && pen.right <= mark.left + mark.width && pen.top >= mark.top && pen.bottom <= mark.top + mark.height;
-				const covered = words.some( function( word ) { return pen.left < word.left + word.width && pen.right > word.left && pen.top < word.top + word.height && pen.bottom > word.top } );
+				kinds.forEach( function( kind, at ) {
 
-				if( within === false || covered === true )
-					bad.push( width+ '/'+ at );
+					const box = { top : 100 + at * 3, left : 16, width : kind.w, height : kind.h };
+					const spot = model.penSpot( box, 26, view );
+					const pen = { left : spot.left + view.left, top : spot.top + view.top, right : spot.left + view.left + 26, bottom : spot.top + view.top + 26 };
+					const right = Math.min( box.left + box.width, view.left + view.width );
+					const frame = model.markBox( box, view );
+					const small = box.width < 30 || box.height < 30;
+
+					// at the top right, inside: the right edge of the pencil is two pixels in from the right edge of the box - or of the window - and its top inside the box; a box that is smaller than
+					// the pencil has it at the corner and covered by it. In sight: never above the top of the window
+					const atRight = pen.right === right - ( box.width >= 26 + 2 * model.PEN_INSET ? model.PEN_INSET : 0 );
+					const inside = small === true || ( pen.left >= box.left && pen.top >= box.top && pen.bottom <= box.top + box.height );
+					const seen = pen.top >= view.top || box.top + box.height - view.top < 30;
+
+					if( atRight === false || inside === false || seen === false || frame.width !== box.width || frame.height !== box.height || frame.left !== box.left - view.left || frame.top !== box.top - view.top )
+						bad.push( width+ '/'+ scrolled+ '/'+ at );
+				} );
 			} );
 		} );
 
-		// a title as wide as the window with a word above it as well: the pencil stands below, and the mark grows downward to hold it
-		const crowded = model.penSpot( { top : 300, left : 16, width : 358, height : 80 }, 26, { top : 0, left : 0, width : 390 }, false, [ { top : 304, left : 18, width : 350, height : 40 }, { top : 262, left : 16, width : 300, height : 30 }, { top : 272, left : 330, width : 40, height : 20 } ] );
-		const low = crowded.side === 'below' && crowded.top === 380 && crowded.mark.top + crowded.mark.height >= crowded.top + 26;
-
-		return bad.length === 0 && low === true && /\.mark\.main\{opacity:\.95\}/.test( script ) === true && /\.mark\{[^']*border:1px solid[^']*opacity:\.35/.test( script ) === true && /prefers-reduced-motion:reduce\)\{button\.pen,\.mark\{transition:none\}/.test( script ) === true && /const drawMarks = function/.test( script ) === true;
+		return bad.length === 0 && /const placePen = function/.test( script ) === true && /penSpot\( box, size, view \)/.test( script ) === true && /penSide|sides\[0\]|side : 'right'/.test( script ) === false;
 	} )() );
 
-	check( 'I. 4: the place for a block between two blocks is a soft, larger button with a plus and no word - centred on the width of the block, a dashed line round it, 32 pixels at least - and its name and tooltip are the words', ( function() {
-		return /const button = pill\( '', word\(/.test( script ) === true && /button\.insert\{min-width:44px;min-height:32px;[^']*border-style:dashed/.test( script ) === true && /pill\.style\.left = Math\.max\( box\.left, box\.left \+ \( box\.width - pill\.offsetWidth \* back \) \/ 2 \)/.test( script ) === true;
+	check( 'I. 4: the place for a block between two blocks is a soft, larger button with a plus and no word - a dashed line round it, 32 pixels at least - and its name and tooltip are the words', ( function() {
+		return /const button = pill\( '', word\(/.test( script ) === true && /button\.insert\{min-width:44px;min-height:32px;[^']*border-style:dashed/.test( script ) === true;
+	} )() );
+
+	check( 'I. 4b. a seam has its middle on the edge - the middle of the gap between two sections, the top of the first, the foot of the last - the same every time it is asked, held in only by the top and the foot of the page, and in the middle of the page', ( function() {
+		const model = opened().panel.model;
+		const size = { width : 44, height : 32 };
+		const page = { width : 1000, height : 3000 };
+		const between = model.seamAt( { top : 100, height : 400 }, { top : 500, height : 300 }, size, page );
+		const gap = model.seamAt( { top : 100, height : 400 }, { top : 520, height : 300 }, size, page );
+		const first = model.seamAt( null, { top : 120, height : 300 }, size, page );
+		const last = model.seamAt( { top : 2800, height : 200 }, null, size, page );
+		const top = model.seamAt( null, { top : 0, height : 300 }, size, page );
+
+		return between.top + size.height / 2 === 500 && gap.top + size.height / 2 === 510 && first.top + size.height / 2 === 120 && last.top === 2968 && top.top === 0 && between.left === 478
+			&& JSON.stringify( model.seamAt( { top : 100, height : 400 }, { top : 500, height : 300 }, size, page ) ) === JSON.stringify( between );
 	} )() );
 
 	check( 'I. 1, 2 and 8: the bar asks the workbench for no name of the panel above the way back (panelLabel false), what the other views point at is drawn by the workbench - the style of this panel has no rule for it - and the origin of a block and the language of a field are quiet words and no labels with a ground of their own', ( function() {
@@ -1105,26 +1123,23 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 	const model = w.panel.model;
 	const view = { top : 0, left : 0, width : 1000 };
 
-	check( 'G. the pencil has its field at the right of EVERY component, in the mark of it - the mark is wider than the box by that field, the same for each - and goes inside, in the top corner, only where the window has no room for the field; a loop has no box, its pencil touches the top of the repetitions; a row that fills its column has it at its top left', ( function() {
-		const boxes = [ { top : 100, left : 50, width : 300, height : 80 }, { top : -200, left : 50, width : 300, height : 500 }, { top : 100, left : 900, width : 400, height : 80 } ];
-		const spots = boxes.map( function( box ) { return model.penSpot( box, 26, view, false ) } );
-		const loop = model.penSpot( { top : 300, left : 50, width : 300, height : 400 }, 26, view, true );
-		const row = model.penSpot( boxes[0], 26, view, false, [], true );
+	check( 'G. the pencil is inside the box at its top corner on the right for every component - a loop and a row as well - and goes with the box: a box that is scrolled up has it at the top of the window and never below its foot, a box that reaches beyond the window has it at the edge of the window', ( function() {
+		const boxes = [ { top : 100, left : 50, width : 300, height : 80 }, { top : -200, left : 50, width : 300, height : 500 }, { top : 100, left : 900, width : 400, height : 80 }, { top : -200, left : 50, width : 300, height : 100 } ];
+		const spots = boxes.map( function( box ) { return model.penSpot( box, 26, view ) } );
 
-		return spots[0].side === 'right' && spots[0].left + view.left === 350 && spots[0].mark.width === 330 && spots[1].side === 'right' && spots[1].mark.width === 330 && spots[1].top >= 2
-			&& spots[2].side === 'inside' && spots[2].left + 26 <= 1000 && loop.top + 26 === 300 && loop.left + 26 + 2 === 350 && row.side === 'inside' && row.left + view.left === 52;
+		return spots[0].left === 350 - 26 - 2 && spots[0].top === 102 && spots[1].top === 0 && spots[1].left === 350 - 26 - 2 && spots[2].left === 1000 - 26 - 2 && spots[3].top === -128 && model.PEN_INSET === 2;
 	} )() );
-	check( 'G. the pencil covers no word: where a word is under the corner inside the box - a title that is as wide as its words - it stands flush against the box, at its right edge, above its right corner or at its left edge, wherever it is in the window; and the zone round it keeps the component for the pointer on the way to it', ( function() {
-		const box = { top : 100, left : 300, width : 200, height : 40 };
-		const words = [ { top : 105, left : 305, width : 190, height : 30 } ];
-		const meets = function( spot, texts ) { return texts.some( function( text ) { return spot.left < text.left + text.width && spot.left + 26 > text.left && spot.top < text.top + text.height && spot.top + 26 > text.top } ) };
-		const right = model.penSpot( box, 26, view, false, words );
-		const edge = model.penSpot( { top : 100, left : 800, width : 190, height : 40 }, 26, view, false, [ { top : 105, left : 805, width : 180, height : 30 } ] );
-		const none = model.penSpot( box, 26, view, false, [] );
-		const zone = model.penZone( right, box, 26, view );
+	check( 'G. what the pointer is over and what is chosen are two things: the pencil is for the one the pointer is over - the innermost - and for the chosen one where the pointer is over none; each has its own mark, the chosen one\'s drawn through and the other\'s quiet, and where they are one component the chosen one\'s is the only mark', ( function() {
+		const one = { entry : { path : '0.1.0' } };
+		const other = { entry : { path : '0.1' } };
+		const a = model.aimFor( one, other );
+		const b = model.aimFor( null, other );
+		const c = model.aimFor( other, other );
+		const d = model.aimFor( null, null );
 
-		return right.side === 'right' && meets( right, words ) === false && right.left === 500 && edge.side !== 'inside' && edge.side !== 'right' && meets( edge, [ { top : 105, left : 805, width : 180, height : 30 } ] ) === false
-			&& none.side === 'right' && model.penZone( none, box, 26, view ) !== null && model.inZone( zone, 510, 140 ) === true && model.inZone( zone, 515, 100 ) === true && model.inZone( zone, 700, 100 ) === false;
+		return a.pen === one && a.marks.hovered === one && a.marks.chosen === other && b.pen === other && b.marks.hovered === null && b.marks.chosen === other && c.pen === other && c.marks.hovered === null && c.marks.chosen === other && d.pen === null
+			&& /\.mark\.chosen\{border-width:2px;border-style:solid;opacity:1\}/.test( script ) === true && /\.mark\.hovered\{border-width:1px;border-style:solid;opacity:\.6\}/.test( script ) === true
+			&& /hovered = null;\s*placePen\(\);\s*\}\s*\} \);/.test( script ) === true && /const hover = function\( target \)/.test( script ) === true && /pointerAim|aimed\.zone|penZone|inZone/.test( script ) === false;
 	} )() );
 	check( 'G. a loop is a stop of the Tab key of its own - it has no element to stand next to - with a pencil in front of its first repetition, and only where it has repetitions and a pencil for the account', ( function() {
 		const element = { id : 'a' };
@@ -1133,12 +1148,9 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return stops.length === 1 && stops[0].path === '1.5';
 	} )() );
-	check( 'G. what the pointer is over decides the component of the pencil - except over the pencil itself, which is no part of the page: the pointer on it leaves the component as it is', ( function() {
-		const before = { entry : 'a' };
-		let asked = 0;
-		const pick = function() { asked++; return { entry : 'b' }; };
-
-		return model.pointerAim( before, true, pick ) === before && asked === 0 && model.pointerAim( before, false, pick ).entry === 'b' && asked === 1;
+	check( 'G. what the pointer is over decides the component of the pencil at once - the innermost one, whatever is chosen - except over the pencil or the bar itself, which are no part of the page: the pointer on them leaves the component as it is', ( function() {
+		return /if\( ownOf\( origin \) === false \)\s*hover\( event\.target \);/.test( script ) === true && /const hover = function\( target \) \{\s*hovered = pickAim\( target \);\s*placePen\(\);/.test( script ) === true
+			&& /const aim = function\( target \) \{\s*chosen = pickAim\( target \);/.test( script ) === true;
 	} )() );
 	check( 'G. every component that has a pencil is a stop of the Tab key and its pencil is the next one after it: a text and a picture are stops already, a column is given one - a loop has none - and the pencil stands after a text and as the first thing inside a column', ( function() {
 		const has = function( names ) { const el = { attrs : {}, hasAttribute : function( name ) { return names.indexOf( name ) !== -1 } }; return el };

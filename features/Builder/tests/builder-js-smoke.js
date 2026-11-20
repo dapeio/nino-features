@@ -123,6 +123,8 @@ const words = {
 	[ 'all', 'tablet', 'desktop' ].forEach( function( key ) { asked.add( 'rows/'+ key ) } );
 	[ 'shows-on', 'shows-off' ].forEach( function( key ) { asked.add( 'rows/'+ key ) } );
 	asked.add('variant/regular');
+	// The id of a section in its bar: what is wrong with a new one
+	[ 'form', 'long', 'taken', 'why-frame', 'why-block', 'why-content', 'why-locked' ].forEach( function( key ) { asked.add( 'ident/'+ key ) } );
 	asked.add('field/read-id');
 	[ 'pick', 'new', 'fixed', 'page', 'address' ].forEach( function( key ) { asked.add( 'source/tab-'+ key ) } );
 	// Where a text is from, the technical fields of an element and the menus of the starter site
@@ -875,5 +877,72 @@ check( 'E. Discard of the choice of a language, which the shell answers by closi
 
 	return went.length === 1 && went[0].join() === 'home';
 } )() );
+
+// --- the id of a section, changed in its bar -------------------------------------------------------------------------------------
+
+fresh();
+S.oldIds = new Set( [ 'hero', 'hero-1', 'start' ] );
+S.inserted = {};
+S.named = {};
+S.selected = 'hero';
+
+check( 'P6. the id of a section is changed in one step of the undo: the block is made again under the new id by the rule of a copy - what is inside begins with it - with the words of each of its ids under the new ones, and the chosen block stays chosen', ( function() {
+	const [ at ] = blocks();
+	const before = JSON.stringify( [ S.top, S.texts ] );
+	const undone = S.undo.length;
+	const result = builder.renameBlock( at, 'intro' );
+
+	const made = result === '' && idsOf().join() === 'intro,start' && S.top[at].c[3].a.id === 'intro-1' && S.texts['/template/page-home/intro/title'].en_US === 'Hello' && S.texts['/template/page-home/intro-1/text'].de_DE === 'Eins'
+		&& S.copies['/template/page-home/intro/background'] === '/template/page-home/hero/background' && S.undo.length === undone + 1 && S.selected === builder.keyAt( at );
+
+	builder.undo();
+
+	return made === true && JSON.stringify( [ S.top, S.texts ] ) === before && S.undo.length === undone;
+} )() );
+
+check( 'P6. an id that is no id, is too long or is another one of the page - or one a text or a picture place of the page already has for a scope - is refused with its reason, and nothing is changed and no step is made', ( function() {
+	fresh();
+	S.oldIds = new Set( [ 'hero', 'hero-1', 'start' ] );
+	S.inserted = {};
+	S.named = {};
+	S.texts['/template/page-home/taken/title'] = { de_DE : 'x' };
+
+	const [ at ] = blocks();
+	const before = JSON.stringify( [ S.top, S.texts, S.copies ] );
+	const answers = [ 'Intro', '1intro', '-intro', 'in--tro', 'in tro', '', 'a'.repeat( 70 ), 'start', 'taken' ].map( function( id ) { return builder.renameBlock( at, id ) } );
+
+	// an id of another block that the saved page does not have any more is taken as well
+	S.oldIds = new Set();
+	const unsaved = builder.identProblem( at, 'start' );
+
+	return answers.join() === 'form,form,form,form,form,form,long,taken,taken' && unsaved === 'taken' && JSON.stringify( [ S.top, S.texts, S.copies ] ) === before && S.undo.length === 0 && builder.identProblem( at, 'fresh-id' ) === '';
+} )() );
+
+check( 'P6. the id stays where it is the page\'s or the block\'s own and says why: not for the one who writes the content, not in a frame of the site, not in the editor of a block, not for a block with a locked piece', ( function() {
+	fresh();
+	const [ at ] = blocks();
+	const open = builder.identWhy( S.top[at] ) === '';
+
+	S.level = 1;
+	const content = builder.identWhy( S.top[at] ) !== '' && builder.renameBlock( at, 'intro' ) === 'locked';
+	S.level = 2;
+	S.frame = true;
+	const frame = builder.identWhy( S.top[at] ) !== '' && builder.renameBlock( at, 'intro' ) === 'locked';
+	S.frame = false;
+	S.sheet = 'block';
+	const sheet = builder.identWhy( S.top[at] ) !== '' && builder.renameBlock( at, 'intro' ) === 'locked';
+	S.sheet = 'page';
+
+	return open === true && content === true && frame === true && sheet === true && idsOf().join() === 'hero,start';
+} )() );
+
+check( 'P6. the bar of a section shows the id and not the word Section: the id is a button that a press turns into a field in the same place - Enter and leaving take it, Escape leaves it as it was - and what is wrong with it is said at the field', ( function() {
+	const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
+
+	return /bar\.appendChild\( identOf\( node, block \) \)/.test( script ) === true && /label\.textContent = title/.test( script ) === false && /event\.key === 'Enter'[\s\S]{0,80}take\( false \)/.test( script ) === true && /event\.key === 'Escape'[\s\S]{0,120}end\(\);/.test( script ) === true
+		&& /input\.addEventListener\( 'blur', function\(\) \{ take\( true \) \} \)/.test( script ) === true && /note\.textContent = word\( 'ident\/'\+ problem \)/.test( script ) === true && /setAttribute\( 'aria-invalid', 'true' \)/.test( script ) === true
+		&& /button\.setAttribute\( 'aria-disabled', 'true' \)/.test( script ) === true && /S\.refocus = \{ at : block\.at, action : 'ident'/.test( script ) === true;
+} )() );
+
 
 done();

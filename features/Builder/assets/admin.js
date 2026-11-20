@@ -46,6 +46,9 @@
 	// The words after an id that is a copy of another: hero-2, and the longest id there is
 	const MAX_ID		= 64;
 
+	// The rows of a section that have a button of their own in its bar
+	const ROW_BUTTONS	= 6;
+
 	// The longest word an address is made a name of a template of - what the server takes - and the address of the view that makes a page: no word of a page can start with @, as the frames' neither
 	const MAX_SLUG	= 60;
 	const NEW				= '@new';
@@ -1526,7 +1529,10 @@
 
 		return {
 			blue : read('--editor-blue'), soft : read('--editor-blue-soft'), ground : read('--editor-bg-elevated'), ink : read('--editor-text'), line : read('--editor-border'),
-			red : read('--editor-red-ink'), redsoft : read('--editor-red-soft'), shadow : read('--editor-shadow-sm'), radius : read('--editor-radius-sm'),
+			red : read('--editor-red-ink'), redsoft : read('--editor-red-soft'), shadow : read('--editor-shadow-sm'), radius : read('--editor-radius-sm'), bluehover : read('--editor-blue-hover'),
+			// The two rings round a control that stands on a page: the ground of the workbench next to it and the ink of the workbench outside that - one of the two is told from the ground
+			// of the page, whether the page is light or dark
+			ring : '0 0 0 1px '+ read('--editor-bg-elevated')+ ', 0 0 0 2px '+ read('--editor-text')+ ', 0 1px 4px rgba(0,0,0,.3)',
 		};
 	};
 
@@ -1549,11 +1555,11 @@
 	// The bars stand in the shadow of one element at the end of the page: nothing of the website's style reaches them and they reach nothing of its. A bar, the frame
 	// of its block and the places to put a block in are shown only for the block that is on - the pointer or the focus is in it, or it is the chosen one
 	const BAR_CSS = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}'
-		+ '.bar{position:absolute;width:max-content;display:flex;flex-wrap:wrap;gap:2px;align-items:center;box-sizing:border-box;max-width:calc(100vw - 16px);padding:2px;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-ink);font:600 12px/1.2 system-ui,sans-serif;box-shadow:var(--b-shadow);opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
+		+ '.bar{position:absolute;width:max-content;display:flex;flex-wrap:wrap;gap:2px;align-items:center;box-sizing:border-box;max-width:calc(100vw - 16px);padding:3px;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-ink);font:600 13px/1.2 system-ui,sans-serif;box-shadow:var(--b-ring);opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s}'
 		+ '.bar[data-on],.bar:focus-within,button.insert[data-on],button.insert:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
 		+ '.name{flex:1 1 auto;min-width:0;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-		+ 'button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:24px;min-height:24px;margin:0;padding:0 4px;border:1px solid transparent;border-radius:var(--b-radius);background:transparent;color:inherit;font:600 12px/1 system-ui,sans-serif;cursor:pointer}'
-		+ 'button:hover{background:var(--b-soft)}button:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}button:disabled{opacity:.5;cursor:default}'
+		+ 'button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:28px;min-height:28px;margin:0;padding:0 6px;border:1px solid transparent;border-radius:var(--b-radius);background:transparent;color:inherit;font:600 13px/1 system-ui,sans-serif;cursor:pointer}'
+		+ 'button:hover{background:var(--b-soft);background:color-mix(in srgb,var(--b-blue) 16%,var(--b-ground))}button:focus-visible{outline:2px solid var(--b-ink);outline-offset:1px}button:disabled{opacity:.5;cursor:default}'
 		+ 'button.danger{color:var(--b-red)}button.danger:hover{background:var(--b-redsoft)}'
 		+ 'span.variant{position:relative;display:inline-flex}'
 		+ 'button.variant-trigger{max-width:170px;border-color:var(--b-line);background:var(--b-ground)}'
@@ -1563,25 +1569,30 @@
 		+ '.variant-menu button{justify-content:flex-start;width:100%;white-space:nowrap}'
 		+ '.variant-menu button[aria-checked=true]{background:var(--b-soft);font-weight:600}'
 		+ 'svg{flex:none;width:14px;height:14px}'
+		+ '.ident{flex:0 1 auto;min-width:28px;max-width:16em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}'
+		+ 'input.ident{box-sizing:border-box;width:12em;min-height:28px;padding:0 6px;border:1px solid var(--b-blue);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-ink);font:600 13px/1 system-ui,sans-serif;text-overflow:clip;overflow:visible}'
+		+ 'input.ident[aria-invalid=true]{border-color:var(--b-red)}input.ident:focus-visible{outline:2px solid var(--b-ink);outline-offset:1px}'
+		+ 'span.note{flex:1 0 100%;padding:0 6px 2px;color:var(--b-red);font-weight:600;white-space:normal}'
 		+ '.frame{position:absolute;display:none;pointer-events:none;box-sizing:border-box;border:2px solid var(--b-blue);border-radius:3px}'
 		+ '.frame[data-on]{display:block}'
-		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-shadow);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s}'
+		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-ring);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s}'
 		+ 'button.insert{min-width:44px;min-height:32px;padding:0 12px;border-width:2px;border-style:dashed;border-color:var(--b-blue);border-radius:var(--b-radius);color:var(--b-blue)}'
 		+ 'button.insert svg{width:18px;height:18px}'
-		+ 'button.insert:hover,button.insert:focus-visible{border-color:var(--b-blue);background:var(--b-soft)}'
+		+ 'button.insert:hover,button.insert:focus-visible{border-color:var(--b-blue);background:var(--b-soft);background:color-mix(in srgb,var(--b-blue) 16%,var(--b-ground))}'
 		+ '@media (prefers-reduced-motion:reduce){.bar,button.insert{transition:none}}';
 
 	// The pencil stands in a shadow of its own, in the window of the page: it is moved in the page to stand next to the component the keyboard is on, so that the Tab key reaches it
 	// next to the component, and that place may lie in a box of the page that is positioned
 	const PEN_CSS = ':host{all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483000}'
-		+ 'button.pen{position:fixed;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:24px;min-height:24px;margin:0;padding:0;border:1px solid var(--b-line);border-radius:var(--b-radius);background:var(--b-ground);color:var(--b-blue);box-shadow:var(--b-shadow);cursor:pointer;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s}'
+		+ 'button.pen{position:fixed;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:24px;min-height:24px;margin:0;padding:0;border:1px solid var(--b-blue);border-radius:var(--b-radius);background:var(--b-blue);color:var(--b-ground);box-shadow:var(--b-ring);cursor:pointer;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s}'
 		+ 'button.pen[data-on],button.pen:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
-		+ 'button.pen:hover{border-color:var(--b-blue);background:var(--b-soft)}button.pen:focus-visible{outline:2px solid var(--b-blue);outline-offset:1px}'
-		+ '.mark{display:none;position:fixed;box-sizing:border-box;pointer-events:none;border:1px solid var(--b-blue);border-radius:3px;opacity:.35;transition:opacity .12s}'
-		+ '.mark.main{opacity:.95}'
+		+ 'button.pen:hover{border-color:var(--b-bluehover);background:var(--b-bluehover)}button.pen:focus-visible{outline:2px solid var(--b-ink);outline-offset:3px}'
+		+ '.mark{display:none;position:fixed;box-sizing:border-box;margin:0;pointer-events:none;border:1px solid var(--b-blue);border-radius:0;box-shadow:inset 0 0 0 1px var(--b-ground)}'
+		+ '.mark.chosen{border-width:2px;border-style:solid;opacity:1}'
+		+ '.mark.hovered{border-width:1px;border-style:solid;opacity:.6}'
 		+ 'button.pen.loop{visibility:visible;pointer-events:none}button.pen.loop:focus-visible{opacity:1;pointer-events:auto}'
 		+ 'svg{flex:none;width:14px;height:14px}'
-		+ '@media (prefers-reduced-motion:reduce){button.pen,.mark{transition:none}}';
+		+ '@media (prefers-reduced-motion:reduce){button.pen{transition:none}}';
 
 	/**
 	 *	The blocks and the texts of the page in the frame, from the comments the trace of the drawing writes: a block is the elements between the comment
@@ -1826,22 +1837,34 @@
 		selection.addRange( range );
 	};
 
-	// The union of the boxes of the elements of a block, in the coordinates of the page
+	// The boxes of an element as the page draws them: its own border box, and - where it has none because it is drawn as its children are (display: contents) - the boxes of those
+	const rectsOf = function( element ) {
+
+		const box = element.getBoundingClientRect();
+
+		if( box.width === 0 && box.height === 0 )
+			return element.children !== undefined && element.children.length > 0 ? Array.from( element.children ).reduce( function( list, child ) { return list.concat( rectsOf( child ) ) }, [] ) : [];
+
+		return [ box ];
+	};
+
+	// The union of the border boxes of the elements of a block or a component, in the coordinates of the page
 	const boxOf = function( elements, win ) {
 
 		let top = Infinity;
 		let left = Infinity;
-		let right = 0;
-		let bottom = 0;
+		let right = -Infinity;
+		let bottom = -Infinity;
 
 		elements.forEach( function( element ) {
 
-			const box = element.getBoundingClientRect();
+			rectsOf( element ).forEach( function( box ) {
 
-			top = Math.min( top, box.top );
-			left = Math.min( left, box.left );
-			right = Math.max( right, box.right );
-			bottom = Math.max( bottom, box.bottom );
+				top = Math.min( top, box.top );
+				left = Math.min( left, box.left );
+				right = Math.max( right, box.right );
+				bottom = Math.max( bottom, box.bottom );
+			} );
 		} );
 
 		return top === Infinity ? null : { top : top + win.scrollY, left : left + win.scrollX, width : right - left, height : bottom - top };
@@ -1915,6 +1938,148 @@
 		};
 	};
 
+	// The properties of a section, for its bar: the same lightbox as a component has, opened on the root of the block - null where the account has nothing to open or the block has no id
+	const sectionPen = function( at ) {
+
+		const root = S.top[at];
+
+		if( root === undefined || kindOf( root ) !== 'block' || idOf( root ) === '' || S.schemas[root.n] === undefined )
+			return null;
+
+		const had = S.box;
+
+		S.box = { block : idOf( root ) };
+
+		const has = hasProperties( 'root' );
+
+		S.box = had;
+
+		if( has === false )
+			return null;
+
+		return { name : word( 'label/edit-section', idOf( root ) ), open : function( opener ) { openProperties( at, 'root', opener ) } };
+	};
+
+	// Why the id of a section cannot be changed in its bar, '' where it can - the word of the reason: the one who may only write the content does not design the page; the id of a frame of
+	// the site and the id of the root of a block of the library are the ones the rest of the site names the block by; a block with a locked piece is not changed
+	const identWhy = function( node ) {
+
+		if( S.frame === true )
+			return 'frame';
+
+		if( S.sheet === 'block' )
+			return 'block';
+
+		if( builds() === false )
+			return 'content';
+
+		return free( node ) === false ? 'locked' : '';
+	};
+
+	// What is wrong with an id for the section at an index: 'form' - lower case letters, digits and single hyphens, a letter first -, 'long', or 'taken' - an id of another call of the page,
+	// one the saved page has, or one that a key or a picture place of the page has for a scope; the inner ids are made from it by the rule of a copy and each of them is held to the same
+	const identProblem = function( at, now ) {
+
+		const block = S.top[at];
+
+		if( block === undefined || kindOf( block ) !== 'block' || idOf( block ) === '' )
+			return 'form';
+
+		if( /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test( now ) === false )
+			return 'form';
+
+		if( now.length > MAX_ID )
+			return 'long';
+
+		const own = idsOf( [ block ], new Set() );
+		const others = idsOf( S.top.filter( function( node, index ) { return index !== at } ), new Set() );
+		const map = {};
+		const copy = copied( block, idOf( block ), now, map );
+		const made = Object.keys( map ).map( function( was ) { return map[was] } );
+
+		if( idsOf( [ copy ], new Set() ).size !== Object.keys( map ).length || made.some( function( id ) { return id.length > MAX_ID } ) === true )
+			return 'long';
+
+		return made.some( function( id ) { return others.has( id ) === true || ( own.has( id ) === false && isFree( id, others ) === false ) } ) === true ? 'taken' : '';
+	};
+
+	/**
+	 *	Change the id of a section: the block is made again under the new ids by the rule of a copy - the words of each of its ids put under the new ones - and takes the place of the old one,
+	 *	in ONE step that an undo takes back. The anchor of the section on the page is its id: the links that name the old one - #old - are not looked for
+	 *
+	 *	@param		{number}		at						The index of the block
+	 *	@param		{string}		now						The new id
+	 *
+	 *	@return		{string}									'' where it was done, else why not: form, long, taken, locked
+	 */
+	const renameBlock = function( at, now ) {
+
+		const block = S.top[at];
+
+		if( block === undefined || kindOf( block ) !== 'block' || identWhy( block ) !== '' )
+			return 'locked';
+
+		const root = idOf( block );
+
+		if( now === root )
+			return '';
+
+		const problem = identProblem( at, now );
+
+		if( problem !== '' )
+			return problem;
+
+		const map = {};
+		const copy = copied( block, root, now, map );
+		const was = keyAt( at );
+
+		change( function() {
+
+			S.top[at] = copy;
+
+			if( S.inserted[root] !== undefined ) {
+				S.inserted[now] = S.inserted[root];
+				delete S.inserted[root];
+			}
+
+			if( S.named[root] !== undefined ) {
+				S.named[now] = S.named[root];
+				delete S.named[root];
+			}
+
+			Object.keys( S.texts ).forEach( function( key ) {
+
+				const parts = key.split('/');
+
+				if( parts.length === 5 && parts[2] === S.template && map[parts[3]] !== undefined )
+					S.texts[ '/template/'+ S.template+ '/'+ map[parts[3]]+ '/'+ parts[4] ] = clone( S.texts[key] );
+			} );
+
+			Object.keys( S.pictures ).forEach( function( key ) {
+
+				const parts = key.split('/');
+
+				if( parts.length === 5 && parts[2] === S.template && map[parts[3]] !== undefined ) {
+					S.pictures[ '/template/'+ S.template+ '/'+ map[parts[3]]+ '/'+ parts[4] ] = S.pictures[key];
+					delete S.pictures[key];
+				}
+			} );
+
+			S.slots.forEach( function( uri ) {
+
+				const parts = uri.split('/');
+
+				if( parts.length === 5 && parts[2] === S.template && map[parts[3]] !== undefined )
+					S.copies[ '/template/'+ S.template+ '/'+ map[parts[3]]+ '/'+ parts[4] ] = uri;
+			} );
+		} );
+
+		if( S.selected === was )
+			S.selected = keyAt( at );
+
+		return '';
+	};
+
 	// The pencil gets the focus back where the page is drawn again after the lightbox: the page in the frame is a new one by then, or about to be
 	const penBack = function( path ) {
 
@@ -1926,64 +2091,48 @@
 		}
 	};
 
-	// The component the pencil is for when the pointer comes over something: what the pointer is over - and the pencil is no part of the page: the pointer on it, or on the
-	// way to it inside the component, leaves the component as it is
-	const pointerAim = function( before, overOwn, pick ) {
-		return overOwn === true ? before : pick();
-	};
+	// Where the pencil stands for the box of a component, in the coordinates of the window - the box and the window in those of the page: always INSIDE the box, in its top corner on the
+	// right, inside the border of its frame; never outside it and never at another corner. Where the component is scrolled up past the top of the window the pencil keeps to the top
+	// of what is in sight (and never below the foot of the box); where it reaches beyond the window at the right it keeps to the edge of the window. A component that is smaller than the
+	// pencil has it aligned at its top right corner, covering the component rather than standing outside it
+	const PEN_INSET = 2;
 
-	// Where the pencil stands for the box of a component, in the coordinates of the window - the box and the window in those of the page: inside the box, in its top corner on
-	// the right, where no word of the component is under it. Where one is, the MARK of the component - the frame that shows what the pencil is for - grows to the right of the
-	// box by the width of the pencil, or above or below it, and the pencil stands in that: always inside its mark, never over a word, never in the open. A loop has no box of its own: its
-	// pencil is above the repetitions, inside its mark. `texts` are the boxes of the words in the component, `side` says where it stands and `mark` is the rectangle of the mark
-	const penSpot = function( box, size, view, loop, texts, row ) {
+	const penSpot = function( box, size, view ) {
 
 		const right = box.left + box.width;
 		const bottom = box.top + box.height;
-		const first = Math.min( Math.max( box.top + 2, view.top + 2 ), Math.max( box.top, bottom - size ) );
 
-		// A row that fills its column has the pencil in its top left corner: the field at the right is the next column's
-		const inside = { side : 'inside', top : first, left : row === true ? box.left + 2 : Math.max( box.left, Math.min( right, view.left + view.width ) - size - 2 ) };
-		const sides = [
-			{ side : 'right', top : inside.top, left : right },
-			{ side : 'above', top : box.top - size, left : inside.left },
-			{ side : 'below', top : bottom, left : inside.left },
-		];
-		const covers = function( spot ) {
+		// Two pixels in from the border; a component that has no room for that - it is hardly larger than the pencil - has the pencil flush at its corner
+		const across = box.width >= size + 2 * PEN_INSET ? PEN_INSET : 0;
+		const down = box.height >= size + 2 * PEN_INSET ? PEN_INSET : 0;
+		const first = box.top + down;
+		const top = Math.min( Math.max( first, view.top ), Math.max( first, bottom - size - down ) );
+		const left = Math.min( right, view.left + view.width ) - size - across;
 
-			// Inside a box the pencil keeps two pixels from a word; flush against it, it only must not touch one
-			const margin = spot.side === 'inside' ? 2 : 0;
-
-			return ( texts ?? [] ).some( function( text ) { return spot.left < text.left + text.width + margin && spot.left + size > text.left - margin && spot.top < text.top + text.height + margin && spot.top + size > text.top - margin } );
-		};
-		const fits = function( spot ) { return spot.left >= view.left && spot.left + size <= view.left + view.width && spot.top >= view.top };
-		// The field of the pencil is at the right of every component, in its mark: the mark is wider than the component by it, the same for each, and it changes nothing of the
-		// page - where there is no room for the field in the window, the pencil goes inside, and above or below where a word is under it
-		const found = ( loop === true ? [ sides[1], sides[2] ] : ( row === true ? [ inside, sides[0], sides[1], sides[2] ] : [ sides[0], inside, sides[1], sides[2] ] ) ).find( function( spot ) { return fits( spot ) === true && covers( spot ) === false } ) ?? inside;
-		const mark = { top : box.top - 2, left : box.left - 2, right : right + 2, bottom : bottom + 2 };
-
-		if( found.side === 'right' )
-			mark.right = Math.max( mark.right, found.left + size + 2 );
-		else if( found.side === 'above' )
-			mark.top = Math.min( mark.top, found.top - 2 );
-		else if( found.side === 'below' )
-			mark.bottom = Math.max( mark.bottom, found.top + size + 2 );
-
-		return { side : found.side, top : found.top - view.top, left : found.left - view.left, mark : { top : mark.top - view.top, left : mark.left - view.left, width : mark.right - mark.left, height : mark.bottom - mark.top } };
+		return { top : top - view.top, left : left - view.left };
 	};
 
-	// The place round a pencil that is not inside its component, which still counts for the component: its mark, which holds the pencil - so that the way from the component to
-	// the pencil is never lost. In the coordinates of the window
-	const penZone = function( spot ) {
+	// What is drawn for the component the pointer is over and the one that is chosen: the pencil is for the first and, where the pointer is over none, for the second; each has its mark, the
+	// chosen one in a line that is drawn through and the other in a quiet one - and where they are one component, there is the one mark, the chosen one's
+	const aimFor = function( hovered, chosen ) {
 
-		if( spot.side === 'inside' )
-			return null;
+		const same = hovered !== null && chosen !== null && hovered.entry.path === chosen.entry.path;
 
-		return { left : spot.mark.left, right : spot.mark.left + spot.mark.width, top : spot.mark.top, bottom : spot.mark.top + spot.mark.height };
+		return { pen : hovered ?? chosen, marks : { chosen : chosen, hovered : same === true ? null : hovered } };
 	};
 
-	const inZone = function( zone, x, y ) {
-		return zone !== null && x >= zone.left && x <= zone.right && y >= zone.top && y <= zone.bottom;
+	// The place of the button at a seam between two sections, from the boxes of the section above and of the one below - null for a side where there is none -: its middle on the edge, on the
+	// middle of the edge between two, and held in only by the top and the foot of the page. It depends on the boxes and on nothing that is on: it is the same whichever section the pointer is over
+	const seamAt = function( above, below, size, page ) {
+
+		const edge = above !== null && below !== null ? ( above.top + above.height + below.top ) / 2 : ( above !== null ? above.top + above.height : ( below !== null ? below.top : 0 ) );
+
+		return { top : Math.min( Math.max( edge - size.height / 2, 0 ), Math.max( 0, page.height - size.height ) ), left : Math.max( 0, ( page.width - size.width ) / 2 ) };
+	};
+
+	// The frame of a component: its border box and nothing more, in the coordinates of the window
+	const markBox = function( box, view ) {
+		return { top : box.top - view.top, left : box.left - view.left, width : box.width, height : box.height };
 	};
 
 	// The element of a component that the Tab key stops at: the text that is written where it stands, the picture that is exchanged, else its first element - which is given
@@ -2132,6 +2281,176 @@
 			return button;
 		};
 
+		// What the id of a section is in its bar: a button with the id on it, which a press turns into a field in the same place - Enter and leaving the field take it, Escape leaves it as
+		// it was, and what is wrong with it is said at the field. For an account that may not design, and where the id is the page's or the block's own, it is the id and why it stays
+		const identOf = function( node, block ) {
+
+			const id = idOf( node );
+			const why = identWhy( node ) === '' ? '' : word( 'ident/why-'+ identWhy( node ) );
+			const holder = doc.createElement('span');
+			const note = doc.createElement('span');
+			const button = doc.createElement('button');
+
+			holder.className = 'ident-holder';
+			holder.style.display = 'contents';
+			note.className = 'note';
+			note.setAttribute( 'role', 'alert' );
+			note.hidden = true;
+			button.type = 'button';
+			button.className = 'ident';
+			button.dataset.action = 'ident';
+			button.dataset.at = String( block.at );
+			button.textContent = id === '' ? titleOf( node ) : id;
+
+			if( why !== '' ) {
+
+				button.setAttribute( 'aria-disabled', 'true' );
+				button.title = why;
+				button.setAttribute( 'aria-label', word( 'ident/fixed-of', id )+ ' '+ why );
+				holder.appendChild( button );
+
+				return holder;
+			}
+
+			button.title = word( 'ident/change-of', id );
+			button.setAttribute( 'aria-label', word( 'ident/change-of', id ) );
+			holder.appendChild( button );
+			holder.appendChild( note );
+
+			button.addEventListener( 'click', function() {
+
+				if( S.stale === true || S.editing !== null )
+					return;
+
+				const input = doc.createElement('input');
+				let ended = false;
+
+				input.type = 'text';
+				input.className = 'ident';
+				input.value = id;
+				input.maxLength = MAX_ID;
+				input.spellcheck = false;
+				input.setAttribute( 'aria-label', word( 'ident/field-of', id ) );
+				input.dataset.at = String( block.at );
+				button.replaceWith( input );
+				S.place?.();
+				input.focus();
+				input.select();
+
+				const end = function() {
+
+					if( ended === true )
+						return;
+
+					ended = true;
+					note.hidden = true;
+					input.replaceWith( button );
+					S.place?.();
+				};
+				const take = function( leaving ) {
+
+					if( ended === true )
+						return;
+
+					const value = input.value.trim();
+					const problem = value === id ? '' : identProblem( block.at, value );
+
+					if( problem !== '' ) {
+
+						input.setAttribute( 'aria-invalid', 'true' );
+						note.textContent = word( 'ident/'+ problem );
+						note.hidden = false;
+						S.place?.();
+
+						if( leaving !== true )
+							input.focus();
+
+						return;
+					}
+
+					end();
+
+					if( value !== id ) {
+						S.refocus = { at : block.at, action : 'ident', from : 'frame' };
+						renameBlock( block.at, value );
+					}
+					else
+						button.focus();
+				};
+
+				input.addEventListener( 'input', function() {
+					input.removeAttribute('aria-invalid');
+					note.hidden = true;
+					S.place?.();
+				} );
+				input.addEventListener( 'keydown', function( event ) {
+
+					if( event.key === 'Enter' ) {
+						event.preventDefault();
+						take( false );
+					}
+					else if( event.key === 'Escape' ) {
+						event.preventDefault();
+						event.stopPropagation();
+						end();
+						button.focus();
+					}
+				} );
+				input.addEventListener( 'blur', function() { take( true ) } );
+			} );
+
+			return holder;
+		};
+
+		// The pencil of a section - its properties - and a button for each row of it, for the rows whose columns fill them to the edge: the pointer never comes to the row itself there. Both
+		// stand in the bar, a press away and no menu; the button of a row shows the row in the page as the pointer does
+		const sectionTools = function( node, block ) {
+
+			const list = [];
+			const open = sectionPen( block.at );
+
+			if( open !== null ) {
+
+				const pencil = tool( 'pencil', '', open.name, '' );
+
+				pencil.dataset.action = 'properties';
+				pencil.dataset.at = String( block.at );
+				pencil.addEventListener( 'click', function() { if( S.stale === false && S.editing === null ) open.open( pencil ) } );
+				list.push( pencil );
+			}
+
+			( node.c ?? [] ).forEach( function( inner, at ) {
+
+				const path = block.at+ '.'+ at;
+				const found = inner.n === 'section-row' && list.filter( function( one ) { return one.dataset.action === 'row' } ).length < ROW_BUTTONS ? penOf( path, inner ) : null;
+
+				if( found === null )
+					return;
+
+				const number = list.filter( function( one ) { return one.dataset.action === 'row' } ).length + 1;
+				const button = tool( 'rows-2', wide === true ? String( number ) : '', word( 'label/edit-row', String( number ) ), '' );
+				const show = function( on ) {
+
+					const entry = on === true ? aims().find( function( candidate ) { return candidate.path === path } ) : undefined;
+
+					hovered = entry === undefined ? null : { entry : entry, pen : found, key : keyAt( block.at ) };
+					placePen();
+				};
+
+				button.dataset.action = 'row';
+				button.dataset.at = String( block.at );
+				button.dataset.row = path;
+				button.addEventListener( 'click', function() { if( S.stale === false && S.editing === null ) found.open( button ) } );
+				button.addEventListener( 'pointerenter', function() { show( true ) } );
+				button.addEventListener( 'pointerleave', function() { show( false ) } );
+				button.addEventListener( 'focus', function() { show( true ) } );
+				button.addEventListener( 'blur', function() { show( false ) } );
+				list.push( button );
+			} );
+
+			return list;
+		};
+
 		blocks.forEach( function( block, index ) {
 
 			const node = S.top[block.at];
@@ -2141,20 +2460,17 @@
 
 			const title = titleOf( node );
 			const bar = doc.createElement('div');
-			const label = doc.createElement('span');
 			const frameBox = doc.createElement('div');
 
 			bar.className = 'bar';
 			bar.dataset.key = block.key;
 			bar.setAttribute( 'role', 'group' );
 			bar.setAttribute( 'aria-label', word( 'label/block-bar', title ) );
-			label.className = 'name';
-			label.textContent = title;
-			label.title = titleOf( node, true );
 			frameBox.className = 'frame';
 
-			if( wide === true )
-				bar.appendChild( label );
+			// The id of the section in place of its kind, which is the same for every one; the pencil of the section and the way to each of its rows
+			bar.appendChild( identOf( node, block ) );
+			sectionTools( node, block ).forEach( function( button ) { bar.appendChild( button ) } );
 
 			if( S.frame === false && builds() === true && free( node ) === true )
 				ACTIONS.forEach( function( action ) {
@@ -2278,17 +2594,7 @@
 				bar.appendChild( box );
 			}
 
-			// A section has the place above it as well as the one below: where the page has none above it of its own, it is the one below the block before it
-			const earlier = index > 0 ? blocks[index - 1] : undefined;
-			const first = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'before' } )
-				?? ( earlier === undefined ? undefined : spots.find( function( spot ) { return spot.block === earlier.at && spot.carry === 'after' } ) );
-			const last = spots.find( function( spot ) { return spot.block === block.at && spot.carry === 'after' } );
-			const pills = { before : first === undefined ? null : pillOf( first ), after : last === undefined ? null : pillOf( last ) };
-
-			[ frameBox, pills.before, bar, pills.after ].forEach( function( piece ) {
-
-				if( piece === null )
-					return;
+			[ frameBox, bar ].forEach( function( piece ) {
 
 				piece.dataset.key = block.key;
 				shadow.appendChild( piece );
@@ -2298,7 +2604,26 @@
 			if( fade === true )
 				block.elements.forEach( function( element ) { element.setAttribute( 'data-nino-block', '' ) } );
 
-			placed.push( { block : block, bar : bar, box : frameBox, pills : pills } );
+			placed.push( { block : block, bar : bar, box : frameBox } );
+		} );
+
+		// The places to put a block in: ONE button for each seam - the top edge of the first section, the edge between two, the bottom edge of the last - on a place of its own that does not
+		// change with what is on: which of them are shown is all that changes. The block above the seam and the one below it are told, for the buttons are shown with either of them
+		const edges = [];
+
+		spots.filter( function( spot ) { return spot.block !== null } ).forEach( function( spot ) {
+
+			const above = spot.carry === 'after' ? placed.findIndex( function( item ) { return item.block.at === spot.block } ) : -1;
+			const below = placed.findIndex( function( item ) { return item.block.at === spot.before } );
+
+			if( above === -1 && below === -1 )
+				return;
+
+			const button = pillOf( spot );
+
+			button.dataset.key = placed[above === -1 ? below : above].block.key;
+			shadow.appendChild( button );
+			edges.push( { pill : button, above : above, below : below } );
 		} );
 
 		// A page of free markup only has its places in the frame too: the first under the header of the site, the others above its footer. They are always there, as no
@@ -2336,6 +2661,11 @@
 		const penHost = doc.createElement('nino-builder-pen');
 		const penShadow = penHost.attachShadow( { mode : 'open' } );
 		const penStyle = doc.createElement('style');
+
+		// What the pointer is over - it follows the pointer, the innermost component - and what is chosen - the component the focus is on, which stays until something else is chosen -; the
+		// pencil is for the first, and where the pointer is over nothing, for the second
+		let hovered = null;
+		let chosen = null;
 		let aimed = null;
 
 		penStyle.textContent = PEN_CSS;
@@ -2374,146 +2704,85 @@
 				item.bar.toggleAttribute( 'data-on', look.bar );
 				item.box.toggleAttribute( 'data-on', look.frame );
 
-				[ item.pills.before, item.pills.after ].forEach( function( pill ) {
-					if( pill !== null )
-						pill.toggleAttribute( 'data-on', look.bar );
-				} );
-
 				item.block.elements.forEach( function( element ) {
 					element.toggleAttribute( 'data-nino-dim', look.dim );
 				} );
 			} );
-		};
 
-		// The boxes of the words that stand in some elements, in the coordinates of the page: what the pencil does not stand on
-		const wordsOf = function( elements, win ) {
+			// A seam is shown with the block above it and with the one below it
+			edges.forEach( function( edge ) {
 
-			const out = [];
+				const keys = [ edge.above, edge.below ].filter( function( at ) { return at !== -1 } ).map( function( at ) { return placed[at].block.key } );
 
-			elements.forEach( function( element ) {
-
-				const walker = doc.createTreeWalker( element, 4 );
-				let node = walker.nextNode();
-
-				while( node !== null && out.length < 400 ) {
-
-					if( node.data.trim() !== '' ) {
-
-						const range = doc.createRange();
-
-						range.selectNodeContents( node );
-						Array.from( range.getClientRects() ).forEach( function( rect ) {
-							if( rect.width > 0 && rect.height > 0 )
-								out.push( { top : rect.top + win.scrollY, left : rect.left + win.scrollX, width : rect.width, height : rect.height } );
-						} );
-					}
-
-					node = walker.nextNode();
-				}
+				edge.pill.toggleAttribute( 'data-on', keys.some( function( key ) { return lookOf( S.dim, key, now ).bar } ) );
 			} );
-
-			return out;
 		};
 
-		// The boxes of the words of the page that stand near a box - within a pencil's width of it -, whatever component they belong to: the pencil that stands above or beside its box is over
-		// nothing either
-		const wordsNear = function( box, win ) {
+		// The marks of what the pointer is over and of what is chosen: the border box of each component and nothing more - the chosen one in a line that is drawn through, the one
+		// the pointer is over in a quiet one - in the shadow of the pencil, in the coordinates of the window; they are no part of the page. Where both are one component, it is the chosen one
+		const marks = { chosen : null, hovered : null };
+		const markFor = function( which ) {
 
-			const out = [];
-			const margin = 34;
-			const walker = doc.createTreeWalker( doc.body, 4 );
-			let node = walker.nextNode();
+			if( marks[which] === null ) {
 
-			while( node !== null && out.length < 400 ) {
-
-				if( node.data.trim() !== '' && node.parentNode !== null && /^(?:SCRIPT|STYLE|NOSCRIPT)$/.test( node.parentNode.nodeName ) === false ) {
-
-					const range = doc.createRange();
-
-					range.selectNodeContents( node );
-					Array.from( range.getClientRects() ).forEach( function( rect ) {
-
-						const top = rect.top + win.scrollY;
-						const left = rect.left + win.scrollX;
-
-						if( rect.width > 0 && rect.height > 0 && left < box.left + box.width + margin && left + rect.width > box.left - margin && top < box.top + box.height + margin && top + rect.height > box.top - margin )
-							out.push( { top : top, left : left, width : rect.width, height : rect.height } );
-					} );
-				}
-
-				node = walker.nextNode();
+				marks[which] = doc.createElement('div');
+				marks[which].className = 'mark '+ which;
+				penShadow.insertBefore( marks[which], pen );
 			}
 
-			return out;
+			return marks[which];
 		};
+		const drawMarks = function() {
 
-		// The marks of what the pointer is over: the frame of the component the pencil is for - the strongest - and, fine and quiet, one round each component that holds it, so that
-		// a person sees what the pencil belongs to. They stand in the shadow of the pencil, in the coordinates of the window, and are no part of the page
-		const marks = [];
-		const markFor = function( at ) {
+			const view = { top : win.scrollY, left : win.scrollX };
+			const back = scaleBack();
+			const show = S.editing === null ? aimFor( hovered, chosen ).marks : { chosen : null, hovered : null };
 
-			while( marks.length <= at ) {
+			[ 'chosen', 'hovered' ].forEach( function( which ) {
 
-				const mark = doc.createElement('div');
+				const aim = show[which];
+				const box = aim === null ? null : boxOf( aim.entry.elements.length > 0 ? aim.entry.elements : shownOf( aim.entry ), win );
 
-				mark.className = 'mark';
-				penShadow.insertBefore( mark, pen );
-				marks.push( mark );
-			}
+				if( box === null ) {
 
-			return marks[at];
-		};
-		const drawMarks = function( spot, back, view ) {
+					if( marks[which] !== null )
+						marks[which].style.display = 'none';
 
-			const rects = [ { box : spot.mark, main : true } ];
-			const parts = aimed.entry.path.split('.');
-
-			for( let depth = parts.length - 1; depth >= 2; depth-- ) {
-
-				const above = S.found.all.find( function( entry ) { return entry.path === parts.slice( 0, depth ).join('.') && entry.elements.length > 0 } );
-				const around = above === undefined ? null : boxOf( above.elements, win );
-
-				if( around !== null && around.width > 0 && around.height > 0 )
-					rects.push( { box : { top : around.top - view.top - 1, left : around.left - view.left - 1, width : around.width + 2, height : around.height + 2 }, main : false } );
-			}
-
-			rects.forEach( function( rect, at ) { markFor( at ) } );
-
-			marks.forEach( function( mark, at ) {
-
-				const rect = rects[at];
-
-				mark.style.display = rect === undefined ? 'none' : 'block';
-
-				if( rect === undefined )
 					return;
+				}
 
-				mark.classList.toggle( 'main', rect.main );
-				mark.style.top = rect.box.top+ 'px';
-				mark.style.left = rect.box.left+ 'px';
-				mark.style.width = rect.box.width+ 'px';
-				mark.style.height = rect.box.height+ 'px';
-				mark.style.borderWidth = ( rect.main ? 2 : 1 ) * back+ 'px';
+				const rect = markBox( box, view );
+				const mark = markFor( which );
+
+				mark.style.display = 'block';
+				mark.style.top = rect.top+ 'px';
+				mark.style.left = rect.left+ 'px';
+				mark.style.width = rect.width+ 'px';
+				mark.style.height = rect.height+ 'px';
+				mark.style.borderWidth = ( which === 'chosen' ? 2 : 1 ) * back+ 'px';
 			} );
 		};
-		const hideMarks = function() { marks.forEach( function( mark ) { mark.style.display = 'none' } ) };
-
 		// The component the pencil was put next to in the page last: where the component is another one, it is put next to that - never inside a link or a button, which it
 		// would be taken by
 		let anchored = '';
 
 		const placePen = function() {
 
-			const box = aimed === null || S.editing !== null ? null : boxOf( aimed.entry.elements, win );
+			aimed = S.editing !== null ? null : aimFor( hovered, chosen ).pen;
+			drawMarks();
+
+			const box = aimed === null ? null : boxOf( aimed.entry.elements.length > 0 ? aimed.entry.elements : shownOf( aimed.entry ), win );
 
 			if( box === null ) {
 				pen.removeAttribute('data-on');
-				hideMarks();
 				return;
 			}
 
-			if( anchored !== aimed.entry.path && penShadow.activeElement !== pen ) {
-				anchored = aimed.entry.path;
+			// The place the Tab key finds the pencil at is the component that is chosen - the one the keyboard is on - whatever the pointer is over
+			const seated = chosen ?? aimed;
+
+			if( anchored !== seated.entry.path && penShadow.activeElement !== pen ) {
+				anchored = seated.entry.path;
 				anchorPen();
 			}
 
@@ -2527,11 +2796,8 @@
 			pen.style.transformOrigin = '0 0';
 			pen.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
 
-			// Inside the box of the component where no word is under it, else flush against the box; the zone round it counts for the component
-			const spot = penSpot( box, size, view, aimed.entry.loop === true, wordsOf( aimed.entry.elements, win ).concat( wordsNear( box, win ) ), ( nodeAt( aimed.entry.path ) ?? {} ).n === 'section-row' );
-
-			aimed.zone = penZone( spot );
-			drawMarks( spot, back, view );
+			// Inside the box of the component, in the corner at the top on the right
+			const spot = penSpot( box, size, view );
 
 			pen.style.top = spot.top+ 'px';
 			pen.style.left = spot.left+ 'px';
@@ -2605,38 +2871,29 @@
 			return found;
 		};
 
+		// The component the focus is on is the chosen one - and a pointer over another one does not change that - and the one the pointer is over is the one the pencil is for
 		const aim = function( target ) {
-
-			held = false;
-			aimed = pickAim( target );
+			chosen = pickAim( target );
 			placePen();
 		};
 
-		// What the pointer is over - and, where it is in the zone round the pencil of the component it was on, still that component: the pencil stands outside of its box, where it
-		// would cover a word, and the way to it must not give it up
-		let held = false;
-		const pickPointed = function( event ) {
-
-			if( aimed !== null && aimed.zone !== undefined && inZone( aimed.zone, event.clientX, event.clientY ) === true ) {
-				held = true;
-				return aimed;
-			}
-
-			held = false;
-
-			return pickAim( event.target );
+		const hover = function( target ) {
+			hovered = pickAim( target );
+			placePen();
 		};
 
 		// The pencil stands in the page next to its component for the Tab key: after a text or a picture, which hold nothing else, and as the first thing in a component that
 		// holds others - so that the one pencil is the next stop after the component, and the components inside come after it
 		const anchorPen = function() {
 
-			if( aimed === null )
+			const target = chosen ?? aimed;
+
+			if( target === null )
 				return;
 
-			const carrier = carrierOf( S.found, aimed.entry );
+			const carrier = carrierOf( S.found, target.entry );
 
-			anchored = aimed.entry.path;
+			anchored = target.entry.path;
 
 			// A loop has no element of its own: the pencil rests at the end of the page, where no link holds it
 			if( carrier === null ) {
@@ -2672,9 +2929,10 @@
 				return;
 			}
 
-			aimed = { entry : entry, pen : open, key : keyAt( Number( entry.path.split('.')[0] ) ) };
-			anchorPen();
+			chosen = { entry : entry, pen : open, key : keyAt( Number( entry.path.split('.')[0] ) ) };
+			hovered = null;
 			placePen();
+			anchorPen();
 			pen.focus();
 		};
 
@@ -2719,13 +2977,6 @@
 
 				const box = boxOf( item.block.elements, win );
 
-				const hidden = box === null ? 'none' : '';
-
-				[ item.pills.before, item.pills.after ].forEach( function( pill ) {
-					if( pill !== null )
-						pill.style.display = hidden;
-				} );
-
 				if( box === null ) {
 					item.bar.style.display = 'none';
 					item.box.style.display = 'none';
@@ -2752,26 +3003,31 @@
 				item.bar.style.top = ( low === true ? box.top + box.height + 2 * back : seen )+ 'px';
 				item.bar.style.left = Math.max( box.left, box.left + box.width - width - 8 * back )+ 'px';
 				item.height = height;
+			} );
 
-				// The places for a block stand on the left, where the bar is not: the one before the first block of a run inside the top of it, the one behind a block
-				// at its foot - or, where the block is low, below it like its bar
-				[ item.pills.before, item.pills.after ].forEach( function( pill, which ) {
+			// The seams: the middle of the button on the edge between two sections - the first section's top edge, the last one's bottom edge -, in the middle of the page, at a place
+			// that is the same whichever block is on. Only the top and the foot of the document hold them in: a button is never cut off by the page
+			const boxes = placed.map( function( item ) { return boxOf( item.block.elements, win ) } );
 
-					if( pill === null )
-						return;
+			edges.forEach( function( edge ) {
 
-					pill.style.transformOrigin = '0 0';
-					pill.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
-					pill.style.left = Math.max( box.left, box.left + ( box.width - pill.offsetWidth * back ) / 2 )+ 'px';
-					const high = pill.offsetHeight * back;
+				const above = edge.above === -1 ? null : boxes[edge.above];
+				const below = edge.below === -1 ? null : boxes[edge.below];
 
-					// The place at the edge between two blocks: centred on the width of the block, the one before a block just above its top edge, the one behind a block just below its
-					// foot - where the block is higher than the screen, at the foot of what is in sight - so that it never stands on the bar of the block
-					const upper = Math.max( box.top - high - 2 * back, win.scrollY + 2 * back );
-					const lower = Math.max( box.top + 4 * back, Math.min( box.top + box.height + 2 * back, win.scrollY + win.innerHeight - high - 4 * back ) );
+				edge.pill.style.display = above === null && below === null ? 'none' : '';
 
-					pill.style.top = ( which === 0 ? upper : lower )+ 'px';
-				} );
+				if( above === null && below === null )
+					return;
+
+				edge.pill.style.transformOrigin = '0 0';
+				edge.pill.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
+
+				const high = edge.pill.offsetHeight * back;
+				const wide = edge.pill.offsetWidth * back;
+				const spot = seamAt( above, below, { width : wide, height : high }, { width : doc.documentElement.clientWidth || win.innerWidth, height : doc.documentElement.scrollHeight } );
+
+				edge.pill.style.top = spot.top+ 'px';
+				edge.pill.style.left = spot.left+ 'px';
 			} );
 
 			loopPens.forEach( function( held ) {
@@ -2782,7 +3038,7 @@
 					return;
 
 				const size = 26 * back;
-				const spot = penSpot( box, size, { top : win.scrollY, left : win.scrollX, width : win.innerWidth }, true, [] );
+				const spot = penSpot( box, size, { top : win.scrollY, left : win.scrollX, width : win.innerWidth } );
 
 				held.button.style.transformOrigin = '0 0';
 				held.button.style.transform = back === 1 ? '' : 'scale('+ back+ ')';
@@ -2811,8 +3067,8 @@
 			if( ownOf( origin ) === false )
 				S.overBar = '';
 
-			aimed = pointerAim( aimed, ownOf( origin ), function() { return pickPointed( event ) } );
-			placePen();
+			if( ownOf( origin ) === false )
+				hover( event.target );
 		} );
 		doc.documentElement.addEventListener( 'pointerleave', function( event ) {
 
@@ -2822,8 +3078,9 @@
 
 			S.overBar = '';
 
-			if( aimed !== null && penShadow.activeElement !== pen ) {
-				aimed = null;
+			// The pointer has left the page: what is chosen stays, and nothing else is on
+			if( hovered !== null && penShadow.activeElement !== pen ) {
+				hovered = null;
 				placePen();
 			}
 		} );
@@ -2868,12 +3125,6 @@
 			if( key !== S.hot ) {
 				S.hot = key;
 				paintBars();
-			}
-
-			// The pointer has left the zone round the pencil inside one element of the page: what it is over decides again
-			if( held === true && ownOf( origin ) === false && aimed !== null && inZone( aimed.zone ?? null, event.clientX, event.clientY ) === false ) {
-				aimed = pickPointed( event );
-				placePen();
 			}
 		} );
 		doc.addEventListener( 'focusout', function( event ) {
@@ -3091,8 +3342,7 @@
 			if( under === null || ownOf( under ) === true || under === penHost || under === host )
 				return;
 
-			aim( under );
-			anchorPen();
+			hover( under );
 		};
 
 		// The window of the workbench rolls under a pointer that stands still over the preview: the pointer in the page is where the pointer of the window falls on it now. The
@@ -9962,7 +10212,7 @@
 			addComponent : addComponent, relNode : relNode, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, penZone : penZone, inZone : inZone, pointerAim : pointerAim, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, PEN_INSET : PEN_INSET, markBox : markBox, boxOf : boxOf, aimFor : aimFor, seamAt : seamAt, renameBlock : renameBlock, identProblem : identProblem, identWhy : identWhy, sectionPen : sectionPen, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		/**
