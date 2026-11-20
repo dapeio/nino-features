@@ -22,12 +22,15 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, own, variants, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
+		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, own, source, applied, variants, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
 		 */
 		public static function all( array &$appData, string $wrap = self::PAGE ): array {
 
 			$features = \Nino\Features::all( $appData );
 			$list = [];
+
+			// The theme in use, which a dialog names before the others: only the Themes know it
+			$applied = ( $features['themes']['active'] ?? false ) === true && class_exists( \Nino\Modules\Themes\Store::class ) === true ? (string) ( \Nino\Modules\Themes\Store::read( $appData )['active']['theme'] ?? '' ) : '';
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $block ) {
 
@@ -48,6 +51,8 @@ namespace Nino\Modules\Builder {
 					'group'				=> self::group( $appData, (string) $key, $block ),
 					'origin'			=> self::_origin( $features, (string) $block['origin'], $block['label'] ?? null ),
 					'own'					=> (string) $block['origin'] === 'project',
+					'source'			=> (string) $block['origin'],
+					'applied'			=> $applied !== '' && (string) $block['origin'] === $applied,
 					'variants'		=> count( (array) ( $block['alternatives'] ?? [] ) ),
 					'hint'				=> $missing === [] ? self::hint( $appData, $block, ( $features['themes']['active'] ?? false ) === true ) : null,
 					'off'					=> $missing === [] ? null : $missing,
@@ -420,12 +425,13 @@ namespace Nino\Modules\Builder {
 		 *	@param		string		$key
 		 *	@param		string		$locale
 		 *	@param		bool			$own					Whether the pictures a block has of its own are drawn - for the one who may put the block in
+		 *	@param		string		$wrap					The root the block has: a section for a page, a header or a footer for a frame
 		 *
 		 *	@return 	array|null								[ 'template', 'source', 'fills', 'slots', 'locale' ], the draft; null for a key that \Nino\Blocks does not offer for a page
 		 */
-		public static function tile( array &$appData, string $template, string $key, string $locale, bool $own = false ): ?array {
+		public static function tile( array &$appData, string $template, string $key, string $locale, bool $own = false, string $wrap = self::PAGE ): ?array {
 
-			$block = self::block( $appData, $key );
+			$block = self::block( $appData, $key, $wrap );
 
 			if( $block === null )
 				return null;

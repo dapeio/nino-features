@@ -71,6 +71,7 @@ namespace Nino\Modules\Themelab {
 				'themelab/frame-restore'	=> [ self::class, 'apiFrameRestore' ],
 				'themelab/frame-blocks'	=> [ self::class, 'apiFrameBlocks' ],
 				'themelab/frame-block'	=> [ self::class, 'apiFrameBlock' ],
+				'themelab/frame-tile'	=> [ self::class, 'apiFrameTile' ],
 				'themelab/frame-keys'	=> [ self::class, 'apiFrameKeys' ],
 				'themelab/frame-variant'	=> [ self::class, 'apiFrameVariant' ],
 				'themelab/frame-offer'	=> [ self::class, 'apiFrameOffer' ],
@@ -1580,6 +1581,10 @@ namespace Nino\Modules\Themelab {
 
 		public static function apiFrameBlock( array &$appData, array &$request ): void {
 			Frames::pass( $appData, $request, 'apiBlock' );
+		}
+
+		public static function apiFrameTile( array &$appData, array &$request ): void {
+			Frames::pass( $appData, $request, 'apiTile' );
 		}
 
 		public static function apiFrameKeys( array &$appData, array &$request ): void {

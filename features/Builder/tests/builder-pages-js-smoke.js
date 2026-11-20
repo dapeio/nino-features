@@ -138,8 +138,10 @@ function world( options ) {
 	doc.addEventListener = function( name, fn ) { ( doc.listeners[name] = doc.listeners[name] ?? [] ).push( fn ) };
 	doc.createElement = function( tag ) {
 		const created = element( tag );
+		created.getBoundingClientRect = function() { return { top : 0, left : 0, width : 300, height : 200, right : 300, bottom : 200 } };
 		if( tag === 'dialog' ) {
-			created.showModal = function() {};
+			// As a browser does: a modal dialog stands in the body of the document while it is open
+			created.showModal = function() { doc.body.appendChild( created ) };
 			created.close = function() {};
 			dialogs.push( created );
 		}
@@ -872,15 +874,32 @@ function world( options ) {
 
 	const asked = w.requests.filter( function( entry ) { return entry.action === 'builder/framechoices' } )[0];
 
-	asked.callback( { status : 200, responseJSON : { blocks : [ { key : 'header-soft', name : 'Soft', description : '', category : 'frame', origin : { kind : 'theme', label : 'Craft' }, own : false, off : null }, { key : 'mine', name : 'Mine', description : 'Own', category : 'frame', origin : { kind : 'project', label : 'Project' }, own : true, off : null } ], categories : [] }, getAllResponseHeaders : function() { return 'x' } } );
+	const entry = function( key, source, kind, label, extra ) { return Object.assign( { key : key, name : key, description : '', category : 'frame', origin : { kind : kind, label : label }, own : kind === 'project', source : source, applied : false, off : null }, extra ?? {} ) };
+
+	asked.callback( { status : 200, responseJSON : { blocks : [
+		entry( 'soft', 'second', 'theme', 'Craft' ), entry( 'alike', 'other', 'theme', 'Craft' ), entry( 'basic', 'basis', 'basis', 'Basis' ),
+		entry( 'applied', 'nino', 'theme', 'Nino', { applied : true } ), entry( 'mine', 'project', 'project', 'Project' ),
+	], categories : [] }, getAllResponseHeaders : function() { return 'x' } } );
 
 	const dialog = w.dialogs[w.dialogs.length - 1];
 	const items = findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-pick-item') !== -1 } );
+	const heads = findAll( dialog, function( el ) { return el.className === 'nino-admin-pick-group-title' } ).map( textOf );
+	const tiles = w.requests.filter( function( entry ) { return entry.action === 'builder/frametile' } );
 
-	check( 'G. the dialog of the choice lists the blocks of the kind of the frame from every source, the own ones first, each with its source, and asks the server for them by the template of the frame - nothing is written by asking',
-		asked.payload.template === 'frame-header' && items.length === 2 && textOf( items[0] ).indexOf('Mine') !== -1 && textOf( items[1] ).indexOf('Craft') !== -1 && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0 );
+	check( 'G. the dialog of the choice has the blocks of the kind of the frame from every source under the name of their source - the own ones, the theme in use, then the others by name, two themes of one name told apart by their key - and asks the server by the template of the frame; nothing is written by asking',
+		asked.payload.template === 'frame-header' && heads.join('|') === [ W('frame/own'), W( 'frame/theme', 'Nino' ), 'Basis', W( 'frame/theme-key', 'Craft', 'other' ), W( 'frame/theme-key', 'Craft', 'second' ) ].join('|')
+		&& items.map( textOf ).join() === 'mine,applied,basic,alike,soft' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0 );
 
-	fire( items[1], 'click' );
+	// each item is a tile whose picture is the tile of the dialog of the blocks - asked for by the template of the frame and the key of the block - drawn in the face of the item, in the order of the items
+	tiles.forEach( function( request ) { request.callback( { status : 200, responseJSON : { token : 't', query : 'nino-preview=tok-'+ request.payload.key, ttl : 600, address : '/home' }, getAllResponseHeaders : function() { return 'x' } } ) } );
+
+	const faces = findAll( dialog, function( el ) { return String( el.className ).indexOf('nino-admin-pick-image') !== -1 } );
+	const framed = faces.map( function( face ) { const frame = findAll( face, function( el ) { return el.tagName === 'IFRAME' } )[0]; return frame === undefined ? '' : String( frame.attributes.src ?? frame.src ).split('tok-')[1] } );
+
+	check( 'G. the picture of each item is the tile that the dialog of the blocks draws, asked for once by the template of the frame and the key of the block, and it stands in the face of that item - the first face has the first item\'s block, the last the last\'s - with no other request than that',
+		tiles.length === 5 && tiles.every( function( request ) { return request.payload.template === 'frame-header' } ) && framed.join() === 'mine,applied,basic,alike,soft' );
+
+	fire( items[4], 'click' );
 	fire( dialog, 'close' );
 
 	const question = w.questions[w.questions.length - 1];

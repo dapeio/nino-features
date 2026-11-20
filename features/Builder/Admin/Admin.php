@@ -46,6 +46,7 @@ namespace Nino\Modules\Builder {
 				'builder/frametexts'	=> [ self::class, 'apiFrameTexts' ],
 				'builder/frametextssave'	=> [ self::class, 'apiFrameTextsSave' ],
 				'builder/framechoices'	=> [ self::class, 'apiFrameChoices' ],
+				'builder/frametile'	=> [ self::class, 'apiFrameTile' ],
 				'builder/framechoose'	=> [ self::class, 'apiFrameChoose' ],
 				'builder/framerestore'	=> [ self::class, 'apiFrameRestore' ],
 				'builder/create'	=> [ self::class, 'apiCreate' ],
@@ -577,6 +578,26 @@ namespace Nino\Modules\Builder {
 			if( $level === null )
 				return;
 
+			self::_tile( $appData, $request, $level );
+		}
+
+		/**
+		 *	The picture of a block for the choice of a frame, from the list of the pages: the same tile as the dialog of the blocks draws - the block alone on the bare page - for a block of the
+		 *	kind of the frame. The door is the one of the choice
+		 */
+		public static function apiFrameTile( array &$appData, array &$request ): void {
+
+			if( self::_frameDoor( $appData, $request ) === null )
+				return;
+
+			self::_tile( $appData, $request, \Nino\Modules\Builder::LEVEL_DEVELOP );
+		}
+
+		/**
+		 *	The draft of a tile, held for the session, and where to ask for it: the answer of apiTile() and apiFrameTile(). A frame's tile is for a block of the kind of that frame
+		 */
+		private static function _tile( array &$appData, array &$request, int $level ): void {
+
 			$data = \Nino\Admin\Admin::postData();
 			$opened = self::_open( $appData, $request, $level );
 
@@ -584,7 +605,7 @@ namespace Nino\Modules\Builder {
 				return;
 
 			[ $template, , , $locale ] = $opened;
-			$tile = Store::named( $template )['frame'] === true ? null : Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale, $level >= \Nino\Modules\Builder::LEVEL_DESIGN );
+			$tile = Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale, $level >= \Nino\Modules\Builder::LEVEL_DESIGN, Library::wrapOf( $template ) );
 
 			if( $tile === null ) {
 				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );

@@ -214,6 +214,14 @@
 	background: repeating-linear-gradient(135deg, var(--editor-bg-elevated), var(--editor-bg-elevated) .5rem, var(--editor-bg) .5rem, var(--editor-bg) 1rem);
 }
 
+/* The face of an item in the choice of a frame: the kernel's box for the picture, which holds the scaled page of the block once it is drawn */
+/* The picture is no control: a click on it is a click on the item */
+.nino-admin-pick-image[data-block] {
+	position: relative;
+	overflow: hidden;
+	pointer-events: none;
+}
+
 .builder-tile-frame {
 	position: absolute;
 	border: 0;

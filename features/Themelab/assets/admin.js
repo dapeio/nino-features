@@ -1774,7 +1774,9 @@
 		Nino.admin.builder.chooseFrame( {
 			name		: adapter.name,
 			opener	: sheet.view.bar.buttons.frameblock,
+			dir			: sheet.adapter.dir ?? '',
 			load		: function( done ) { editor().call( 'blocks', {}, done ) },
+			tile		: function( key, done ) { editor().call( 'tile', { key : key }, done ) },
 			fail		: function( status, response ) { sheet.view.bar.line.error( status, response ) },
 			none		: function() { sheet.view.bar.line.idle( word('frames/no-blocks') ) },
 			apply		: function( key, entry ) {

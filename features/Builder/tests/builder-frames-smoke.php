@@ -76,14 +76,36 @@ check( 'the list of the pages has the two frames for the step of the design, and
 	$listStatus === 200 && array_column( $listed['frames'] ?? [], 'key' ) === [ 'header', 'footer' ] && $choices === 200 && in_array( 'header-line', $keys, true ) === true && in_array( 'hero-full', $keys, true ) === false && in_array( 'footer-columns', $keys, true ) === false
 	&& array_filter( $offer['blocks'], static fn( array $entry ): bool => is_array( $entry['origin'] ?? null ) === false ) === [] );
 
+// The origin of an entry is the kernel's word for it: a request that names another one changes nothing of it
+[ , $lying ] = frameCall( $site, 'builder/framechoices', [ 'template' => 'frame-header', 'source' => 'theme-evil', 'origin' => [ 'kind' => 'theme', 'label' => 'Evil' ], 'applied' => true ] );
+$entry = $lying['blocks'][0] ?? [];
+
+check( 'each choice carries what the dialog groups by - the origin as the kernel names it (kind and label), the source key and whether the source is the theme in use - and a request that names an origin of its own does not change it',
+	( $entry['origin']['kind'] ?? '' ) === 'basis' && ( $entry['source'] ?? '' ) === 'basis' && ( $entry['applied'] ?? null ) === false && is_array( $entry['origin']['label'] ?? null ) && $entry === ( $offer['blocks'][0] ?? null ) );
+
+// The picture of a block is its tile, drawn the way the page tiles are, from the frame's own wrap
+[ $tileStatus, $tile ] = frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => 'header-line' ] );
+$tiles = [
+	'a block of a page'				=> frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => 'hero-full' ] )[0],
+	'a footer for a header'		=> frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => 'footer-columns' ] )[0],
+	'a key that is none'			=> frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => 'nope' ] )[0],
+	'a path for a key'				=> frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => '../../x' ] )[0],
+	'a page for a frame'			=> frameCall( $site, 'builder/frametile', [ 'template' => 'page-home', 'key' => 'header-line' ] )[0],
+	'no template'							=> frameCall( $site, 'builder/frametile', [ 'key' => 'header-line' ] )[0],
+];
+
+check( 'the picture of a block of the kind of the frame is its tile - a token, a query, a time and the address of the preview - and nothing is written; a block of a page, a footer for a header, a key that is none, a path and a template that is no frame are refused - 400 or 404',
+	$tileStatus === 200 && is_string( $tile['token'] ?? null ) && $tile['token'] !== '' && is_string( $tile['address'] ?? null ) && $tile['address'] !== '' && isset( $tile['query'], $tile['ttl'] )
+	&& array_filter( $tiles, static fn( int $status ): bool => in_array( $status, [ 400, 404 ], true ) === false ) === [] && frameSnapshot( $site ) === $before );
+
 ninoUser( $site, 'writer@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/edit' ] );
-$content = [ frameCall( $site, 'builder/framechoices', [ 'template' => 'frame-header' ] )[0], frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-header', 'key' => 'header-line' ] )[0], frameCall( $site, 'builder/framerestore', [ 'template' => 'frame-header', 'force' => true ] )[0] ];
+$content = [ frameCall( $site, 'builder/framechoices', [ 'template' => 'frame-header' ] )[0], frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-header', 'key' => 'header-line' ] )[0], frameCall( $site, 'builder/framerestore', [ 'template' => 'frame-header', 'force' => true ] )[0], frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => 'header-line' ] )[0] ];
 [ , $contentList ] = frameCall( $site, 'builder/list' );
 ninoUser( $site, 'themelab@example.com', [ '/_admin/themelab/manage' ] );
-$other = [ frameCall( $site, 'builder/framechoices', [ 'template' => 'frame-header' ] )[0], frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-header', 'key' => 'header-line' ] )[0] ];
+$other = [ frameCall( $site, 'builder/framechoices', [ 'template' => 'frame-header' ] )[0], frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-header', 'key' => 'header-line' ] )[0], frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => 'header-line' ] )[0] ];
 
-check( 'the step of the content - the list gives it no frame and the three actions are 403 - and an account with the right of Themelab and no right of the Builder is refused: nothing is written',
-	$content === [ 403, 403, 403 ] && ( $contentList['frames'] ?? null ) === [] && $other === [ 403, 403 ] && frameSnapshot( $site ) === $before );
+check( 'the step of the content - the list gives it no frame and the four actions - the picture of a block as well - are 403 - and an account with the right of Themelab and no right of the Builder is refused: nothing is written',
+	$content === [ 403, 403, 403, 403 ] && ( $contentList['frames'] ?? null ) === [] && $other === [ 403, 403, 403 ] && frameSnapshot( $site ) === $before );
 
 ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
 $wrong = [
@@ -139,7 +161,7 @@ check( 'the way back is offered after a choice and for the frame that choice wro
 $snapshot = frameSnapshot( $site );
 $untokened = [];
 
-foreach( [ 'builder/framechoices', 'builder/framechoose', 'builder/framerestore' ] as $action ) {
+foreach( [ 'builder/framechoices', 'builder/framechoose', 'builder/framerestore', 'builder/frametile' ] as $action ) {
 
 	$_POST['data'] = json_encode( [ 'template' => 'frame-header', 'key' => 'header-line', 'force' => true, 'locale' => \Nino\Locales::getNativeLocale( $site ) ] );
 	$_POST['action'] = $action;

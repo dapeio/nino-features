@@ -190,7 +190,7 @@ $every = [
 	'themelab/import-check'	=> [],
 	'themelab/import'		=> [ 'id' => 'x', 'items' => [] ],
 	'themelab/import-drop'	=> [ 'id' => 'x' ],
-] + array_combine( array_map( static fn( string $act ): string => 'themelab/frame-'. $act, [ 'open', 'preview', 'save', 'restore', 'blocks', 'block', 'keys', 'variant', 'offer', 'notation', 'upload', 'unstage' ] ), array_fill( 0, 12, [ 'template' => 'frame-header', 'tree' => [], 'texts' => [], 'base' => 'x', 'key' => 'hero-full', 'kind' => 'types', 'uri' => 'x', 'files' => [] ] ) );
+] + array_combine( array_map( static fn( string $act ): string => 'themelab/frame-'. $act, [ 'open', 'preview', 'save', 'restore', 'blocks', 'block', 'tile', 'keys', 'variant', 'offer', 'notation', 'upload', 'unstage' ] ), array_fill( 0, 13, [ 'template' => 'frame-header', 'tree' => [], 'texts' => [], 'base' => 'x', 'key' => 'hero-full', 'kind' => 'types', 'uri' => 'x', 'files' => [] ] ) );
 
 ninoUser( $site, 'builder-only@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
 $before = themelabSnapshot( $site );
@@ -199,7 +199,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = themelabCall( $site, $action, $data )[0];
 
-check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 34 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
+check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 35 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
 
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 $answers = [];

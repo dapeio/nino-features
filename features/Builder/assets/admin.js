@@ -9556,6 +9556,8 @@
 	 *	@param		{Function}	options.load					load( done ) - asks the server for the blocks of the kind of the frame; done( status, response )
 	 *	@param		{Function}	options.fail					fail( status, response ) - a request that was refused
 	 *	@param		{Function}	options.none					none() - there is no block for the frame
+	 *	@param		{Function}	options.tile					tile( key, done ) - asks the server for the picture of a block, the tile: done( status, { address, query } )
+	 *	@param		{string}		options.dir						Where the site is served: the tile is drawn from there
 	 *	@param		{Function}	options.apply					apply( key, entry ) - the block that was chosen and confirmed
 	 */
 	const chooseFrameBlock = function( options ) {
@@ -9567,26 +9569,38 @@
 				return;
 			}
 
-			const sourceOf = function( entry ) { return entry.own === true ? '' : localized( ( entry.origin ?? {} ).label ) };
-			const entries = response.blocks.filter( function( entry ) { return entry.off === null || entry.off === undefined } ).sort( function( one, other ) {
-				return ( one.own === true ? 0 : 1 ) - ( other.own === true ? 0 : 1 ) || sourceOf( one ).localeCompare( sourceOf( other ) ) || localized( one.name ).localeCompare( localized( other.name ) );
-			} );
+			const entries = response.blocks.filter( function( entry ) { return entry.off === null || entry.off === undefined } );
 
 			if( entries.length === 0 ) {
 				options.none();
 				return;
 			}
 
-			Nino.adminUi.pickDialog( {
+			// The source of a block in words: the own ones, the theme in use and the others; two sources of one name are told apart by their key
+			const labelOf = function( entry ) { return localized( ( entry.origin ?? {} ).label ) };
+			const clash = function( entry ) { return entries.some( function( other ) { return other.source !== entry.source && labelOf( other ) === labelOf( entry ) } ) };
+			const groupOf = function( entry ) {
+
+				if( entry.own === true )
+					return word('frame/own');
+
+				if( ( entry.origin ?? {} ).kind === 'theme' )
+					return clash( entry ) === true ? word( 'frame/theme-key', labelOf( entry ), entry.source ) : word( 'frame/theme', labelOf( entry ) );
+
+				return clash( entry ) === true ? labelOf( entry )+ ' ('+ entry.source+ ')' : labelOf( entry );
+			};
+			const rank = function( entry ) { return entry.own === true ? 0 : ( entry.applied === true ? 1 : 2 ) };
+			const sorted = entries.map( function( entry ) { return { entry : entry, group : groupOf( entry ) } } ).sort( function( one, other ) {
+				return rank( one.entry ) - rank( other.entry ) || one.group.localeCompare( other.group ) || localized( one.entry.name ).localeCompare( localized( other.entry.name ) );
+			} );
+
+			// Every item is a tile whose picture is drawn as the dialog of the blocks draws one - the block alone, in a frame - where the tile comes near; until then it stands on the quiet surface
+			const blank = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+
+			const shown = Nino.adminUi.pickDialog( {
 				title		: word('frame/choose'),
 				message	: word('frame/pick-note'),
-				items		: entries.map( function( entry ) {
-
-					const from = entry.own === true ? word('frame/own') : sourceOf( entry );
-					const text = localized( entry.description );
-
-					return { value : entry.key, label : localized( entry.name ), description : from+ ( text === '' ? '' : ' - '+ text ) };
-				} ),
+				items		: sorted.map( function( one ) { return { value : one.entry.key, label : localized( one.entry.name ), description : localized( one.entry.description ), group : one.group, image : blank } } ),
 				cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
 				opener	: options.opener,
 				onChoose	: function( key ) {
@@ -9608,6 +9622,51 @@
 						},
 					} );
 				},
+			} );
+
+			if( shown === false )
+				return;
+
+			// The tiles stand in the order of the items - the items are sorted by group, so the groups follow one another and the order of the rows is the order of the items
+			const faces = Array.from( dc.body.querySelectorAll('.nino-admin-pick-image') ).slice( -sorted.length );
+
+			const draw = function( face, key ) {
+
+				if( face.querySelector('iframe') !== null )
+					return;
+
+				options.tile( key, function( state, held ) {
+
+					if( state !== 200 || face.isConnected === false || face.querySelector('iframe') !== null )
+						return;
+
+					Array.from( face.querySelectorAll('img') ).forEach( function( picture ) { picture.remove() } );
+					tileFrame( face, { address : held.address, query : held.query }, options.dir );
+				} );
+			};
+
+			const watch = typeof wn.IntersectionObserver === 'function' ? new wn.IntersectionObserver( function( seen ) {
+
+				seen.forEach( function( one ) {
+
+					if( one.isIntersecting === true ) {
+						watch.unobserve( one.target );
+						draw( one.target, one.target.dataset.block );
+					}
+				} );
+			} ) : null;
+
+			faces.forEach( function( face, at ) {
+
+				if( sorted[at] === undefined )
+					return;
+
+				face.dataset.block = sorted[at].entry.key;
+
+				if( watch === null )
+					draw( face, face.dataset.block );
+				else
+					watch.observe( face );
 			} );
 		} );
 	};
@@ -9639,7 +9698,9 @@
 				chooseFrameBlock( {
 					name : name,
 					opener : event.currentTarget,
+					dir : data.dir ?? '',
 					load : function( done ) { Nino.admin.builder.call( 'framechoices', { template : frame.template, locale : Nino.admin.workLocale.current }, done ) },
+					tile : function( key, done ) { Nino.admin.builder.call( 'frametile', { template : frame.template, key : key, locale : Nino.admin.workLocale.current }, done ) },
 					fail : frameFailed,
 					none : function() { Nino.adminUi.say( word('frame/none') ) },
 					apply : function( key, entry ) {
