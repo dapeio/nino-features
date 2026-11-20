@@ -124,9 +124,23 @@ $script = (string) file_get_contents( $feature. '/assets/admin.js' );
 preg_match_all( "/word\\(\\s*'([a-z][a-z\\/-]*)'/", $script, $asked );
 $asked = array_unique( $asked[1] );
 $dynamic = [ 'info/origin-package', 'info/origin-feature', 'info/package-design', 'info/package-blocks', 'info/package-frames', 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'details/ph-landscape', 'details/ph-mark', 'error/load', 'frames/header', 'frames/footer', 'import/result-written', 'import/result-copied', 'import/result-replaced', 'import/result-skipped', 'import/result-left', 'import/result-failed', 'import/result-untried', 'error/export', 'error/import' ];
-$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'info/origin-' && $key !== 'frames/' && $key !== 'details/ph-' && $key !== 'import/result-' && isset( $words['de_DE']['[[/_admin/themelab/'. $key. ']]'], $words['en_US']['[[/_admin/themelab/'. $key. ']]'] ) === false );
+$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'info/origin-' && $key !== 'frames/' && $key !== 'frames/side-' && $key !== 'details/ph-' && $key !== 'import/result-' && isset( $words['de_DE']['[[/_admin/themelab/'. $key. ']]'], $words['en_US']['[[/_admin/themelab/'. $key. ']]'] ) === false );
 $sentence = static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/'. $code. ']]'], $words['en_US']['[[/_admin/error/'. $code. ']]'] );
-$codes = [ 'themelab_changed', 'themelab_language', 'themelab_shell', 'themelab_unknown', 'themelab_name', 'themelab_category', 'themelab_taken', 'themelab_invalid', 'themelab_refused', 'themelab_tree', 'themelab_place', 'themelab_preview', 'themelab_write', 'themelab_key', 'themelab_block', 'themelab_id', 'themelab_locked', 'themelab_html', 'themelab_foreign', 'themelab_loop', 'themelab_frame', 'themelab_address', 'themelab_picture', 'themelab_empty', 'themelab_long', 'themelab_export_key', 'themelab_export_version', 'themelab_export_name', 'themelab_export_description', 'themelab_export_none', 'themelab_export_unknown', 'themelab_export_read', 'themelab_export_archive', 'themelab_export_large', 'themelab_import_large', 'themelab_import_empty', 'themelab_import_unknown', 'themelab_package_loop', 'themelab_package_block', 'themelab_package_refused', 'themelab_import_archive_gzip', 'themelab_import_archive_name', 'themelab_import_archive_refused' ];
+$codes = [ 'themelab_frame', 'themelab_frame_gone', 'themelab_frame_side', 'themelab_frame_word', 'themelab_frame_taken', 'themelab_frame_source', 'themelab_frame_used', 'themelab_frame_standard', 'themelab_frame_write', 'themelab_changed', 'themelab_language', 'themelab_shell', 'themelab_unknown', 'themelab_name', 'themelab_category', 'themelab_taken', 'themelab_invalid', 'themelab_refused', 'themelab_tree', 'themelab_place', 'themelab_preview', 'themelab_write', 'themelab_key', 'themelab_block', 'themelab_id', 'themelab_locked', 'themelab_html', 'themelab_foreign', 'themelab_loop', 'themelab_frame', 'themelab_address', 'themelab_picture', 'themelab_empty', 'themelab_long', 'themelab_export_key', 'themelab_export_version', 'themelab_export_name', 'themelab_export_description', 'themelab_export_none', 'themelab_export_unknown', 'themelab_export_read', 'themelab_export_archive', 'themelab_export_large', 'themelab_import_large', 'themelab_import_empty', 'themelab_import_unknown', 'themelab_package_loop', 'themelab_package_block', 'themelab_package_refused', 'themelab_import_archive_gzip', 'themelab_import_archive_name', 'themelab_import_archive_refused' ];
+
+$twice = [];
+
+foreach( [ 'Themelab', 'Builder' ] as $module )
+	foreach( [ 'de_DE', 'en_US' ] as $code ) {
+
+		preg_match_all( "/^\\s*'(\\[\\[[^']+\\]\\])'\\s*=>/m", (string) file_get_contents( dirname( $feature ). '/'. $module. '/text/'. $code. '.php' ), $keys );
+
+		foreach( array_count_values( $keys[1] ) as $key => $count )
+			if( $count > 1 )
+				$twice[] = $module. '/'. $code. ' '. $key;
+	}
+
+check( 'no text key occurs twice in the text files of Themelab and of the Builder - the later sentence would silently take the place of the earlier one, so one of them could never be said', $twice === [] );
 
 check( 'every word the script asks for and every failure code the API answers has its sentence in both interface languages, and the two files have the same keys',
 	$lacking === [] && array_filter( $codes, static fn( string $code ): bool => $sentence( $code ) === false ) === [] && array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) );
@@ -187,6 +201,9 @@ $every = [
 	'themelab/frames'		=> [],
 	'themelab/adopt'		=> [ 'template' => 'page-home', 'tree' => [], 'at' => '0', 'key' => 'neu', 'name' => 'Neu', 'category' => 'content' ],
 	'themelab/frame-adopt'	=> [ 'template' => 'frame-header', 'key' => 'neu', 'name' => 'Neu' ],
+	'themelab/frame-create'	=> [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ],
+	'themelab/frame-rename'	=> [ 'template' => 'frame-header-neu', 'name' => 'Neu' ],
+	'themelab/frame-remove'	=> [ 'template' => 'frame-header-neu' ],
 	'themelab/export'		=> [ 'keys' => [ 'hero-full' ], 'key' => 'x', 'version' => '1.0.0', 'name' => 'X' ],
 	'themelab/import-check'	=> [],
 	'themelab/import'		=> [ 'id' => 'x', 'items' => [] ],
@@ -200,7 +217,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = themelabCall( $site, $action, $data )[0];
 
-check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page and of a frame, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 36 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
+check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page and of a frame, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 39 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
 
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 $answers = [];

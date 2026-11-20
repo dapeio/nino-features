@@ -17,17 +17,13 @@ namespace Nino\Modules\Themelab {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array											[ [ key, template ] ]
+		 *	@return 	array											[ [ key, side, template, default, names, name, uses ] ]
 		 */
-		public static function listed( array &$appData ): array {
+		public static function listed( array &$appData, string $locale = '' ): array {
 
-			$frames = [];
+			$locale = $locale === '' ? \Nino\Locales::getNativeLocale( $appData ) : $locale;
 
-			foreach( Store::frames( $appData ) as $key => $template )
-				if( is_file( \Nino\Filesystem::path( $appData, '/templates/'. $template. '.tpl' ) ) === true )
-					$frames[] = [ 'key' => $key, 'side' => Store::side( $template ), 'template' => $template ];
-
-			return $frames;
+			return array_values( array_filter( Store::frameList( $appData, $locale ), static fn( array $entry ): bool => is_file( \Nino\Filesystem::path( $appData, '/templates/'. $entry['template']. '.tpl' ) ) === true ) );
 		}
 
 		/**

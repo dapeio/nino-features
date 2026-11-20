@@ -76,6 +76,7 @@
 	 */
 	const S = {
 		list			: null,
+		frameNames	: null,
 		sheet			: 'page',
 		adapter		: null,
 		ready			: false,
@@ -185,6 +186,8 @@
 	 */
 	const N = {
 		open		: false,
+		tab			: 'pages',
+		tabFocus	: false,
 		bar			: null,
 		button	: null,
 		taken		: '',
@@ -1274,8 +1277,16 @@
 
 	// What a row of the outline is: its key, the word it shows - the id of a block, the name of a frame -, the full name for a hint, the icon and its type
 	// What a choice of a frame is called: "Standard", "None", or the word of the frame
-	const frameWord = function( choice ) {
-		return choice === 'default' ? word('frames/default') : ( choice === 'none' ? word('frames/none') : choice );
+	const frameWord = function( choice, side ) {
+		return choice === 'default' ? word('frames/default') : ( choice === 'none' ? word('frames/none') : ( frameCalled( side, choice ) || choice ) );
+	};
+
+	// The name a frame of the site is called by, in the working language: '' where it has none - the standard frames, and a frame the site made without one
+	const frameCalled = function( side, choice ) {
+
+		const kept = ( S.frameNames ?? {} )[side] ?? {};
+
+		return typeof kept[choice] === 'string' ? kept[choice] : '';
 	};
 
 	const rowOf = function( item ) {
@@ -1284,7 +1295,7 @@
 		const key = keyAt( item.at );
 
 		if( item.kind === 'frame' && ( key === '@header' || key === '@footer' ) )
-			return { key : key, label : word( key === '@footer' ? 'word/frame-footer' : 'word/frame-header' ), detail : frameWord( choiceOfCall( node ) ), name : '', icon : key === '@footer' ? 'panel-bottom' : 'panel-top', locked : false };
+			return { key : key, label : word( key === '@footer' ? 'word/frame-footer' : 'word/frame-header' ), detail : frameWord( choiceOfCall( node ), key === '@footer' ? 'footer' : 'header' ) + ( frameCalled( key === '@footer' ? 'footer' : 'header', choiceOfCall( node ) ) === '' ? '' : ' \u00b7 '+ choiceOfCall( node ) ), name : '', icon : key === '@footer' ? 'panel-bottom' : 'panel-top', locked : false };
 
 		// A template that is put in the middle of the page has its name and an id of its own
 		if( item.kind === 'frame' )
@@ -1490,6 +1501,8 @@
 				return;
 			}
 
+			S.frameNames = response.names ?? S.frameNames ?? {};
+
 			const root = el( 'div', 'nino-admin-pick builder-framechoice' );
 			let opened = null;
 			let reload = false;
@@ -1577,7 +1590,11 @@
 					item.type = 'button';
 					item.setAttribute( 'role', 'radio' );
 					item.dataset.word = choice;
-					text.appendChild( el( 'strong', 'nino-admin-pick-label', frameWord( choice ) ) );
+					text.appendChild( el( 'strong', 'nino-admin-pick-label', frameWord( choice, side ) ) );
+
+					if( frameCalled( side, choice ) !== '' )
+						text.appendChild( el( 'span', 'nino-admin-hint builder-framechoice-word', choice ) );
+
 					item.appendChild( face );
 					item.appendChild( text );
 
@@ -4602,7 +4619,7 @@
 				S.undo = [];
 				S.redo = [];
 				take( response );
-				S.view.bar.line.idle( word('msg/restored') );
+				S.view.bar.line.idle( Array.isArray( response.missingFrames ) === true && response.missingFrames.length > 0 ? word( 'msg/restored-frame', response.missingFrames.join(', ') ) : word('msg/restored') );
 				S.view.preview.flush();
 				paint();
 				return;
@@ -5141,6 +5158,18 @@
 		S.redo = [];
 		release();
 		paint();
+	};
+
+	// The address of the tab of the frames: #builder/@frames - the @ is what no key of a page has, so that a page called "frames" is a page; like #builder/@new and the @header of a frame
+	const FRAMES_TAB = '@frames';
+
+	const isFramesTab = function( parts ) {
+		return parts.length === 1 && parts[0] === FRAMES_TAB && S.list !== null && S.list.frames.length > 0;
+	};
+
+	// The address of the list in the tab that is shown
+	const tabParts = function() {
+		return N.tab === 'frames' ? [ FRAMES_TAB ] : [];
 	};
 
 	const templateOf = function( part ) {
@@ -7414,7 +7443,7 @@
 		bar.line.bind( form );
 
 		level.appendChild( Nino.adminUi.contextBar( {
-			back : { to : word('label/pages'), href : Nino.admin.router.href( 'builder', [] ), onClick : function() { Nino.admin.builder.go( [] ) } },
+			back : { to : word('label/pages'), href : Nino.admin.router.href( 'builder', tabParts() ), onClick : function() { Nino.admin.builder.go( tabParts() ) } },
 		} ) );
 		level.appendChild( form );
 
@@ -10191,6 +10220,12 @@
 
 					const entry = entries.find( function( candidate ) { return candidate.key === key } );
 
+					// A frame that is made of the block replaces none: no question
+					if( options.confirm === false ) {
+						options.apply( key, entry );
+						return;
+					}
+
 					// The whole frame goes: it is asked, and it can be taken back
 					Nino.adminUi.confirm( 'destructive', {
 						title		: word('frame/confirm-title'),
@@ -10255,9 +10290,17 @@
 		} );
 	};
 
-	// What a frame is called: the standard ones by the words of the panel, a named one by its word
-	const frameName = function( key ) {
-		return key === 'header' || key === 'footer' ? word( 'frame/'+ key ) : key.replace( /^(?:header|footer)-/, '' );
+	// What a frame is called: the standard ones by the words of the panel, a named one by the name it was given, and by its word where it has none
+	const frameName = function( key, entry ) {
+		return key === 'header' || key === 'footer' ? word( 'frame/'+ key ) : ( entry !== undefined && entry.name !== '' ? entry.name : key.replace( /^(?:header|footer)-/, '' ) );
+	};
+
+	// What stands beside the name of a frame: that it is the standard one, or its word, and on how many pages it is chosen
+	const frameDetail = function( frame ) {
+
+		const count = frame.uses === 0 ? word('frame/uses-none') : ( frame.uses === 1 ? word('frame/uses-one') : word( 'frame/uses-many', String( frame.uses ) ) );
+
+		return frame.default === true ? word( 'frame/standard', count ) : word( 'frame/word', frame.key.replace( /^(?:header|footer)-/, '' ), count );
 	};
 
 	// The frames in the list of the pages - the standard ones and the named ones the site has -, for the one who designs: each a row with the choice of its block, the way back to what it was, and - where Themelab is on and the account may
@@ -10278,7 +10321,7 @@
 
 		const rows = data.frames.map( function( frame ) {
 
-			const name = frameName( frame.key );
+			const name = frameName( frame.key, frame );
 			const actions = [];
 
 			actions.push( Nino.adminUi.button( word('frame/choose'), function( event ) {
@@ -10328,7 +10371,7 @@
 					Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ 'frames', frame.key ] ) } );
 				}, { small : true, name : word( 'frame/themelab-of', name ) } ) );
 
-			return { key : frame.key, title : name, detail : word('frame/hint'), actions : actions };
+			return { key : frame.key, title : name, detail : frameDetail( frame ), actions : actions };
 		} );
 
 		return Nino.adminUi.list( rows, { title : word('frame/title'), level : 2 } );
@@ -10476,7 +10519,42 @@
 		const dated = data.pages.some( function( page ) { return page.saved > 0 } );
 
 		mount.innerHTML = '';
+
+		S.frameNames = { header : {}, footer : {} };
+		data.frames.forEach( function( frame ) {
+
+			if( frame.default === false && frame.name !== '' )
+				S.frameNames[frame.side][frame.key.slice( frame.side.length + 1 )] = frame.name;
+		} );
+
+		// The two tabs of the list, for the one who designs: the pages, and the frames of the site. A list without frames has no tabs, and the address of the frames is the list of the pages
+		const tabbed = data.frames.length > 0;
+		const tab = tabbed === true && N.tab === 'frames' ? 'frames' : 'pages';
+
+		N.button = null;
+
+		if( tabbed === true ) {
+
+			const strip = Nino.adminUi.tabs( [ { key : 'pages', label : word('tab/pages') }, { key : 'frames', label : word('tab/frames') } ], { active : tab, label : word('tab/label'), id : 'builder-tabs', onSelect : function( key ) {
+
+				if( key !== tab ) {
+					N.tabFocus = true;
+					Nino.admin.builder.go( key === 'frames' ? [ FRAMES_TAB ] : [] );
+				}
+			} } );
+
+			// The strip is part of the list: it goes with the list where a page is opened
+			mount.appendChild( strip.el );
+		}
+
 		mount.appendChild( holder );
+
+		if( tab === 'frames' ) {
+
+			holder.appendChild( framesList( data ) );
+
+			return;
+		}
 
 		// A page is made by the one who may design and may write routes: the list says so, and the action asks again
 		if( data.pages.length === 0 )
@@ -10510,10 +10588,6 @@
 				onRowClick	: function( row ) { Nino.admin.builder.go( [ addressOf( row.template ) ], { origin : [] } ) },
 			} );
 		}
-
-		// The frames of the site: the header and the footer, for the one who designs
-		if( data.frames.length > 0 )
-			holder.appendChild( framesList( data ) );
 
 		if( data.create === true ) {
 
@@ -10616,14 +10690,26 @@
 			N.open = false;
 			N.source = '';
 
-			if( parts.length === 0 ) {
+			if( parts.length === 0 || isFramesTab( parts ) === true ) {
 
 				leaveView();
 
-				S.ready = false;
-				Nino.admin.router.set( 'builder', [] );
+				const was = N.tab;
 
-				Nino.adminUi.showLevel( 'builder-list', { focus : from === true && N.button !== null && N.button.isConnected === true ? N.button : nameOfPanel() } );
+				N.tab = parts.length === 0 ? 'pages' : 'frames';
+				S.ready = false;
+				Nino.admin.router.set( 'builder', parts );
+
+				// The tab the address names is drawn where another was
+				if( was !== N.tab && S.list !== null )
+					render( S.list );
+
+				// The tab that was pressed keeps the focus where the list is drawn again: the keys go on from it
+				const pressed = N.tabFocus === true ? dc.getElementById( 'builder-tabs-'+ N.tab ) : null;
+
+				N.tabFocus = false;
+
+				Nino.adminUi.showLevel( 'builder-list', { focus : pressed !== null ? pressed : ( from === true && N.button !== null && N.button.isConnected === true ? N.button : nameOfPanel() ) } );
 
 				return;
 			}
@@ -10654,6 +10740,7 @@
 			if( Nino.admin.builder.ready === true && at.panel !== 'builder' )
 				return;
 
+
 			const proceed = function() { Nino.admin.builder.follow() };
 
 			if( Nino.admin.builder.ready === false ) {
@@ -10665,7 +10752,7 @@
 			const leaving = ( N.open === true && ( isNew( at.parts ) === false || sourceOfNew( at.parts ) !== N.source ) ) || ( S.ready === true && ( at.parts.length === 0 || there === null || there.template !== S.template || there.page !== S.page ) );
 
 			Nino.admin.router.leave( [ 'builder' ], leaving, proceed, function() {
-				Nino.admin.router.set( 'builder', N.open === true ? newParts() : ( S.ready === true ? S.at : [] ) );
+				Nino.admin.router.set( 'builder', N.open === true ? newParts() : ( S.ready === true ? S.at : tabParts() ) );
 			} );
 		},
 	} );

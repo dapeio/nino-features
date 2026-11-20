@@ -54,7 +54,7 @@ const answer = function( extra ) {
 
 	return Object.assign( {
 		pages : [ { template : 'page-home', name : 'Home', path : '/', locales : [ 'de_DE', 'en_US' ], navs : [], complete : true, blocks : 3, saved : 1763356920 } ],
-		frames : [ { key : 'header', template : 'frame-header' }, { key : 'footer', template : 'frame-footer' } ],
+		frames : [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 0 }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 0 } ],
 		create : true, navs : [], native : 'de_DE', locales : LOCALES, level : 3, contentLocale : 'de_DE', dir : '',
 	}, extra ?? {} );
 };
@@ -1740,7 +1740,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 // until it is typed over, and what is asked is asked with what stands in the field - first as a question, check, and then written
 {
 	const inputsOf = function( dialog ) { return findAll( dialog, function( el ) { return el.tagName === 'INPUT' && String( el.className ).indexOf('nino-admin-input') !== -1 } ) };
-	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', template : 'frame-header' }, { key : 'footer', template : 'frame-footer' } ] } ) );
+	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 0 }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 0 } ] } ) );
 	const action = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/header') ) } )[0];
 
 	check( 'H. a row of the frames has the action "Save as frame block", named for its frame', action !== undefined );
@@ -1798,7 +1798,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 
 // A language that has no text for a part: the dialog says which language lacks which part before anything is written, and offers to fill it from the working language - or to stop; nothing is filled by itself
 {
-	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', template : 'frame-header' } ] } ) );
+	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 0 } ] } ) );
 	const action = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/header') ) } )[0];
 
 	w.requests.length = 0;
@@ -1835,6 +1835,190 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	const { w } = shown( '#themelab/info', LIST( { tab : 'info', counts : { blocks : 2, frames : 2, frameBlocks : 3 } } ) );
 
 	check( 'H. the tab of the theme counts the own blocks of the frames', textOf( w.page ).indexOf( W('info/frame-blocks') ) !== -1 && /3/.test( textOf( w.page ).slice( textOf( w.page ).indexOf( W('info/frame-blocks') ) ) ) );
+}
+
+// Frames of the site made, named and taken away: "New frame" asks for the side, then the name in each language, the word - made of the name until it is typed over - and what it is made of;
+// a named frame has the actions "Rename" and "Delete", a standard one has neither; a frame a page chooses is refused and the pages are named
+{
+	const standard = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 2 }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 2 },
+		{ key : 'header-landing', side : 'header', template : 'frame-header-landing', default : false, names : { de_DE : 'Landung', en_US : 'Landing' }, name : 'Landung', uses : 0, pages : [] } ];
+	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : standard } ) );
+	const labelled = function( label ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === label } ) };
+
+	check( 'I. the tab of the frames names a named frame by its name with its word and the number of pages beside it, and the standard ones by the words of the panel with the same count',
+		textOf( w.page ).indexOf('Landung') !== -1 && textOf( w.page ).indexOf( W( 'frames/word-of', 'landing' ) ) !== -1 && textOf( w.page ).indexOf( W( 'frames/uses-none' ) ) !== -1 && textOf( w.page ).indexOf( W( 'frames/uses-many', '2' ) ) !== -1 && textOf( w.page ).indexOf( W('frames/standard') ) !== -1 );
+	check( 'I. "Rename" and "Delete" are the actions of a named frame only - the standard frames have none, and so cannot be asked to be taken away',
+		labelled( W( 'frames/rename-of', 'Landung' ) ).length === 1 && labelled( W( 'frames/remove-of', 'Landung' ) ).length === 1 && labelled( W( 'frames/rename-of', W('frames/header') ) ).length === 0 && labelled( W( 'frames/remove-of', W('frames/footer') ) ).length === 0 );
+
+	const button = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('frames/new') } )[0];
+
+	check( 'I. the tab has the button "New frame"', button !== undefined );
+
+	fire( button, 'click' );
+
+	const form = dialogOf( w );
+	const sourceOf = findAll( form, function( el ) { return el.tagName === 'SELECT' } )[0];
+
+	check( 'I. the form is one dialog with one main button - the side is part of what the frame is made of: each source has its side in front, the blocks of each side too', findAll( form, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-btn-primary') !== -1 } ).length === 1
+		&& findAll( sourceOf, function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value } ).join() === 'header|frame-header,header|frame-header-landing,header|@block,footer|frame-footer,footer|@block' );
+
+	sourceOf.value = 'footer|frame-footer';
+	const named = findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0];
+	const typed = findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'word' } )[0];
+
+	named.value = 'Fuß der Landung';
+	fire( named, 'input' );
+
+	check( 'I. the word of a new frame follows the name in the working language as it is typed - small letters, digits, single hyphens', typed.value === 'fuss-der-landung' );
+
+	typed.value = 'unten';
+	fire( typed, 'input' );
+	named.value = 'Anderer Fuß';
+	fire( named, 'input' );
+
+	check( 'I. a word that was typed by hand stays as it was typed', typed.value === 'unten' );
+
+	w.requests.length = 0;
+	pressed( form, W('frames/create') );
+
+	const made = asked( w, 'themelab/frame-create' );
+
+	check( 'I. the request names the side that was chosen, the word, the names in each language, and the frame it is made of - the standard frame of that side - and no block',
+		made.length === 1 && made[0].payload.side === 'footer' && made[0].payload.word === 'unten' && made[0].payload.name.de_DE === 'Anderer Fuß' && made[0].payload.from === 'frame-footer' && made[0].payload.block === undefined && made[0].payload.locale === 'de_DE' );
+
+	answerOf( made[0], 409, { error : 'x', code : 'themelab_frame_taken', params : [ 'unten' ], field : 'word' } );
+
+	check( 'I. a word that is taken is said at the dialog, which stays open', textOf( form ).indexOf( 'unten' ) !== -1 && form.open !== false );
+
+	// made of a block: the form closes for the dialog of the blocks of that side, and the block that is chosen is the source - no frame, no question
+	fire( form, 'close' );
+	fire( button, 'click' );
+
+	const form2 = dialogOf( w );
+
+	findAll( form2, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0].value = 'Aus Block';
+	findAll( form2, function( el ) { return el.tagName === 'SELECT' } )[0].value = 'footer|@block';
+	w.requests.length = 0;
+	pressed( form2, W('frames/create') );
+	fire( form2, 'close' );
+
+	const listing = asked( w, 'themelab/frame-blocks' );
+
+	check( 'I. "Made of a block" asks the blocks that this panel has for the side that was chosen, and makes nothing yet', listing.length === 1 && listing[0].payload.template === 'frame-footer' && asked( w, 'themelab/frame-create' ).length === 0 );
+
+	answerOf( listing[0], 200, { blocks : [ { key : 'footer-line', name : { de_DE : 'Eine Zeile', en_US : 'One line' }, description : {}, category : 'frame', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
+
+	const blocks = dialogOf( w );
+
+	fire( findAll( blocks, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-pick-item') !== -1 } )[0], 'click' );
+	fire( blocks, 'close' );
+
+	const fromBlock = asked( w, 'themelab/frame-create' );
+
+	check( 'I. the block that is chosen is the source of the frame: the request has the block and the side, the word made of the name, and no frame - and no question came first',
+		fromBlock.length === 1 && fromBlock[0].payload.block === 'footer-line' && fromBlock[0].payload.from === undefined && fromBlock[0].payload.side === 'footer' && fromBlock[0].payload.word === 'aus-block' );
+
+	answerOf( fromBlock[0], 200, { key : 'footer-aus-block' } );
+
+	check( 'I. the frame that was made is open in the editor by its address', w.state.hash === '#themelab/frames/footer-aus-block' );
+
+
+	answerOf( made[0], 200, { key : 'footer-unten' } );
+	w.requests.length = 0;
+	w.state.hash = '#themelab/frames';
+
+	fire( form, 'close' );
+	fire( labelled( W( 'frames/rename-of', 'Landung' ) )[0], 'click' );
+
+	const renaming = dialogOf( w );
+	const field = findAll( renaming, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0];
+
+	check( 'I. the dialog of "Rename" begins with the name the frame has in the working language', field !== undefined && field.value === 'Landung' );
+
+	field.value = 'Start';
+	fire( field, 'input' );
+	pressed( renaming, W('frames/rename') );
+
+	const renamed = asked( w, 'themelab/frame-rename' );
+
+	check( 'I. renaming asks for the template of the frame and the new names, and nothing else', renamed.length === 1 && renamed[0].payload.template === 'frame-header-landing' && renamed[0].payload.name.de_DE === 'Start' && renamed[0].payload.word === undefined );
+
+	fire( renaming, 'close' );
+	w.requests.length = 0;
+	fire( labelled( W( 'frames/remove-of', 'Landung' ) )[0], 'click' );
+
+	const confirmation = dialogOf( w );
+
+	fire( confirmation, 'close' );
+
+	check( 'I. a "Delete" that is turned down asks the server for nothing', asked( w, 'themelab/frame-remove' ).length === 0 );
+
+	fire( labelled( W( 'frames/remove-of', 'Landung' ) )[0], 'click' );
+
+	check( 'I. "Delete" asks first, and says that the frame goes with its texts', textOf( dialogOf( w ) ).indexOf( W( 'frames/remove-message', 'Landung' ) ) !== -1 && asked( w, 'themelab/frame-remove' ).length === 0 );
+
+	const sure = dialogOf( w );
+
+	pressed( sure, W('frames/remove') );
+	fire( sure, 'close' );
+
+	const removing = asked( w, 'themelab/frame-remove' );
+
+	check( 'I. the answer yes asks the server to take the frame away by its template', removing.length === 1 && removing[0].payload.template === 'frame-header-landing' );
+
+	answerOf( removing[0], 409, { error : 'x', code : 'themelab_frame_used', params : [ 'Kontakt (/kontakt)' ], field : 'template' } );
+
+	check( 'I. a frame that a page chooses is refused with the pages named - the page and its address - at the list', textOf( w.page ).indexOf('Kontakt (/kontakt)') !== -1 );
+}
+
+// The question before a frame is deleted tells the truth: where the list knows that pages choose the frame, it names them - three, the rest counted - and has no button that deletes
+{
+	const used = { key : 'header-viel', side : 'header', template : 'frame-header-viel', default : false, names : { de_DE : 'Viel' }, name : 'Viel', uses : 5, pages : [ 'Kontakt', 'Start', 'Blog' ] };
+	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 5, pages : [] }, used ] } ) );
+	const opening = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'frames/remove-of', 'Viel' ) } )[0];
+
+	w.requests.length = 0;
+	fire( opening, 'click' );
+
+	const note = dialogOf( w );
+	const text = textOf( note );
+
+	check( 'J. a frame that pages choose is not asked about: the dialog names the three pages and counts the rest, says what to do, and has no button that deletes - the one button is "Understood"',
+		text.indexOf( W( 'frames/remove-used', 'Viel', 'Kontakt, Start, Blog '+ W( 'frames/remove-more', '2' ) ) ) !== -1 && findAll( note, function( el ) { return el.tagName === 'BUTTON' } ).map( function( el ) { return textOf( el ).trim() } ).indexOf( W('frames/remove') ) === -1
+		&& findAll( note, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-btn-primary') !== -1 } ).length === 1 );
+
+	pressed( note, W('frames/remove-ok') );
+	fire( note, 'close' );
+
+	check( 'J. nothing is asked of the server by it', asked( w, 'themelab/frame-remove' ).length === 0 );
+
+	// a refusal of the server after the block of a new frame comes back to the form, with what was typed and the refusal at the field
+	const make = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('frames/new') } )[0];
+
+	fire( make, 'click' );
+
+	const form = dialogOf( w );
+
+	findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0].value = 'Viel';
+	findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'word' } )[0].value = 'viel';
+	findAll( form, function( el ) { return el.tagName === 'SELECT' } )[0].value = 'header|@block';
+	w.requests.length = 0;
+	pressed( form, W('frames/create') );
+	fire( form, 'close' );
+
+	answerOf( asked( w, 'themelab/frame-blocks' )[0], 200, { blocks : [ { key : 'header-line', name : { de_DE : 'Eine Zeile' }, description : {}, category : 'frame', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
+
+	const blocks = dialogOf( w );
+
+	fire( findAll( blocks, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-pick-item') !== -1 } )[0], 'click' );
+	fire( blocks, 'close' );
+	answerOf( asked( w, 'themelab/frame-create' )[0], 409, { error : 'x', code : 'themelab_frame_taken', params : [ 'viel' ], field : 'word' } );
+
+	const again = dialogOf( w );
+	const kept = function( key ) { return findAll( again, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === key && ( key !== 'name' || el.dataset.locale === 'de_DE' ) } )[0].value };
+
+	check( 'J. the form is open again after the refusal, with the name, the word and the source as they were typed, and the refusal is said at the field of the word',
+		again !== form && kept('name') === 'Viel' && kept('word') === 'viel' && findAll( again, function( el ) { return el.tagName === 'SELECT' } )[0].value === 'header|@block' && textOf( again ).indexOf( 'viel' ) !== -1 && findAll( again, function( el ) { return String( el.className ).indexOf('nino-admin-field-error') !== -1 } ).length === 1 );
 }
 
 done();

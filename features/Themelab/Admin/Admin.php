@@ -5,6 +5,7 @@ namespace Nino\Modules\Themelab {
 
 	use Nino\Modules\Builder\Custom;
 	use Nino\Modules\Builder\Library;
+	use Nino\Modules\Builder\Store;
 	use Nino\Modules\Builder\Tree;
 
 	// The API of the workbench for the blocks of the project, and the panel that draws its answers (assets/admin.js). Every action guards itself with the right
@@ -63,6 +64,9 @@ namespace Nino\Modules\Themelab {
 				'themelab/frames'		=> [ self::class, 'apiFrames' ],
 				'themelab/adopt'		=> [ self::class, 'apiAdopt' ],
 				'themelab/frame-adopt'	=> [ self::class, 'apiFrameAdopt' ],
+				'themelab/frame-create'	=> [ self::class, 'apiFrameCreate' ],
+				'themelab/frame-rename'	=> [ self::class, 'apiFrameRename' ],
+				'themelab/frame-remove'	=> [ self::class, 'apiFrameRemove' ],
 				'themelab/export'		=> [ self::class, 'apiExport' ],
 				'themelab/import-check'	=> [ self::class, 'apiImportCheck' ],
 				'themelab/import'		=> [ self::class, 'apiImport' ],
@@ -120,6 +124,9 @@ namespace Nino\Modules\Themelab {
 				'themelab/export'		=> 'Export Blocks '. $key( 'key' ),
 				'themelab/import'		=> 'Import Blocks',
 				'themelab/adopt'		=> 'Adopt Block '. $key( 'key' ),
+				'themelab/frame-create'	=> 'Create Frame '. $key( 'side' ). ' '. $key( 'word' ),
+				'themelab/frame-rename'	=> 'Rename Frame '. $key( 'template' ),
+				'themelab/frame-remove'	=> 'Delete Frame '. $key( 'template' ),
 				'themelab/frame-adopt'	=> 'Adopt Frame '. $key( 'template' ). ' As '. $key( 'key' ),
 				'themelab/frame-save'	=> 'Save Frame '. $key( 'template' ),
 				'themelab/frame-restore'	=> 'Restore Last Frame State '. $key( 'template' ),
@@ -408,7 +415,7 @@ namespace Nino\Modules\Themelab {
 				// What the project holds of its own, for the page of the theme: the blocks and the frames
 				'counts'		=> [ 'blocks' => count( Sheet::listed( $appData, 'project' ) ), 'frames' => count( Frames::listed( $appData ) ), 'frameBlocks' => count( Sheet::listed( $appData, 'project', true ) ) - count( Sheet::listed( $appData, 'project' ) ) ],
 				'blocks'		=> $blocks,
-				'frames'		=> Frames::listed( $appData ),
+				'frames'		=> Frames::listed( $appData, $locale ),
 				'library'		=> $library,
 				'categories'	=> array_values( array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ) ),
 				'contentLocale'	=> $locale,
@@ -1695,8 +1702,260 @@ namespace Nino\Modules\Themelab {
 			if( self::_gate( $appData, $request ) === false )
 				return;
 
-			\Nino\Http::ok( $request, [ 'frames' => Frames::listed( $appData ) ] );
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			\Nino\Http::ok( $request, [ 'frames' => Frames::listed( $appData, $locale ) ] );
 		}
+
+		/**
+		 *	A new frame of the site: the template frame-<side>-<word> and its words in every language, made of the frame of that side that is named or of a block of that side's kind, and the name it
+		 *	is called by. The request names the side, the word, the source and the names - the word is held to the form of one, free among the templates, and the source is a frame of the same side or
+		 *	a block with the root of the side; nothing of the template is taken from it
+		 */
+		public static function apiFrameCreate( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$side = \Nino\Admin\Admin::postString( $data, 'side' );
+			$word = \Nino\Admin\Admin::postString( $data, 'word' );
+			$from = \Nino\Admin\Admin::postString( $data, 'from' );
+			$pick = \Nino\Admin\Admin::postString( $data, 'block' );
+
+			if( isset( Store::FRAMES[$side] ) === false ) {
+				self::_fail( $request, 400, 'the request names no side of the page', 'themelab_frame_side', [], 'side' );
+				return;
+			}
+
+			$template = Store::FRAMES[$side]. '-'. $word;
+
+			if( $word === '' || Store::side( $template ) !== $side ) {
+				self::_fail( $request, 400, 'the word is none of a frame', 'themelab_frame_word', [ Store::FRAME_WORD_MAX ], 'word' );
+				return;
+			}
+
+			$names = self::_names( $appData, $request, $data['name'] ?? null, 'name', $locale );
+
+			if( $names === null )
+				return;
+
+			if( ( $from === '' ) === ( $pick === '' ) ) {
+				self::_fail( $request, 400, 'the request names one source', 'themelab_frame_source', [], 'from' );
+				return;
+			}
+
+			$block = $pick === '' ? null : Library::block( $appData, $pick, Library::wrapOf( $template ) );
+
+			if( $pick !== '' && ( $block === null || ( \Nino\Blocks::all( $appData )[$pick]['category'] ?? '' ) !== 'frame' ) ) {
+				self::_fail( $request, 404, 'there is no such block for this frame', 'themelab_frame_source', [], 'block' );
+				return;
+			}
+
+			if( $from !== '' && ( Store::isFrame( $appData, $from ) === false || Store::side( $from ) !== $side ) ) {
+				self::_fail( $request, 404, 'there is no such frame', 'themelab_frame_source', [], 'from' );
+				return;
+			}
+
+			if( \Nino\Filesystem::lockFile( $appData, Store::LOCK ) === false ) {
+				self::_fail( $request, 500, 'the lock of the Builder could not be taken', 'themelab_lock' );
+				return;
+			}
+
+			try {
+
+				if( Store::isFrame( $appData, $template ) === true || is_file( \Nino\Filesystem::path( $appData, '/templates/'. $template. '.tpl' ) ) === true ) {
+					self::_fail( $request, 409, 'the word is taken', 'themelab_frame_taken', [ $word ], 'word' );
+					return;
+				}
+
+				if( ( $taken = Store::frameNameTaken( $appData, $side, $template, $names ) ) !== null ) {
+					self::_fail( $request, 409, 'another frame of this side has the name', 'themelab_frame_name_taken', [ $taken ], 'name' );
+					return;
+				}
+
+				$set = [];
+				$formats = [];
+
+				if( $block === null ) {
+
+					$source = \Nino\Filesystem::getFileContent( $appData, '/templates/'. $from. '.tpl', null );
+
+					if( is_string( $source ) === false ) {
+						self::_fail( $request, 404, 'there is no such frame', 'themelab_frame_source', [], 'from' );
+						return;
+					}
+
+					$meta = \Nino\Text::meta( $appData );
+					$source = str_replace( '/template/'. $from. '/', '/template/'. $template. '/', $source );
+
+					foreach( \Nino\Text::values( $appData, '/template/'. $from ) as $key => $values ) {
+
+						$now = '/template/'. $template. substr( (string) $key, strlen( '/template/'. $from ) );
+						$set[$now] = $values;
+
+						if( isset( $meta[$key]['format'] ) === true )
+							$formats[$now] = $meta[$key]['format'];
+					}
+				}
+				else {
+
+					$source = rtrim( \Nino\Markup::write( $block['tree'], \Nino\Components::containers( $appData ) ) ). "\n";
+					$native = \Nino\Locales::getNativeLocale( $appData );
+
+					foreach( $block['slots'] as $slot ) {
+
+						if( $slot['kind'] === 'image' )
+							continue;
+
+						$place = '/template/'. $template. '/'. ( $slot['scope'] === '' ? $block['id'] : $block['id']. '-'. $slot['scope'] ). '/'. $slot['word'];
+
+						foreach( \Nino\Locales::getTextLocales( $appData ) as $code ) {
+
+							$own = $block['texts'][$code][$slot['name']] ?? null;
+							$text = is_string( $own ) === true ? $own : ( $code === $native ? ( $block['texts']['en_US'][$slot['name']] ?? null ) : null );
+
+							if( is_string( $text ) === true )
+								$set[$place][$code] = $text;
+						}
+					}
+				}
+
+				if( \Nino\Filesystem::putFileContent( $appData, '/templates/'. $template. '.tpl', $source ) !== true || ( $set !== [] && \Nino\Text::put( $appData, $set, [], $formats ) === null ) ) {
+					self::_fail( $request, 500, 'the frame could not be written', 'themelab_frame_write' );
+					return;
+				}
+
+				Store::setFrameName( $appData, $template, $names );
+			}
+			finally {
+				\Nino\Filesystem::unlockFile( $appData, Store::LOCK );
+			}
+
+			\Nino\Http::ok( $request, [ 'key' => substr( $template, 6 ), 'template' => $template ] );
+		}
+
+		/**
+		 *	The name of a named frame - one for each language - changed: the word, the template and the pages that choose it stay as they are
+		 */
+		public static function apiFrameRename( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$template = \Nino\Admin\Admin::postString( $data, 'template' );
+
+			if( Store::isFrame( $appData, $template ) === false || in_array( $template, Store::FRAMES, true ) === true ) {
+				self::_fail( $request, 404, 'there is no such frame', 'themelab_frame_gone', [], 'template' );
+				return;
+			}
+
+			$names = self::_names( $appData, $request, $data['name'] ?? null, 'name', $locale );
+
+			if( $names === null )
+				return;
+
+			if( \Nino\Filesystem::lockFile( $appData, Store::LOCK ) === false ) {
+				self::_fail( $request, 500, 'the lock of the Builder could not be taken', 'themelab_lock' );
+				return;
+			}
+
+			try {
+
+				if( ( $taken = Store::frameNameTaken( $appData, (string) Store::side( $template ), $template, $names ) ) !== null ) {
+					self::_fail( $request, 409, 'another frame of this side has the name', 'themelab_frame_name_taken', [ $taken ], 'name' );
+					return;
+				}
+
+				if( Store::setFrameName( $appData, $template, $names ) === false ) {
+					self::_fail( $request, 500, 'the name could not be written', 'themelab_frame_write' );
+					return;
+				}
+			}
+			finally {
+				\Nino\Filesystem::unlockFile( $appData, Store::LOCK );
+			}
+
+			\Nino\Http::ok( $request, [ 'template' => $template ] );
+		}
+
+		/**
+		 *	A named frame taken away - with its words, its names and the last state of it - where no page chooses it; where a page does, it is refused, 409, and the pages are named: nothing
+		 *	is put on another frame by itself. The standard frame of a side is never taken away. The pages are looked at under the lock of the Builder, the same one that saves a page
+		 */
+		public static function apiFrameRemove( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$template = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' );
+
+			if( in_array( $template, Store::FRAMES, true ) === true ) {
+				self::_fail( $request, 403, 'the standard frame is not taken away', 'themelab_frame_standard', [], 'template' );
+				return;
+			}
+
+			if( Store::isFrame( $appData, $template ) === false ) {
+				self::_fail( $request, 404, 'there is no such frame', 'themelab_frame_gone', [], 'template' );
+				return;
+			}
+
+			if( \Nino\Filesystem::lockFile( $appData, Store::LOCK ) === false ) {
+				self::_fail( $request, 500, 'the lock of the Builder could not be taken', 'themelab_lock' );
+				return;
+			}
+
+			try {
+
+				$all = Store::frameUsage( $appData, $locale )[$template] ?? [];
+				$uses = array_values( array_filter( $all, static fn( array $use ): bool => $use['last'] === false ) );
+				$kept = array_values( array_filter( $all, static fn( array $use ): bool => $use['last'] === true ) );
+				$say = static fn( array $page ): string => $page['name']. ( $page['path'] === '' ? '' : ' ('. $page['path']. ')' );
+
+				if( $uses !== [] ) {
+
+					self::_fail( $request, 409, 'the frame is chosen by a page', 'themelab_frame_used', [ implode( ', ', array_map( $say, array_slice( $uses, 0, 8 ) ) ). ( count( $uses ) > 8 ? ' …' : '' ) ], 'template' );
+					return;
+				}
+
+				// The last state of a page that names the frame: a restore would write it back
+				if( $kept !== [] ) {
+
+					self::_fail( $request, 409, 'the frame is named by the last state of a page', 'themelab_frame_used_last', [ implode( ', ', array_map( $say, array_slice( $kept, 0, 8 ) ) ). ( count( $kept ) > 8 ? ' …' : '' ) ], 'template' );
+					return;
+				}
+
+				if( Store::dropFrame( $appData, $template ) === false ) {
+					self::_fail( $request, 500, 'the frame could not be taken away', 'themelab_frame_write' );
+					return;
+				}
+			}
+			finally {
+				\Nino\Filesystem::unlockFile( $appData, Store::LOCK );
+			}
+
+			\Nino\Http::ok( $request, [ 'template' => $template ] );
+		}
+
 
 		/**
 		 *	A block of a page as a block of the project - the page is not changed. The right of this panel is the whole of what it takes: an account that holds it is given the

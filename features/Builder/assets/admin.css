@@ -907,3 +907,9 @@
 	grid-column: 1 / -1;
 	margin: 0;
 }
+
+/* The word of a named frame stands under its name in the choice of a frame, quiet and on a line of its own */
+.builder-framechoice-word {
+	display: block;
+	overflow-wrap: anywhere;
+}

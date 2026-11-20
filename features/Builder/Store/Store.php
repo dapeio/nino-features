@@ -169,6 +169,220 @@ namespace Nino\Modules\Builder {
 			return $found;
 		}
 
+		// What a person calls a named frame, apart from its word: the word is in the address of the template and in every page that chooses the frame, so the name is kept here and nowhere in a
+		// template. template => language => name
+		public const string FRAME_NAMES = '/data/builder/frame-names.php';
+
+		// Where the Builder keeps the stamp of the frame that a choice wrote - the mark the way back asks for - one file for each frame
+		public const string FRAME_MARK = '/data/builder/frame-choice';
+
+		/**
+		 *	The names of the named frames, as the project keeps them: only for a template that has the form of a named frame, only a text for a language
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											template => language => name
+		 */
+		public static function frameNames( array &$appData ): array {
+
+			// A store that cannot be read - a file that was edited by hand - is no store: the frames are called by their words, and the log says so once
+			try {
+				$kept = \Nino\Filesystem::getFileContent( $appData, self::FRAME_NAMES, [] );
+			}
+			catch( \Throwable $failure ) {
+
+				static $said = false;
+
+				if( $said === false ) {
+					$said = true;
+					error_log( 'Builder: the names of the frames could not be read from '. self::FRAME_NAMES. ' ('. $failure->getMessage(). ')' );
+				}
+
+				$kept = [];
+			}
+
+			$out = [];
+
+			foreach( is_array( $kept ) === true ? $kept : [] as $template => $names )
+				if( is_string( $template ) === true && self::side( $template ) !== null && in_array( $template, self::FRAMES, true ) === false && is_array( $names ) === true )
+					foreach( $names as $locale => $name )
+						if( is_string( $locale ) === true && is_string( $name ) === true && $name !== '' )
+							$out[$template][$locale] = $name;
+
+			return $out;
+		}
+
+		/**
+		 *	The name, in a language, that another frame of the same side already has: two frames of one side are not called alike - the tiles of the choice would show two equal names
+		 *
+		 *	@param		string		$side
+		 *	@param		string		$except				The frame that is named - it may keep its name
+		 *	@param		array			$names				language => name
+		 *
+		 *	@return 	string|null								The name that is taken, null where none is
+		 */
+		public static function frameNameTaken( array &$appData, string $side, string $except, array $names ): ?string {
+
+			foreach( self::frameNames( $appData ) as $template => $others ) {
+
+				if( $template === $except || self::side( $template ) !== $side )
+					continue;
+
+				foreach( $names as $locale => $name )
+					if( isset( $others[$locale] ) === true && mb_strtolower( trim( $others[$locale] ) ) === mb_strtolower( trim( (string) $name ) ) )
+						return (string) $name;
+			}
+
+			return null;
+		}
+
+		/**
+		 *	What a frame is called for a person, in a language: the name it has in that language, else in another; the standard frames and a frame with no name have none - the word is what they
+		 *	are called then
+		 */
+		public static function frameName( array &$appData, string $template, string $locale ): string {
+
+			$names = self::frameNames( $appData )[$template] ?? [];
+
+			return (string) ( $names[$locale] ?? ( $names === [] ? '' : reset( $names ) ) );
+		}
+
+		/**
+		 *	Keep the names of a named frame, or take them away with an empty list
+		 */
+		public static function setFrameName( array &$appData, string $template, array $names ): bool {
+
+			if( self::side( $template ) === null || in_array( $template, self::FRAMES, true ) === true )
+				return false;
+
+			$all = self::frameNames( $appData );
+
+			if( $names === [] )
+				unset( $all[$template] );
+			else
+				$all[$template] = $names;
+
+			return \Nino\Filesystem::putFileContent( $appData, self::FRAME_NAMES, $all ) === true;
+		}
+
+		/**
+		 *	The pages that choose each frame: the template of the frame => the pages, each [ template, name, path ]. A page that calls the scaffold itself, or a frame with no word, has the standard
+		 *	frame of the side; a page that has neither call is none of them. The templates are read as they stand - the call [frame /templates/frame-header-landing] is read by the form of
+		 *	the call and nothing else
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$locale				The language the names and the addresses are told in
+		 *
+		 *	@return 	array
+		 */
+		public static function frameUsage( array &$appData, string $locale ): array {
+
+			$usage = [];
+			$known = [];
+
+			foreach( Pages::all( $appData, $locale ) as $page )
+				$known[(string) $page['template']] = [ 'name' => (string) ( $page['name'] ?? $page['template'] ), 'path' => (string) ( $page['path'] ?? '' ) ];
+
+			$dir = \Nino\Filesystem::path( $appData, '/templates' );
+			$templates = $dir === '' ? [] : (array) glob( $dir. '/page-*.tpl' );
+			sort( $templates );
+
+			foreach( $templates as $file ) {
+
+				$template = basename( (string) $file, '.tpl' );
+
+				if( ( self::named( $template )['frame'] ?? true ) !== false || is_link( (string) $file ) === true )
+					continue;
+
+				// A page that has no route is named by its file; the last state of a page counts as well - a restore would write the frame back
+				$who = $known[$template] ?? [ 'name' => $template. '.tpl', 'path' => '' ];
+				$live = \Nino\Filesystem::getFileContent( $appData, '/templates/'. $template. '.tpl', null );
+				$last = self::previous( $appData, $template );
+
+				foreach( [ [ $live, false ], [ $last['source'] ?? null, true ] ] as [ $source, $kept ] ) {
+
+					if( is_string( $source ) === false )
+						continue;
+
+					$seen = [];
+
+					foreach( \Nino\Modules\Builder\Tree::read( $appData, $source ) as $node ) {
+
+						$choice = \Nino\Modules\Builder\Tree::frameChoice( $node );
+
+						if( $choice !== null )
+							$frame = $choice[1] === 'default' ? self::FRAMES[$choice[0]] : ( $choice[1] === 'none' ? '' : self::FRAMES[$choice[0]]. '-'. $choice[1] );
+						else if( ( $node['n'] ?? '' ) === 'template' && in_array( $node['s'] ?? '', \Nino\Modules\Builder\Tree::FRAME_CALLS, true ) === true )
+							$frame = self::FRAMES[$node['s'] === \Nino\Modules\Builder\Tree::FRAME_CALLS[0] ? 'header' : 'footer'];
+						else
+							continue;
+
+						if( $frame !== '' && isset( $seen[$frame] ) === false ) {
+							$seen[$frame] = true;
+							$usage[$frame][] = [ 'template' => $template, 'name' => $who['name'], 'path' => $who['path'], 'last' => $kept ];
+						}
+					}
+				}
+			}
+
+			return $usage;
+		}
+
+		/**
+		 *	The frames of the site for a list - the Builder's and Themelab's -: each with its key, its side, whether it is the standard one of its side, the names it was given and the one for the
+		 *	language, and on how many pages it is chosen (the standard frame counts the pages that choose none of their own)
+		 *
+		 *	@return 	array											[ [ key, side, template, default, names, name, uses ] ]
+		 */
+		public static function frameList( array &$appData, string $locale ): array {
+
+			$names = self::frameNames( $appData );
+			$usage = self::frameUsage( $appData, $locale );
+			$out = [];
+
+			foreach( self::frames( $appData ) as $key => $template ) {
+
+				$live = array_values( array_filter( $usage[$template] ?? [], static fn( array $use ): bool => $use['last'] === false ) );
+				$out[] = [ 'key' => $key, 'side' => (string) self::side( $template ), 'template' => $template, 'default' => $key === self::side( $template ), 'names' => $names[$template] ?? [], 'name' => self::frameName( $appData, $template, $locale ), 'uses' => count( $live ), 'pages' => array_slice( array_column( $live, 'name' ), 0, 3 ) ];
+			}
+
+			return $out;
+		}
+
+		/**
+		 *	Take a named frame away with everything that belongs to it: its template, its words in every language, its names, the last state of it and the mark of the choice that wrote it.
+		 *	Only a named frame of the form, never a standard one; whether a page chooses it is asked before, by the one who calls this
+		 */
+		public static function dropFrame( array &$appData, string $template ): bool {
+
+			if( self::side( $template ) === null || in_array( $template, self::FRAMES, true ) === true )
+				return false;
+
+			$real = \Nino\Filesystem::path( $appData, '/templates/'. $template. '.tpl' );
+
+			if( $real === '' || is_file( $real ) === false || is_link( $real ) === true || @unlink( $real ) === false )
+				return false;
+
+			$keys = array_keys( \Nino\Text::values( $appData, '/template/'. $template ) );
+
+			if( $keys !== [] )
+				\Nino\Text::put( $appData, [], $keys );
+
+			self::setFrameName( $appData, $template, [] );
+
+			foreach( [ self::PREVIOUS. '/'. $template. '.php', self::FRAME_MARK. '/'. $template. '.php' ] as $path ) {
+
+				$file = \Nino\Filesystem::path( $appData, $path );
+
+				if( $file !== '' && ( is_file( $file ) === true || is_link( $file ) === true ) )
+					@unlink( $file );
+
+				unset( $appData['./nino/filesystem/cache'][$path] );
+			}
+
+			return true;
+		}
+
 		/**
 		 *	Whether a name is a frame of this site: a standard frame, or a named one whose file is there - the form is side()'s, nothing of a request is taken unchecked
 		 */

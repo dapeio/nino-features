@@ -955,10 +955,23 @@ const frameCalls = function() {
 	return S.top.filter( function( node ) { return node.n === 'template' || node.n === 'frame' } ).map( function( node ) { return node.n+ ' '+ node.s } );
 };
 
+check( 'F286. a restore that brings back a state which names a frame the site has not says so at once: the line after the restore carries the word of the frame, and the plain sentence is for a restore with none missing',
+	/response\.missingFrames\.length > 0 \? word\( 'msg\/restored-frame', response\.missingFrames\.join\(', '\) \) : word\('msg\/restored'\)/.test( script ) === true );
+
 check( 'F285. a call of the frame of a page says its side and what it chooses: the call of the scaffold is the standard frame, [frame /templates/frame-header] too, a word is the word, none is none - and what is no call of a frame is none',
 	builder.sideOfCall( { n : 'template', s : '/templates/html-header' } ) === 'header' && builder.sideOfCall( { n : 'frame', s : '/templates/frame-footer-klein' } ) === 'footer' && builder.sideOfCall( { n : 'template', s : '/templates/other' } ) === null && builder.sideOfCall( { n : 'frame', s : '/templates/page-x' } ) === null
 	&& builder.choiceOfCall( { n : 'template', s : '/templates/html-header' } ) === 'default' && builder.choiceOfCall( { n : 'frame', s : '/templates/frame-header' } ) === 'default' && builder.choiceOfCall( { n : 'frame', s : '/templates/frame-header-landing' } ) === 'landing'
 	&& builder.choiceOfCall( { n : 'frame', s : '/templates/frame-footer-none' } ) === 'none' && builder.frameWord( 'landing' ) === 'landing' );
+
+{
+	S.frameNames = { header : { landing : 'Landing' }, footer : {} };
+
+	check( 'F286. a frame of the site that has a name is called by it - in the choice of a page and in the outline, with the word quietly beside it - and by its word where it has none; the standard frames and none are called by the words of the panel, and the name of the other side is not borrowed',
+		builder.frameWord( 'landing', 'header' ) === 'Landing' && builder.frameWord( 'landing', 'footer' ) === 'landing' && builder.frameWord( 'zwei', 'header' ) === 'zwei' && builder.frameWord( 'default', 'header' ) !== 'Landing' && builder.frameWord( 'none', 'header' ) !== 'Landing');
+
+	S.frameNames = null;
+}
+
 
 check( 'F285. the choice of both frames is written in ONE step of the undo, and the undo brings back both calls: the page that called the scaffold calls its frames - the header with the word, the footer with none - and the rest of the page is not touched',
 	( function() {

@@ -847,16 +847,16 @@ function world( options ) {
 // --- the frames in the list: a header and a footer that are given a block of their kind, without the editor of Themelab -----------------------------------------
 
 {
-	const frames = [ { key : 'header', template : 'frame-header', stamp : 'aa', last : 0, undo : false }, { key : 'footer', template : 'frame-footer', stamp : 'bb', last : 1763356920, undo : true } ];
+	const frames = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 2, stamp : 'aa', last : 0, undo : false }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 0, stamp : 'bb', last : 1763356920, undo : true } ];
 	const w = world( { list : answer( { frames : frames, bridge : false } ) } );
 
-	w.open('#builder');
+	w.open('#builder/@frames');
 
 	const buttons = function( node ) { return findAll( node, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-btn') !== -1 && el.className.indexOf('nino-admin-btn-icon') === -1 } ).map( textOf ) };
 	const rows = findAll( w.list, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'footer' ) } );
 
 	check( 'G. the list of the pages has the two frames for the one who designs - a row each, "applies to all pages", with the choice of a block, the way back only where there is a last state, and nothing that names Themelab where Themelab is off',
-		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W('frame/hint') ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 );
+		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '2' ) ) ) !== -1 && textOf( rows[1] ).indexOf( W( 'frame/standard', W('frame/uses-none') ) ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 );
 
 	const content = world( { list : answer( { frames : [] } ) } );
 
@@ -864,7 +864,7 @@ function world( options ) {
 
 	const bridged = world( { list : answer( { frames : frames, bridge : true } ) } );
 
-	bridged.open('#builder');
+	bridged.open('#builder/@frames');
 
 	check( 'G. the account that only writes the content gets no frames from the server and so no row of them; where Themelab is on and the account holds its right each row has "Edit in Themelab" as well',
 		findAll( content.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header' } ).length === 0 && buttons( bridged.list ).filter( function( text ) { return text === W('frame/themelab') } ).length === 2 );
@@ -916,6 +916,69 @@ function world( options ) {
 
 	check( 'G. a frame that was changed since the list was drawn is not forced: the answer 409 with the code of the frame says so in words, the list is asked for again, and no request is made with force',
 		w.said.indexOf( W('frame/changed') ) !== -1 && w.requests.filter( function( entry ) { return entry.action === 'builder/list' } ).length === 1 && w.requests.every( function( entry ) { return entry.payload.force === undefined } ) );
+
+	// a frame that is made of a block is no replacement: the same dialog applies the choice at once, with no question
+	{
+		const chosen = [];
+		const before = w.questions.length;
+
+		w.panel.chooseFrame( { name : 'Header', opener : null, dir : '', confirm : false, load : function( done ) { done( 200, { blocks : [ entry( 'one', 'project', 'project', 'Project' ) ], categories : [] } ) }, tile : function() {}, fail : function() {}, none : function() {}, apply : function( key ) { chosen.push( key ) } } );
+
+		const pick = w.dialogs[w.dialogs.length - 1];
+
+		fire( findAll( pick, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-pick-item') !== -1 } )[0], 'click' );
+		fire( pick, 'close' );
+
+		check( 'G. the dialog of the blocks of a frame, asked not to confirm - for a frame that is made of a block, which replaces none - applies the block at once and asks no question', chosen.join() === 'one' && w.questions.length === before );
+	}
+}
+
+// --- the two tabs of the list: the pages and the frames of the site ---------------------------------------------------------------------------------------------------
+
+{
+	const named = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 3, stamp : 'aa', last : 0, undo : false },
+		{ key : 'header-landing', side : 'header', template : 'frame-header-landing', default : false, names : { de_DE : 'Landung', en_US : 'Landing' }, name : 'Landing', uses : 1, stamp : 'cc', last : 0, undo : false },
+		{ key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 4, stamp : 'bb', last : 0, undo : false } ];
+	const tabs = function( node ) { return findAll( node, function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ) };
+	const w = world( { list : answer( { frames : named, bridge : true } ) } );
+
+	w.open('#builder');
+
+	check( 'T. the list has two tabs, "Pages" and "Frames", for the one who designs - the pages are shown, and the table of the frames is not', tabs( w.list.parentNode ?? w.list ).map( textOf ).join() === W('tab/pages')+ ','+ W('tab/frames') && w.table() !== null && findAll( w.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } ).length === 0 );
+
+	const frames = tabs( w.list.parentNode ?? w.list ).filter( function( tab ) { return textOf( tab ) === W('tab/frames') } )[0];
+
+	fire( frames, 'click' );
+
+	const rows = findAll( w.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } );
+
+	check( 'T. the tab "Frames" is the address #builder/@frames: the frames are listed - the named one by its name with its word and the number of pages beside it, the standard ones marked with theirs - and the pages are not',
+		w.state.hash === '#builder/@frames' && rows.length === 1 && textOf( rows[0] ).indexOf('Landing') !== -1 && textOf( rows[0] ).indexOf( W( 'frame/word', 'landing', W('frame/uses-one') ) ) !== -1 && textOf( w.list ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '3' ) ) ) !== -1 && textOf( w.list ).indexOf( W('frame/title') ) !== -1 && w.table() === null );
+
+	const again = world( { list : answer( { frames : named, bridge : true } ) } );
+
+	again.open('#builder/@frames');
+
+	check( 'T. the address #builder/@frames opens the tab of the frames by itself and the tab is marked as the one that is shown', findAll( again.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'footer' } ).length === 1 && tabs( again.list.parentNode ?? again.list ).filter( function( tab ) { return tab.attributes['aria-selected'] === 'true' } ).map( textOf ).join() === W('tab/frames') );
+
+	again.panel.go( [] );
+
+	check( 'T. the tab "Pages" is the address #builder again, and the pages are shown', again.state.hash === '#builder' && again.table() !== null );
+
+	// the tab has an address that no page has: a page called "frames" is a page, for the one who designs too
+	const framesPage = world( { list : answer( { frames : named, bridge : true } ) } );
+
+	framesPage.open('#builder/frames');
+	framesPage.panel.follow();
+
+	check( 'T. a page whose address is "frames" is opened by #builder/frames, as any page - the tab of the frames is #builder/@frames - and the list of the pages is not replaced by the frames',
+		framesPage.requests.some( function( entry ) { return entry.action === 'builder/open' && entry.payload.template === 'page-frames' } ) === true && findAll( framesPage.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'footer' } ).length === 0 );
+
+	const plain = world( { list : answer( { frames : [] } ) } );
+
+	plain.open('#builder');
+
+	check( 'T. an account that does not design has no tabs - the list of the pages is all it has', tabs( plain.list.parentNode ?? plain.list ).length === 0 && plain.table() !== null );
 }
 
 done();

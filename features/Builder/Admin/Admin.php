@@ -160,7 +160,7 @@ namespace Nino\Modules\Builder {
 			// A page is made by the one who may design and may write routes: the list says so, and the action asks again
 			$create = $level >= \Nino\Modules\Builder::LEVEL_DESIGN && \Nino\Auth::checkPermission( $appData, \Nino\Modules\Builder::ROUTES ) === true;
 
-			\Nino\Http::ok( $request, [ 'pages' => $pages, 'frames' => $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? self::_frames( $appData ) : [], 'create' => $create, 'bridge' => \Nino\Modules\Builder::bridge( $appData ), 'navs' => \Nino\Pages::navKeys( $appData ) ] + self::_view( $appData, $locale, $level ) );
+			\Nino\Http::ok( $request, [ 'pages' => $pages, 'frames' => $level >= \Nino\Modules\Builder::LEVEL_DESIGN ? self::_frames( $appData, $locale ) : [], 'create' => $create, 'bridge' => \Nino\Modules\Builder::bridge( $appData ), 'navs' => \Nino\Pages::navKeys( $appData ) ] + self::_view( $appData, $locale, $level ) );
 		}
 
 		public static function apiOpen( array &$appData, array &$request ): void {
@@ -457,7 +457,14 @@ namespace Nino\Modules\Builder {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'restored' => true ] + self::_after( $appData, $template, $level ) );
+			// A frame the restored state names that the site has no more: the page says so at once - the website draws the standard one
+			$gone = [];
+
+			foreach( Tree::read( $appData, $target['source'] ) as $node )
+				if( ( $choice = Tree::frameChoice( $node ) ) !== null && in_array( $choice[1], [ 'default', 'none' ], true ) === false && in_array( Store::FRAMES[$choice[0]]. '-'. $choice[1], Store::frames( $appData ), true ) === false )
+					$gone[] = $choice[1];
+
+			\Nino\Http::ok( $request, [ 'restored' => true, 'missingFrames' => array_values( array_unique( $gone ) ) ] + self::_after( $appData, $template, $level ) );
 		}
 
 		/**
@@ -1244,24 +1251,25 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array											[ [ key, template, last ] ]
 		 */
-		private static function _frames( array &$appData ): array {
+		private static function _frames( array &$appData, string $locale ): array {
 
 			$out = [];
 
-			foreach( Store::frames( $appData ) as $key => $template )
-				if( ( $state = Store::state( $appData, $template ) ) !== null ) {
+			foreach( Store::frameList( $appData, $locale ) as $entry )
+				if( ( $state = Store::state( $appData, $entry['template'] ) ) !== null ) {
 
+					$template = $entry['template'];
 					$stamp = Store::stamp( $state );
 
 					// The way back is for the frame the choice wrote: as long as the frame is that one, and no other
-					$out[] = [ 'key' => $key, 'side' => Store::side( $template ), 'template' => $template, 'stamp' => $stamp, 'last' => self::_last( $appData, $template ), 'undo' => self::_last( $appData, $template ) > 0 && self::_chosen( $appData, $template ) === $stamp ];
+					$out[] = $entry + [ 'stamp' => $stamp, 'last' => self::_last( $appData, $template ), 'undo' => self::_last( $appData, $template ) > 0 && self::_chosen( $appData, $template ) === $stamp ];
 				}
 
 			return $out;
 		}
 
 		// Where the stamp of the frame that a choice wrote is kept, to tell the frame the choice made from one that was changed since
-		private const string CHOSEN = '/data/builder/frame-choice';
+		private const string CHOSEN = Store::FRAME_MARK;
 
 		private static function _chosen( array &$appData, string $template ): string {
 
@@ -1358,7 +1366,14 @@ namespace Nino\Modules\Builder {
 				$sides[$side] = [ 'locked' => $locked[$side], 'missing' => $gone, 'current' => $current[$side], 'options' => array_merge( array_values( array_filter( $words[$side], static fn( string $word ): bool => $word !== 'default' || is_file( \Nino\Filesystem::path( $appData, '/templates/'. Store::FRAMES[$side]. '.tpl' ) ) === true ) ), [ 'none' ] ), 'framed' => ( $framed[$side] ?? false ) === true ];
 			}
 
-			\Nino\Http::ok( $request, [ 'sides' => $sides, 'level' => $level ] );
+			$locale = self::_locale( $appData, $request );
+			$called = [ 'header' => [], 'footer' => [] ];
+
+			foreach( Store::frameList( $appData, $locale ) as $entry )
+				if( $entry['default'] === false && $entry['name'] !== '' )
+					$called[$entry['side']][substr( $entry['template'], strlen( 'frame-'. $entry['side'] ) + 1 )] = $entry['name'];
+
+			\Nino\Http::ok( $request, [ 'sides' => $sides, 'names' => $called, 'level' => $level ] );
 		}
 
 		/**

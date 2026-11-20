@@ -53,6 +53,6 @@ check( 'C3. "Save as frame block" is a button of the editor of a frame, and unsa
 
 
 check( 'C4. a frame of the list is named by its word - a named one - or by the word of the panel - the standard ones - in the tab, in the editor and in the dialog that keeps it as a block; the request names the template as frame-<key>',
-	has( /title\s*: frameName\( frame\.key \)/ ) === true && has( /const title = frameName\( frame \);\s*const template = 'frame-'\+ frame;/ ) === true && has( /String\( key \)\.replace\( \/\^\(\?:header\|footer\)-\/, '' \)/ ) === true );
+	has( /const title = frameName\( frame\.key \);[\s\S]*?title\s*: title/ ) === true && has( /const title = frameName\( frame \);\s*const template = 'frame-'\+ frame;/ ) === true && has( /String\( key \)\.replace\( \/\^\(\?:header\|footer\)-\/, '' \)/ ) === true );
 
 done();
