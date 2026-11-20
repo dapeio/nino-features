@@ -195,7 +195,7 @@ function knobs( from, steps ) {
 
 	return list.map( function( knob ) {
 		const step = steps[knob.key] ?? 0;
-		return Object.assign( { small : false, step : step, default : knob.ladder[2] }, knob );
+		return Object.assign( { small : false, step : step, delivered : from.indexOf('craft') === 0 && knob.key === 'section-wrap.space' ? -1 : 0, default : knob.ladder[2] }, knob );
 	} );
 }
 
@@ -258,7 +258,7 @@ function describe( mix, rest, brand ) {
 	const theme = from === 'standard' ? '' : from.split('@')[0];
 	const standard = ( section.standard ?? {} )['section-wrap'] ?? ( theme === 'craft' ? 'soft' : 'regular' );
 	const variants = [ { name : 'regular', label : null, source : 'schema' }, { name : theme === 'craft' ? 'soft' : 'band', label : { de_DE : theme === 'craft' ? 'Weiche Fläche' : 'Band', en_US : theme === 'craft' ? 'Soft surface' : 'Band' }, source : 'part' } ];
-	const offers = [ { theme : 'nino', version : '1.0.0', ok : true, problem : '', why : null }, { theme : 'craft', version : '1.0.0', ok : true, problem : '', why : null }, { theme : 'rest', version : '1.0.0', ok : false, problem : 'English detail of the css', why : CSS_WHY } ];
+	const offers = [ { theme : 'nino', version : '1.0.0', ok : true, problem : '', why : null }, { theme : 'craft', version : '1.0.0', ok : true, problem : '', why : null, values : { 'section-wrap.space' : -1 } }, { theme : 'rest', version : '1.0.0', ok : false, problem : 'English detail of the css', why : CSS_WHY } ];
 
 	return {
 		groups : {
@@ -304,8 +304,8 @@ function listAnswer( active, extra, pages, demos, copies ) {
 	return Object.assign( {
 		themes : [
 			{ key : 'nino', kind : 'theme', origin : 'shipped', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'nino' },
-			{ key : 'craft', kind : 'theme', origin : 'uploaded', removable : true, version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
-			{ key : 'rest', kind : 'theme', origin : 'catalogue', version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
+			{ key : 'craft', kind : 'theme', origin : 'uploaded', frames : [ { key : 'craft-foot', name : { de_DE : 'Fuß <b>x</b>', en_US : 'Foot <b>x</b>' }, reads : [ { key : '/project/company/general/name', text : 'Nino <b>GmbH</b>', logo : false }, { key : '/logo', text : null, logo : true } ] } ], css : { lines : 4, why : null }, version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
+			{ key : 'rest', kind : 'theme', origin : 'catalogue', css : { lines : 0, why : { code : 'theme-css', params : [ 'line 3 has an element selector' ] } }, version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
 			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : 'craft@1.0.0', header : 'standard' }, active : active === 'own:lindner' },
 		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
@@ -722,21 +722,7 @@ function world( options ) {
 }
 
 {
-	// the button to remove is the one of a card whose theme this account may remove; and where it was removed, the focus is on the button that chooses a package
-	const w = world( { active : 'nino' } );
-	const shown = listAnswer( 'nino' ).themes;
-
-	shown.find( function( theme ) { return theme.key === 'craft' } ).removable = false;
-	w.at( '#themes' );
-	w.requests.length = 0;
-	w.panel.reload();
-	w.serve( { listExtra : { themes : shown } } );
-
-	const craft = w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === 'craft' } );
-
-	check( 'B. a theme that was uploaded and that this account may not remove - the list says so - has no button to remove it',
-		findAll( craft, function( node ) { return node.dataset.remove !== undefined } ).length === 0 );
-
+	// where a theme was removed, the focus is on the button that chooses a package
 	const gone = world( { active : 'nino' } );
 
 	gone.at( '#themes' );
@@ -756,8 +742,8 @@ function previewOfTheme( change ) {
 
 	return { id : 'a'.repeat( 32 ), seconds : 900, theme : Object.assign( {
 		key : 'second', version : '1.3.0', name : 'Second <b>look</b>', description : 'Warm.', picture : '', parts : [ { group : 'section', ok : true, why : null } ],
-		blocks : [ { key : 'in-one', name : 'One', category : 'content', frame : false, state : 'in', origin : '', theme : '' }, { key : 'out-one', name : 'Two', category : 'content', frame : false, state : 'out', origin : 'Basis', theme : '' } ],
-		frames : 0, fonts : [], licence : 'Free <b>text</b>\n', installed : { origin : 'uploaded', version : '1.2.0', replace : true }, refused : [], canInstall : true,
+		blocks : [ { key : 'in-one', name : 'One', category : 'content', frame : false, state : 'in', origin : '', theme : '', reads : [] }, { key : 'out-one', name : 'Two', category : 'content', frame : false, state : 'out', origin : 'Basis', theme : '', reads : [] } ],
+		frames : 0, fonts : [], css : { lines : 0, text : '' }, licence : 'Free <b>text</b>\n', installed : { origin : 'uploaded', version : '1.2.0', replace : true }, refused : [], canInstall : true,
 	}, change ?? {} ) };
 }
 
@@ -836,10 +822,44 @@ function previewDialog( w, preview ) {
 
 	refusing.at( '#themes' );
 
-	const dialog = previewDialog( refusing, previewOfTheme( { canInstall : false, refused : [ { code : 'needs_right', params : [ 'Second' ] } ], installed : null } ) );
+	const dialog = previewDialog( refusing, previewOfTheme( { canInstall : false, refused : [ { code : 'key_reserved', params : [ 'second' ] } ], installed : null } ) );
 
-	check( 'B. a new package is put in with replace as false; a package that may not be put in - the account lacks the right - has no button to install it and says why, in the sentence of the refusal',
-		sent === 'themes/upload false' && findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim() === W('upload/submit') } ).length === 0 && refusing.text( dialog ).indexOf( Wp( 'api/themes_upload_needs_right', 'Second' ) ) !== -1 );
+	check( 'B. a new package is put in with replace as false; a package that may not be put in - its key is one that is reserved - has no button to install it and says why, in the sentence of the refusal',
+		sent === 'themes/upload false' && findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim() === W('upload/submit') } ).length === 0 && refusing.text( dialog ).indexOf( Wp( 'api/themes_upload_key_reserved', 'second' ) ) !== -1 );
+}
+
+{
+	// the css a package brings, and the keys its frames read: text, never markup
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const css = '.a { color: red }\n/* </style><b>x</b> */\n.b { color: blue }';
+	const dialog = previewDialog( w, previewOfTheme( { css : { lines : 3, text : css }, blocks : [ { key : 'foot', name : 'Foot', category : 'frame', frame : true, state : 'in', origin : '', theme : '', reads : [ { key : '/project/company/general/name', text : 'Nino <b>GmbH</b>', logo : false }, { key : '<b>x</b>', text : null, logo : false }, { key : '/logo', text : null, logo : true } ] } ], frames : 1 } ) );
+	const toggle = findAll( dialog, function( node ) { return node.id === 'themes-upload-css-toggle' } )[0];
+	const field = findAll( dialog, function( node ) { return node.tagName === 'TEXTAREA' && node.getAttribute('aria-labelledby') === 'themes-upload-css-toggle' } )[0];
+	const keys = findAll( dialog, function( node ) { return node.tagName === 'CODE' } ).map( function( node ) { return node.textContent } );
+
+	check( 'B. the preview says that the package brings css and how many lines, and shows it as text in a field that is read and not changed, behind a button, as the licence is',
+		w.text( dialog ).indexOf( Wp( 'upload/css', 3 ) ) !== -1 && toggle !== undefined && field !== undefined && field.readOnly === true && field.value === css && toggle.getAttribute('aria-expanded') === 'false' );
+	check( 'B. each frame of the package names the keys it reads, as a list of text - a key that is markup draws no element - with the sentence behind the (?) of what that means',
+		keys.join() === '/project/company/general/name,<b>x</b>,/logo' && w.text( dialog ).indexOf( 'Nino <b>GmbH</b>' ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-none') ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-logo') ) !== -1 && w.byTag( dialog, 'b' ).length === 0 && w.text( dialog ).indexOf( Wp( 'upload/reads', 'Foot' ) ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-help') ) !== -1 );
+}
+
+{
+	// the card: the frames that read texts, quietly behind a button, as text; the css that was refused, with its reason
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const card = function( key ) { return w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === key } ) };
+	const toggle = findAll( card('craft'), function( node ) { return node.dataset.reads === 'craft' } )[0];
+	const keys = findAll( card('craft'), function( node ) { return node.tagName === 'CODE' } ).map( function( node ) { return node.textContent } );
+
+	check( 'B. the card of a theme with frames that read texts has a button that shows the keys as text - closed at first - and a theme without has none',
+		toggle !== undefined && toggle.getAttribute('aria-expanded') === 'false' && keys.join() === '/project/company/general/name,/logo' && w.text( card('craft') ).indexOf( 'Nino <b>GmbH</b>' ) !== -1 && w.byTag( card('craft'), 'b' ).length === 0 && findAll( card('nino'), function( node ) { return node.dataset.reads !== undefined } ).length === 0 );
+	check( 'B. a css of a theme that the rule refused is named on the card with the reason, in the words of the panel, and the card is there all the same',
+		w.text( card('rest') ).indexOf( Wp( 'msg/card-css', Wp( 'why/theme-css', 'line 3 has an element selector' ) ) ) !== -1 );
 }
 
 // --- C. one theme --------------------------------------------------------------------------------------------------------
@@ -1134,13 +1154,14 @@ function previewDialog( w, preview ) {
 	select.focus();
 	fire( select, 'change' );
 
-	check( 'F. another part is asked for at once, with the step the knob of the same name is on, and the other groups as they were', w.requests.length === 1 && w.requests[0].payload.mix.parts.section.from === 'craft@1.0.0' && w.requests[0].payload.mix.parts.section.values['section-wrap.space'] === 2 && w.requests[0].payload.mix.parts.header.from === 'standard' && w.timers.filter( function( timer ) { return timer.fn !== null && timer.ms === 150 } ).length === 0 );
+	check( 'F. another part is asked for at once, at the steps it is delivered at - those it was set to are replaced - and the other groups as they were', w.requests.length === 1 && w.requests[0].payload.mix.parts.section.from === 'craft@1.0.0' && w.requests[0].payload.mix.parts.section.values['section-wrap.space'] === -1 && w.requests[0].payload.mix.parts.header.from === 'standard' && w.timers.filter( function( timer ) { return timer.fn !== null && timer.ms === 150 } ).length === 0 );
 
 	w.serve();
 
 	const labels = w.byClass( w.theme, 'nino-admin-field-label' ).map( function( label ) { return w.text( label ) } );
 
-	check( 'F. the screen of the group is drawn from the answer: +2 is still on, and is 3.5rem in this part', w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] === 'true' && w.hint( 'themes-section-section-wrap-space' ) === '56px', labels.join() );
+	check( 'F. the screen of the group is drawn from the answer: the knob stands at the step the part is delivered at, -1, and the mark of the default is on that step and not on 0 - the middle of the scale is the middle', w.step( 'themes-section-section-wrap-space', 1 ).attributes['aria-checked'] === 'true' && w.step( 'themes-section-section-wrap-space', 1 ).dataset.standard === 'true' && w.step( 'themes-section-section-wrap-space', 2 ).dataset.standard === undefined && w.step( 'themes-section-section-wrap-space', 4 ).attributes['aria-checked'] !== 'true', labels.join() );
+	check( 'F. the steps that were set for the part that was there are said to be replaced, where the bar says what happened - and the knob of the same name that was not set says nothing', w.text( w.byClass( w.theme, 'nino-admin-status' )[0] ).indexOf( Wp( 'msg/part-steps', 'Section' ) ) !== -1 );
 	check( 'F. the part brings its own variant and the standard variant of the part stands', w.step( 'themes-section-section-wrap-variant', 1 ) !== undefined && w.text( w.step( 'themes-section-section-wrap-variant', 1 ) ) === 'Soft surface' && w.step( 'themes-section-section-wrap-variant', 1 ).attributes['aria-checked'] === 'true' );
 
 	const heads = w.byClass( w.theme, 'nino-admin-accordion-button' ).map( function( head ) { return w.text( w.byClass( head, 'nino-admin-accordion-label' )[0] ) } );
@@ -1186,7 +1207,7 @@ function previewDialog( w, preview ) {
 
 	choose( 'craft@1.0.0' );
 
-	check( 'F. the part is asked for with the steps the mix has, the one of the knob the new part has not among them: the register drops it', w.requests[0].payload.mix.parts.section.values['section-title.x-rule'] === 1 );
+	check( 'F. the part is asked for at the steps it is delivered at: the step that was set for a knob the new part has not goes with the old part', w.requests[0].payload.mix.parts.section.values['section-title.x-rule'] === undefined && w.requests[0].payload.mix.parts.section.values['section-wrap.space'] === -1 );
 
 	w.serve();
 	choose( 'nino@1.0.0' );
@@ -1697,7 +1718,7 @@ function previewDialog( w, preview ) {
 
 	const said = w.text( w.byClass( w.theme, 'nino-admin-status' )[0] );
 
-	check( 'L. what the person had set and the new part does not have is said in the bar, by name: the knob that has a step and the variant that is chosen', said === 'These do not apply in this part: Rule, standard variant "Band" of Wrap.', said );
+	check( 'L. what the person had set and the new part does not have is said in the bar, by name - the variant that is chosen - and so are the steps that were replaced by the ones the part is delivered at', said === 'These do not apply in this part: standard variant "Band" of Wrap. '+ Wp( 'msg/part-steps', 'Section' ), said );
 
 	// a part that drops nothing says nothing
 	select.value = 'nino@1.0.0';

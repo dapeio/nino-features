@@ -16,8 +16,8 @@ return [
 				'de_DE' => 'Nino ist das Theme des Features: jeder Regler in der Mitte, ein Balken für den Header, eine dunkle Fläche für den Footer, ein Band für Abschnitte, eine Linie unter großen Titeln, ein Hero.',
 			],
 			'themes/<key>/theme.json' => [
-				'en_US' => 'A theme is a folder with its key, version, name, description and suggestions for the brand; nothing in it is code and the feature reads no file but theme.json, part.json and part.css.',
-				'de_DE' => 'Ein Theme ist ein Ordner mit Schlüssel, Version, Name, Beschreibung und Vorschlägen für die Marke; nichts darin ist Code, und das Feature liest nur theme.json, part.json und part.css.',
+				'en_US' => 'A theme is a folder with its key, version, name, description and suggestions for the brand; nothing in it is code and the feature reads no file but theme.json, theme.css, part.json and part.css.',
+				'de_DE' => 'Ein Theme ist ein Ordner mit Schlüssel, Version, Name, Beschreibung und Vorschlägen für die Marke; nichts darin ist Code, und das Feature liest nur theme.json, theme.css, part.json und part.css.',
 			],
 			'private/packages/themes/<key>/' => [
 				'en_US' => 'A theme from the catalogue or from an upload is a folder like the one of a shipped theme, and the kernel puts it here.',
@@ -36,8 +36,8 @@ return [
 				'de_DE' => 'Ein Theme kann Blocks mitbringen, je ein Ordner mit block.json, block.tpl und text/<locale>.json; der Kernel prüft jeden Block und lässt einen aus, der nicht besteht.',
 			],
 			'parts/<group>/part.json' => [
-				'en_US' => 'The part of a group names its contract, sets the steps of the knobs of the group, gives a component up to two knobs of its own, brings variants and chooses the standard one.',
-				'de_DE' => 'Der Teil einer Gruppe nennt seinen Vertrag, stuft die Regler der Gruppe um, gibt einer Komponente bis zu zwei eigene Regler, bringt Varianten mit und wählt die Standard-Variante.',
+				'en_US' => 'The part of a group names its contract, sets the ladders of its knobs, brings variants and a standard one, and may give the steps it is delivered at (values).',
+				'de_DE' => 'Der Teil einer Gruppe nennt Vertrag und Leitern der Regler, bringt Varianten und eine Standard-Variante mit und kann die Stufen nennen, auf denen er ausgeliefert wird (values).',
 			],
 			'parts/<group>/part.css' => [
 				'en_US' => 'The css of a part lies on the standard part and keeps the rule of mixing; it rules over its modifiers, so it computes with tokens and calc() and sets no absolute value.',

@@ -669,7 +669,7 @@ check( 'the file is written in this order: the head, the fonts, the brand, the p
 	&& $at( '--page-size' ) < $at( '--button-space' ) && $at( '--button-space' ) < $at( '/* button: the part of craft-probe 1.0.0 */' ) && $at( '/* button: the part of craft-probe 1.0.0 */' ) < $at( '/* section: the part of craft-probe 1.0.0 */' ) );
 
 $withOwn = Compiler::compile( $site, Mix::clean( $site, [ 'css' => ".own-marker { color: red; }\r\n.second { color: blue; }" ] + $craftMix, false ), $none )['css'];
-check( 'the own css of the developer stands after everything else, once, as it was written but for its line endings, and under a comment of its own', str_ends_with( $withOwn, "/* The own css of the theme */\n.own-marker { color: red; }\n.second { color: blue; }\n" ) === true
+check( 'the own css of the developer stands after everything else, once, as it was written but for its line endings, and under a comment of its own', str_ends_with( $withOwn, "/* The css of the theme */\n.own-marker { color: red; }\n.second { color: blue; }\n" ) === true
 	&& substr_count( $withOwn, '.own-marker' ) === 1 && strpos( $withOwn, '.own-marker' ) > strpos( $withOwn, '/* section: the part' ) && str_contains( $css, 'The own css' ) === false );
 
 $first = strtok( $css, "\n" );
@@ -997,7 +997,7 @@ check( 'M5: the brand is not in the own theme - not a key, not a value - and not
 $lindnerSheet = (string) file_get_contents( $sheet );
 check( 'Nr. 2: apply of the own theme: Section from craft with its ladder at +2 (3.5 rem), the shadow at +1, the header and the page from band, the radius of the page at +1, the own css at the end - and the website shows it',
 	$status === 200 && $body['applied'] === true && $body['active']['theme'] === 'own:lindner' && str_contains( $lindnerSheet, '--section-wrap-space: 3.5rem;' ) === true && str_contains( $lindnerSheet, '--section-col-x-shadow: 0 8px 22px rgb(0 0 0 / .14);' ) === true && str_contains( $lindnerSheet, '--page-radius: .375rem;' ) === false
-	&& str_contains( $lindnerSheet, '--page-radius: .75rem;' ) === true && str_ends_with( $lindnerSheet, "/* The own css of the theme */\n.lindner-own { color: red; }\n" ) === true && str_contains( $lindnerSheet, '/* header: the part of band-probe 1.0.0 */' ) === true && str_contains( $lindnerSheet, '/* section: the part of craft-probe 1.0.0 */' ) === true );
+	&& str_contains( $lindnerSheet, '--page-radius: .75rem;' ) === true && str_ends_with( $lindnerSheet, "/* The css of the theme */\n.lindner-own { color: red; }\n" ) === true && str_contains( $lindnerSheet, '/* header: the part of band-probe 1.0.0 */' ) === true && str_contains( $lindnerSheet, '/* section: the part of craft-probe 1.0.0 */' ) === true );
 check( 'M2: the colour, the font and the mode of the project are in the stylesheet, and the first colour has the colour written on it that carries', str_contains( $lindnerSheet, '--brand-color-1: #9a4b1d;' ) === true && str_contains( $lindnerSheet, '--brand-scheme: dark;' ) === true && str_contains( $lindnerSheet, '--brand-font-title: Georgia' ) === true && str_contains( $lindnerSheet, '--brand-on-color-1: #ffffff;' ) === true );
 $pageHtml['lindner'] = $draw( $site );
 check( 'Nr. 3: with the mix: the header is the regular one of band (a bar is a variant it has, and it is not the standard), the hero is soft, from craft - the page still says band', in_array( 'section-wrap--variant-soft', $classes( $pageHtml['lindner'] ), true ) === true && in_array( 'header-wrap--variant-bar', $classes( $pageHtml['lindner'] ), true ) === false
@@ -1145,7 +1145,7 @@ check( 'a stylesheet that is not there is nobody\'s: it is written', $status ===
 $free = ".header-wrap { display: none !important; }\n@import url(https://example.invalid/more.css);\n@font-face { font-family: \"Other\"; src: url(https://example.invalid/o.woff2); }\n@property --brand-ink { syntax: \"<color>\"; inherits: false; initial-value: red; }\n.a ~ .b + .c * { content: \"text\"; color: var(--foreign-token); }";
 [ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Free', [ 'section' => [ 'from' => 'craft-probe' ] ], $free ) ] );
 themesCall( $site, 'themes/apply', [ 'theme' => 'own:free' ] );
-check( 'the own css is not checked: what the rule of mixing refuses - !important, an import, a font from another host, a property of the brand, a foreign token - is written as it stands, at the end of the stylesheet', $status === 200 && str_ends_with( (string) file_get_contents( $sheet ), "/* The own css of the theme */\n". $free. "\n" ) === true
+check( 'the own css is not checked: what the rule of mixing refuses - !important, an import, a font from another host, a property of the brand, a foreign token - is written as it stands, at the end of the stylesheet', $status === 200 && str_ends_with( (string) file_get_contents( $sheet ), "/* The css of the theme */\n". $free. "\n" ) === true
 	&& \Nino\Components::partProblems( $free, \Nino\Components::groups( $site )['section']['components'] ) !== [] );
 [ $status, $body ] = themesCall( $site, 'themes/open', [ 'theme' => 'own:free' ] );
 check( 'open gives the own css back as it was written', $status === 200 && $body['mix']['css'] === $free && $body['mix']['name'] === 'Free' );
@@ -2382,7 +2382,7 @@ themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
 $built = (string) file_get_contents( $sheet );
 $bundle = \Nino\Modules\Assets::stylesheet( themesReboot( $site, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] ), THEMES_BUNDLE );
 check( 'L. ...and the bundle of the website holds it in the layer of the theme, closed: the layers after it are still the layers after it, and the one of the project is the last of them',
-	str_ends_with( $built, "/* The own css of the theme */\n". $css. "\n}\n" ) === true && str_contains( $bundle, '@layer nino.theme {' ) === true && substr_count( $bundle, '{' ) === substr_count( $bundle, '}' ) );
+	str_ends_with( $built, "/* The css of the theme */\n". $css. "\n}\n" ) === true && str_contains( $bundle, '@layer nino.theme {' ) === true && substr_count( $bundle, '{' ) === substr_count( $bundle, '}' ) );
 $state1 = $digestOf( $state );
 $sizes = [];
 

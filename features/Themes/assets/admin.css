@@ -389,7 +389,9 @@
 
 /* The dialogs of a theme package stand in the shell, in the workbench's root and not in the panel: what a package says of itself is the words of whoever made it, and a name
    that has no space in it breaks where the dialog ends and does not push the dialog wider */
-#admin-page-wrap .themes-upload p {
+#admin-page-wrap .themes-upload p,
+#admin-page-wrap .themes-upload code,
+#themes-app .themes-card-reads code {
 	overflow-wrap: anywhere;
 }
 }

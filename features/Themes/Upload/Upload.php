@@ -24,7 +24,7 @@ namespace Nino\Modules\Themes {
 	 *										that was written, so that a theme counts as uploaded while the folder is the one that was put there. The file is read, changed
 	 *										and written under a lock of its own. Such a theme is replaced - by a higher version, and not while a state of the website
 	 *										holds it - and removed here; the one that comes with the feature, the one of the catalogue and the one a folder of the hook has
-	 *										are not. A package with blocks or frames asks for the right of the features as well, which the catalogue asks for the same
+	 *										are not. The right of the panel is the one that is asked of all of it
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -47,7 +47,7 @@ namespace Nino\Modules\Themes {
 		private const array RESERVED = [ 'project', 'basis', 'own', 'themes', 'pack' ];
 
 		// The files a theme package may hold, as \Nino\Packages::check() says them - and nothing the check would refuse is asked of the reader
-		private const string ALLOWED = '~^(?:theme\.json|LICENSE\.txt|README\.md|preview\.webp|parts/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/part\.(?:json|css)|blocks/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/(?:block\.(?:json|tpl)|text/[a-z]{2}_[A-Z]{2}\.json|images/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)))$~D';
+		private const string ALLOWED = '~^(?:theme\.(?:json|css)|LICENSE\.txt|README\.md|preview\.webp|parts/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/part\.(?:json|css)|blocks/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/(?:block\.(?:json|tpl)|text/[a-z]{2}_[A-Z]{2}\.json|images/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)))$~D';
 
 		// The longest text of a licence that a preview carries
 		private const int LICENCE = 65536;
@@ -60,8 +60,18 @@ namespace Nino\Modules\Themes {
 			return [ 'failure' => [ $status, $message === '' ? 'the theme package is not taken: '. $code : $message, 'themes_upload_'. str_replace( '-', '_', $code ), $params, $field ] ];
 		}
 
-		private static function _shown( string $text ): string {
-			return mb_substr( (string) preg_replace( '/[^\P{C}]+/u', ' ', $text ), 0, 120 );
+		private static function _shown( string $text, int $limit = 120 ): string {
+
+			$text = trim( (string) preg_replace( '/[^\P{C}]+/u', ' ', $text ) );
+
+			if( mb_strlen( $text ) <= $limit )
+				return $text;
+
+			// Cut at the end of a word, and say that it goes on
+			$cut = mb_substr( $text, 0, $limit );
+			$space = mb_strrpos( $cut, ' ' );
+
+			return rtrim( $space !== false && $space > $limit / 2 ? mb_substr( $cut, 0, $space ) : $cut, ' ,;:.-' ). '…';
 		}
 
 		/**
@@ -76,7 +86,18 @@ namespace Nino\Modules\Themes {
 			$code = (string) ( $problem['code'] ?? '' );
 			$path = (string) ( $problem['path'] ?? '' );
 			$params = array_map( 'strval', (array) ( $problem['params'] ?? [] ) );
-			$known = [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-markup', 'file-map', 'parts-many', 'css', 'block', 'preview', 'busy', 'unlockable', 'stage', 'swap' ];
+			$known = [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-markup', 'file-map', 'parts-many', 'css', 'theme-css', 'block', 'preview', 'busy', 'unlockable', 'stage', 'swap' ];
+
+			// What the kernel says of the css of a theme and of the steps of a part is told by its parameters: the line, the knob
+			if( $code === 'theme-css' ) {
+
+				$line = preg_match( '/\(line (\d+)\)/', (string) ( $params[0] ?? '' ), $found ) === 1 ? $found[1] : '';
+
+				return self::_fail( 400, $line === '' ? 'package_theme_css_any' : 'package_theme_css', [ self::_shown( $path === '' ? '-' : $path ), $line ], 'file', 'the theme package is refused: '. \Nino\Packages::why( $problem ) );
+			}
+
+			if( $code === 'part-values' )
+				return self::_fail( 400, 'package_part_values', [ self::_shown( $path === '' ? '-' : $path ), self::_shown( (string) ( $params[1] ?? '' ) ) ], 'file', 'the theme package is refused: '. \Nino\Packages::why( $problem ) );
 
 			if( str_starts_with( $code, 'part-' ) === true || str_starts_with( $code, 'page-' ) === true || str_starts_with( $code, 'group-' ) === true || in_array( $code, [ 'ladder-unknown', 'extra-knob', 'variants', 'standard' ], true ) === true )
 				$code = 'part';
@@ -137,34 +158,6 @@ namespace Nino\Modules\Themes {
 			$name = Reader::read( $appData )['themes'][$key]['name'] ?? $key;
 
 			return self::_shown( self::_words( $name, $locale, $key ) );
-		}
-
-		/**
-		 *	The right a package that brings blocks or frames asks for beside the right of the panel: the one the kernel asks for a package of the catalogue
-		 *
-		 *	@return 	string
-		 */
-		public static function blocksPerm(): string {
-			return \Nino\Modules\Features\Admin::MANAGE_PERM;
-		}
-
-		/**
-		 *	Whether the account may put in, replace and take away a theme that has blocks
-		 */
-		public static function mayBlocks( array &$appData ): bool {
-			return \Nino\Auth::checkPermission( $appData, self::blocksPerm() );
-		}
-
-		/**
-		 *	Whether the files of a package have a block
-		 */
-		private static function _hasBlocks( array $files ): bool {
-
-			foreach( array_keys( $files ) as $path )
-				if( str_starts_with( (string) $path, 'blocks/' ) === true )
-					return true;
-
-			return false;
 		}
 
 		/**
@@ -528,8 +521,91 @@ namespace Nino\Modules\Themes {
 							$state = 'out';
 					}
 
-					$out[] = [ 'key' => $found[1], 'name' => self::_words( $meta['name'] ?? '', $locale, $found[1] ), 'category' => (string) ( $meta['category'] ?? '' ), 'frame' => ( $meta['category'] ?? '' ) === 'frame', 'state' => $state, 'origin' => $label, 'theme' => $theme ];
+					$out[] = [ 'key' => $found[1], 'name' => self::_words( $meta['name'] ?? '', $locale, $found[1] ), 'category' => (string) ( $meta['category'] ?? '' ), 'frame' => ( $meta['category'] ?? '' ) === 'frame', 'state' => $state, 'origin' => $label, 'theme' => $theme, 'reads' => self::_reads( $appData, $found[1], $files ) ];
 				}
+
+			return $out;
+		}
+
+		/**
+		 *	What a frame of a package reads of the project - the keys of the texts and the logo it names, which it shows on every page once it is put in; a block of the pages reads none.
+		 *	Asked of the kernel, which reads the template as it will when the package is in place
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$block				The key of the block
+		 *	@param		array			$files				The files of the package
+		 *
+		 *	@return 	array											The keys, each once, sorted
+		 */
+		private static function _reads( array &$appData, string $block, array $files ): array {
+
+			$base = 'blocks/'. $block. '/';
+			$texts = [];
+
+			foreach( $files as $path => $bytes )
+				if( preg_match( '~^'. preg_quote( $base, '~' ). 'text/([a-z]{2}_[A-Z]{2})\.json$~D', (string) $path, $found ) === 1 )
+					$texts[$found[1]] = (string) $bytes;
+
+			$checked = \Nino\Blocks::validate( $appData, $block, [ 'json' => (string) ( $files[$base. 'block.json'] ?? '' ), 'tpl' => (string) ( $files[$base. 'block.tpl'] ?? '' ), 'texts' => $texts ] );
+
+			if( is_array( $checked ) === false )
+				return [];
+
+			$checked['tree'] = \Nino\Markup::parse( (string) $checked['source'], \Nino\Components::containers( $appData ) );
+
+			return self::_texts( $appData, array_map( 'strval', \Nino\Blocks::reads( $checked ) ) );
+		}
+
+		/**
+		 *	The keys a frame reads with what the site says at each today, in the working language: a person who is shown a key sees what it is
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$keys					The keys
+		 *
+		 *	@return 	array											[ [ 'key', 'text' (a line, cut at the end of a word; null where the key has no text), 'logo' (whether the key is a picture) ] ]
+		 */
+		private static function _texts( array &$appData, array $keys ): array {
+
+			$was = \Nino\Locales::getCurrentLocale( $appData );
+			\Nino\Locales::useLocale( $appData, \Nino\Admin\Admin::contentLocale( $appData, true ) );
+			$out = [];
+
+			foreach( $keys as $key ) {
+
+				$logo = in_array( $key, [ '/logo', '/logo/dark' ], true );
+				$text = $logo === true ? null : \Nino\Html::resolveTextfill( $appData, $key );
+
+				$out[] = [ 'key' => $key, 'text' => $text === null || trim( strip_tags( $text ) ) === '' ? null : self::_shown( html_entity_decode( strip_tags( $text ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ), 80 ), 'logo' => $logo ];
+			}
+
+			\Nino\Locales::useLocale( $appData, $was );
+
+			return $out;
+		}
+
+		/**
+		 *	The frames an installed theme brings that read texts of the project, each with the keys: what a person who puts the frame in shows on every page
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$key					The key of the theme
+		 *
+		 *	@return 	array											[ [ 'key', 'name' (locale => text), 'reads' ] ], the frames that read nothing left out
+		 */
+		public static function framesOf( array &$appData, string $key ): array {
+
+			$out = [];
+
+			foreach( \Nino\Blocks::all( $appData ) as $block => $entry ) {
+
+				if( ( $entry['origin'] ?? '' ) !== $key || ( $entry['category'] ?? '' ) !== 'frame' )
+					continue;
+
+				$whole = \Nino\Blocks::get( $appData, (string) $block );
+				$reads = is_array( $whole ) === true && is_array( $whole['tree'] ?? null ) === true ? \Nino\Blocks::reads( $whole ) : [];
+
+				if( $reads !== [] )
+					$out[] = [ 'key' => (string) $block, 'name' => $entry['name'], 'reads' => self::_texts( $appData, array_map( 'strval', $reads ) ) ];
+			}
 
 			return $out;
 		}
@@ -540,12 +616,11 @@ namespace Nino\Modules\Themes {
 		 *	@param		array 		&$appData
 		 *	@param		string		$key
 		 *	@param		string		$version			The version of the package
-		 *	@param		bool			$blocks				Whether the package has blocks
 		 *	@param		string		$locale
 		 *
 		 *	@return 	array|null
 		 */
-		private static function _replace( array &$appData, string $key, string $version, bool $blocks, string $locale ): ?array {
+		private static function _replace( array &$appData, string $key, string $version, string $locale ): ?array {
 
 			$name = self::_nameOf( $appData, $key, $locale );
 			$installed = (string) ( Reader::read( $appData )['themes'][$key]['version'] ?? '' );
@@ -558,11 +633,6 @@ namespace Nino\Modules\Themes {
 
 			if( $by !== null )
 				return self::_held( $by, $key, $name, 'replace_held' );
-
-			$dir = \Nino\Packages::dir( $appData, \Nino\Packages::THEME, $key );
-
-			if( ( $blocks === true || is_dir( $dir. '/blocks' ) === true ) && self::mayBlocks( $appData ) === false )
-				return self::_fail( 403, 'needs_right', [ $name ], 'file', 'a theme with blocks is put in place by an account that may manage the features' );
 
 			return null;
 		}
@@ -600,10 +670,10 @@ namespace Nino\Modules\Themes {
 				if( str_starts_with( (string) $name, 'font-' ) === true && isset( $fonts[$value] ) === false && in_array( $value, $missing, true ) === false )
 					$missing[] = (string) $value;
 
+			$css = trim( (string) ( $files['theme.css'] ?? '' ) );
 			$picture = isset( $files['preview.webp'] ) === true ? 'data:image/webp;base64,'. base64_encode( $files['preview.webp'] ) : '';
 			$licence = isset( $files['LICENSE.txt'] ) === true && strlen( $files['LICENSE.txt'] ) <= self::LICENCE ? $files['LICENSE.txt'] : '';
 			$origin = self::origin( $appData, $key );
-			$has = self::_hasBlocks( $files );
 			$refused = [];
 			$installed = null;
 
@@ -622,7 +692,7 @@ namespace Nino\Modules\Themes {
 
 				if( $origin !== 'uploaded' )
 					$refused[] = [ 'code' => 'taken_'. $origin, 'params' => [ self::_nameOf( $appData, $key, $locale ) ] ];
-				else if( ( $failed = self::_replace( $appData, $key, $version, $has, $locale ) ) !== null )
+				else if( ( $failed = self::_replace( $appData, $key, $version, $locale ) ) !== null )
 					$refused[] = [ 'code' => str_replace( 'themes_upload_', '', (string) $failed['failure'][2] ), 'params' => $failed['failure'][3] ];
 				else
 					$installed['replace'] = true;
@@ -631,9 +701,6 @@ namespace Nino\Modules\Themes {
 
 				if( count( self::marks( $appData ) ) >= self::MAX_UPLOADED )
 					$refused[] = [ 'code' => 'too_many', 'params' => [ self::MAX_UPLOADED ] ];
-
-				if( $has === true && self::mayBlocks( $appData ) === false )
-					$refused[] = [ 'code' => 'needs_right', 'params' => [ self::_shown( self::_words( $theme['name'] ?? '', $locale, $key ) ) ] ];
 			}
 
 			foreach( $blocks as $block )
@@ -651,6 +718,7 @@ namespace Nino\Modules\Themes {
 				'frames'		=> count( array_filter( $blocks, static fn( array $block ): bool => $block['frame'] === true ) ),
 				'fonts'			=> $missing,
 				'licence'		=> $licence,
+				'css'				=> [ 'lines' => $css === '' ? 0 : substr_count( $css, "\n" ) + 1, 'text' => mb_strlen( $css ) <= self::LICENCE ? $css : '' ],
 				'installed'		=> $installed,
 				'refused'		=> $refused,
 				'canInstall'	=> $refused === [],
@@ -759,7 +827,6 @@ namespace Nino\Modules\Themes {
 			$key = (string) $read['theme']['key'];
 			$version = (string) $read['theme']['version'];
 			$name = self::_nameOf( $appData, $key, $locale );
-			$has = self::_hasBlocks( $read['files'] );
 			$taken = self::_taken( $appData, $key );
 
 			if( $taken === 'reserved' )
@@ -778,7 +845,7 @@ namespace Nino\Modules\Themes {
 				if( $replace !== true )
 					return self::_fail( 409, 'exists', [ $name ], 'file', 'a theme of that key is there: it is replaced only when asked' );
 
-				$failed = self::_replace( $appData, $key, $version, $has, $locale );
+				$failed = self::_replace( $appData, $key, $version, $locale );
 
 				if( $failed !== null )
 					return $failed;
@@ -788,8 +855,6 @@ namespace Nino\Modules\Themes {
 				if( count( self::marks( $appData ) ) >= self::MAX_UPLOADED )
 					return self::_fail( 409, 'too_many', [ self::MAX_UPLOADED ], 'file', 'there are as many uploaded themes as there may be' );
 
-				if( $has === true && self::mayBlocks( $appData ) === false )
-					return self::_fail( 403, 'needs_right', [ self::_shown( self::_words( $read['theme']['name'] ?? '', $locale, $key ) ) ], 'file', 'a theme with blocks is put in place by an account that may manage the features' );
 			}
 
 			foreach( self::_blocks( $appData, $key, $read['files'], $locale ) as $block )
@@ -854,16 +919,6 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	Whether the account may take away or replace the theme of a key: the right of the panel is asked by the panel, and a theme with blocks asks the right of the features as well
-		 */
-		public static function mayChange( array &$appData, string $key ): bool {
-
-			$dir = \Nino\Packages::dir( $appData, \Nino\Packages::THEME, $key );
-
-			return $dir === '' || is_dir( $dir. '/blocks' ) === false || self::mayBlocks( $appData ) === true;
-		}
-
-		/**
 		 *	Take a theme of the panel away: not where it is the one of the website, an own theme takes a part from it, a last state holds it, and not one of any other origin
 		 *
 		 *	@param		array 		&$appData
@@ -884,9 +939,6 @@ namespace Nino\Modules\Themes {
 			// A theme that is installed and has no mark of its own - the catalogue's, or one whose folder is not the one that was written - is not taken away here
 			if( $origin !== 'uploaded' )
 				return self::_fail( 409, 'not_uploaded', [ $name ], 'theme', 'only a theme that was uploaded here is removed here' );
-
-			if( self::mayChange( $appData, $key ) === false )
-				return self::_fail( 403, 'needs_right', [ $name ], 'theme', 'a theme with blocks is taken away by an account that may manage the features' );
 
 			$lock = \Nino\Modules\Themes::DIR. '/state.lock';
 

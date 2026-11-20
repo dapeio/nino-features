@@ -37,7 +37,7 @@ function upSite(): array {
 	\Nino\Features::registerParts( $appData );
 	\Nino\Features::registerAssets( $appData );
 	\Nino\Modules::callModules( $appData, 'init' );
-	ninoUser( $appData, 'designer@example.com', [ \Nino\Modules\Themes::PERM, Upload::blocksPerm() ] );
+	ninoUser( $appData, 'designer@example.com', [ \Nino\Modules\Themes::PERM ] );
 
 	return $appData;
 }
@@ -157,6 +157,60 @@ function upSpare( array &$site ): void {
 
 	upChoose( $site, upPack( upLight( 'spare', '1.0.0' ) ) );
 	upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+}
+
+/** A theme that is delivered at steps of its knobs, with a stylesheet of its own and a frame that reads a text of the site - and a block of the pages that reads none */
+function upRich( string $key, string $version ): array {
+
+	global $root;
+
+	$fixture = __DIR__. '/fixtures/themes/craft-probe';
+	$basis = $root. '/_nino/Nino/Modules/Basis/blocks';
+	$page = (array) json_decode( (string) file_get_contents( $fixture. '/parts/page/part.json' ), true );
+	$page['values'] = [ 'size' => 1, 'width' => 0 ];
+	$files = [
+		'theme.json'							=> json_encode( [ 'key' => $key, 'version' => $version, 'name' => [ 'de_DE' => 'Reich', 'en_US' => 'Rich' ], 'description' => 'Steps, css and a frame.' ] ),
+		'theme.css'								=> ".theme-probe { letter-spacing: .01em; }\n.theme-probe .theme-probe-inner { margin: 0; }\n",
+		'parts/button/part.json'	=> json_encode( [ 'contract' => 'basis@^1.0', 'ladders' => [ 'button.radius' => [ '1px', '2px', '3px', '4px', '5px' ] ], 'values' => [ 'button.radius' => 2, 'button.space' => -1, 'button.size' => 0 ] ] ),
+		'parts/page/part.json'		=> json_encode( $page ),
+	];
+
+	foreach( [ 'footer-columns' => 'rich-foot', 'split-image-text' => 'rich-split' ] as $from => $to )
+		foreach( [ 'block.json', 'block.tpl', 'text/de_DE.json', 'text/en_US.json' ] as $name )
+			$files['blocks/'. $to. '/'. $name] = (string) file_get_contents( $basis. '/'. $from. '/'. $name );
+
+	// The frame reads the name of the company, which is a text of the site and not of its own
+	$files['blocks/rich-foot/block.tpl'] = str_replace( '[text ~about format="inline" size="s"]', '[text /project/company/general/name size="s"]', $files['blocks/rich-foot/block.tpl'] );
+
+	foreach( [ 'de_DE', 'en_US' ] as $locale ) {
+
+		$words = (array) json_decode( $files['blocks/rich-foot/text/'. $locale. '.json'], true );
+		unset( $words['about'] );
+		$files['blocks/rich-foot/text/'. $locale. '.json'] = (string) json_encode( $words, JSON_UNESCAPED_UNICODE );
+	}
+
+	return $files;
+}
+
+/** A theme as a folder of the hook of the project: what is in it is read as it lies, and no rule of the packages has looked at it */
+function upHook( array &$site, string $key, array $files ): void {
+
+	static $registered = [];
+
+	$root = ninoSandboxDir( $site ). '/hook-themes';
+
+	foreach( $files as $path => $bytes ) {
+		@mkdir( dirname( $root. '/'. $key. '/'. $path ), 0755, true );
+		file_put_contents( $root. '/'. $key. '/'. $path, $bytes );
+	}
+
+	if( isset( $registered[$root] ) === false ) {
+
+		\Nino\Callbacks::registerCallback( $site, \Nino\Modules\Themes\Reader::ROOTS, static function( array &$appData, array $roots ) use ( $root ): array { return array_merge( $roots, [ $root ] ); } );
+		$registered[$root] = true;
+	}
+
+	unset( $site['./nino/themes/read'] );
 }
 
 function upPack( array $files, string $folder = 'second-look' ): string {
@@ -363,7 +417,7 @@ ninoUser( $site, 'other@example.com', [ \Nino\Modules\Themes::PERM ] );
 [ $otherAccount ] = upCall( $site, 'themes/upload', [ 'id' => $id ] );
 [ $otherDrop ] = upCall( $site, 'themes/upload-drop', [ 'id' => $id ] );
 $stillHeld = isset( $_SESSION[Upload::SESSION] ) === true;
-ninoUser( $site, 'designer@example.com', [ \Nino\Modules\Themes::PERM, Upload::blocksPerm() ] );
+ninoUser( $site, 'designer@example.com', [ \Nino\Modules\Themes::PERM ] );
 [ $wrong ] = upCall( $site, 'themes/upload', [ 'id' => str_repeat( '0', 32 ) ] );
 $_SESSION[Upload::SESSION]['until'] = time() - 1;
 [ $expired ] = upCall( $site, 'themes/upload', [ 'id' => $id ] );
@@ -408,7 +462,7 @@ $noRightDirect = [ $direct( 'apiUpload', [ 'id' => $id ], 200 ), $direct( 'apiUp
 check( 'an account that has other rights and not the right of the panel is refused, 403, at the check, at the write and at the removal - the right of the panel is the one that is asked, and nothing is written',
 	$noRight === 403 && $noCheck === 403 && $noRemove === 403 && $noRightDirect === [ 403, 403, 403, 403 ] && $whole() === $base );
 
-ninoUser( $site, 'designer@example.com', [ \Nino\Modules\Themes::PERM, Upload::blocksPerm() ] );
+ninoUser( $site, 'designer@example.com', [ \Nino\Modules\Themes::PERM ] );
 
 // the picture of a block that has a script in it: the kernel builds it again when it places it
 $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><script>alert(2)</script><rect width="10" height="10" fill="#cccccc" onclick="alert(3)"/></svg>';
@@ -706,40 +760,38 @@ foreach( [
 check( 'what the theme suggests for the brand is held to the rule of the brand before anything is held: a colour that closes the style element, a tone that is none, a key that is none and a font that is a tag are refused',
 	array_filter( $why, static fn( bool $ok ): bool => $ok === false ) === [] );
 
-echo "\nJ. The right of the features, and the bytes that stay\n";
+// what a key says today: beside the key in the preview, in the working language, cut at the end of a word
+$site = upSite();
+$_SESSION = [];
+$long = 'Omega Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega';
+\Nino\Filesystem::putFileContent( $site, '/text/de_DE.php', [ '[[/project/company/general/name]]' => $long. ' <b>Name</b>' ] );
+\Nino\Filesystem::putFileContent( $site, '/text/en_US.php', [ '[[/project/company/general/name]]' => 'Name of the company' ] );
+ninoUser( $site, 'only-themes@example.com', [ \Nino\Modules\Themes::PERM ] );
+[ , $shownText ] = upChoose( $site, upPack( upRich( 'rich-text', '1.0.0' ) ) );
+$frameText = array_values( array_filter( $shownText['theme']['blocks'] ?? [], static fn( array $block ): bool => $block['frame'] === true ) )[0] ?? [];
+$read = $frameText['reads'][0] ?? [];
+$text = (string) ( $read['text'] ?? '' );
+$cut = rtrim( $text, '…' );
 
+check( 'beside each key a frame reads the text the site has at it today stands, in the working language of the workbench, as a line of text without markup and cut at the end of a word with a mark that it goes on',
+	( $read['key'] ?? '' ) === '/project/company/general/name' && $text !== '' && str_ends_with( $text, '…' ) === true && mb_strlen( $cut ) <= 80 && str_starts_with( $long, $cut ) === true && $long[mb_strlen( $cut )] === ' ' && str_contains( $text, '<' ) === false
+	&& ( $read['text'] ?? '' ) !== 'Name of the company' );
+
+echo "\nJ. The right of the panel, and the bytes that stay\n";
+
+// an account that has the right of the panel and no other puts in, replaces and takes away a package with blocks and frames
 $site = upSite();
 $_SESSION = [];
 $dir = ninoSandboxDir( $site ). '/private/packages/themes';
-$plain = [ 'plain@example.com', [ \Nino\Modules\Themes::PERM ] ];
-$manager = [ 'designer@example.com', [ \Nino\Modules\Themes::PERM, Upload::blocksPerm() ] ];
-ninoUser( $site, ...$plain );
-$base = upWritten( $site );
-[ , $withBlocks ] = upChoose( $site, $bytes );
-[ $noBlocks, $bodyBlocks ] = upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
-[ , $without ] = upChoose( $site, upPack( upLight( 'light-two', '1.0.0' ) ) );
-[ $lightStatus ] = upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+ninoUser( $site, 'only-themes@example.com', [ \Nino\Modules\Themes::PERM ] );
+[ , $shown ] = upChoose( $site, $bytes );
+[ $installed ] = upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+upChoose( $site, upPack( upFiles2( 'second-look', '1.9.0' ) ) );
+[ $replaced ] = upCall( $site, 'themes/upload', [ 'id' => upHeld(), 'replace' => true ] );
+[ $gone ] = upCall( $site, 'themes/remove', [ 'theme' => 'second-look' ] );
 
-check( 'a package with blocks or frames asks for the right of the features as well as the right of the panel: an account that has only the right of the panel is told so in the preview, which has no button, and at the write, a 403 - a package without blocks is put in by it, as before',
-	( $withBlocks['theme']['canInstall'] ?? true ) === false && in_array( 'needs_right', array_column( $withBlocks['theme']['refused'] ?? [], 'code' ), true ) === true && $noBlocks === 403 && ( $bodyBlocks['code'] ?? '' ) === 'themes_upload_needs_right'
-	&& is_dir( $dir. '/second-look' ) === false && ( $without['theme']['canInstall'] ?? false ) === true && $lightStatus === 200 );
-
-ninoUser( $site, ...$manager );
-upChoose( $site, $bytes );
-upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
-ninoUser( $site, ...$plain );
-[ , $listedPlain ] = upCall( $site, 'themes/list' );
-[ $removePlain, $bodyRemovePlain ] = upCall( $site, 'themes/remove', [ 'theme' => 'second-look' ] );
-upChoose( $site, upPack( upLight( 'second-look', '1.9.0' ) ) );
-[ $replacePlain, $bodyReplacePlain ] = upCall( $site, 'themes/upload', [ 'id' => upHeld(), 'replace' => true ] );
-$cards = array_column( array_filter( $listedPlain['themes'], static fn( array $one ): bool => $one['kind'] === 'theme' ), 'removable', 'key' );
-ninoUser( $site, ...$manager );
-[ , $listedManager ] = upCall( $site, 'themes/list' );
-[ $removeManager ] = upCall( $site, 'themes/remove', [ 'theme' => 'second-look' ] );
-
-check( 'a theme that has blocks is replaced and taken away by an account that holds the right of the features as well, and not by one that has the right of the panel only - a 403 - and the list says which it may: a card has the button to remove only for the one who may',
-	$removePlain === 403 && ( $bodyRemovePlain['code'] ?? '' ) === 'themes_upload_needs_right' && $replacePlain === 403 && ( $bodyReplacePlain['code'] ?? '' ) === 'themes_upload_needs_right' && ( $cards['second-look'] ?? true ) === false && ( $cards['light-two'] ?? false ) === true
-	&& array_column( array_filter( $listedManager['themes'], static fn( array $one ): bool => $one['kind'] === 'theme' ), 'removable', 'key' )['second-look'] === true && $removeManager === 200 );
+check( 'an account that has the right of the panel and no other puts in a package with blocks and frames - the preview has the button - replaces it by a higher version and takes it away: the right of the panel is enough for each of the three',
+	( $shown['theme']['canInstall'] ?? false ) === true && ( $shown['theme']['frames'] ?? 0 ) === 1 && $installed === 200 && $replaced === 200 && $gone === 200 && is_dir( $dir. '/second-look' ) === false );
 
 // the bytes stay while another change of the packages is at work: the person asks again, and does not choose the file again
 upChoose( $site, upPack( upLight( 'wait-for', '1.0.0' ) ) );
@@ -764,12 +816,161 @@ check( 'the bytes of a preview that ran out are let go of by the next action of 
 	isset( $_SESSION[Upload::SESSION] ) === false );
 
 
+echo "\nK. The steps of the knobs and the css of a theme\n";
+
+$site = upSite();
+$_SESSION = [];
+ninoUser( $site, 'only-themes@example.com', [ \Nino\Modules\Themes::PERM ] );
+$sheetOf = static fn(): string => (string) @file_get_contents( ninoSandboxDir( $site ). '/private/assets/theme.css' );
+[ , $shown ] = upChoose( $site, upPack( upRich( 'rich', '1.0.0' ) ) );
+$frame = array_values( array_filter( $shown['theme']['blocks'] ?? [], static fn( array $block ): bool => $block['frame'] === true ) )[0] ?? [];
+$pages = array_values( array_filter( $shown['theme']['blocks'] ?? [], static fn( array $block ): bool => $block['frame'] === false ) )[0] ?? [];
+[ $installed ] = upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+
+check( 'the preview of a package that brings css says how many lines it has and has the text, and names for each frame the keys of the texts of the site it reads - a block of the pages reads none - all as text',
+	( $shown['theme']['css']['lines'] ?? 0 ) === 2 && str_contains( (string) ( $shown['theme']['css']['text'] ?? '' ), '.theme-probe-inner' ) === true && in_array( '/project/company/general/name', array_column( $frame['reads'] ?? [], 'key' ), true ) === true && ( $pages['reads'] ?? [ 'x' ] ) === [] && $installed === 200 );
+
+$read = \Nino\Modules\Themes\Reader::read( $site )['themes']['rich'] ?? [];
+
+check( 'a part that carries values is read with them - the steps of its knobs, from -2 to 2, in the order of the knobs, the middle one left out - for a group and for the page',
+	( $read['parts']['button']['ok'] ?? false ) === true && ( $read['parts']['button']['part']['values'] ?? [] ) === [ 'button.radius' => 2, 'button.space' => -1 ] && ( $read['parts']['page']['part']['values'] ?? [] ) === [ 'size' => 1 ] );
+
+$bad = [
+	'a step of 3'						=> [ 'button.radius' => 3 ],
+	'a knob the part has not'	=> [ 'button.nothing' => 1 ],
+	'a step that is a string'	=> [ 'button.radius' => '1' ],
+	'a list'								=> [ 1, 2 ],
+];
+$rests = [];
+$files = upRich( 'bad-values', '1.0.0' );
+
+foreach( $bad as $name => $values ) {
+
+	$json = (array) json_decode( $files['parts/button/part.json'], true );
+	$json['values'] = $values;
+	upHook( $site, 'bad-values', [ 'theme.json' => $files['theme.json'], 'parts/button/part.json' => json_encode( $json ) ] );
+	$part = \Nino\Modules\Themes\Reader::read( $site )['themes']['bad-values']['parts']['button'] ?? [];
+	$why = \Nino\Modules\Themes\Reader::explain( (string) $part['problem'] );
+	$rests[$name] = ( $part['ok'] ?? true ) === false && ( $why['code'] ?? '' ) === 'part-values' && ( $why['params'][0] ?? 'x' ) === ( array_is_list( $values ) === true ? '' : (string) array_key_first( $values ) );
+}
+
+check( 'values that are no steps of knobs of the part - a step out of -2 to 2, a knob the part has not, a step that is no whole number, a list - let the part rest with the reason, as any other mistake of a part does, and the theme is read all the same',
+	array_filter( $rests, static fn( bool $ok ): bool => $ok === false ) === [] && isset( \Nino\Modules\Themes\Reader::read( $site )['themes']['bad-values'] ) === true );
+
+upCall( $site, 'themes/apply', [ 'theme' => 'rich' ] );
+$sheet = $sheetOf();
+[ , $opened ] = upCall( $site, 'themes/open', [ 'theme' => 'rich' ] );
+$knob = array_values( array_filter( $opened['groups']['button']['knobs'] ?? [], static fn( array $one ): bool => $one['key'] === 'button.radius' ) )[0] ?? [];
+
+check( 'a theme of a package is drawn and applied at the steps it is delivered at, and the editor shows them as the stand of the knobs: the stylesheet has the fifth value of the ladder and the first of the other, the page at its step - and the middle of the scale is the middle, a step moves no ladder',
+	str_contains( $sheet, '--button-radius: 5px;' ) === true && str_contains( $sheet, '--page-size: 106.25%;' ) === true && str_contains( $sheet, '--button-space: calc( var(--page-space-1) * 1.5 );' ) === true
+	&& ( $knob['step'] ?? 9 ) === 2 && ( $knob['ladder'][2] ?? '' ) === '3px' && ( $knob['default'] ?? '' ) === '3px' && str_contains( $sheet, '--page-width: 64rem;' ) === true );
+
+$offer = array_values( array_filter( $opened['groups']['button']['offers'] ?? [], static fn( array $one ): bool => $one['theme'] === 'rich' ) )[0] ?? [];
+$pageOffer = array_values( array_filter( $opened['groups']['page']['offers'] ?? [], static fn( array $one ): bool => $one['theme'] === 'rich' ) )[0] ?? [];
+
+check( 'the editor is told the step each knob is delivered at - beside the step it stands at - and the steps each part that is offered is delivered at, so that a part chosen for a group begins where it does in its theme: the knob of the group, the offer for the group and the offer for the page',
+	( $knob['delivered'] ?? 9 ) === 2 && ( $offer['values'] ?? [] ) === [ 'button.radius' => 2, 'button.space' => -1 ] && ( $pageOffer['values'] ?? [] ) === [ 'size' => 1 ]
+	&& array_filter( $opened['groups']['section']['knobs'] ?? [], static fn( array $one ): bool => ( $one['delivered'] ?? 9 ) !== 0 ) === [] );
+
+$part = strpos( $sheet, '--button-radius: 5px;' );
+$own = strpos( $sheet, '.theme-probe { letter-spacing' );
+
+check( 'the css of the theme stands after its parts in the stylesheet and as it is in the package, once',
+	$part !== false && $own !== false && $part < $own && substr_count( $sheet, '.theme-probe-inner' ) === 1 );
+
+// an own theme made of it begins at those steps and has the css to change, and stays regulable
+$mix = (array) $opened['mix'];
+$mix['name'] = 'Mine from rich';
+[ $saved, $made ] = upCall( $site, 'themes/save-as', [ 'mix' => $mix ] );
+[ , $mine ] = upCall( $site, 'themes/open', [ 'theme' => 'own:mine-from-rich' ] );
+$mineKnob = array_values( array_filter( $mine['groups']['button']['knobs'] ?? [], static fn( array $one ): bool => $one['key'] === 'button.radius' ) )[0] ?? [];
+$moved = (array) $mine['mix'];
+$moved['parts']['button']['values']['button.radius'] = -1;
+$moved['css'] = (string) $moved['css']. "\n.theme-probe { margin: 1px; }";
+$stamp = (string) ( $mine['stamp'] ?? '' );
+[ $moving ] = upCall( $site, 'themes/save', [ 'theme' => 'own:mine-from-rich', 'mix' => $moved, 'base' => $stamp ] );
+[ , $again ] = upCall( $site, 'themes/open', [ 'theme' => 'own:mine-from-rich' ] );
+upCall( $site, 'themes/apply', [ 'theme' => 'own:mine-from-rich', 'base' => (string) ( $again['stamp'] ?? '' ) ] );
+$after = $sheetOf();
+
+check( 'an own theme made of a theme with steps and css begins at the steps and has the css as the start of its own - and is as free to be set as any: a knob moved from the step it was delivered at and a line of css added are in the stylesheet, the css once',
+	$saved === 200 && ( $mineKnob['step'] ?? 9 ) === 2 && str_contains( (string) ( $mine['mix']['css'] ?? '' ), '.theme-probe-inner' ) === true && $moving === 200 && str_contains( $after, '--button-radius: 2px;' ) === true && str_contains( $after, '--button-radius: 5px;' ) === false
+	&& str_contains( $after, '.theme-probe { margin: 1px; }' ) === true && substr_count( $after, '.theme-probe-inner' ) === 1 );
+
+// a css of a theme that does not keep the rule is not drawn: not by the theme, not by a theme made of it
+$filesBad = upRich( 'bad-css', '1.0.0' );
+upHook( $site, 'bad-css', [ 'theme.json' => $filesBad['theme.json'], 'theme.css' => "body { color: red }\n.ok { color: blue }\n", 'parts/button/part.json' => $filesBad['parts/button/part.json'] ] );
+$badRead = \Nino\Modules\Themes\Reader::read( $site )['themes']['bad-css'] ?? [];
+$badMix = \Nino\Modules\Themes\Mix::of( $site, 'bad-css' ) ?? [];
+upCall( $site, 'themes/apply', [ 'theme' => 'bad-css' ] );
+$badSheet = $sheetOf();
+[ , $badOpen ] = upCall( $site, 'themes/open', [ 'theme' => 'bad-css' ] );
+$badOwn = (array) $badOpen['mix'];
+$badOwn['name'] = 'Mine from bad';
+upCall( $site, 'themes/save-as', [ 'mix' => $badOwn ] );
+upCall( $site, 'themes/apply', [ 'theme' => 'own:mine-from-bad' ] );
+$badOwnSheet = $sheetOf();
+[ , $listed ] = upCall( $site, 'themes/list' );
+$badCard = array_values( array_filter( $listed['themes'], static fn( array $one ): bool => $one['key'] === 'bad-css' ) )[0] ?? [];
+
+check( 'a css of a theme that does not keep the rule is left out and named: the theme is read and used without it, it is not in the stylesheet - not of the theme, not of an own theme made of it, whose css begins empty - and the list says why, with what it found',
+	( $badRead['css'] ?? 'x' ) === '' && ( \Nino\Modules\Themes\Reader::explain( (string) ( $badRead['cssProblem'] ?? '' ) )['code'] ?? '' ) === 'theme-css-any' && isset( $badMix['css'] ) === false && str_contains( $badSheet, 'color: red' ) === false && str_contains( $badSheet, 'color: blue' ) === false
+	&& str_contains( $badOwnSheet, 'color: red' ) === false && ( $badOwn['css'] ?? '' ) === '' && ( $badCard['css']['why']['code'] ?? '' ) === 'theme-css-any' );
+
+// a package whose css breaks the rule is not put in place at all
+$nastyCss = upRich( 'nasty-css', '1.0.0' );
+$nastyCss['theme.css'] = "body { color: red }\n";
+$before = upWritten( $site );
+[ $nastyStatus, $nastyBody ] = upChoose( $site, upPack( $nastyCss ) );
+
+check( 'a package whose theme.css breaks the rule of a theme is refused before it is held, with the file named, and nothing is written',
+	$nastyStatus === 400 && ( $nastyBody['code'] ?? '' ) === 'themes_upload_package_theme_css_any' && isset( $_SESSION[Upload::SESSION] ) === false && upWritten( $site ) === $before );
+
+// a package whose values are no steps of knobs is refused as any package with a part that is wrong
+$nastyValues = upRich( 'nasty-values', '1.0.0' );
+$json = (array) json_decode( $nastyValues['parts/button/part.json'], true );
+$json['values'] = [ 'button.radius' => 3 ];
+$nastyValues['parts/button/part.json'] = (string) json_encode( $json );
+[ $valuesStatus, $valuesBody ] = upChoose( $site, upPack( $nastyValues ) );
+
+check( 'a package whose values are no steps of knobs - a step of 3 - is refused before it is held, with the part named, and nothing is written',
+	$valuesStatus === 400 && ( $valuesBody['code'] ?? '' ) === 'themes_upload_package_part_values' && isset( $_SESSION[Upload::SESSION] ) === false && upWritten( $site ) === $before );
+
+// what is said of the css and of the steps is said with what the kernel gives: the line, the knob
+$lined = upRich( 'lined-css', '1.0.0' );
+$lined['theme.css'] = ".a { margin: 0; }\n.b { margin: 0; }\n/* </style> */\n";
+[ $linedStatus, $linedBody ] = upChoose( $site, upPack( $lined ) );
+upHook( $site, 'lined-hand', [ 'theme.json' => upRich( 'lined-hand', '1.0.0' )['theme.json'], 'theme.css' => $lined['theme.css'] ] );
+$linedWhy = \Nino\Modules\Themes\Reader::explain( (string) ( \Nino\Modules\Themes\Reader::read( $site )['themes']['lined-hand']['cssProblem'] ?? '' ) );
+$nastyValues['parts/button/part.json'] = (string) json_encode( [ 'values' => [ 'button.nothing' => 1 ] ] + (array) json_decode( $nastyValues['parts/button/part.json'], true ) );
+[ , $knobBody ] = upChoose( $site, upPack( $nastyValues ) );
+
+check( 'the css that breaks the rule is told with its line and a part with steps that are none with its knob, in the codes of the panel and with the parameters the kernel gives - no sentence of the kernel is in what is said: in the preview and for a theme read from a folder',
+	$linedStatus === 400 && ( $linedBody['code'] ?? '' ) === 'themes_upload_package_theme_css' && ( $linedBody['params'] ?? [] ) === [ 'theme.css', '3' ] && ( $linedWhy['code'] ?? '' ) === 'theme-css' && ( $linedWhy['params'] ?? [] ) === [ '3' ]
+	&& ( $knobBody['code'] ?? '' ) === 'themes_upload_package_part_values' && ( $knobBody['params'][1] ?? '' ) === 'button.nothing' );
+
+// the css of a theme that is changed after it was read, to as many bytes, in the same second: the stamp of the css is what it says, so the next read is of the file that is there
+upHook( $site, 'stamp-css', [ 'theme.json' => upRich( 'stamp-css', '1.0.0' )['theme.json'], 'theme.css' => ".stamp-probe { margin: 1px; }\n" ] );
+$first = \Nino\Modules\Themes\Reader::read( $site )['themes']['stamp-css']['css'] ?? '';
+upHook( $site, 'stamp-css', [ 'theme.css' => ".stamp-probe { margin: 2px; }\n" ] );
+$second = \Nino\Modules\Themes\Reader::read( $site )['themes']['stamp-css']['css'] ?? '';
+
+check( 'what the reader kept of the themes is stamped by the css of a theme too: the css that is changed to as many bytes - in the same second, as a file that is put in by hand can be - is the css that is read next',
+	str_contains( $first, '1px' ) === true && str_contains( $second, 'margin: 2px' ) === true && $first !== $second );
+
+[ , $listed ] = upCall( $site, 'themes/list' );
+$richCard = array_values( array_filter( $listed['themes'], static fn( array $one ): bool => $one['key'] === 'rich' ) )[0] ?? [];
+
+check( 'the card of an installed theme says what its frames read, as the preview does, and how long its css is - the keys as text of a list, once for each frame',
+	( $richCard['css']['lines'] ?? 0 ) === 2 && array_key_exists( 'why', $richCard['css'] ?? [] ) === true && $richCard['css']['why'] === null && array_column( $richCard['frames'] ?? [], 'key' ) === [ 'rich-foot' ] && in_array( '/project/company/general/name', array_column( $richCard['frames'][0]['reads'] ?? [], 'key' ), true ) === true && array_key_exists( 'text', $richCard['frames'][0]['reads'][0] ?? [] ) === true && $richCard['frames'][0]['reads'][0]['text'] === null );
+
 // every refusal has its sentence in both languages
 $sayings = [ 'de_DE' => require dirname( __DIR__ ). '/text/de_DE.php', 'en_US' => require dirname( __DIR__ ). '/text/en_US.php' ];
 $codes = array_merge(
 	array_map( static fn( string $code ): string => 'themes_upload_archive_'. str_replace( '-', '_', $code ), [ 'gzip', 'bomb', 'trailing', 'truncated', 'header', 'type', 'pax', 'path', 'depth', 'folder', 'duplicate', 'name', 'count', 'file-size', 'total-size', 'unsupported', 'refused' ] ),
-	array_map( static fn( string $code ): string => 'themes_upload_package_'. str_replace( '-', '_', $code ), [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-markup', 'file-map', 'parts-many', 'part', 'css', 'block', 'preview', 'brand', 'words', 'block_loop', 'block_place', 'block_text', 'block_source', 'busy', 'unlockable', 'stage', 'swap', 'refused' ] ),
-	array_map( static fn( string $code ): string => 'themes_upload_'. $code, [ 'large', 'nofile', 'unknown', 'exists', 'taken_shipped', 'taken_catalogue', 'taken_project', 'not_uploaded', 'in_use_active', 'in_use_own', 'in_use_last', 'in_use_last_own', 'busy', 'key_reserved', 'key_like', 'not_newer_same', 'not_newer_older', 'replace_held_active', 'replace_held_own', 'replace_held_last', 'replace_held_last_own', 'needs_right', 'too_many', 'block_displaces' ] )
+	array_map( static fn( string $code ): string => 'themes_upload_package_'. str_replace( '-', '_', $code ), [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-markup', 'file-map', 'parts-many', 'part', 'part_values', 'css', 'theme_css', 'theme_css_any', 'block', 'preview', 'brand', 'words', 'block_loop', 'block_place', 'block_text', 'block_source', 'busy', 'unlockable', 'stage', 'swap', 'refused' ] ),
+	array_map( static fn( string $code ): string => 'themes_upload_'. $code, [ 'large', 'nofile', 'unknown', 'exists', 'taken_shipped', 'taken_catalogue', 'taken_project', 'not_uploaded', 'in_use_active', 'in_use_own', 'in_use_last', 'in_use_last_own', 'busy', 'key_reserved', 'key_like', 'not_newer_same', 'not_newer_older', 'replace_held_active', 'replace_held_own', 'replace_held_last', 'replace_held_last_own', 'too_many', 'block_displaces' ] )
 );
 $unsaid = array_filter( $codes, static fn( string $code ): bool => isset( $sayings['de_DE']['[[/_admin/error/'. $code. ']]'], $sayings['en_US']['[[/_admin/error/'. $code. ']]'] ) === false );
 

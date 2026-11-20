@@ -48,7 +48,8 @@ namespace Nino\Modules\Themes {
 		// What a theme.json and a part.json may say, and the tokens of the page a knob of it may set (the fixed set of the
 		// contract, S1)
 		private const array THEME_KEYS = [ 'key', 'version', 'name', 'description', 'brand' ];
-		private const array PART_KEYS = [ 'contract', 'ladders', 'knobs', 'variants', 'standard' ];
+		private const array PART_KEYS = [ 'contract', 'ladders', 'knobs', 'variants', 'standard', 'values' ];
+		private const int MAX_VALUES = 64;
 		public const array PAGE_TOKENS = [
 			'--page-size', '--page-width', '--page-leading', '--page-radius', '--page-line', '--page-motion', '--page-scroll-pad',
 			'--page-weight-title', '--page-weight-text',
@@ -81,6 +82,9 @@ namespace Nino\Modules\Themes {
 			'themes-many'				=> 'there are more than %s themes',
 			'key-taken'					=> 'the key "%s" is the theme %s\'s',
 			'part-key'					=> '"%s" is no key of a part - there are %s',
+			'part-values'				=> '"values" is a map of knobs of the part to a step from -2 to 2 - "%s" is none of them or has no step',
+			'theme-css'					=> 'theme.css breaks the rules of a theme at line %s',
+			'theme-css-any'			=> 'theme.css breaks the rules of a theme',
 			'part-contract'			=> '"contract" names the feature and the versions of it the part is for, as basis@^1.0',
 			'page-contract'			=> 'the contract of the page is kernel@<constraint> that the kernel %s satisfies',
 			'page-css'					=> 'the page has no stylesheet: its part is part.json alone',
@@ -274,6 +278,22 @@ namespace Nino\Modules\Themes {
 			if( is_string( $brand ) === true )
 				return self::why( 'brand', implode( ', ', Brand::KEYS ), self::_shown( $brand ) );
 
+			// The css of the theme as a whole: read as the kernel reads it, and left out - the theme is used without it - where it breaks the rule; the reason is said
+			$css = '';
+			$cssProblem = '';
+
+			if( file_exists( $real. '/theme.css' ) === true ) {
+
+				$text = self::_file( $real, $real. '/theme.css', self::MAX_CSS );
+
+				if( $text === null )
+					$cssProblem = self::why( 'unreadable', 'theme.css', self::MAX_CSS );
+				else if( ( $problems = \Nino\Components::themeProblems( $text ) ) !== [] )
+					$cssProblem = preg_match( '/\(line (\d+)\)/', implode( '; ', $problems ), $line ) === 1 ? self::why( 'theme-css', (int) $line[1] ) : self::why( 'theme-css-any' );
+				else
+					$css = trim( str_replace( [ "\r\n", "\r" ], "\n", $text ) );
+			}
+
 			$raw = [];
 			$parts = $real. '/parts';
 
@@ -295,7 +315,7 @@ namespace Nino\Modules\Themes {
 				}
 			}
 
-			return [ 'key' => $key, 'version' => $json['version'], 'name' => $json['name'], 'description' => $json['description'], 'brand' => $brand, 'dir' => $real, 'raw' => $raw, 'parts' => [] ];
+			return [ 'key' => $key, 'version' => $json['version'], 'name' => $json['name'], 'description' => $json['description'], 'brand' => $brand, 'dir' => $real, 'css' => $css, 'cssProblem' => $cssProblem, 'raw' => $raw, 'parts' => [] ];
 		}
 
 		/**
@@ -434,7 +454,7 @@ namespace Nino\Modules\Themes {
 			if( trim( $css ) !== '' )
 				return self::why( 'page-css' );
 
-			if( array_diff( array_keys( $json ), [ 'contract', 'knobs' ] ) !== [] )
+			if( array_diff( array_keys( $json ), [ 'contract', 'knobs', 'values' ] ) !== [] )
 				return self::why( 'page-keys' );
 
 			$knobs = $json['knobs'] ?? [];
@@ -475,7 +495,12 @@ namespace Nino\Modules\Themes {
 				$clean[$name] = [ 'label' => $knob['label'], 'small' => ( $knob['small'] ?? false ) === true, 'ladder' => $ladder ];
 			}
 
-			return [ 'knobs' => $clean, 'variants' => [], 'standard' => [], 'css' => '' ];
+			$values = self::_values( $json, $clean );
+
+			if( is_string( $values ) === true )
+				return $values;
+
+			return [ 'knobs' => $clean, 'variants' => [], 'standard' => [], 'css' => '', 'values' => $values ];
 		}
 
 		/**
@@ -576,7 +601,44 @@ namespace Nino\Modules\Themes {
 			foreach( $checked['knobs'] as $key => $knob )
 				$knobs[$key] = $knob + [ 'extra' => isset( $declared['knobs'][$key] ) === false ];
 
-			return [ 'knobs' => $knobs, 'variants' => $variants, 'standard' => $standard, 'css' => $css ];
+			$values = self::_values( $json, $knobs );
+
+			if( is_string( $values ) === true )
+				return $values;
+
+			return [ 'knobs' => $knobs, 'variants' => $variants, 'standard' => $standard, 'css' => $css, 'values' => $values ];
+		}
+
+		/**
+		 *	The steps a part is delivered at: a map of the knobs the part has to a whole number from -2 to 2, the one the kernel holds a package to as well. The middle step is
+		 *	left out - a knob that is not in the map is at it - and what is kept is in the order of the knobs
+		 *
+		 *	@param		array			$json					The part.json
+		 *	@param		array			$knobs				The knobs the part has, by their keys
+		 *
+		 *	@return 	array|string							Knob => step, or the reason
+		 */
+		private static function _values( array $json, array $knobs ): array|string {
+
+			if( array_key_exists( 'values', $json ) === false )
+				return [];
+
+			$values = $json['values'];
+
+			if( is_array( $values ) === false || ( $values !== [] && array_is_list( $values ) === true ) || count( $values ) > self::MAX_VALUES )
+				return self::why( 'part-values', '' );
+
+			$clean = [];
+
+			foreach( $values as $knob => $step )
+				if( is_string( $knob ) === false || isset( $knobs[$knob] ) === false || is_int( $step ) === false || $step < -2 || $step > 2 )
+					return self::why( 'part-values', self::_shown( (string) $knob ) );
+				else if( $step !== 0 )
+					$clean[$knob] = $step;
+
+			ksort( $clean );
+
+			return $clean;
 		}
 
 		/**
@@ -595,6 +657,10 @@ namespace Nino\Modules\Themes {
 
 				foreach( (array) glob( $root. '/*/theme.json' ) as $file )
 					$files[] = $file;
+
+				// The css of a theme is stamped by what it says and not by its size and second: a file that is changed to as many bytes in the second it was read is another css
+				foreach( (array) glob( $root. '/*/theme.css' ) as $file )
+					$files[] = $file. '|'. ( is_file( (string) $file ) === true && is_link( (string) $file ) === false ? (string) @sha1_file( (string) $file ) : '' );
 
 				// One pattern for each name: a pattern with braces needs a flag of glob() that not every system has (musl has none)
 				foreach( [ 'part.json', 'part.css' ] as $name )

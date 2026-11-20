@@ -111,6 +111,7 @@
 		invalid		: {},
 		blocked		: '',
 		leftFor		: '',
+		partSteps	: '',
 	};
 
 	/**
@@ -853,9 +854,13 @@
 			if( S.view !== null && typeof S.view.repaint === 'function' )
 				S.view.repaint();
 
-			// A refusal is told until the state is right again, which it is with a draft that was made; and what the part does not have is said
-			if( S.view !== null && dropped.length > 0 ) {
-				S.view.line.idle( word( 'msg/dropped', dropped.join(', ') ) );
+			// A refusal is told until the state is right again, which it is with a draft that was made; and what the part does not have is said, and the steps that were replaced
+			const told = ( dropped.length > 0 ? [ word( 'msg/dropped', dropped.join(', ') ) ] : [] ).concat( S.partSteps !== '' ? [ S.partSteps ] : [] );
+
+			S.partSteps = '';
+
+			if( S.view !== null && told.length > 0 ) {
+				S.view.line.idle( told.join(' ') );
 				S.said = true;
 			}
 			else if( S.view !== null && S.blocked === '' && ( S.view.line.state === 'error' || S.said === true ) ) {
@@ -971,7 +976,7 @@
 
 			name.appendChild( hint );
 			body.appendChild( name );
-			body.appendChild( Nino.adminUi.steps( { labelledby : id, wide : true, steps : STEPS, value : stepOf( S.mix, group, knob.key ), standard : 0, onChange : function( value ) { setKnob( group, section, knob, value, hint ) } } ).el );
+			body.appendChild( Nino.adminUi.steps( { labelledby : id, wide : true, steps : STEPS, value : stepOf( S.mix, group, knob.key ), standard : knob.delivered ?? 0, onChange : function( value ) { setKnob( group, section, knob, value, hint ) } } ).el );
 		} );
 
 		if( section.knobs.length === 0 && section.variants === null )
@@ -1023,15 +1028,34 @@
 
 		const entry = partOf( group );
 		const before = clone( entry );
+		const offer = described( group ).offers.find( function( candidate ) { return candidate.theme+ '@'+ candidate.version === value } );
+		const delivered = offer === undefined ? {} : Object.assign( {}, offer.values ?? {} );
+
+		// The part stands as it does in the theme it comes from, until a knob is turned: the steps it is delivered at are the stand of its knobs. Steps that were set for
+		// the part that was there are replaced by them - said where the person looks, and the bar takes the group back to what was saved
+		const was = {};
+
+		described( group ).knobs.forEach( function( knob ) { was[knob.key] = knob.delivered ?? 0 } );
+
+		// Steps are the person's where they differ from what the part that was there is delivered at, a knob that was turned back to the middle among them
+		const set = entry.values ?? {};
+		const replaced = Object.keys( Object.assign( {}, set, was ) ).some( function( key ) { return ( set[key] ?? 0 ) !== ( was[key] ?? 0 ) && ( set[key] ?? 0 ) !== ( delivered[key] ?? 0 ) } );
 
 		entry.from = value;
+
+		if( offer !== undefined || value === 'standard' )
+			entry.values = delivered;
+
 		S.structural = group;
+		S.partSteps = replaced === true ? word( 'msg/part-steps', groupLabel( group ) ) : '';
 		changed();
 
 		loop.flush( function( ok ) {
 
 			if( ok === true )
 				return;
+
+			S.partSteps = '';
 
 			S.mix.parts[group] = before;
 			S.structural = null;
@@ -3517,6 +3541,50 @@
 		return typeof Nino.admin.workLocale === 'object' && Nino.admin.workLocale !== null && typeof Nino.admin.workLocale.current === 'string' ? Nino.admin.workLocale.current : '';
 	};
 
+	// A text in a field that is read and not changed - its value is text whatever it holds - behind a button that shows it: the licence, and the css the package brings
+	const textToggle = function( holder, label, value, id ) {
+
+		const text = el( 'textarea', 'nino-admin-code admin-hidden' );
+		const toggle = Nino.adminUi.button( label, function() {
+
+			const shown = text.classList.contains('admin-hidden') === true;
+
+			text.classList.toggle( 'admin-hidden', shown === false );
+			toggle.setAttribute( 'aria-expanded', shown === true ? 'true' : 'false' );
+		}, { className : 'nino-admin-btn--small' } );
+
+		text.readOnly = true;
+		text.rows = 8;
+		text.value = value;
+		toggle.setAttribute( 'aria-expanded', 'false' );
+		toggle.id = id;
+		text.setAttribute( 'aria-labelledby', id );
+		holder.appendChild( toggle );
+		holder.appendChild( text );
+	};
+
+	// The keys of the texts of the website that frames read, as a list of text: the (?) says what that means
+	const readsOf = function( holder, name, reads ) {
+
+		const list = el( 'ul', 'themes-upload-reads' );
+
+		// Each key with what the site says at it today, quietly beside it: the key is for the developer, the text is what a visitor reads
+		reads.forEach( function( read ) {
+
+			const item = el( 'li' );
+
+			item.appendChild( el( 'code', '', read.key ) );
+			item.appendChild( el( 'small', 'nino-admin-hint', ' '+ ( read.logo === true ? word('upload/reads-logo') : ( read.text === null ? word('upload/reads-none') : read.text ) ) ) );
+			list.appendChild( item );
+		} );
+
+		const head = el( 'p', 'nino-admin-hint', word( 'upload/reads', name ) );
+
+		head.appendChild( Nino.adminUi.fieldHelp( word('upload/reads-help'), { field : list, name : name } ) );
+		holder.appendChild( head );
+		holder.appendChild( list );
+	};
+
 	// Everything the package says of itself is set as text: a name, a description and a licence are the words of whoever made it
 	const previewOf = function( theme, pick ) {
 
@@ -3551,6 +3619,15 @@
 
 		say( word( 'upload/facts', theme.parts.length, theme.blocks.length, theme.frames ) );
 
+		// The css the package brings: how long it is, and the text of it behind a button, as the licence is
+		if( theme.css.lines > 0 ) {
+
+			say( word( 'upload/css', theme.css.lines ) );
+
+			if( theme.css.text !== '' )
+				textToggle( holder, word('upload/css-show'), theme.css.text, 'themes-upload-css-toggle' );
+		}
+
 		theme.parts.filter( function( part ) { return part.ok === false } ).forEach( function( part ) {
 			say( word( 'upload/part-rests', groupLabelOf( part.group ), reasonText( part.why ) ), 'nino-admin-hint themes-upload-warn' );
 		} );
@@ -3562,6 +3639,9 @@
 				say( word( 'upload/block-in', block.name ) );
 			else if( block.state === 'out' )
 				say( word( 'upload/block-out', block.name, block.origin ), 'nino-admin-hint themes-upload-warn' );
+
+			if( block.reads.length > 0 )
+				readsOf( holder, block.name, block.reads );
 		} );
 
 		// What stands in the way of the write, in the words of the refusal the write would answer with
@@ -3593,27 +3673,8 @@
 			}
 		}
 
-		if( theme.licence !== '' ) {
-
-			// The licence is text in a field that is read and not changed - its value is text whatever it holds - behind a button that shows it
-			const text = el( 'textarea', 'nino-admin-code admin-hidden' );
-			const toggle = Nino.adminUi.button( word('upload/licence'), function() {
-
-				const shown = text.classList.contains('admin-hidden') === true;
-
-				text.classList.toggle( 'admin-hidden', shown === false );
-				toggle.setAttribute( 'aria-expanded', shown === true ? 'true' : 'false' );
-			}, { className : 'nino-admin-btn--small' } );
-
-			text.readOnly = true;
-			text.rows = 8;
-			text.value = theme.licence;
-			toggle.setAttribute( 'aria-expanded', 'false' );
-			toggle.id = 'themes-upload-licence-toggle';
-			text.setAttribute( 'aria-labelledby', toggle.id );
-			holder.appendChild( toggle );
-			holder.appendChild( text );
-		}
+		if( theme.licence !== '' )
+			textToggle( holder, word('upload/licence'), theme.licence, 'themes-upload-licence-toggle' );
 
 		return holder;
 	};
@@ -3859,6 +3920,35 @@
 			card.appendChild( note );
 		}
 
+		// The css of the theme that is not used, and why: the theme is used without it
+		if( theme.kind === 'theme' && theme.css !== undefined && theme.css.why !== null && theme.css.why !== undefined ) {
+
+			const refused = el( 'p', 'nino-admin-hint themes-rests themes-clamp', word( 'msg/card-css', reasonText( theme.css.why ) ) );
+
+			refused.title = refused.textContent;
+			card.appendChild( refused );
+		}
+
+		// The texts of the website that the frames of the theme read, quietly: a button that shows them, as text
+		if( theme.kind === 'theme' && Array.isArray( theme.frames ) === true && theme.frames.length > 0 ) {
+
+			const reads = el( 'div', 'themes-card-reads admin-hidden' );
+			const toggle = Nino.adminUi.button( word('card/reads'), function() {
+
+				const shown = reads.classList.contains('admin-hidden') === true;
+
+				reads.classList.toggle( 'admin-hidden', shown === false );
+				toggle.setAttribute( 'aria-expanded', shown === true ? 'true' : 'false' );
+			}, { className : 'nino-admin-btn--small' } );
+
+			toggle.setAttribute( 'aria-expanded', 'false' );
+			toggle.dataset.reads = theme.key;
+
+			theme.frames.forEach( function( frame ) { readsOf( reads, localized( frame.name ), frame.reads ) } );
+			card.appendChild( toggle );
+			card.appendChild( reads );
+		}
+
 		const actions = el( 'div', 'nino-admin-actions' );
 		const edit = Nino.adminUi.button( word('label/edit'), function() { Nino.admin.themes.go( [ theme.key ], {} ) }, { className : 'nino-admin-btn-primary nino-admin-btn--small' } );
 
@@ -3895,7 +3985,7 @@
 			actions.appendChild( use );
 		}
 
-		if( theme.kind === 'theme' && theme.origin === 'uploaded' && theme.removable === true ) {
+		if( theme.kind === 'theme' && theme.origin === 'uploaded' ) {
 
 			const away = Nino.adminUi.button( word('label/remove'), function() { removeUploaded( theme, away ) }, { className : 'nino-admin-btn--small' } );
 

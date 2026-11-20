@@ -46,7 +46,9 @@ namespace Nino\Modules\Themes {
 
 		/**
 		 *	The mix a theme is: its part for the page and for every group of the register that it has one for - the standard part
-		 *	for the rest (F5) - each at its middle step
+		 *	for the rest (F5) - each at the steps the theme is delivered at, which are the middle step where its part says none: a
+		 *	step moves no ladder, the middle of the scale stays the middle. The css of the theme as a whole, where it has one and
+		 *	the rule holds it, is the css of the mix - after the parts, where an own theme made of the mix keeps it to change
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key					The key of an installed theme
@@ -62,12 +64,18 @@ namespace Nino\Modules\Themes {
 
 			$parts = [];
 
-			foreach( array_merge( [ 'page' ], array_keys( \Nino\Components::groups( $appData ) ) ) as $group )
+			foreach( array_merge( [ 'page' ], array_keys( \Nino\Components::groups( $appData ) ) ) as $group ) {
+
 				$parts[$group] = [ 'from' => isset( $theme['parts'][$group] ) === true ? $key. '@'. $theme['version'] : 'standard' ];
+				$delivered = (array) ( $theme['parts'][$group]['part']['values'] ?? [] );
+
+				if( $delivered !== [] )
+					$parts[$group]['values'] = $delivered;
+			}
 
 			ksort( $parts );
 
-			return [ 'parts' => $parts ];
+			return [ 'parts' => $parts ] + ( ( $theme['css'] ?? '' ) !== '' ? [ 'css' => (string) $theme['css'] ] : [] );
 		}
 
 		/**

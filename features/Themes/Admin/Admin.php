@@ -114,8 +114,11 @@ namespace Nino\Modules\Themes {
 					$parts[$group] = [ 'ok' => $part['ok'], 'problem' => $part['problem'], 'why' => Reader::explain( $part['problem'] ) ];
 
 				$origin = Upload::origin( $appData, (string) $key );
-				$removable = $origin === 'uploaded' && Upload::mayChange( $appData, (string) $key );
-				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'origin' => $origin, 'removable' => $removable, 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
+
+				// The css of the theme as a whole - how many lines it has, and why it is not used where the rule refuses it - and the frames the theme brings that show texts
+				// of the website: each with the keys it reads, which a person who puts the theme on looks at first
+				$css = [ 'lines' => (string) $theme['css'] === '' ? 0 : substr_count( (string) $theme['css'], "\n" ) + 1, 'why' => Reader::explain( (string) $theme['cssProblem'] ) ];
+				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'origin' => $origin, 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'css' => $css, 'frames' => Upload::framesOf( $appData, (string) $key ), 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
 			}
 
 			// An own theme says where each of its parts comes from, so that a card can say what it is made of
@@ -652,7 +655,7 @@ namespace Nino\Modules\Themes {
 				];
 
 				foreach( $entry['knobs'] as $key => $knob )
-					$groups[$group]['knobs'][] = [ 'key' => $key, 'label' => $knob['label'], 'extra' => $knob['extra'] ?? false, 'small' => $knob['small'] ?? false, 'step' => $knob['step'], 'default' => $knob['ladder'][2], 'ladder' => $knob['ladder'] ];
+					$groups[$group]['knobs'][] = [ 'key' => $key, 'label' => $knob['label'], 'extra' => $knob['extra'] ?? false, 'small' => $knob['small'] ?? false, 'step' => $knob['step'], 'delivered' => $knob['delivered'] ?? 0, 'default' => $knob['ladder'][2], 'ladder' => $knob['ladder'] ];
 
 				foreach( $entry['variants'] ?? [] as $component => [ $added, $standard ] ) {
 
@@ -669,7 +672,7 @@ namespace Nino\Modules\Themes {
 
 				foreach( $read['themes'] as $key => $offered )
 					if( isset( $offered['parts'][$group] ) === true )
-						$groups[$group]['offers'][] = [ 'theme' => $key, 'version' => $offered['version'], 'ok' => $offered['parts'][$group]['ok'], 'problem' => $offered['parts'][$group]['problem'], 'why' => Reader::explain( $offered['parts'][$group]['problem'] ) ];
+						$groups[$group]['offers'][] = [ 'theme' => $key, 'version' => $offered['version'], 'ok' => $offered['parts'][$group]['ok'], 'problem' => $offered['parts'][$group]['problem'], 'why' => Reader::explain( $offered['parts'][$group]['problem'] ), 'values' => (array) ( $offered['parts'][$group]['part']['values'] ?? [] ) ];
 			}
 
 			$values = $plan['brand'];

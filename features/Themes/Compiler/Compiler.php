@@ -69,7 +69,7 @@ namespace Nino\Modules\Themes {
 			$page['knobs'] = [];
 
 			foreach( $page['part']['knobs'] ?? [] as $name => $knob )
-				$page['knobs'][$name] = $knob + [ 'step' => self::_step( $page['values'][$name] ?? 0 ) ];
+				$page['knobs'][$name] = $knob + [ 'step' => self::_step( $page['values'][$name] ?? 0 ), 'delivered' => self::_step( $page['part']['values'][$name] ?? 0 ) ];
 
 			$plan = [ 'brand' => Brand::effective( $brand, $page['brand'] ), 'named' => Brand::named( $brand, $page['brand'] ), 'notes' => [], 'page' => $page, 'groups' => [] ];
 			$plan['palette'] = Brand::colours( $plan['brand'], $plan['named'] );
@@ -198,7 +198,7 @@ namespace Nino\Modules\Themes {
 
 			if( trim( (string) ( $mix['css'] ?? '' ) ) !== '' ) {
 				[ $own, $faults ] = self::balance( trim( (string) $mix['css'] ) );
-				$blocks[] = '/* The own css of the theme */'. "\n". $own;
+				$blocks[] = '/* The css of the theme */'. "\n". $own;
 			}
 
 			$body = implode( "\n\n", $blocks ). "\n";
@@ -389,7 +389,7 @@ namespace Nino\Modules\Themes {
 			$knobs = [];
 
 			foreach( $part !== null ? $part['knobs'] : $declared['knobs'] as $key => $knob )
-				$knobs[$key] = $knob + [ 'extra' => false, 'step' => self::_step( $resolved['values'][$key] ?? 0 ) ];
+				$knobs[$key] = $knob + [ 'extra' => false, 'step' => self::_step( $resolved['values'][$key] ?? 0 ), 'delivered' => self::_step( $part['values'][$key] ?? 0 ) ];
 
 			$schemas = \Nino\Components::components( $appData );
 			$variants = [];
