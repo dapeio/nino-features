@@ -1484,6 +1484,183 @@
 	};
 
 	/**
+	 *	The groups of the lightbox "Frames of this page", as the block of the workbench for tiles takes them: a group for the header and one for the footer, each with the tiles of the frames the
+	 *	site has - the standard one, the named ones by their name with the word beside it, none -, the tile the page has chosen marked, and the line that says why a side shows no tiles or
+	 *	what is wrong with the one it has
+	 *
+	 *	@param		{Object}		response			The answer of pageframes
+	 *	@param		{Object}		have					side => what the page has chosen
+	 *
+	 *	@return		{Array}
+	 */
+	const frameGroups = function( response, have ) {
+
+		return [ 'header', 'footer' ].map( function( side ) {
+
+			const info = response.sides[side];
+			const group = { key : side, label : word( 'frame/'+ side ), value : null, items : [], note : '' };
+
+			if( info.framed !== true ) {
+				group.note = word( 'frames/scaffold-note', 'html-'+ side+ '.tpl' );
+				return group;
+			}
+
+			// A call of the scaffold that has an attribute cannot be written as the call of a frame without changing what it does: the page keeps it and the choice is not offered
+			if( info.locked === true ) {
+				group.note = word('frames/locked-note');
+				return group;
+			}
+
+			group.items = info.options.map( function( choice ) { return { value : choice, label : frameWord( choice, side ), hint : frameCalled( side, choice ) === '' ? '' : choice } } );
+			group.value = markedFrame( info.options, have[side] );
+
+			if( info.missing === true )
+				group.note = word( 'frames/missing-note', info.current );
+
+			return group;
+		} );
+	};
+
+	/**
+	 *	What the lightbox sets: the frame of each side that has tiles - the tile that is chosen, or what the page has where a frame it names is missing and no tile is marked; a side that has none
+	 *	is not touched
+	 */
+	const frameValues = function( tiles, groups, have ) {
+
+		const values = tiles.value();
+		const picks = {};
+
+		groups.forEach( function( group ) {
+
+			if( group.items.length > 0 )
+				picks[group.key] = values[group.key] ?? have[group.key];
+		} );
+
+		return picks;
+	};
+
+	/**
+	 *	The block of the workbench for one tile in each of several groups, Nino.adminUi.tileChoice(); a workbench that has none - one older than the block - gets the same tiles from legacyTiles(),
+	 *	which is the only place the choice of a frame is built by hand
+	 */
+	const frameTileChoice = function( groups ) {
+
+		const options = { groups : groups };
+
+		return typeof Nino.adminUi.tileChoice === 'function' ? Nino.adminUi.tileChoice( options ) : legacyTiles( options );
+	};
+
+	/**
+	 *	tileChoice() for a workbench that lacks it: the groups as radiogroups of tiles with a picture, a name and a line, a tab stop for the chosen tile of each group, the arrow keys in four
+	 *	directions, the note of a group - as much of the block as the lightbox uses, answering the same handle: el, faces, value(), get(), set(), focus()
+	 */
+	const legacyTiles = function( options ) {
+
+		const root = el( 'div', 'nino-admin-pick builder-framechoice' );
+		const list = el( 'div', 'nino-admin-pick-list nino-admin-pick-list--tiles' );
+		const faces = {};
+		const state = {};
+		const sets = {};
+
+		root.appendChild( list );
+
+		options.groups.forEach( function( group ) {
+
+			const box = el( 'div', 'nino-admin-pick-group' );
+			const title = el( 'h3', 'nino-admin-pick-group-title', group.label );
+			const set = el( 'div', 'nino-admin-pick-set' );
+			const tiles = [];
+
+			title.id = 'builder-framechoice-'+ group.key;
+			box.dataset.group = group.key;
+			set.setAttribute( 'role', 'radiogroup' );
+			set.setAttribute( 'aria-labelledby', title.id );
+			box.appendChild( title );
+
+			if( group.note !== '' )
+				box.appendChild( el( 'small', 'nino-admin-hint builder-framechoice-note', group.note ) );
+
+			box.appendChild( set );
+			list.appendChild( box );
+			faces[group.key] = {};
+			sets[group.key] = tiles;
+			state[group.key] = null;
+
+			const choose = function( tile, focus ) {
+
+				state[group.key] = tile === null ? null : tile.dataset.value;
+				tiles.forEach( function( other ) {
+					other.setAttribute( 'aria-checked', other === tile ? 'true' : 'false' );
+					other.tabIndex = other === ( tile ?? tiles[0] ) ? 0 : -1;
+				} );
+
+				if( focus === true && tile !== null )
+					tile.focus();
+			};
+
+			group.items.forEach( function( item ) {
+
+				const tile = el( 'button', 'nino-admin-pick-item nino-admin-pick-item--tile builder-framechoice-item' );
+				const face = el( 'span', 'nino-admin-pick-image' );
+				const text = el( 'span', 'nino-admin-pick-text' );
+
+				tile.type = 'button';
+				tile.setAttribute( 'role', 'radio' );
+				tile.dataset.value = item.value;
+				tile.dataset.group = group.key;
+				text.appendChild( el( 'strong', 'nino-admin-pick-label', item.label ) );
+
+				if( item.hint !== '' )
+					text.appendChild( el( 'span', 'nino-admin-hint builder-framechoice-word', item.hint ) );
+
+				tile.appendChild( face );
+				tile.appendChild( text );
+				faces[group.key][item.value] = face;
+				tiles.push( tile );
+				set.appendChild( tile );
+			} );
+
+			tiles.forEach( function( tile, at ) {
+
+				tile.addEventListener( 'click', function() { choose( tile, false ) } );
+				tile.addEventListener( 'keydown', function( event ) {
+
+					const to = tileTo( tiles, at, event.key );
+
+					if( to !== -1 ) {
+						event.preventDefault();
+						choose( tiles[to], true );
+					}
+				} );
+			} );
+
+			choose( tiles.find( function( tile ) { return tile.dataset.value === group.value } ) ?? null, false );
+		} );
+
+		return {
+			el : root,
+			faces : faces,
+			value : function() {
+
+				const values = {};
+
+				options.groups.forEach( function( group ) { values[group.key] = state[group.key] } );
+
+				return values;
+			},
+			get : function( key ) { return state[key] ?? null },
+			set : function( key, value ) {
+
+				const tile = ( sets[key] ?? [] ).find( function( one ) { return one.dataset.value === value } );
+
+				if( tile !== undefined )
+					tile.click();
+			},
+			focus : function( key ) { ( ( sets[key] ?? [] ).find( function( tile ) { return tile.tabIndex === 0 } ) ?? { focus : function() {} } ).focus() },
+		};
+	};
+
+	/**
 	 *	"Frames of this page": the lightbox beside the name of the page. The header and the footer are two groups, each a choice of ONE tile - the standard frame, the frames of the site by their
 	 *	word, none - with the picture of the page in the frame; the one the page has now is marked. The main answer sets both in one step of the undo. Where the scaffold of the site does not
 	 *	carry the place for the choice, the lightbox says so and offers to turn it
@@ -1504,146 +1681,61 @@
 
 			S.frameNames = response.names ?? S.frameNames ?? {};
 
-			const root = el( 'div', 'nino-admin-pick builder-framechoice' );
 			let opened = null;
 			let reload = false;
-			const list = el( 'div', 'nino-admin-pick-list nino-admin-pick-list--tiles' );
-			const picks = {};
-			const faces = [];
-			root.appendChild( list );
+			const have = {};
 
 			[ 'header', 'footer' ].forEach( function( side ) {
 
-				const info = response.sides[side];
-				const group = el( 'div', 'nino-admin-pick-group' );
-				const title = el( 'h3', 'nino-admin-pick-group-title', word( 'frame/'+ side ) );
-				const set = el( 'div', 'nino-admin-pick-set' );
+				const call = S.top.find( function( node ) { return sideOfCall( node ) === side } );
 
-				title.id = 'builder-framechoice-'+ side;
-				group.setAttribute( 'role', 'group' );
-				group.setAttribute( 'aria-labelledby', title.id );
-				group.dataset.side = side;
-				group.appendChild( title );
-				group.appendChild( set );
-				list.appendChild( group );
+				have[side] = call === undefined ? 'default' : choiceOfCall( call );
+			} );
 
-				if( info.framed !== true ) {
+			const groups = frameGroups( response, have );
+			const tiles = frameTileChoice( groups );
+			const root = tiles.el;
 
-					const turn = Nino.adminUi.button( word('frames/scaffold-turn'), function() {
+			// A side that is not turned has the button that turns it, in its group
+			groups.forEach( function( group ) {
 
-						Nino.adminUi.confirm( 'destructive', {
-							title		: word('frames/scaffold-turn'),
-							message	: word( 'frames/scaffold-ask', 'html-'+ side+ '.tpl' ),
-							yes			: word('frames/scaffold-turn'),
-							no			: Nino.adminUi.text('/_admin/common/label/cancel'),
-							kind		: 'danger',
-							nested	: true,
-							opener	: turn,
-							onChoose	: function() {
-
-								api( 'scaffold', { side : side }, function( code, answer ) {
-
-									if( code === 200 ) {
-
-										// The lightbox is drawn anew from what the site says after the turn, so that the tiles of the side are there
-										Nino.adminUi.say( word( 'frames/scaffold-done', answer.kept ) );
-										reload = true;
-
-										if( opened !== null )
-											opened.close( 'cancel' );
-									}
-									else
-										Nino.adminUi.say( Nino.adminUi.api.errorText( code, answer, '/_admin/builder/error/frame' ), { kind : 'error' } );
-								} );
-							},
-						} );
-					}, { className : 'nino-admin-btn--small' } );
-
-					set.appendChild( el( 'p', 'nino-admin-hint builder-framechoice-note', word( 'frames/scaffold-note', 'html-'+ side+ '.tpl' ) ) );
-					set.appendChild( turn );
-
+				if( response.sides[group.key].framed === true )
 					return;
-				}
 
-				// A call of the scaffold that has an attribute cannot be written as the call of a frame without changing what it does: the page keeps it and the choice is not offered
-				if( info.locked === true ) {
-					set.appendChild( el( 'p', 'nino-admin-hint builder-framechoice-note', word('frames/locked-note') ) );
-					return;
-				}
+				const side = group.key;
+				const host = root.querySelector( '.nino-admin-pick-group[data-group="'+ side+ '"]' );
+				const turn = Nino.adminUi.button( word('frames/scaffold-turn'), function() {
 
-				const have = S.top.find( function( node ) { return sideOfCall( node ) === side } );
+					Nino.adminUi.confirm( 'destructive', {
+						title		: word('frames/scaffold-turn'),
+						message	: word( 'frames/scaffold-ask', 'html-'+ side+ '.tpl' ),
+						yes			: word('frames/scaffold-turn'),
+						no			: Nino.adminUi.text('/_admin/common/label/cancel'),
+						kind		: 'danger',
+						nested	: true,
+						opener	: turn,
+						onChoose	: function() {
 
-				picks[side] = have === undefined ? 'default' : choiceOfCall( have );
-				set.setAttribute( 'role', 'radiogroup' );
-				set.setAttribute( 'aria-labelledby', title.id );
+							api( 'scaffold', { side : side }, function( code, answer ) {
 
-				const items = [];
+								if( code === 200 ) {
 
-				if( info.missing === true )
-					set.appendChild( el( 'p', 'nino-admin-hint builder-framechoice-note', word( 'frames/missing-note', info.current ) ) );
+									// The lightbox is drawn anew from what the site says after the turn, so that the tiles of the side are there
+									Nino.adminUi.say( word( 'frames/scaffold-done', answer.kept ) );
+									reload = true;
 
-				info.options.forEach( function( choice ) {
-
-					const item = el( 'button', 'nino-admin-pick-item nino-admin-pick-item--tile builder-framechoice-item' );
-					const face = el( 'span', 'nino-admin-pick-image' );
-					const text = el( 'span', 'nino-admin-pick-text' );
-
-					item.type = 'button';
-					item.setAttribute( 'role', 'radio' );
-					item.dataset.word = choice;
-					text.appendChild( el( 'strong', 'nino-admin-pick-label', frameWord( choice, side ) ) );
-
-					if( frameCalled( side, choice ) !== '' )
-						text.appendChild( el( 'span', 'nino-admin-hint builder-framechoice-word', choice ) );
-
-					item.appendChild( face );
-					item.appendChild( text );
-
-					if( choice !== 'none' ) {
-						face.dataset.block = side+ ':'+ choice;
-						faces.push( { face : face, side : side, word : choice } );
-					}
-
-					items.push( item );
-					set.appendChild( item );
-				} );
-
-				const mark = function( chosen, focus ) {
-
-					picks[side] = chosen.dataset.word;
-					items.forEach( function( item ) {
-						item.setAttribute( 'aria-checked', item === chosen ? 'true' : 'false' );
-						item.tabIndex = item === chosen ? 0 : -1;
+									if( opened !== null )
+										opened.close( 'cancel' );
+								}
+								else
+									Nino.adminUi.say( Nino.adminUi.api.errorText( code, answer, '/_admin/builder/error/frame' ), { kind : 'error' } );
+							} );
+						},
 					} );
+				}, { className : 'nino-admin-btn--small' } );
 
-					if( focus === true )
-						chosen.focus();
-				};
-
-				// A frame the page names that the site does not have marks no tile: the site draws the standard one, which is no choice of the page, and the tab key stops at the first tile
-				const marked = markedFrame( info.options, picks[side] );
-
-				if( marked === null )
-					items.forEach( function( item, at ) {
-						item.setAttribute( 'aria-checked', 'false' );
-						item.tabIndex = at === 0 ? 0 : -1;
-					} );
-				else
-					mark( items.find( function( item ) { return item.dataset.word === marked } ), false );
-
-				items.forEach( function( item, at ) {
-
-					item.addEventListener( 'click', function() { mark( item, false ) } );
-					item.addEventListener( 'keydown', function( event ) {
-
-						const to = tileTo( items, at, event.key );
-
-						if( to !== -1 ) {
-							event.preventDefault();
-							mark( items[to], true );
-						}
-					} );
-				} );
+				if( host !== null )
+					host.appendChild( turn );
 			} );
 
 			const some = [ 'header', 'footer' ].some( function( side ) { return response.sides[side].framed === true && response.sides[side].locked !== true } );
@@ -1659,7 +1751,7 @@
 				onChoose	: function( value ) {
 
 					if( value === 'set' )
-						setFrames( picks );
+						setFrames( frameValues( tiles, groups, have ) );
 					else if( reload === true )
 						openPageFrames( opener );
 				},
@@ -1669,12 +1761,22 @@
 				return;
 
 			// The picture of each frame: the page in it, drawn as the tiles of the blocks are
-			faces.forEach( function( entry ) {
+			groups.forEach( function( group ) {
 
-				api( 'pageframetile', { side : entry.side, word : entry.word }, function( code, answer ) {
+				group.items.forEach( function( item ) {
 
-					if( code === 200 && entry.face.isConnected === true && entry.face.querySelector('iframe') === null )
-						tileFrame( entry.face, { address : answer.address, query : answer.query }, S.dir );
+					const face = tiles.faces[group.key][item.value];
+
+					if( item.value === 'none' || face === undefined )
+						return;
+
+					face.dataset.block = group.key+ ':'+ item.value;
+
+					api( 'pageframetile', { side : group.key, word : item.value }, function( code, answer ) {
+
+						if( code === 200 && face.isConnected === true && face.querySelector('iframe') === null )
+							tileFrame( face, { address : answer.address, query : answer.query }, S.dir );
+					} );
 				} );
 			} );
 		} );
@@ -5114,6 +5216,8 @@
 			const marks = preview.marks( {
 				elements	: elementsOfRel,
 				keyAt			: relInPage,
+				// The innermost component under the pointer has the quiet frame of the workbench in the page, and the same one is lit in the tree - a workbench without the option draws none
+				hover			: true,
 				onHover		: function( key ) { inPage.set( key ) },
 			} );
 			const inPage = sync.join( function( key ) {
@@ -10746,7 +10850,7 @@
 			addComponent : addComponent, relNode : relNode, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, tileTo : tileTo, markedFrame : markedFrame, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, PEN_INSET : PEN_INSET, markBox : markBox, boxOf : boxOf, aimFor : aimFor, seamAt : seamAt, renameBlock : renameBlock, setFrames : setFrames, sideOfCall : sideOfCall, choiceOfCall : choiceOfCall, frameWord : frameWord, identProblem : identProblem, identWhy : identWhy, sectionPen : sectionPen, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, tileTo : tileTo, markedFrame : markedFrame, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, PEN_INSET : PEN_INSET, markBox : markBox, boxOf : boxOf, aimFor : aimFor, seamAt : seamAt, renameBlock : renameBlock, setFrames : setFrames, sideOfCall : sideOfCall, choiceOfCall : choiceOfCall, frameWord : frameWord, frameGroups : frameGroups, frameValues : frameValues, frameTileChoice : frameTileChoice, legacyTiles : legacyTiles, identProblem : identProblem, identWhy : identWhy, sectionPen : sectionPen, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		/**

@@ -415,6 +415,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		w.view.querySelector('.nino-admin-tree').dispatchEvent( { type : 'pointerleave', bubbles : false } );
 		return first === 'team' && seen[seen.length - 1] === null;
 	} )() );
+	check( 'F290. the page of the Builder asks for no frame round what is under the pointer: its blocks have their own marks', marks.hover === undefined );
 	check( 'C. the block the pointer or the focus is over in the page marks its row in the outline - and its icon in the strip - and the pointer gone, none', ( function() {
 		marks.onHover( 'cards' );
 		const on = lit()+ '|'+ strip();
@@ -1087,6 +1088,16 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		marks.onHover('1.1');
 
 		return toPage === true && elements.length === 2 && elements[0] === one && elements[1] === two && key === '1.1' && backToChosen === true && lit() === '1.1' && marks.keyAt( {} ) === null;
+	} )() );
+	check( 'F290. the page of an editor of the blocks asks for the quiet frame of the workbench round the innermost component under the pointer - hover : true - and what it reports with onHover is lit in the tree, the same component; the page of the Builder asks for none, and a workbench that does not know the option is handed it all the same: nothing is drawn and nothing fails', ( function() {
+		marks.onHover( null );
+		marks.onHover('1.1');
+
+		const lit1 = lit() === '1.1';
+
+		marks.onHover( null );
+
+		return marks.hover === true && lit1 === true && lit() !== '1.1' && typeof marks.onHover === 'function';
 	} )() );
 	check( 'F. Enter on a row opens the lightbox of its component, and Delete asks before the component is taken out - nothing is taken out by the key alone', ( function() {
 		const count = w.dialogs.length;

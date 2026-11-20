@@ -1046,13 +1046,13 @@ check( 'F285. a choice that is the choice is no change and makes no step; a word
 		return same === false && bad.every( function( one ) { return one === false } ) && content === false && frame === false && S.undo.length === steps && JSON.stringify( S.top ) === before;
 	} )() );
 
-check( 'F285. the lightbox "Frames of this page" is the workbench\'s dialog with one choice of tiles for the header and one for the footer - the standard frame, the frames of the site, none -, the chosen tile marked, one main answer that sets both; beside the name of the page, for the one who designs, with an icon and the name as its words',
+check( 'F285. the lightbox "Frames of this page" is the workbench\'s dialog with one choice of tiles for the header and one for the footer - the block of the workbench for tiles, or the same tiles from one place of the feature where it has none -, the chosen tile marked, one main answer that sets both; beside the name of the page, for the one who designs, with an icon and the name as its words',
 	( function() {
 		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
 
 		return /Nino\.adminUi\.iconButton\( 'panels-top-left', word\('frames\/page'\)/.test( script ) === true && /S\.sheet === 'page' && S\.frame === false && advanced === false && builds\(\) === true/.test( script ) === true
-			&& /api\( 'pageframes', \{\}/.test( script ) === true && /api\( 'pageframetile', \{ side : entry\.side, word : entry\.word \}/.test( script ) === true && /set\.setAttribute\( 'role', 'radiogroup' \)/.test( script ) === true
-			&& /item\.setAttribute\( 'role', 'radio' \)/.test( script ) === true && /'aria-checked', item === chosen \? 'true' : 'false'/.test( script ) === true && /if\( value === 'set' \)\s*setFrames\( picks \)/.test( script ) === true
+			&& /api\( 'pageframes', \{\}/.test( script ) === true && /api\( 'pageframetile', \{ side : group\.key, word : item\.value \}/.test( script ) === true && /typeof Nino\.adminUi\.tileChoice === 'function' \? Nino\.adminUi\.tileChoice\( options \) : legacyTiles\( options \)/.test( script ) === true
+			&& /const tiles = frameTileChoice\( groups \);/.test( script ) === true && /if\( value === 'set' \)\s*setFrames\( frameValues\( tiles, groups, have \) \)/.test( script ) === true && /content\s*: root,/.test( script ) === true
 			&& /api\( 'scaffold', \{ side : side \}/.test( script ) === true && /Nino\.adminUi\.confirm\( 'destructive', \{[\s\S]{0,260}nested\s*: true/.test( script ) === true;
 	} )() );
 
@@ -1071,6 +1071,13 @@ check( 'F285. an arrow key in a group of tiles leads to the tile it points at, i
 check( 'F285. a frame that the page names and the site does not have marks no tile - the first one is not marked in its place - and a frame that is there marks its own',
 	builder.markedFrame( [ 'default', 'landing', 'none' ], 'gone' ) === null && builder.markedFrame( [ 'default', 'landing', 'none' ], 'landing' ) === 'landing' && builder.markedFrame( [ 'default', 'none' ], 'default' ) === 'default' );
 
+check( 'F290. the button that turns the scaffold stands in the group of its side, and the picture of each tile is drawn into the face the block gives, under the key of the frame - side and word - that the tile of a frame is kept by',
+	( function() {
+		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
+
+		return /root\.querySelector\( '\.nino-admin-pick-group\[data-group="'\+ side\+ '"\]' \)/.test( script ) === true && /if\( host !== null \)\s*host\.appendChild\( turn \)/.test( script ) === true && /face\.dataset\.block = group\.key\+ ':'\+ item\.value;/.test( script ) === true && /const face = tiles\.faces\[group\.key\]\[item\.value\];/.test( script ) === true;
+	} )() );
+
 check( 'F285. the choice does not touch the call of the scaffold that has an attribute: it is not written as the call of a frame when the other side is changed',
 	( function() {
 		fresh();
@@ -1081,13 +1088,13 @@ check( 'F285. the choice does not touch the call of the scaffold that has an att
 		return ok === true && JSON.stringify( S.top[0] ) === JSON.stringify( { n : 'template', s : '/templates/html-header', a : { class : 'x' }, c : null } ) && frameCalls().join() === 'template /templates/html-header,frame /templates/frame-footer-none';
 	} )() );
 
-check( 'F285. the scaffold that was turned draws the lightbox anew from what the site says, and the answer names where the old text is kept; the notes of a side that cannot be chosen and of a frame that is missing stand in a class of the feature, and the (?) of the lightbox holds its explanation; the keys of a group are the keys of the tiles',
+check( 'F285. the scaffold that was turned draws the lightbox anew from what the site says, and the answer names where the old text is kept; the notes of a side that cannot be chosen and of a frame that is missing are the notes of the groups - in a class of the feature only for the tiles of a workbench without the block -, and the (?) of the lightbox holds its explanation',
 	( function() {
 		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
 		const css = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.css' ), 'utf8' );
 
 		return /reload = true;\s*if\( opened !== null \)\s*opened\.close\( 'cancel' \)/.test( script ) === true && /else if\( reload === true \)\s*openPageFrames\( opener \)/.test( script ) === true && /word\( 'frames\/scaffold-done', answer\.kept \)/.test( script ) === true
-			&& /const to = tileTo\( items, at, event\.key \);\s*if\( to !== -1 \)/.test( script ) === true && /info\.locked === true/.test( script ) === true && /info\.missing === true/.test( script ) === true && /tools\s*: Nino\.adminUi\.fieldHelp\( word\('frames\/page-note'\)/.test( script ) === true
+			&& /const to = tileTo\( tiles, at, event\.key \);\s*if\( to !== -1 \)/.test( script ) === true && /info\.locked === true/.test( script ) === true && /info\.missing === true/.test( script ) === true && /tools\s*: Nino\.adminUi\.fieldHelp\( word\('frames\/page-note'\)/.test( script ) === true
 			&& /\.builder-framechoice-note \{/.test( css ) === true && /nino-admin-pick-set \.nino-admin-hint/.test( css ) === false;
 	} )() );
 

@@ -981,4 +981,65 @@ function world( options ) {
 	check( 'T. an account that does not design has no tabs - the list of the pages is all it has', tabs( plain.list.parentNode ?? plain.list ).length === 0 && plain.table() !== null );
 }
 
+// --- the lightbox "Frames of this page": the block of the workbench for tiles, and the same tiles where the workbench has none ---------------------------------------
+
+{
+	const w = world();
+
+	w.open('#builder');
+
+	const model = w.panel.model;
+	const both = { framed : true, locked : false, missing : false, current : 'landing', options : [ 'default', 'landing', 'none' ] };
+	const response = { sides : { header : both, footer : { framed : false, locked : false, missing : false, current : 'default', options : [] } } };
+	const groups = model.frameGroups( response, { header : 'landing', footer : 'default' } );
+
+	check( 'L. the groups of the lightbox are the header and the footer: the tiles of the frames by their words with the one the page has chosen as the value; a side whose scaffold does not carry the place has no tiles and a note of its own',
+		groups.map( function( group ) { return group.key } ).join() === 'header,footer' && groups[0].items.map( function( item ) { return item.value } ).join() === 'default,landing,none' && groups[0].value === 'landing' && groups[0].note === ''
+		&& groups[1].items.length === 0 && groups[1].note === W( 'frames/scaffold-note', 'html-footer.tpl' ) && groups[0].items[0].label === W('frames/default') && groups[0].items[2].label === W('frames/none') );
+
+	const odd = model.frameGroups( { sides : { header : Object.assign( {}, both, { missing : true, current : 'gone', options : [ 'default', 'none' ] } ), footer : Object.assign( {}, both, { locked : true } ) } }, { header : 'gone', footer : 'default' } );
+
+	check( 'L. a frame the page names that the site has not marks no tile and says so - the word is in the note -, and a side whose call cannot be rewritten has no tiles and says so',
+		odd[0].value === null && odd[0].note === W( 'frames/missing-note', 'gone' ) && odd[0].items.length === 2 && odd[1].items.length === 0 && odd[1].note === W('frames/locked-note') );
+
+	const tilesOf = function( handle ) { return findAll( handle.el, function( el ) { return el.tagName === 'BUTTON' && el.attributes.role === 'radio' } ) };
+	const exercise = function( handle ) {
+
+		const header = tilesOf( handle ).filter( function( tile ) { return tile.dataset.group === 'header' } );
+		const seen = [ header.length, JSON.stringify( handle.value() ), header.map( function( tile ) { return tile.attributes['aria-checked']+ ':'+ tile.tabIndex } ).join() ];
+
+		fire( header[0], 'click' );
+		seen.push( JSON.stringify( handle.value() ) );
+		fire( header[0], 'keydown', { key : 'ArrowRight', preventDefault : function() {} } );
+		seen.push( JSON.stringify( handle.value() ), Object.keys( handle.faces.header ).join(), Object.keys( handle.faces.footer ).length );
+		handle.set( 'header', 'none' );
+		seen.push( handle.get('header') );
+
+		return seen.join('|');
+	};
+
+	const made = model.frameTileChoice( groups );
+	const now = exercise( made );
+	const had = w.Nino.adminUi.tileChoice;
+
+	w.Nino.adminUi.tileChoice = undefined;
+
+	const legacy = model.frameTileChoice( groups );
+	const old = exercise( legacy );
+
+	w.Nino.adminUi.tileChoice = had;
+
+	check( 'L. the tiles of the lightbox are the block of the workbench where it has one: the value that comes back is the chosen frame of each side, null for a side with none, a click and an arrow key choose, set() chooses without a word',
+		typeof had !== 'function' || ( String( made.el.className ).indexOf('nino-admin-tilechoice') !== -1 && now === '3|{"header":"landing","footer":null}|false:-1,true:0,false:-1|{"header":"default","footer":null}|{"header":"landing","footer":null}|default,landing,none|0|none' && had === w.Nino.adminUi.tileChoice ) );
+	check( 'L. the tiles of a workbench without the block are the feature\'s own - its class, none of the block\'s', String( legacy.el.className ).indexOf('builder-framechoice') !== -1 && String( legacy.el.className ).indexOf('nino-admin-tilechoice') === -1 );
+	check( 'L. a workbench without the block draws the same tiles from one place of the feature, and they answer the same: the same tiles, values, tab stops and arrow keys',
+		old === now || typeof had !== 'function' );
+	check( 'L. what the lightbox sets is the frame of each side that has tiles - where a frame the page names is missing and nothing is chosen, what the page has -, and none for a side that has no tiles',
+		( function() {
+			const handle = model.frameTileChoice( odd );
+
+			return JSON.stringify( model.frameValues( handle, odd, { header : 'gone', footer : 'default' } ) ) === '{"header":"gone"}' && JSON.stringify( model.frameValues( model.frameTileChoice( groups ), groups, { header : 'landing', footer : 'default' } ) ) === '{"header":"landing"}';
+		} )() );
+}
+
 done();

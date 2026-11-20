@@ -895,7 +895,7 @@
 	}
 }
 
-/* The choice of a frame in "Frames of this page": the tile that is chosen has the accent round it, as the frame in the page has */
+/* The choice of a frame in "Frames of this page" on a workbench without the block for tiles (legacyTiles() in admin.js; the block has its own look): the tile that is chosen has the accent round it, as the frame in the page has */
 .builder-framechoice-item[aria-checked="true"] {
 	border-color: var(--editor-blue);
 	box-shadow: inset 0 0 0 1px var(--editor-blue);
@@ -908,7 +908,7 @@
 	margin: 0;
 }
 
-/* The word of a named frame stands under its name in the choice of a frame, quiet and on a line of its own */
+/* The word of a named frame stands under its name in the choice of a frame (legacyTiles()), quiet and on a line of its own */
 .builder-framechoice-word {
 	display: block;
 	overflow-wrap: anywhere;
