@@ -7,8 +7,8 @@
  *										that says where the requests of the sheet go (blocks/...), where back leads, what the panel is called, and the list, the forms and the questions
  *										that stand round it. Everything it shows is the answer of the API (see Modules\Themelab\Admin).
  *
- *										The address is #themelab (the blocks of the project), #themelab/<key> (one of them in the editor), #themelab/theme (the blocks of the theme in use) and
- *										#themelab/theme/<key> (one of them, shown and not changed). The list opens first; a click on a row opens the block.
+ *										The address is #themelab (the blocks of the project), #themelab/<key> (one of them in the editor), #themelab/@theme-blocks (the blocks of the theme in use) and
+ *										#themelab/@theme-blocks/<key> (one of them, shown and not changed). The list opens first; a click on a row opens the block.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -56,6 +56,7 @@
 	const N = {
 		fresh		: '',
 		frames	: null,
+		ownKeys	: null,
 		tab			: 'project',
 		source	: 'project',
 		open		: null,
@@ -67,17 +68,28 @@
 	// The address of the list of a tab, and of a block in it: the first tab is the blocks - 'project' for the own ones, 'theme' for those of the theme in use, a switch inside the
 	// tab -, the second the frames, the third 'info' - the theme itself, which has an address of its own and no block in it
 	const tabParts = function( tab ) {
-		return tab === 'theme' ? [ 'theme-blocks' ] : ( tab === 'frames' ? [ 'frames' ] : ( tab === 'info' ? [ 'theme' ] : [] ) );
+		return tab === 'theme' ? [ '@theme-blocks' ] : ( tab === 'frames' ? [ '@frames' ] : ( tab === 'info' ? [ '@theme' ] : [] ) );
 	};
 
 	const partsOf = function( tab, key ) {
+
+		// A block of the project that an address names is a block of the project: its key is known, though the list has not been asked since it was made
+		if( tab === 'project' && N.ownKeys !== null && N.ownKeys.indexOf( key ) === -1 )
+			N.ownKeys.push( key );
+
 		return tabParts( tab ).concat( [ key ] );
 	};
 
 	// What the address names: the tab and the key of the block, '' for the list
 	const targetOf = function( parts ) {
 
-		const tab = parts[0] === 'theme-blocks' ? 'theme' : ( parts[0] === 'frames' ? 'frames' : ( parts[0] === 'theme' ? 'info' : 'project' ) );
+		// The fixed addresses have the @ that no key of a block has: #themelab/@frames, #themelab/@theme, #themelab/@theme-blocks. The addresses of before, without it, name what they most
+		// likely mean: with a key behind them they are the tab; alone they are the block of that key where the project has one, else the tab
+		const FIXED = { '@theme-blocks' : 'theme', '@frames' : 'frames', '@theme' : 'info' };
+		const OLD = { 'theme-blocks' : 'theme', 'frames' : 'frames', 'theme' : 'info' };
+		const first = parts[0] ?? '';
+		const fixed = FIXED[first] ?? ( OLD[first] !== undefined && ( parts.length > 1 || ( N.ownKeys ?? [] ).indexOf( first ) === -1 ) ? OLD[first] : undefined );
+		const tab = fixed ?? 'project';
 		const rest = tab === 'project' ? parts : parts.slice( 1 );
 
 		if( rest.length === 0 )
@@ -554,6 +566,7 @@
 			editor().close();
 
 		N.data = data;
+		N.ownKeys = Array.isArray( data.ownKeys ) === true ? data.ownKeys : N.ownKeys;
 		N.frames = Array.isArray( data.frames ) === true ? data.frames : N.frames;
 		N.tab = data.tab;
 

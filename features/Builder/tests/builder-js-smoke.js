@@ -900,6 +900,35 @@ check( 'P6. the id of a section is changed in one step of the undo: the block is
 	return made === true && JSON.stringify( [ S.top, S.texts ] ) === before && S.undo.length === undone;
 } )() );
 
+check( 'F287. the jump marks of the page that point at the id that goes - href="#hero" in a component, a text that is just "#hero", also for an id inside the section - point at the new id in the same step of the undo, and are counted; links that only look alike - another id, an address with the id behind it - stay', ( function() {
+	fresh();
+	S.oldIds = new Set( [ 'hero', 'hero-1', 'start' ] );
+	S.inserted = {};
+	S.named = {};
+
+	const [ at, other ] = blocks();
+
+	S.top[other].c.push( { n : 'button', a : { href : '#hero', title : '#hero-10' }, c : [] }, { n : 'button', a : { href : 'page:/x#hero' }, c : [] }, { n : 'button', a : { href : '#hero-1' }, c : [] }, { n : 'button', a : { href : 'xhero' }, c : [] } );
+	const tail = function() { return S.top[other].c.slice( -4 ).map( function( node ) { return node.a.href } ).join() };
+	S.texts['/template/page-home/start/link'] = { de_DE : '#hero', en_US : '#hero' };
+	S.texts['/template/page-home/start/note'] = { de_DE : 'see #hero' };
+
+	const before = JSON.stringify( [ S.top, S.texts ] );
+	const undone = S.undo.length;
+	const result = builder.renameBlock( at, 'intro' );
+	const links = tail();
+
+	const made = result === '' && S.relinked === 3 && links === '#intro,page:/x#hero,#intro-1,xhero' && S.top[other].c.slice( -4 )[0].a.title === '#hero-10' && S.texts['/template/page-home/start/link'].de_DE === '#intro' && S.texts['/template/page-home/start/link'].en_US === '#intro' && S.texts['/template/page-home/start/note'].de_DE === 'see #hero' && S.undo.length === undone + 1;
+
+	builder.undo();
+
+	return made === true && JSON.stringify( [ S.top, S.texts ] ) === before;
+} )() );
+
+check( 'F287. the change of an id says what it moved on the page, and asks the server which other pages still link to the old id - the ids of the section and of what is inside it, only for a page - and names them, three at most and the rest counted, in the line of the bar',
+	/api\( 'anchorlinks', \{ ids : ids \}/.test( script ) === true && /S\.sheet !== 'page' \|\| S\.frame === true/.test( script ) === true && /moved === 1 \? word\( 'ident\/relinked-one', '#'\+ now \) : word\( 'ident\/relinked', String\( moved \), '#'\+ now \)/.test( script ) === true && /others\.pages\.slice\( 0, 3 \)/.test( script ) === true && /word\( 'ident\/others-more', String\( others\.pages\.length - 3 \) \)/.test( script ) === true
+	&& /if\( lines\.length > 0 && S\.view !== null \)\s*S\.view\.bar\.line\.idle\( lines\.join\(' '\) \)/.test( script ) === true && /announceLinks\( id, value, wasIds, S\.relinked \)/.test( script ) === true );
+
 check( 'P6. an id that is no id, is too long or is another one of the page - or one a text or a picture place of the page already has for a scope - is refused with its reason, and nothing is changed and no step is made', ( function() {
 	fresh();
 	S.oldIds = new Set( [ 'hero', 'hero-1', 'start' ] );

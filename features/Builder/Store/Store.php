@@ -451,6 +451,27 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	A page that is written is written in the line ends it has: the ends that most of its lines of the old text have - CRLF where there are more of them than of LF, else LF. What is new in
+		 *	it takes them; a text that differs from the old one in nothing but the ends is the old text, to the byte, so that a save that changes nothing changes nothing
+		 *
+		 *	@param		string		$written			What the tree is written as
+		 *	@param		string		$old					The text of the template as it stands
+		 *
+		 *	@return 	string
+		 */
+		public static function eol( string $written, string $old ): string {
+
+			$plain = static fn( string $text ): string => str_replace( "\r\n", "\n", $text );
+
+			if( $plain( $written ) === $plain( $old ) )
+				return $old;
+
+			$crlf = substr_count( $old, "\r\n" );
+
+			return $crlf > substr_count( $old, "\n" ) - $crlf ? str_replace( "\n", "\r\n", $plain( $written ) ) : $plain( $written );
+		}
+
+		/**
 		 *	What is checked of a draft or a save, before anything is drawn or written: the tree is one the Builder takes, it is the old page with its blocks
 		 *	moved, copied or left out, its fixed texts are texts, and the words are for keys of the namespace, in languages of the site, and kept for the keys a call still reads
 		 *
@@ -517,7 +538,7 @@ namespace Nino\Modules\Builder {
 			if( $nodes === null )
 				return [ 'failure' => [ 400, 'a fixed text is not one', 'builder_fixed', [ \Nino\Modules\Builder\Tree::MAX_TEXT ], 'tree' ] ];
 
-			$source = \Nino\Markup::write( $nodes, \Nino\Components::containers( $appData ) );
+			$source = self::eol( \Nino\Markup::write( $nodes, \Nino\Components::containers( $appData ) ), $state['source'] );
 
 			if( is_array( $texts ) === false || count( $texts ) > self::MAX_KEYS )
 				return [ 'failure' => [ 400, 'the texts are none', 'builder_texts', [], 'texts' ] ];

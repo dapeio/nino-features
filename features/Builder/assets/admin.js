@@ -76,6 +76,7 @@
 	 */
 	const S = {
 		list			: null,
+		relinked		: 0,
 		frameNames	: null,
 		sheet			: 'page',
 		adapter		: null,
@@ -1719,7 +1720,7 @@
 		}
 
 		if( key === 'themelab' ) {
-			Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ 'frames', id === '@footer' ? 'footer' : 'header' ] ) } );
+			Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ '@frames', id === '@footer' ? 'footer' : 'header' ] ) } );
 			return;
 		}
 
@@ -2344,6 +2345,115 @@
 		return made.some( function( id ) { return others.has( id ) === true || ( own.has( id ) === false && isFree( id, others ) === false ) } ) === true ? 'taken' : '';
 	};
 
+	// The ids a block has before it is renamed: its own and those of the parts inside it that are named after it
+	const identIds = function( at ) {
+
+		const ids = {};
+		const walk = function( node ) {
+
+			if( node.n === undefined )
+				return;
+
+			const name = S.known[node.n] !== undefined ? S.known[node.n].id : '';
+
+			if( name !== '' && node.a !== undefined && typeof node.a[name] === 'string' && node.a[name] !== '' )
+				ids[node.a[name]] = true;
+
+			if( Array.isArray( node.c ) === true )
+				node.c.forEach( walk );
+		};
+
+		if( S.top[at] !== undefined )
+			walk( S.top[at] );
+
+		return Object.keys( ids );
+	};
+
+	// What the change of an id says: how many jump marks of this page went with it, and - asked of the server, which looks through the templates of the other pages - how many links of other
+	// pages still point at the old id, and on which pages. Nothing is refused: it is a hint
+	const announceLinks = function( old, now, ids, moved ) {
+
+		const say = function( others ) {
+
+			const lines = [];
+
+			if( moved > 0 )
+				lines.push( moved === 1 ? word( 'ident/relinked-one', '#'+ now ) : word( 'ident/relinked', String( moved ), '#'+ now ) );
+
+			if( others !== null && others.links > 0 ) {
+
+				const names = others.pages.slice( 0, 3 ).map( function( page ) { return page.name } ).join(', ');
+
+				const where = names+ ( others.pages.length > 3 ? ' '+ word( 'ident/others-more', String( others.pages.length - 3 ) ) : '' );
+
+				lines.push( others.links === 1 ? word( 'ident/others-one', '#'+ old, where ) : word( 'ident/others', String( others.links ), '#'+ old, where ) );
+			}
+
+			if( lines.length > 0 && S.view !== null )
+				S.view.bar.line.idle( lines.join(' ') );
+		};
+
+		// Only a page has other pages that link to it: the sheet of a block or of a frame has none
+		if( S.sheet !== 'page' || S.frame === true ) {
+			say( null );
+			return;
+		}
+
+		api( 'anchorlinks', { ids : ids }, function( status, response ) {
+			say( status === 200 && Array.isArray( ( response ?? {} ).pages ) === true ? response : null );
+		} );
+	};
+
+	// The jump marks of the page that point at an id that is renamed: the value of an attribute, or the text of a key of the page, that is just #old is #new; how many there are is answered
+	const relink = function( map ) {
+
+		const links = {};
+		const to = function( value ) { return typeof value === 'string' && value.charAt(0) === '#' && Object.prototype.hasOwnProperty.call( map, value.slice( 1 ) ) === true && map[value.slice( 1 )] !== value.slice( 1 ) ? '#'+ map[value.slice( 1 )] : null };
+		const walk = function( node ) {
+
+			if( node.n === undefined )
+				return;
+
+			Object.keys( node.a ?? {} ).forEach( function( name ) {
+
+				const next = to( node.a[name] );
+
+				if( next !== null ) {
+					node.a[name] = next;
+					links[ 'a:'+ Object.keys( links ).length ] = true;
+				}
+			} );
+
+			if( Array.isArray( node.c ) === true )
+				node.c.forEach( walk );
+		};
+
+		S.top.forEach( walk );
+
+		Object.keys( S.texts ).forEach( function( key ) {
+
+			if( key.split('/')[2] !== S.template )
+				return;
+
+			let hit = false;
+
+			Object.keys( S.texts[key] ?? {} ).forEach( function( locale ) {
+
+				const next = to( S.texts[key][locale] );
+
+				if( next !== null ) {
+					S.texts[key][locale] = next;
+					hit = true;
+				}
+			} );
+
+			if( hit === true )
+				links[ 't:'+ key ] = true;
+		} );
+
+		return Object.keys( links ).length;
+	};
+
 	/**
 	 *	Change the id of a section: the block is made again under the new ids by the rule of a copy - the words of each of its ids put under the new ones - and takes the place of the old one,
 	 *	in ONE step that an undo takes back. The anchor of the section on the page is its id: the links that name the old one - #old - are not looked for
@@ -2373,6 +2483,7 @@
 		const map = {};
 		const copy = copied( block, root, now, map );
 		const was = keyAt( at );
+		let moved = 0;
 
 		change( function() {
 
@@ -2413,7 +2524,12 @@
 				if( parts.length === 5 && parts[2] === S.template && map[parts[3]] !== undefined )
 					S.copies[ '/template/'+ S.template+ '/'+ map[parts[3]]+ '/'+ parts[4] ] = uri;
 			} );
+
+			// The jump marks of this page that pointed at an id that goes - href="#old" in a component, or a text that is just "#old" - point at the new one, in the same step of Undo
+			moved = relink( map );
 		} );
+
+		S.relinked = moved;
 
 		if( S.selected === was )
 			S.selected = keyAt( at );
@@ -2713,7 +2829,12 @@
 
 					if( value !== id ) {
 						S.refocus = { at : block.at, action : 'ident', from : 'frame' };
-						renameBlock( block.at, value );
+						S.relinked = 0;
+
+						const wasIds = identIds( block.at );
+
+						if( renameBlock( block.at, value ) === '' )
+							announceLinks( id, value, wasIds, S.relinked );
 					}
 					else
 						button.focus();
@@ -10368,7 +10489,7 @@
 
 			if( data.bridge === true )
 				actions.push( Nino.adminUi.button( word('frame/themelab'), function() {
-					Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ 'frames', frame.key ] ) } );
+					Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ '@frames', frame.key ] ) } );
 				}, { small : true, name : word( 'frame/themelab-of', name ) } ) );
 
 			return { key : frame.key, title : name, detail : frameDetail( frame ), actions : actions };

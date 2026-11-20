@@ -59,7 +59,9 @@ check( 'B1. a block of the page is taken as a block of the project - the page un
 check( 'B2. the way is asked about unsaved work first, and goes to the address of the block in the panel of the blocks - never to a block the page names itself',
 	has( /Nino\.admin\.dirty\.guard\( \[ 'builder' \], function\(\) \{ Nino\.admin\.router\.go\( 'themelab', \[ key \] \) \} \)/ ) === true && has( /editInBlocks\( S\.own\[box\.block\] \)/ ) === true );
 check( 'B3. the rows of the header and the footer in the outline are a display - "applies to all pages" - and have a button to the editor of the blocks only for the one who holds its right',
-	has( /item\.kind === 'frame' && S\.bridge === true && \( row\.key === '@header' \|\| row\.key === '@footer' \)/ ) === true && has( /'themelab', \[ 'frames', id === '@footer' \? 'footer' : 'header' \]/ ) === true );
+	has( /item\.kind === 'frame' && S\.bridge === true && \( row\.key === '@header' \|\| row\.key === '@footer' \)/ ) === true && has( /'themelab', \[ '@frames', id === '@footer' \? 'footer' : 'header' \]/ ) === true );
+check( 'B3b. the way from a row of the frames in the list of the pages to the editor of that frame is the address of the tab with the @: #themelab/@frames/<key>',
+	has( /router\.go\( 'themelab', \[ '@frames', frame\.key \] \)/ ) === true );
 check( 'B4. the words of the two ways are in both languages and say what they do: "take over into own blocks", "open in Themelab"',
 	word( de, 'own/open' ).indexOf( 'Eigene Blocks' ) !== -1 && word( en, 'own/open' ).indexOf( 'Own blocks' ) !== -1 && word( de, 'own/edit' ).indexOf( 'Themelab' ) !== -1 && word( en, 'own/edit' ).indexOf( 'Themelab' ) !== -1 );
 

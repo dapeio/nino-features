@@ -50,6 +50,7 @@ namespace Nino\Modules\Builder {
 				'builder/pageframes'	=> [ self::class, 'apiPageFrames' ],
 				'builder/pageframetile'	=> [ self::class, 'apiPageFrameTile' ],
 				'builder/scaffold'	=> [ self::class, 'apiScaffold' ],
+				'builder/anchorlinks'	=> [ self::class, 'apiAnchorLinks' ],
 				'builder/framechoose'	=> [ self::class, 'apiFrameChoose' ],
 				'builder/framerestore'	=> [ self::class, 'apiFrameRestore' ],
 				'builder/create'	=> [ self::class, 'apiCreate' ],
@@ -1413,6 +1414,78 @@ namespace Nino\Modules\Builder {
 			}
 
 			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'address' => self::_address( $appData, $opened[0], $opened[3] ) ] );
+		}
+
+		/**
+		 *	The links of other pages to the sections of this page that get another id: the request names the page and the ids it had; the answer names the other pages - the name, the address and the
+		 *	number of links - that hold a link page:<address of this page>#<id> in their template or in one of their texts. Nothing is changed and nothing is locked: it is a hint for the one who changes
+		 *	an id. The templates of the pages are looked through, each once - a site has few
+		 */
+		public static function apiAnchorLinks( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN );
+
+			if( $level === null )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$template = \Nino\Admin\Admin::postString( $data, 'template' );
+
+			if( ( Store::named( $template )['frame'] ?? true ) !== false ) {
+				self::_fail( $request, [ 404, 'there is no such page', 'builder_unknown', [ Store::shown( $template ) ], 'template' ] );
+				return;
+			}
+
+			$ids = array_values( array_unique( array_filter( is_array( $data['ids'] ?? null ) === true ? array_slice( $data['ids'], 0, 64 ) : [], static fn( mixed $id ): bool => is_string( $id ) === true && preg_match( '/^[A-Za-z][A-Za-z0-9_-]{0,80}$/D', $id ) === 1 ) ) );
+			$known = [];
+			$paths = [];
+
+			foreach( \Nino\Locales::getTextLocales( $appData ) as $code )
+				foreach( Pages::all( $appData, $code ) as $page ) {
+
+					$known[(string) $page['template']] ??= [ 'name' => (string) ( $page['name'] ?? $page['template'] ), 'path' => (string) ( $page['path'] ?? '' ) ];
+
+					if( $page['template'] === $template && ( $page['path'] ?? '' ) !== '' )
+						$paths[(string) $page['path']] = true;
+				}
+
+			$found = [];
+
+			if( $ids !== [] && $paths !== [] ) {
+
+				$pattern = '#(?<![A-Za-z0-9_-])page:(?:'. implode( '|', array_map( static fn( string $path ): string => preg_quote( $path, '#' ), array_keys( $paths ) ) ). ')\#(?:'. implode( '|', array_map( static fn( string $id ): string => preg_quote( $id, '#' ), $ids ) ). ')(?![A-Za-z0-9_-])#';
+				$dir = \Nino\Filesystem::path( $appData, '/templates' );
+				$files = $dir === '' ? [] : (array) glob( $dir. '/page-*.tpl' );
+				sort( $files );
+
+				foreach( $files as $file ) {
+
+					$other = basename( (string) $file, '.tpl' );
+
+					if( $other === $template || ( Store::named( $other )['frame'] ?? true ) !== false || is_link( (string) $file ) === true )
+						continue;
+
+					$source = \Nino\Filesystem::getFileContent( $appData, '/templates/'. $other. '.tpl', null );
+					$count = is_string( $source ) === true ? (int) preg_match_all( $pattern, $source ) : 0;
+
+					foreach( \Nino\Text::values( $appData, '/template/'. $other ) as $values )
+						foreach( (array) $values as $text )
+							if( is_string( $text ) === true && preg_match( $pattern, $text ) === 1 ) {
+								$count++;
+								break;
+							}
+
+					if( $count > 0 )
+						$found[] = [ 'template' => $other, 'name' => $known[$other]['name'] ?? $other. '.tpl', 'path' => $known[$other]['path'] ?? '', 'links' => $count ];
+				}
+			}
+
+			\Nino\Http::ok( $request, [ 'pages' => $found, 'links' => array_sum( array_column( $found, 'links' ) ) ] );
 		}
 
 		/**

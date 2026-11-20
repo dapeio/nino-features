@@ -415,6 +415,7 @@ namespace Nino\Modules\Themelab {
 				// What the project holds of its own, for the page of the theme: the blocks and the frames
 				'counts'		=> [ 'blocks' => count( Sheet::listed( $appData, 'project' ) ), 'frames' => count( Frames::listed( $appData ) ), 'frameBlocks' => count( Sheet::listed( $appData, 'project', true ) ) - count( Sheet::listed( $appData, 'project' ) ) ],
 				'blocks'		=> $blocks,
+				'ownKeys'		=> array_map( 'strval', array_keys( Sheet::listed( $appData, 'project' ) ) ),
 				'frames'		=> Frames::listed( $appData, $locale ),
 				'library'		=> $library,
 				'categories'	=> array_values( array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ) ),
