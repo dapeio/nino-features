@@ -624,7 +624,8 @@ namespace Nino\Modules\Builder {
 				return;
 			}
 
-			$token = \Nino\Preview::issue( $appData, Library::KIND, self::perm(), $tile, \Nino\Admin\Admin::postString( $data, 'token' ), Library::TILES );
+			// The picture of a block of a frame that the editor of the blocks asks for is held for the right of that panel - the account may have none of the Builder's
+			$token = \Nino\Preview::issue( $appData, Library::KIND, ( $appData[\Nino\Modules\Builder::AS] ?? false ) === true ? \Nino\Modules\Builder::BRIDGE : self::perm(), $tile, \Nino\Admin\Admin::postString( $data, 'token' ), Library::TILES );
 
 			if( $token === '' ) {
 				self::_fail( $request, [ 500, 'the preview could not be written', 'builder_preview', [], '' ] );
@@ -898,21 +899,79 @@ namespace Nino\Modules\Builder {
 			}
 			else {
 
-				foreach( \Nino\Text::entries( $appData, false ) as $entry ) {
+				// The texts of the store: the keys with the words each has, those of the page first
+				$all = self::textKeys( $appData, $locale, $query, $prefix, $places );
 
-					$all = array_filter( array_map( static fn( string $text ): string => trim( (string) preg_replace( '/\s+/', ' ', html_entity_decode( strip_tags( $text ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) ), $entry['values'] ), static fn( string $text ): bool => $text !== '' );
-
-					if( $all === [] || ( $query !== '' && str_contains( mb_strtolower( $entry['key']. ' '. implode( ' ', $all ) ), $query ) === false ) )
-						continue;
-
-					$found[] = [ 'key' => $entry['key'], 'name' => substr( $entry['key'], (int) strrpos( $entry['key'], '/' ) + 1 ), 'text' => mb_substr( $all[$locale] ?? $all['*'] ?? reset( $all ), 0, 120 ), 'own' => str_starts_with( $entry['key'], $prefix ) ] + self::_area( $entry['key'], $places );
-				}
+				\Nino\Http::ok( $request, $all );
+				return;
 			}
 
 			// What belongs to the page stands first
 			usort( $found, static fn( array $a, array $b ): int => [ $b['own'], $a['key'] ] <=> [ $a['own'], $b['key'] ] );
 
 			\Nino\Http::ok( $request, [ 'entries' => array_slice( $found, 0, self::KEYS ), 'more' => count( $found ) > self::KEYS ] );
+		}
+
+		/**
+		 *	The texts of the store for a person who looks for one: each key with its words in the language - the first language that has one else - and where it belongs, those below the
+		 *	prefix first, the keys that hold words only. The editor of the blocks looks for the texts a block of a frame reads with it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$locale
+		 *	@param		string		$query				Lower case; part of the key or of the words
+		 *	@param		string		$prefix				The keys below it stand first
+		 *	@param		array|null	$places				template or Element-URI of a page => its name; null for the pages of the site
+		 *
+		 *	@return 	array											'entries' (at most KEYS), 'more'
+		 */
+		public static function textKeys( array &$appData, string $locale, string $query, string $prefix = '/', ?array $places = null, ?callable $accept = null ): array {
+
+			if( $places === null ) {
+
+				$places = [];
+
+				foreach( \Nino\Pages::all( $appData ) as $page ) {
+
+					$places[(string) $page['template']] = (string) ( $page['names'][$locale] ?? '' ) !== '' ? (string) $page['names'][$locale] : (string) $page['template'];
+					$places[(string) $page['uri']] = $places[(string) $page['template']];
+				}
+			}
+
+			$found = [];
+
+			foreach( \Nino\Text::entries( $appData, false ) as $entry ) {
+
+				$all = array_filter( array_map( static fn( string $text ): string => trim( (string) preg_replace( '/\s+/', ' ', html_entity_decode( strip_tags( $text ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) ), $entry['values'] ), static fn( string $text ): bool => $text !== '' );
+
+				if( $all === [] || ( $query !== '' && str_contains( mb_strtolower( $entry['key']. ' '. implode( ' ', $all ) ), $query ) === false ) || ( $accept !== null && $accept( $entry['key'] ) === false ) )
+					continue;
+
+				$found[] = [ 'key' => $entry['key'], 'name' => substr( $entry['key'], (int) strrpos( $entry['key'], '/' ) + 1 ), 'text' => mb_substr( $all[$locale] ?? $all['*'] ?? reset( $all ), 0, 120 ), 'own' => str_starts_with( $entry['key'], $prefix ), 'withheld' => self::_withheld( $entry['key'] ) ] + self::_area( $entry['key'], $places );
+			}
+
+			usort( $found, static fn( array $a, array $b ): int => [ $b['own'], $a['key'] ] <=> [ $a['own'], $b['key'] ] );
+
+			return [ 'entries' => array_slice( $found, 0, self::KEYS ), 'more' => count( $found ) > self::KEYS ];
+		}
+
+		/**
+		 *	Whether the kernel keeps a text out of the lists it offers texts in - the textfills: a key of the project that is no company, website or legal text, the mailbox the forms deliver to among
+		 *	them. A block of a frame may read it all the same; the list says so. The texts of the pages are the pages' own
+		 *
+		 *	@param		string		$key
+		 *
+		 *	@return 	bool
+		 */
+		private static function _withheld( string $key ): bool {
+
+			if( str_starts_with( $key, '/template/' ) === true )
+				return false;
+
+			foreach( \Nino\Text::FILL_FORMS['textfill']['prefixes'] as $prefix )
+				if( str_starts_with( $key, $prefix ) === true )
+					return false;
+
+			return true;
 		}
 
 		/**

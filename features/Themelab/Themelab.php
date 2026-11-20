@@ -165,6 +165,43 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The two halves of the page a sheet is drawn on: what comes before the block and what comes after it. For the block of a page the bare page of the tile; for the block of a frame - the root
+		 *	the draft says, which the server wrote into it - a header stands over the page and a footer under it, as on the site, the page being a quiet place with the sentence of the sheet. The
+		 *	sentence is cleaned of tags, markup characters and control characters, and what is left is written as text
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$draft				template, source, hint, wrap as the server wrote them
+		 *
+		 *	@return 	array|null								[ head, foot ]; null for a source that is no sheet of that root
+		 */
+		public static function sheetPage( array &$appData, array $draft ): ?array {
+
+			if( is_string( $draft['source'] ?? null ) === false )
+				return null;
+
+			$wrap = in_array( $draft['wrap'] ?? '', [ 'header-wrap', 'footer-wrap' ], true ) === true ? (string) $draft['wrap'] : \Nino\Modules\Builder\Library::PAGE;
+			$nodes = \Nino\Modules\Builder\Tree::read( $appData, $draft['source'] );
+
+			if( \Nino\Modules\Themelab\Sheet::rootAt( $nodes, $wrap ) === null )
+				return null;
+
+			[ $head, $foot ] = array_pad( explode( '[[block]]', \Nino\Feature::template( $appData, '/features/Builder/templates', 'tile' ), 2 ), 2, '' );
+
+			if( $wrap === \Nino\Modules\Builder\Library::PAGE )
+				return [ $head, $foot ];
+
+			$hint = trim( mb_substr( (string) preg_replace( '/[\x00-\x1F\x7F<>&"\[\]]+/u', ' ', strip_tags( (string) ( $draft['hint'] ?? '' ) ) ), 0, 80, 'UTF-8' ) );
+			$place = str_replace( '[[hint]]', htmlspecialchars( $hint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), rtrim( \Nino\Feature::template( $appData, '/features/Themelab/templates', 'frame-place' ) ) );
+			// The page of the sheet has its own main: the one the tile draws round the block is taken away - the head ends with it and the foot begins with its end
+			$open = '<'. 'main>';
+			$close = '</'. 'main>';
+			$top = str_ends_with( rtrim( $head ), $open ) === true ? substr( rtrim( $head ), 0, -strlen( $open ) ) : $head;
+			$bottom = str_starts_with( ltrim( $foot ), $close ) === true ? substr( ltrim( $foot ), strlen( $close ) ) : $foot;
+
+			return $wrap === 'header-wrap' ? [ $top, $place. $bottom ] : [ $top. $place, $bottom ];
+		}
+
+		/**
 			 *	Draw the draft of a block alone: on the page of the Builder's pictures - the stylesheet of the site and a main - without the head and the foot of the site. The draft is the
 			 *	sheet - the two calls of the frame and the block - and a draft that is anything else is not drawn. The sheet is drawn as it is - so that the marks the drawing leaves in the page
 			 *	have the places of the tree of the sheet, which the editor finds its components by - and the two templates that the calls of the frame are, for this request, the two halves of
@@ -181,13 +218,12 @@ namespace Nino\Modules {
 			if( is_string( $draft['source'] ?? null ) === false )
 				return false;
 
-			$nodes = \Nino\Modules\Builder\Tree::read( $appData, $draft['source'] );
-			$at = \Nino\Modules\Themelab\Sheet::rootAt( $nodes );
+			$page = self::sheetPage( $appData, $draft );
 
-			if( $at === null )
+			if( $page === null )
 				return false;
 
-			[ $head, $foot ] = array_pad( explode( '[[block]]', \Nino\Feature::template( $appData, '/features/Builder/templates', 'tile' ), 2 ), 2, '' );
+			[ $head, $foot ] = $page;
 
 			\Nino\Modules\Template::swap( $appData, \Nino\Modules\Themelab\Sheet::FRAMES[0], $head );
 			\Nino\Modules\Template::swap( $appData, \Nino\Modules\Themelab\Sheet::FRAMES[1], $foot );

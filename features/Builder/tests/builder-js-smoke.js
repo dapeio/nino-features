@@ -1078,6 +1078,30 @@ check( 'F290. the button that turns the scaffold stands in the group of its side
 		return /root\.querySelector\( '\.nino-admin-pick-group\[data-group="'\+ side\+ '"\]' \)/.test( script ) === true && /if\( host !== null \)\s*host\.appendChild\( turn \)/.test( script ) === true && /face\.dataset\.block = group\.key\+ ':'\+ item\.value;/.test( script ) === true && /const face = tiles\.faces\[group\.key\]\[item\.value\];/.test( script ) === true;
 	} )() );
 
+check( 'F292. the dialog of a source on the sheet of the block of a frame calls the text that is there "Text of the website" and says that it is the website\'s - the same on every page, changed in the panel Texts - and the sheet of any other block keeps the words it had',
+	( function() {
+		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
+
+		return /word\( tab === 'pick' && spec\.kind === 'text' && S\.adapter\.frameBlock === true \? 'source\/tab-site' : 'source\/tab-'\+ tab \)/.test( script ) === true && /word\( S\.adapter\.frameBlock === true \? 'source\/elsewhere-block' : 'source\/elsewhere-note' \)/.test( script ) === true;
+	} )() );
+
+check( 'F292. a text of a block of a frame has a button that chooses the text of the website - the dialog of a source with the keys of the store - and names the key it reads, with what it says: the text is shown at the component and never written into the block',
+	( function() {
+		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
+
+		return /if\( S\.adapter\.frameBlock === true && S\.adapter\.readOnly !== true \) \{\s*const site = Nino\.adminUi\.button\( word\('place\/site'\), function\(\) \{ openSource\( rel, \{ kind : 'text', attr : read\.attr, label : read\.label \}, site \) \}/.test( script ) === true
+			&& /if\( S\.adapter\.frameBlock === true && key\.indexOf\( '\/template\/'\+ S\.template\+ '\/' \) !== 0 \)\s*return word\( 'source\/is-key-site', key,/.test( script ) === true && /finish\( \{ form : 'key', written : entry\.key, text : entry\.text \} \)/.test( script ) === true
+			&& /S\.shared\[choice\.written\] = choice\.text;/.test( script ) === true;
+	} )() );
+
+check( 'F292. the bar says after a save which languages were given the text of the working language, and for which parts - once, as a line - and the dialog of a source marks a text that the website does not otherwise offer openly, for the block of a frame only',
+	( function() {
+		const script = require('fs').readFileSync( require('path').join( __dirname, '../assets/admin.js' ), 'utf8' );
+
+		return /if\( Array\.isArray\( response\.filled \) === true && response\.filled\.length > 0 \)\s*S\.view\.bar\.line\.idle\( filledSentence\( response\.filled \) \);/.test( script ) === true
+			&& /S\.adapter\.frameBlock === true && entry\.withheld === true \? word\('source\/withheld'\) : ''/.test( script ) === true && /word\( 'msg\/filled', filled\.map/.test( script ) === true;
+	} )() );
+
 check( 'F285. the choice does not touch the call of the scaffold that has an attribute: it is not written as the call of a frame when the other side is changed',
 	( function() {
 		fresh();

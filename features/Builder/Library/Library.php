@@ -157,6 +157,33 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	Whether the kernel takes a text of the site as the source of a call in a block of a frame: the one rule it has, asked of it with a block of a header that reads the key - what it refuses
+		 *	(a key under no root a frame may read, a key of a form it does not know) is not offered. There is no list of the feature's own
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key
+		 *
+		 *	@return 	bool
+		 */
+		public static function frameReads( array &$appData, string $key ): bool {
+
+			static $known = [];
+
+			if( isset( $known[$key] ) === true )
+				return $known[$key];
+
+			$flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+			$name = [ \Nino\Blocks::FALLBACK => 'Probe' ];
+			$parts = [
+				'json'	=> json_encode( [ 'name' => $name, 'description' => $name, 'category' => 'frame', 'rank' => 0 ], $flags ). "\n",
+				'tpl'		=> "[header-wrap id=\"probe\"]\n\t[header-actions]\n\t\t[button ". $key. "]\n\t[/header-actions]\n[/header-wrap]\n",
+				'texts'	=> [ \Nino\Blocks::FALLBACK => "{}\n" ],
+			];
+
+			return $known[$key] = ( preg_match( '/^\/[A-Za-z0-9_\/-]{1,200}$/D', $key ) === 1 && is_array( \Nino\Blocks::validate( $appData, 'probe', $parts ) ) === true );
+		}
+
+		/**
 		 *	The picture a block has of its own for a slot, as the server reads it from the folder of the block - the bytes never come from a request. A svg is the picture that
 		 *	\Nino\Images::cleanSvg() rebuilds of it; a raster picture is read against the type its ending says and the size the kernel allows a picture of a block
 		 *

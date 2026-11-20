@@ -4597,6 +4597,18 @@
 	};
 
 	/**
+	 *	What a save says of the languages that were given the text of the working language: for which languages, from which language, for which parts
+	 *
+	 *	@param		{Array}			filled				[ { locale, parts } ]
+	 *
+	 *	@return		{string}
+	 */
+	const filledSentence = function( filled ) {
+
+		return word( 'msg/filled', filled.map( function( entry ) { return Nino.adminUi.localeName( entry.locale ) } ).join(', '), Nino.adminUi.localeName( S.locale ), Array.from( new Set( [].concat( ...filled.map( function( entry ) { return entry.parts } ) ) ) ).join(', ') );
+	};
+
+	/**
 	 *	The sheet the editor works on: a page of the site - which is what the panel of the Builder opens - or a block, a draft whose top level is that one block and that has no page,
 	 *	no outline and no frames. Everything that takes the draft to a place - where the requests go and what they carry, where "back" leads, the address and the name of the
 	 *	panel, which level of the screen is shown, whether there is a last state - is the adapter's, so that another panel can work on a sheet of its own with the same
@@ -4769,6 +4781,11 @@
 				release();
 				take( response );
 				S.view.bar.line.saved();
+
+				// A text that is new and was written in one language is the text of the others as well, until it is written there: the bar says so, once
+				if( Array.isArray( response.filled ) === true && response.filled.length > 0 )
+					S.view.bar.line.idle( filledSentence( response.filled ) );
+
 				S.view.preview.schedule();
 				done( true );
 				paint();
@@ -6847,6 +6864,10 @@
 		if( key === '' )
 			return word( 'source/is-fixed', shortened( written, 60 ) );
 
+		// A block of a frame names the text of the website by its key - the whole key - and says what it says
+		if( S.adapter.frameBlock === true && key.indexOf( '/template/'+ S.template+ '/' ) !== 0 )
+			return word( 'source/is-key-site', key, shortened( textOf( key ) || ( S.shared[key] ?? '' ), 60 ) || '–' );
+
 		return word( key.indexOf( '/template/'+ S.template+ '/' ) === 0 ?																																																																				ownWord( 'source/is-key', 'source/is-key-block' ) : 'source/is-key-other', key.slice( key.lastIndexOf('/') + 1 ), shortened( textOf( key ) || ( S.shared[key] ?? '' ), 60 ) || '–' );
 	};
 
@@ -6894,6 +6915,10 @@
 			else
 				attrs[spec.attr] = written;
 		} );
+
+		// What the text of the website says is shown at the component until the sheet is opened again: it is the website's, never written into the block
+		if( choice.form === 'key' && typeof choice.text === 'string' && choice.text !== '' && S.shared !== undefined && S.shared !== null )
+			S.shared[choice.written] = choice.text;
 
 		told( word('msg/source-set') );
 		redrawBox();
@@ -7023,7 +7048,7 @@
 						if( seen.has( entry.key ) === true || entry.key.indexOf( '/template/'+ S.template+ '/' ) === 0 )
 							return;
 
-						out.push( entryOf( entry.text !== '' ? entry.text : entry.name, areaOf( entry ), '', function() { finish( { form : 'key', written : entry.key } ) } ) );
+						out.push( entryOf( entry.text !== '' ? entry.text : entry.name, areaOf( entry ), S.adapter.frameBlock === true && entry.withheld === true ? word('source/withheld') : '', function() { finish( { form : 'key', written : entry.key, text : entry.text } ) } ) );
 					} );
 
 					show( out, response.more );
@@ -7040,7 +7065,7 @@
 			box.appendChild( note );
 
 			if( spec.kind !== 'image' )
-				box.appendChild( el( 'p', 'nino-admin-hint', word('source/elsewhere-note') ) );
+				box.appendChild( el( 'p', 'nino-admin-hint', word( S.adapter.frameBlock === true ? 'source/elsewhere-block' : 'source/elsewhere-note' ) ) );
 
 			// The field of the element: where there is a loop, the fields of the type of its elements - else the sentence that says why there is none
 			fields.appendChild( el( 'h4', 'builder-offer-group', word('source/field-title') ) );
@@ -7207,7 +7232,7 @@
 
 		tabs.forEach( function( tab ) {
 
-			const button = el( 'button', 'nino-admin-tab', word( 'source/tab-'+ tab ) );
+			const button = el( 'button', 'nino-admin-tab', word( tab === 'pick' && spec.kind === 'text' && S.adapter.frameBlock === true ? 'source/tab-site' : 'source/tab-'+ tab ) );
 
 			button.type = 'button';
 			button.id = 'builder-source-tab-'+ tab;
@@ -8991,6 +9016,16 @@
 					redrawBox();
 				} );
 				group.appendChild( select );
+
+				// The block of a frame may read the text of the website instead of its own: the dialog of a source chooses it, from the keys of the text store
+				if( S.adapter.frameBlock === true && S.adapter.readOnly !== true ) {
+
+					const site = Nino.adminUi.button( word('place/site'), function() { openSource( rel, { kind : 'text', attr : read.attr, label : read.label }, site ) }, { className : 'nino-admin-btn--small', name : word( 'place/site-of', read.label ) } );
+
+					site.dataset.key = rel+ ':site:'+ read.attr;
+					group.appendChild( el( 'p', 'nino-admin-hint', word('place/site-note') ) );
+					group.appendChild( site );
+				}
 
 				// The words of the person: one field for each language, folded away until they are wanted
 				if( current === 'own' ) {

@@ -266,13 +266,15 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array											[ 'key', 'parts' => [ json, tpl, texts => language => json ] ] - or 'failure' => [ status, message, code, params, field ]
 		 */
-		public static function parts( array &$appData, string $template, array $state, array $nodes, array $input ): array {
+		public static function parts( array &$appData, string $template, array $state, array $nodes, array $input, ?string $wrap = null ): array {
 
-			self::$frame = Library::wrapOf( $template ) !== Library::PAGE;
+			// The root is the one the template of a frame has - or the one the caller names, for a block of a frame that is worked on in a page that is no frame
+			$wrap ??= Library::wrapOf( $template );
+			self::$frame = $wrap !== Library::PAGE;
 			self::$problems = [];
 
 			try {
-				$made = self::_parts( $appData, $template, $state, $nodes, $input );
+				$made = self::_parts( $appData, $template, $state, $nodes, $input, $wrap );
 			}
 			finally {
 				self::$frame = false;
@@ -280,7 +282,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			// A frame says what it was refused for in the words of a frame
-			if( isset( $made['failure'] ) === true && Library::wrapOf( $template ) !== Library::PAGE )
+			if( isset( $made['failure'] ) === true && $wrap !== Library::PAGE )
 				$made['failure'][2] = str_replace( 'builder_own_', 'builder_frame_', (string) $made['failure'][2] );
 
 			return $made;
@@ -289,9 +291,7 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	parts() for the root of a page or of a frame: the one place where a block of the library and a page or a frame are mapped to one another
 		 */
-		private static function _parts( array &$appData, string $template, array $state, array $nodes, array $input ): array {
-
-			$wrap = Library::wrapOf( $template );
+		private static function _parts( array &$appData, string $template, array $state, array $nodes, array $input, string $wrap ): array {
 
 			$registry = \Nino\Components::components( $appData );
 			$at = is_string( $input['at'] ?? null ) === true && preg_match( '/^\d+$/D', $input['at'] ) === 1 ? (int) $input['at'] : -1;
@@ -337,6 +337,7 @@ namespace Nino\Modules\Builder {
 			$chosen = is_array( $input['pictures'] ?? null ) === true ? $input['pictures'] : [];
 			$gaps = [];
 			$spare = [];
+			$filled = [];
 
 			foreach( $used as $flat => [ $kind, $from, $link ] ) {
 
@@ -373,6 +374,10 @@ namespace Nino\Modules\Builder {
 					if( is_string( $text ) === true )
 						$have[(string) $locale] = $text;
 
+				// A language that was emptied has no text: in a frame it is a language that lacks one - it is not the text of an empty word - and is said so, or filled and said
+				if( self::$frame === true )
+					$have = array_filter( $have, static fn( string $text ): bool => trim( $text ) !== '' );
+
 				$part = (string) ( $used[$flat][3] ?? '' );
 
 				// A frame has no text made up for a language that has none: a text that is in no language is refused, a language that lacks one is said - and filled from the language
@@ -397,6 +402,10 @@ namespace Nino\Modules\Builder {
 							$spare[$locale][$flat] = self::_plain( (string) ( $have[$native] ?? reset( $have ) ) );
 							continue;
 						}
+
+						// A language of the site that was given the text of another is said: it is no text anyone wrote in that language
+						if( in_array( $locale, \Nino\Locales::getTextLocales( $appData ), true ) === true )
+							$filled[$locale][$part] = $part;
 
 						$given = $donor;
 					}
@@ -492,7 +501,7 @@ namespace Nino\Modules\Builder {
 					return [ 'key' => $key, 'parts' => $parts, 'gaps' => self::_gapList( $gaps ) ];
 			}
 
-			return [ 'key' => $key, 'parts' => $parts ];
+			return [ 'key' => $key, 'parts' => $parts ] + ( $filled === [] ? [] : [ 'filled' => self::_gapList( $filled ) ] );
 		}
 
 		/**

@@ -1710,26 +1710,35 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 /** What was asked of the panel, in the order it was asked */
 const asked = function( w, action ) { return w.requests.filter( function( entry ) { return entry.action === action } ) };
 
-// The block of a frame stands in the list of the own blocks as the block of a frame: its category is the frame's, a quiet line says where it is put in and changed, its picture is the tile of its frame - asked the way
-// of the frames, naming the template - and a press on the row opens its details: no row that does nothing; the details do not ask for a category
+// The block of a frame stands in the list of the own blocks as the block of a frame: its category is the frame's, its picture is the tile of its frame - asked the way
+// of the frames, naming the template - and a press on the row opens the editor, as for any own block; the details, which the pencil opens, do not ask for a category
 {
 	const list = LIST( { counts : { blocks : 2, frames : 2, frameBlocks : 1 }, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'frame', group : 'frame', variants : 0, rank : 0, frame : true, template : 'frame-header' } ] ) } );
 	const { w } = shown( '#themelab', list );
 	const head = rowsOfList( w ).find( function( row ) { return row.dataset.row === 'mein-kopf' } );
 	const tiles = asked( w, 'themelab/frame-tile' ).concat( asked( w, 'themelab/tile' ) ).map( function( entry ) { return entry.action+ ':'+ entry.payload.key+ ':'+ ( entry.payload.template ?? '' ) } );
 
-	check( 'H. the block of a frame is a row of the list with the category of the frames and a quiet line that says where it is put in and changed; its picture is asked for by the action of the frames, with the template of its frame - and the blocks of a page by the action they had',
-		head !== undefined && textOf( head ).indexOf( W('cat/frame') ) !== -1 && textOf( head ).indexOf( W('list/frame-hint') ) !== -1 && tiles.indexOf( 'themelab/frame-tile:mein-kopf:frame-header' ) !== -1 && tiles.indexOf( 'themelab/tile:karten:' ) !== -1 && tiles.indexOf( 'themelab/tile:mein-kopf:' ) === -1 );
+	check( 'H. the block of a frame is a row of the list with the category of the frames and no line that sends the person to the frames of the site - it is edited like any block; its picture is asked for by the action of the frames, with the template of its frame - and the blocks of a page by the action they had',
+		head !== undefined && textOf( head ).indexOf( W('cat/frame') ) !== -1 && findAll( head, function( el ) { return String( el.className ).indexOf('builder-cell-note') !== -1 } ).length === 0 && tiles.indexOf( 'themelab/frame-tile:mein-kopf:frame-header' ) !== -1 && tiles.indexOf( 'themelab/tile:karten:' ) !== -1 && tiles.indexOf( 'themelab/tile:mein-kopf:' ) === -1 );
 
 	w.requests.length = 0;
 	fire( head, 'click' );
-	const opened = dialogOf( w );
 
-	check( 'H. a press on the row of the block of a frame opens its details - no editor is asked for, the address stays - and the details have a name, a description and a rank, and no category to choose',
-		request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab' && opened !== undefined && textOf( opened ).indexOf( W( 'details/title', 'My head' ) ) !== -1 && findAll( opened, function( el ) { return el.tagName === 'SELECT' } ).length === 0 );
+	check( 'H. a press on the row of the block of a frame opens it in the editor of the blocks - as the row of any own block does - and not its details: the address is the block\'s',
+		w.state.hash === '#themelab/mein-kopf' && request( w, 'themelab/open' ) !== undefined && request( w, 'themelab/open' ).payload.key === 'mein-kopf' && w.dialogs.length === 0 );
+
+	const again = shown( '#themelab', list ).w;
+	const pencil = findAll( again.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'row/details', 'My head' ) } )[0];
+
+	again.requests.length = 0;
+	fire( pencil, 'click' );
+	const opened = dialogOf( again );
+
+	check( 'H. the pencil of the row of the block of a frame opens its details - a name, a description and a rank, and no category to choose',
+		opened !== undefined && textOf( opened ).indexOf( W( 'details/title', 'My head' ) ) !== -1 && findAll( opened, function( el ) { return el.tagName === 'SELECT' } ).length === 0 );
 
 	pressed( opened, W('details/submit') );
-	const sent = request( w, 'themelab/rename' );
+	const sent = request( again, 'themelab/rename' );
 
 	check( 'H. what the details of a block of a frame send has the category of the frames', sent !== undefined && sent.payload.category === 'frame' && sent.payload.key === 'mein-kopf' );
 
@@ -2066,6 +2075,56 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	fire( dialog, 'close' );
 
 	check( 'K. a new block whose key is "frames" is opened as that block, at #themelab/frames - not read as the tab of the frames', w.state.hash === '#themelab/frames' && request( w, 'themelab/open' ) !== undefined && request( w, 'themelab/open' ).payload.key === 'frames' );
+}
+
+// The block of a header in the editor of the blocks: the root is the header, there are no variants and no category, the details say what the block reads of the site, and the dialog of a source says
+// which text is the block's own and which the website's
+{
+	const head = { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'button', s : '~button', a : {}, c : null }, { t : '\n\t' }, { n : 'button', s : '/project/company/general/name', a : {}, c : null }, { t : '\n' } ] };
+	const w = sheetOf( '#themelab/mein-kopf', {
+		key : 'mein-kopf', wrap : 'header-wrap', stamp : 'f1', filled : [ { locale : 'en_US', parts : [ '[button]' ] } ], name : { de_DE : 'Mein Kopf', en_US : 'My head' },
+		tree : [ FRAME_HEAD, { t : '\n' }, head, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
+		texts : { '/template/page-home/header/button' : { de_DE : 'Hallo', en_US : 'Hello' } },
+		known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, button : { label : 'Button', icon : 'mouse-pointer-click', id : '', source : 'text' } },
+		schemas : Object.assign( {}, pageAnswer().schemas, { 'header-wrap' : schema( 'Header', 'panel-top', 'none' ), button : schema( 'Button', 'mouse-pointer-click', 'text' ) } ),
+		details : { wrap : 'header-wrap', reads : [ '/project/company/general/name' ], names : { de_DE : 'Mein Kopf', en_US : 'My head' }, descriptions : { de_DE : 'K', en_US : 'H' }, category : 'frame', rank : 0, images : {}, locales : [ 'de_DE', 'en_US' ], placeholders : [] },
+	} );
+	const sheet = w.builder.editor.state();
+
+	check( 'M. the block of a header is opened as a sheet of the editor of the blocks - its address is the block\'s - and has no variant: the bar has the details and no button of a variant',
+		w.state.hash === '#themelab/mein-kopf' && sheet.sheet === 'block' && sheet.adapter.panel === 'themelab' && sheet.adapter.frameBlock === true && sheet.view.bar.buttons.details !== undefined && sheet.view.bar.buttons.variant === undefined );
+
+	check( 'M. the quiet place the picture of the block of a frame has next to it says it is the page - and a block of a page keeps its sentence', sheet.adapter.base().hint === W('preview/page') && W('preview/page') !== W('preview/place') );
+
+	fire( sheet.view.bar.buttons.details, 'click' );
+
+	const box = dialogOf( w );
+	const heads = findAll( box, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined } ).map( function( el ) { return textOf( el ).trim() } );
+
+	check( 'M. the details of the block of a frame are the name, the choice - the rank only, the category is the frames\' - and what the block reads of the website: no places of pictures',
+		heads.length === 3 && heads[0].indexOf( W('details/name') ) === 0 && heads[1].indexOf( W('details/order') ) === 0 && heads[2].indexOf( W('details/reads') ) === 0 && heads[2].indexOf( '1' ) !== -1 && findAll( box, function( el ) { return el.tagName === 'SELECT' } ).length === 0 );
+
+	findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/order') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } );
+
+	check( 'M. the details say which languages were given the text of the working language at the last save, and for which parts - the name of the language and the part',
+		textOf( box ).indexOf( '[button]' ) !== -1 && textOf( box ).indexOf( 'English' ) !== -1 && sheet.extra.filled.length === 1 );
+
+	check( 'M. the choice of the block of a frame has the rank and no category to choose: it is of the category of the frames', findAll( box, function( el ) { return el.tagName === 'SELECT' } ).length === 0 && findAll( box, function( el ) { return el.tagName === 'INPUT' && el.type === 'number' } ).length === 1 );
+
+	findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/reads') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } );
+
+	check( 'M. the block says which texts of the website it reads, as the draft has them now - the key of each call whose source is one - and none of its own',
+		textOf( box ).indexOf( '/project/company/general/name' ) !== -1 && textOf( box ).indexOf( W('details/reads-note') ) !== -1 );
+
+	fire( box, 'close' );
+
+	// what the draft reads changes with the draft: a call that reads the text of the website no more is no read
+	const none = sheet.top.find( function( node ) { return node.n === 'header-wrap' } );
+
+	none.c[3].s = '~name';
+	fire( sheet.view.bar.buttons.details, 'click' );
+
+	check( 'M. a block whose calls read no text of the website says so', textOf( dialogOf( w ) ).indexOf( W('details/reads') ) !== -1 && ( function() { const again = dialogOf( w ); findAll( again, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/reads') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } ); return textOf( again ).indexOf( W('details/reads-none') ) !== -1; } )() );
 }
 
 done();

@@ -226,10 +226,6 @@
 		cell.appendChild( el( 'strong', '', value ) );
 		cell.appendChild( el( 'span', 'builder-cell-file', row.key ) );
 
-		// A block of a frame is put in where the frame is, and changed there: the row says so
-		if( row.frame === true )
-			cell.appendChild( el( 'span', 'nino-admin-hint builder-cell-note', word('list/frame-hint') ) );
-
 		return cell;
 	};
 
@@ -671,7 +667,7 @@
 				labels		: { search : word('list/search'), empty : word('msg/none-project'), noMatch : word('list/no-match') },
 				search		: true,
 				searchText	: function( row ) { return row.key },
-				onRowClick	: function( row ) { if( row.frame === true ) askListDetails( row, dc.activeElement ); else Nino.admin.themelab.go( partsOf( N.tab, row.key ) ) },
+				onRowClick	: function( row ) { Nino.admin.themelab.go( partsOf( N.tab, row.key ) ) },
 			} );
 
 		N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'themelab-new' } );
@@ -1488,6 +1484,7 @@
 		x.details = response.details === undefined ? undefined : JSON.parse( JSON.stringify( response.details ) );
 		x.own = response.own === undefined || Array.isArray( response.own ) === true ? {} : Object.assign( {}, response.own );
 		x.ownChosen = {};
+		x.filled = Array.isArray( response.filled ) === true ? response.filled : [];
 		x.edited = x.vars.some( function( variant ) { return variant.name === previous.edited } ) === true ? previous.edited : firstOf( x );
 		attach( stateOf().top, list );
 		materialize( stateOf().top, x.edited );
@@ -1978,6 +1975,40 @@
 
 	// The details of the block in a lightbox: its names and descriptions in each language, the category, the rank and the places of its pictures. Each change is a step of the undo,
 	// and is saved with the block
+	// The texts of the site a block of a frame names as sources - what the kernel calls what the block reads: the key of the first word of a call, sorted, each once
+	const readsOf = function( nodes ) {
+
+		const found = new Set();
+		const walk = function( list ) {
+
+			( list ?? [] ).forEach( function( node ) {
+
+				if( node === null || typeof node !== 'object' || node.n === undefined )
+					return;
+
+				if( node.n !== 'template' && node.n !== 'frame' && typeof node.s === 'string' && node.s.charAt(0) === '/' && node.s.indexOf('/nino/') !== 0 && node.s.indexOf('/_') !== 0 )
+					found.add( node.s );
+
+				walk( node.c );
+			} );
+		};
+
+		walk( nodes );
+
+		return Array.from( found ).sort();
+	};
+
+	// What the last save said of the languages that were given the text of the working language - the details say it as well, until the sheet is opened again
+	const filledNote = function() {
+
+		const filled = stateOf().extra.filled ?? [];
+
+		if( filled.length === 0 )
+			return [];
+
+		return [ el( 'p', 'nino-admin-hint', word( 'details/filled', filled.map( function( entry ) { return Nino.adminUi.localeName( entry.locale ) } ).join(', '), Array.from( new Set( [].concat( ...filled.map( function( entry ) { return entry.parts } ) ) ) ).join(', ') ) ) ];
+	};
+
 	const askDetails = function( opener ) {
 
 		const x = stateOf().extra;
@@ -2009,9 +2040,11 @@
 			return part;
 		};
 
-		sections.push( { key : 'name', label : word('details/name'), summary : String( d.names[work] ?? '' ), content : function() { return body( [ rows( 'name', word('details/name'), undefined, d.names, false, 80 ), rows( 'description', word('details/description'), undefined, d.descriptions, true, 240 ) ] ) } } );
+		sections.push( { key : 'name', label : word('details/name'), summary : String( d.names[work] ?? '' ), content : function() { return body( [ rows( 'name', word('details/name'), undefined, d.names, false, 80 ), rows( 'description', word('details/description'), undefined, d.descriptions, true, 240 ) ].concat( filledNote() ) ) } } );
 
-		sections.push( { key : 'order', label : word('details/order'), summary : word( 'cat/'+ d.category )+ ' · '+ d.rank, content : function() {
+		const frame = d.wrap === 'header-wrap' || d.wrap === 'footer-wrap';
+
+		sections.push( { key : 'order', label : word('details/order'), summary : ( frame === true ? '' : word( 'cat/'+ d.category )+ ' · ' )+ d.rank, content : function() {
 
 			const category = Nino.adminUi.selectField( { key : 'category', label : word('details/category'), help : word('details/category-help'), options : CATEGORIES.map( function( one ) { return { value : one, label : word( 'cat/'+ one ) } } ), value : d.category, onChange : function( value ) { set( function( now ) { now.category = value } ) } } );
 			const rank = Nino.adminUi.numberField( { key : 'rank', label : word('details/rank'), help : word('details/rank-help'), value : d.rank, min : 0, max : 999 } );
@@ -2024,9 +2057,11 @@
 				set( function( now ) { now.rank = Number.isNaN( number ) === true ? 0 : number } );
 			} );
 
-			return body( [ category, rank ] );
+			// The block of a frame stays in the category of the frames: there is none to choose
+			return body( frame === true ? [ rank ] : [ category, rank ] );
 		} } );
 
+		if( frame === false )
 		sections.push( { key : 'images', label : word('details/images'), summary : String( Object.keys( d.images ).length ), content : function() {
 
 			const list = el( 'div', 'builder-var-images' );
@@ -2072,6 +2107,26 @@
 			return list;
 		} } );
 
+		// What the block of a frame reads of the site, as the draft has it now: the key of each call whose source is a text of the site - the one that comes from the block is ~name
+		if( frame === true )
+			sections.push( { key : 'reads', label : word('details/reads'), summary : String( readsOf( stateOf().top ).length ), content : function() {
+
+				const reads = readsOf( stateOf().top );
+				const list = el( 'div', 'builder-box-body' );
+
+				list.appendChild( el( 'p', 'nino-admin-hint', word( reads.length === 0 ? 'details/reads-none' : 'details/reads-note' ) ) );
+
+				if( reads.length > 0 ) {
+
+					const keys = el( 'ul', 'builder-reads' );
+
+					reads.forEach( function( key ) { keys.appendChild( el( 'li', '', key ) ) } );
+					list.appendChild( keys );
+				}
+
+				return list;
+			} } );
+
 		const accordion = Nino.adminUi.accordion( { id : 'themelab-details-acc', level : 3, open : 'name', sections : sections, onToggle : function() {} } );
 
 		holder.appendChild( accordion.el );
@@ -2091,6 +2146,9 @@
 
 		told = null;
 
+		// The block of a header or a footer - the kernel's word for its root, which the server gives - has no variants: its register knows none for these roots
+		const frameBlock = response.wrap === 'header-wrap' || response.wrap === 'footer-wrap';
+
 		const title = localized( response.name );
 
 		const adapter = {
@@ -2105,13 +2163,15 @@
 			// A block of the theme is only looked at: a quiet badge beside the state of the bar says so, with where it is changed as its reason
 			badge		: theme === true ? { text : word('readonly/badge'), reason : word('readonly/reason') } : undefined,
 			sources	: 'block',
+			// The block of a frame reads the texts of the site as well as its own: the dialog of a source says which is which
+			frameBlock	: frameBlock,
 			uploads	: false,
 			// The properties of a component open in the column beside the preview, not in a lightbox
 			props		: 'panel',
 			call		: function( action, payload, done, extra ) { Nino.admin.themelab.call( action, payload, done, extra ) },
 			code		: key,
 			// The key and the language every request of the sheet names, and the sentence the preview puts in a column that has nothing in it
-			base		: function() { return { key : key, locale : editor().state().locale, hint : word('preview/place') } },
+			base		: function() { return { key : key, locale : editor().state().locale, hint : frameBlock === true ? word('preview/page') : word('preview/place') } },
 			go			: function( parts, options ) { Nino.admin.themelab.go( parts, options ) },
 			href		: function( parts ) { return Nino.admin.router.href( 'themelab', parts ) },
 			set			: function() { Nino.admin.router.set( 'themelab', partsOf( theme === true ? 'theme' : 'project', key ) ) },
@@ -2129,7 +2189,7 @@
 			painted	: painted,
 			buttons	: [ { key : 'saveas', label : word( theme === true ? 'saveas/button-theme' : 'saveas/button' ), name : word( theme === true ? 'saveas/name-theme' : 'saveas/name', title ), onPress : function() { askSaveAs( adapter ) } } ],
 			// What is about the block as a whole stands beside its name in the bar of the context: its details and the variant that is edited
-			context	: ( theme === true ? [] : [ { key : 'details', icon : 'settings-2', label : word('details/button'), name : word( 'details/button-of', title ), onPress : function( event ) { askDetails( stateOf().view.bar.buttons.details ) } } ] ).concat( [ { key : 'variant', icon : 'panels-top-left', label : word( 'variants/button', word('variants/standard') ), name : word( 'variants/button', word('variants/standard') ), onPress : function() { askVariant( theme, stateOf().view.bar.buttons.variant ) } } ] ),
+			context	: ( theme === true ? [] : [ { key : 'details', icon : 'settings-2', label : word('details/button'), name : word( 'details/button-of', title ), onPress : function( event ) { askDetails( stateOf().view.bar.buttons.details ) } } ] ).concat( frameBlock === true ? [] : [ { key : 'variant', icon : 'panels-top-left', label : word( 'variants/button', word('variants/standard') ), name : word( 'variants/button', word('variants/standard') ), onPress : function() { askVariant( theme, stateOf().view.bar.buttons.variant ) } } ] ),
 		};
 
 		return adapter;

@@ -204,12 +204,22 @@ namespace Nino\Modules\Themelab {
 		}
 
 		/**
+		 *	The root a block of the library has - a section for the block of a page, a header or a footer for a frame: the kernel's word for the block, never the request's
+		 */
+		private static function _wrap( array &$appData, string $key ): string {
+
+			$wrap = (string) ( \Nino\Blocks::all( $appData )[$key]['wrap'] ?? Library::PAGE );
+
+			return in_array( $wrap, [ Library::PAGE, 'header-wrap', 'footer-wrap' ], true ) === true ? $wrap : Library::PAGE;
+		}
+
+		/**
 		 *	The block of the library a request names, for the sheet: a block of a page that the kernel lists, of the project or the theme in use - and, where the
 		 *	request asks to copy, of any source
 		 *
 		 *	@return 	array|null								Library::block() of it; null after the answer
 		 */
-		private static function _block( array &$appData, array &$request, string $key, bool $any ): ?array {
+		private static function _block( array &$appData, array &$request, string $key, bool $any, bool $frames = false ): ?array {
 
 			$listed = \Nino\Blocks::all( $appData )[$key] ?? null;
 			$theme = Sheet::theme( $appData );
@@ -219,7 +229,8 @@ namespace Nino\Modules\Themelab {
 				return null;
 			}
 
-			$block = Library::block( $appData, $key );
+			// The block of a frame is worked on in the same editor, where the request is for a sheet: a copy of it is made another way
+			$block = Library::block( $appData, $key, $frames === true ? self::_wrap( $appData, $key ) : Library::PAGE );
 
 			if( $block === null )
 				self::_fail( $request, 404, 'there is no such block', 'themelab_unknown', [], 'key' );
@@ -360,7 +371,8 @@ namespace Nino\Modules\Themelab {
 			if( $shell === null )
 				return null;
 
-			$at = $canonical === null ? null : Sheet::rootAt( $canonical[1] );
+			$wrap = $key === '' ? Library::PAGE : self::_wrap( $appData, $key );
+			$at = $canonical === null ? null : Sheet::rootAt( $canonical[1], $wrap );
 
 			if( $canonical === null || $at === null ) {
 				self::_fail( $request, 400, 'the tree is none of a block', 'themelab_tree', [], 'tree' );
@@ -368,7 +380,7 @@ namespace Nino\Modules\Themelab {
 			}
 
 			$registry = \Nino\Components::components( $appData );
-			$block = $key === '' ? null : Library::block( $appData, $key );
+			$block = $key === '' ? null : Library::block( $appData, $key, $wrap );
 
 			// A block that is not there yet is held to the rule against the empty block of its own id: a draft of a block that does not exist may add what a block may have, and no more
 			$was = $block !== null ? $block['tree'] : Sheet::blank( (string) ( $canonical[1][$at]['a']['id'] ?? 'block' ) )['tree'];
@@ -379,7 +391,7 @@ namespace Nino\Modules\Themelab {
 				return null;
 			}
 
-			return [ 'nodes' => $canonical[1], 'at' => $at, 'registry' => $registry, 'template' => $shell['template'], 'shell' => $shell ];
+			return [ 'nodes' => $canonical[1], 'at' => $at, 'registry' => $registry, 'template' => $shell['template'], 'shell' => $shell, 'wrap' => $wrap ];
 		}
 
 		// --- the actions -----------------------------------------------------------------------------------------------------
@@ -454,7 +466,7 @@ namespace Nino\Modules\Themelab {
 				return;
 
 			$key = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' );
-			$block = self::_block( $appData, $request, $key, false );
+			$block = self::_block( $appData, $request, $key, false, true );
 			$shell = $block === null ? null : self::_shell( $appData, $request, $locale );
 
 			if( $block === null || $shell === null )
@@ -462,7 +474,7 @@ namespace Nino\Modules\Themelab {
 
 			$own = ( \Nino\Blocks::all( $appData )[$key]['origin'] ?? '' ) === 'project';
 
-			\Nino\Http::ok( $request, [ 'key' => $key, 'editable' => $own, 'stamp' => Sheet::stamp( $appData, $key ), 'name' => \Nino\Blocks::all( $appData )[$key]['name'], 'fresh' => new \stdClass() ] + Sheet::draft( $appData, $block, $shell, $locale ) );
+			\Nino\Http::ok( $request, [ 'key' => $key, 'editable' => $own, 'wrap' => self::_wrap( $appData, $key ), 'stamp' => Sheet::stamp( $appData, $key ), 'name' => \Nino\Blocks::all( $appData )[$key]['name'], 'fresh' => new \stdClass() ] + Sheet::draft( $appData, $block, $shell, $locale ) );
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {
@@ -512,7 +524,7 @@ namespace Nino\Modules\Themelab {
 			}
 
 			// The sheet as it is written - the two calls of the frame and the block - with the placeholder of the kernel for each picture that has no file
-			$draft = [ 'template' => $template, 'source' => \Nino\Markup::write(																																																																								Sheet::hinted( $appData, Tree::shown( $sheet['nodes'], $sources, $pictures ), \Nino\Admin\Admin::postString( $data, 'hint' ) ), \Nino\Components::containers( $appData ) ), 'fills' => $fills, 'slots' => new \stdClass(), 'locale' => $locale ];
+			$draft = [ 'template' => $template, 'source' => \Nino\Markup::write(																																																																								Sheet::hinted( $appData, Tree::shown( $sheet['nodes'], $sources, $pictures ), \Nino\Admin\Admin::postString( $data, 'hint' ) ), \Nino\Components::containers( $appData ) ), 'fills' => $fills, 'slots' => new \stdClass(), 'locale' => $locale, 'wrap' => $sheet['wrap'], 'hint' => Sheet::words( [ $locale ], 'preview/page' )[$locale] ];
 			$token = \Nino\Preview::issue( $appData, \Nino\Modules\Themelab::KIND, self::perm(), $draft, \Nino\Admin\Admin::postString( $data, 'token' ) );
 
 			if( $token === '' ) {
@@ -578,10 +590,21 @@ namespace Nino\Modules\Themelab {
 
 			if( array_key_exists( 'category', $given ) === true ) {
 
-				$out['category'] = self::_category( $request, is_string( $given['category'] ) === true ? $given['category'] : '' );
+				// The block of a frame is of the category of the frames and of no other: it is never a block of a page
+				if( ( $listed['wrap'] ?? Library::PAGE ) !== Library::PAGE ) {
 
-				if( $out['category'] === null )
-					return null;
+					if( ( $given['category'] ?? null ) !== 'frame' ) {
+						self::_fail( $request, 400, 'the category is none', 'themelab_category', [], 'category' );
+						return null;
+					}
+				}
+				else {
+
+					$out['category'] = self::_category( $request, is_string( $given['category'] ) === true ? $given['category'] : '' );
+
+					if( $out['category'] === null )
+						return null;
+				}
 			}
 
 			if( array_key_exists( 'rank', $given ) === true ) {
@@ -706,9 +729,12 @@ namespace Nino\Modules\Themelab {
 				'texts'				=> is_array( $data['texts'] ?? null ) === true ? $data['texts'] : [],
 				'pictures'		=> $pictures,
 				'lenient'			=> true,
+				// A frame that lacks a text in a language takes it from the language the sheet is worked on in: the sheet shows one language at a time
+				'fill'				=> \Nino\Admin\Admin::postString( $data, 'locale' ),
+				'locale'			=> \Nino\Admin\Admin::postString( $data, 'locale' ),
 			];
 
-			return self::_described( $request, Custom::parts( $appData, $sheet['template'], [ 'source' => '', 'texts' => $state['texts'], 'slots' => $state['slots'] ], $sheet['nodes'], $input ), $names, $descriptions );
+			return self::_described( $request, Custom::parts( $appData, $sheet['template'], [ 'source' => '', 'texts' => $state['texts'], 'slots' => $state['slots'] ], $sheet['nodes'], $input, $sheet['wrap'] ), $names, $descriptions );
 		}
 
 		/**
@@ -779,7 +805,7 @@ namespace Nino\Modules\Themelab {
 			}
 
 			$sheet = self::_sheet( $appData, $request, $key, $locale );
-			$block = Library::block( $appData, $key );
+			$block = Library::block( $appData, $key, self::_wrap( $appData, $key ) );
 
 			if( $sheet === null || $block === null )
 				return;
@@ -869,7 +895,7 @@ namespace Nino\Modules\Themelab {
 				if( is_string( $token ) === true && preg_match( '/^[a-f0-9]{32}\.(?:svg|webp|png|jpg)$/D', $token ) === 1 )
 					self::_letGo( $appData, $token );
 
-			self::_answer( $appData, $request, $key, $locale, true );
+			self::_answer( $appData, $request, $key, $locale, true, (array) ( $made['filled'] ?? [] ) );
 		}
 
 		// Where the session keeps what it put aside: token => [ the block it was for, until when ]
@@ -1069,11 +1095,11 @@ namespace Nino\Modules\Themelab {
 		/**
 		 *	The answer of an action that wrote a block: the sheet as it is saved now - the editor takes it as the answer of a save - and its key and stamp
 		 */
-		private static function _answer( array &$appData, array &$request, string $key, string $locale, bool $changed ): void {
+		private static function _answer( array &$appData, array &$request, string $key, string $locale, bool $changed, array $filled = [] ): void {
 
 			unset( $appData['./nino/blocks/state'] );
 
-			$block = Library::block( $appData, $key );
+			$block = Library::block( $appData, $key, self::_wrap( $appData, $key ) );
 			$shell = Sheet::shell( $appData, $locale );
 
 			if( $block === null || $shell === null ) {
@@ -1081,7 +1107,7 @@ namespace Nino\Modules\Themelab {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'saved' => true, 'changed' => $changed, 'key' => $key, 'stamp' => Sheet::stamp( $appData, $key ), 'name' => \Nino\Blocks::all( $appData )[$key]['name'] ] + Sheet::draft( $appData, $block, $shell, $locale ) );
+			\Nino\Http::ok( $request, [ 'saved' => true, 'changed' => $changed, 'filled' => $filled, 'key' => $key, 'wrap' => self::_wrap( $appData, $key ), 'stamp' => Sheet::stamp( $appData, $key ), 'name' => \Nino\Blocks::all( $appData )[$key]['name'] ] + Sheet::draft( $appData, $block, $shell, $locale ) );
 		}
 
 		public static function apiSaveAs( array &$appData, array &$request ): void {
@@ -1096,7 +1122,7 @@ namespace Nino\Modules\Themelab {
 
 			$data = \Nino\Admin\Admin::postData();
 			$from = \Nino\Admin\Admin::postString( $data, 'key' );
-			$origin = self::_block( $appData, $request, $from, false );
+			$origin = self::_block( $appData, $request, $from, false, true );
 			$names = $origin === null ? null : self::_names( $appData, $request, $data['name'] ?? null, 'name', $locale );
 
 			if( $origin === null || $names === null || self::_distinct( $appData, $request, $names, '', 'name' ) === false )
@@ -1574,7 +1600,7 @@ namespace Nino\Modules\Themelab {
 
 			$data = \Nino\Admin\Admin::postData();
 			$canonical = Tree::canonical( $appData, $data['tree'] ?? null );
-			$offered = $canonical === null || Sheet::rootAt( $canonical[1] ) === null ? null : \Nino\Modules\Builder\Admin::offered( $appData, $canonical[1], \Nino\Admin\Admin::postString( $data, 'at' ), \Nino\Modules\Builder::LEVEL_DESIGN );
+			$offered = $canonical === null || ( Sheet::rootAt( $canonical[1] ) ?? Sheet::rootAt( $canonical[1], 'header-wrap' ) ?? Sheet::rootAt( $canonical[1], 'footer-wrap' ) ) === null ? null : \Nino\Modules\Builder\Admin::offered( $appData, $canonical[1], \Nino\Admin\Admin::postString( $data, 'at' ), \Nino\Modules\Builder::LEVEL_DESIGN );
 
 			if( $offered === null ) {
 				self::_fail( $request, 400, 'there is no place for a component there', 'themelab_place', [], 'at' );
@@ -1617,6 +1643,11 @@ namespace Nino\Modules\Themelab {
 				\Nino\Http::ok( $request, \Nino\Modules\Builder\Admin::fieldsOf( $appData, \Nino\Admin\Admin::postString( $data, 'type' ), $locale ) );
 			else if( $kind === 'types' )
 				\Nino\Http::ok( $request, [ 'types' => [ [ 'type' => '/_placeholder', 'title' => (string) \Nino\Elements::PLACEHOLDERS['/_placeholder']['title'] ] ] ] );
+			else if( $kind === 'text' && self::_wrap( $appData, \Nino\Admin\Admin::postString( $data, 'key' ) ) !== Library::PAGE && ( \Nino\Blocks::all( $appData )[\Nino\Admin\Admin::postString( $data, 'key' )]['origin'] ?? '' ) === 'project' ) {
+
+				// The block of a frame reads the texts of the site: the keys of the text store, with the words each has - those that the kernel takes in a block of a frame, and no other
+				\Nino\Http::ok( $request, \Nino\Modules\Builder\Admin::textKeys( $appData, $locale, mb_strtolower( trim( mb_substr( \Nino\Admin\Admin::postString( $data, 'query' ), 0, 80 ) ) ), '/', null, static function( string $key ) use ( &$appData ): bool { return Library::frameReads( $appData, $key ); } ) );
+			}
 			else
 				\Nino\Http::ok( $request, [ 'entries' => [], 'more' => false ] );
 		}

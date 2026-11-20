@@ -223,6 +223,13 @@ namespace Nino\Modules {
 				$tile = true;
 			}
 
+			// The picture of a block of a frame that the editor of the blocks asked for: held for the right of that panel
+			if( $held === null ) {
+
+				$held = \Nino\Preview::held( $appData, $request, \Nino\Modules\Builder\Library::KIND, self::BRIDGE );
+				$tile = true;
+			}
+
 			// The draft of a frame is the editor of the blocks': it is held for the right of that panel, and drawn as a page's is
 			if( $held === null ) {
 

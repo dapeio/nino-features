@@ -403,7 +403,7 @@ namespace Nino\Modules\Themelab {
 				'frame'				=> false,
 				'tree'				=> $nodes,
 				'sources'			=> $sources,
-				'shared'			=> new \stdClass(),
+				'shared'			=> self::shared( $appData, $sources, $template, $locale ),
 				'uses'				=> new \stdClass(),
 				// No text at all is an empty map, not the empty list a PHP array of nothing is in JSON: the editor adds a key to it
 				'texts'				=> $state['texts'] === [] ? new \stdClass() : $state['texts'],
@@ -428,6 +428,38 @@ namespace Nino\Modules\Themelab {
 				'level'				=> \Nino\Modules\Builder::LEVEL_DESIGN,
 				'dim'					=> (string) \Nino\Features::setting( $appData, 'builder', 'dim', 'frame' ),
 			];
+		}
+
+		/**
+		 *	The texts of the site a sheet reads - a block of a frame names a key of the text store as the source of a call: what it says in the language of the sheet, as the editor shows it at the
+		 *	component. The words of the block itself are the sheet's own
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array			$sources			As Tree::sources() answers them
+		 *	@param		string		$template			The page the sheet is drawn on
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array|\stdClass							key => text
+		 */
+		public static function shared( array &$appData, array $sources, string $template, string $locale ): array|\stdClass {
+
+			$out = [];
+
+			foreach( $sources as $entry ) {
+
+				$key = (string) ( $entry['key'] ?? '' );
+
+				if( ( $entry['kind'] ?? '' ) !== 'text' || $key === '' || $key[0] !== '/' || str_starts_with( $key, '/template/'. $template. '/' ) === true || isset( $out[$key] ) === true )
+					continue;
+
+				$words = (array) ( \Nino\Text::entry( $appData, $key, false )['values'] ?? [] );
+				$text = trim( (string) preg_replace( '/\s+/', ' ', html_entity_decode( strip_tags( (string) ( $words[$locale] ?? $words['*'] ?? ( $words === [] ? '' : reset( $words ) ) ) ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) );
+
+				if( $text !== '' )
+					$out[$key] = mb_substr( $text, 0, 120 );
+			}
+
+			return $out === [] ? new \stdClass() : $out;
 		}
 
 		/**
@@ -459,7 +491,13 @@ namespace Nino\Modules\Themelab {
 			foreach( (array) ( $listed['images'] ?? [] ) as $name => $image )
 				$images[(string) $name] = [ 'placeholder' => (string) $image['placeholder'], 'width' => (int) $image['width'], 'height' => (int) $image['height'], 'label' => (object) array_map( 'strval', (array) $image['label'] ), 'used' => isset( $read[(string) $name] ) ];
 
+			// What a block of a frame reads of the site - the texts and the logo its calls name - as the kernel says it: the editor shows it, a person who puts the block in looks at it
+			$whole = \Nino\Blocks::get( $appData, $key );
+			$reads = $whole === null ? [] : \Nino\Blocks::reads( $whole );
+
 			return [
+				'wrap'					=> (string) ( $listed['wrap'] ?? Library::PAGE ),
+				'reads'					=> $reads,
 				'names'					=> (object) array_map( 'strval', (array) $listed['name'] ),
 				'descriptions'	=> (object) array_map( 'strval', (array) $listed['description'] ),
 				'category'			=> (string) $listed['category'],
@@ -489,7 +527,7 @@ namespace Nino\Modules\Themelab {
 		 *
 		 *	@return 	int|null
 		 */
-		public static function rootAt( array $nodes ): ?int {
+		public static function rootAt( array $nodes, string $wrap = Library::PAGE ): ?int {
 
 			$at = null;
 			$frames = [];
@@ -504,7 +542,7 @@ namespace Nino\Modules\Themelab {
 					continue;
 				}
 
-				if( $node['n'] === Library::PAGE && $at === null )
+				if( $node['n'] === $wrap && $at === null )
 					$at = (int) $index;
 				else if( $node['n'] === 'template' && in_array( (string) ( $node['s'] ?? '' ), self::FRAMES, true ) === true && ( $node['a'] ?? [] ) === [] && isset( $frames[$node['s']] ) === false )
 					$frames[$node['s']] = true;
