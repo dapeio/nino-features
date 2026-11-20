@@ -1047,6 +1047,55 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	A frame of the site as a block of the project: private/blocks/<key>/, the frame as it is SAVED - the file of its template and the words of it - mapped by the one rule that
+		 *	maps a block of a page, and only if the kernel takes it as a block; the frame is not changed. Only the editor of the blocks reaches it (its mark is the whole of the door: a frame is
+		 *	no business of this panel for anybody), and the request names a frame of the site and the key, the names and the descriptions - never what is in the frame
+		 */
+		public static function apiFrameAdopt( array &$appData, array &$request ): void {
+
+			$level = self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_CONTENT );
+
+			if( $level === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$opened = self::_open( $appData, $request, $level );
+
+			if( $opened === null )
+				return;
+
+			[ $template, $state, $nodes ] = $opened;
+			$at = null;
+
+			foreach( $nodes as $index => $node )
+				if( isset( $node['n'] ) === true && $at === null )
+					$at = $index;
+
+			if( $at === null ) {
+				self::_fail( $request, [ 409, 'the frame holds no block', 'builder_unreadable', [ Store::shown( $template ), '' ], 'template' ] );
+				return;
+			}
+
+			// A name and a description are a text, or a text for each language: the one of the language of the request stands for the ones that are not given
+			$words = static function( mixed $given ) use ( $opened ): array {
+
+				$map = is_array( $given ) === true ? array_filter( $given, 'is_string' ) : [];
+
+				return [ is_string( $given ) === true ? trim( $given ) : trim( (string) ( $map[$opened[3]] ?? '' ) ), $map ];
+			};
+			[ $name, $names ] = $words( $data['name'] ?? '' );
+			[ $about, $abouts ] = $words( $data['description'] ?? '' );
+			$made = Custom::save( $appData, $template, $state, $nodes, [ 'at' => (string) $at, 'key' => \Nino\Admin\Admin::postString( $data, 'key' ), 'name' => $name, 'names' => $names, 'description' => $about, 'descriptions' => $abouts, 'category' => 'frame', 'locale' => $opened[3], 'fill' => \Nino\Admin\Admin::postString( $data, 'fill' ), 'check' => ( $data['check'] ?? false ) === true ] );
+
+			if( isset( $made['failure'] ) === true ) {
+				self::_fail( $request, $made['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, $made );
+		}
+
+		/**
 		 *	The door of the texts of a frame: this panel, the content step and a template that is a frame - nothing of the structure of a frame is in what it answers or takes
 		 *
 		 *	@param		array 		&$appData

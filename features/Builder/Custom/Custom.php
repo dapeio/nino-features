@@ -41,6 +41,46 @@ namespace Nino\Modules\Builder {
 			return trim( (string) preg_replace( "/[\\x00-\\x09\\x0B-\\x1F\\x7F]+/", ' ', (string) preg_replace( "/\n{3,}/", "\n\n", str_replace( "\r", '', $text ) ) ) );
 		}
 
+		/** The part of a template that the last refusal of _node() is about: the name of its call and the id it has, for the words that name it */
+		private static string $part = '';
+
+		/** What a name or a description of a block may not hold: markup, control and format characters - the ones that turn a line round or hide in it - and the beginning of a textfill */
+		private const string UNSAFE = '/[<>\x00-\x1F\x7F\p{Cf}\p{Zl}\p{Zp}]|\[\[/u';
+
+		/** Whether the block that is made is the block of a frame, and what is refused of it so far: [ code, part, extra ] each - a frame says everything at once */
+		private static bool $frame = false;
+		private static array $problems = [];
+
+		/**
+		 *	A refusal of _node(): the code, and the part it is about noted for the one who asks
+		 *
+		 *	@param		string		$code
+		 *	@param		array			$node
+		 *
+		 *	@return 	string
+		 */
+		private static function _bad( string $code, array $node ): string {
+
+			$id = is_array( $node['a'] ?? null ) === true && is_string( $node['a']['id'] ?? null ) === true && $node['a']['id'] !== '' ? ' id="'. $node['a']['id']. '"' : '';
+			self::$part = is_string( $node['n'] ?? null ) === true ? '['. $node['n']. $id. ']' : '';
+
+			if( self::$frame === true )
+				self::$problems[] = [ 'code' => $code, 'part' => self::$part, 'extra' => [] ];
+
+			return $code;
+		}
+
+		/**
+		 *	A call as a person reads it in a refusal: its name, the id it has and - where one is written - the source it reads
+		 */
+		private static function _label( array $node, bool $source = false ): string {
+
+			$id = is_array( $node['a'] ?? null ) === true && is_string( $node['a']['id'] ?? null ) === true && $node['a']['id'] !== '' ? ' id="'. $node['a']['id']. '"' : '';
+			$read = $source === true && is_string( $node['s'] ?? null ) === true && $node['s'] !== '' ? ' '. $node['s'] : '';
+
+			return '['. (string) ( $node['n'] ?? '' ). $id. $read. ']';
+		}
+
 		/**
 		 *	The tree of a block as a block has it: the ids with the id of its root in front, each ~name left as it is and noted with the name it has in the files of the
 		 *	block, and nothing that a block may not hold - free markup, a call without a schema, html, a source that is not the block's own
@@ -61,7 +101,7 @@ namespace Nino\Modules\Builder {
 			$schema = $registry[$node['n']] ?? null;
 
 			if( $schema === null || $node['n'] === 'html' )
-				return $node['n'] === 'html' ? 'html' : 'locked';
+				return self::_bad( $node['n'] === 'html' ? 'html' : 'locked', $node );
 
 			$idName = Tree::idAttribute( $schema );
 			$isLoop = ( Tree::schema( $appData, $registry, $node['n'] )['loop'] ?? false ) === true;
@@ -73,13 +113,13 @@ namespace Nino\Modules\Builder {
 				$now = $was === $map[0] ? $map[1] : Tree::inner( $was, $map[0], $map[1] );
 
 				if( strlen( $now ) > 32 || Tree::isId( $now ) === false )
-					return 'id';
+					return self::_bad( 'id', $node );
 
 				$given[$idName] = $now;
 			}
 
 			// A name in the files: the part of the id behind the id of the root and a hyphen, a hyphen and the name
-			$name = static function( string $written, string $kind, bool $link = false ) use ( $was, $now, $map, $template, &$used ): ?string {
+			$name = static function( string $written, string $kind, bool $link = false ) use ( $was, $now, $map, $template, &$used, $node ): ?string {
 
 				$inner = $now === $map[1] ? '' : substr( $now, strlen( $map[1] ) + 1 );
 				$flat = ( $inner === '' ? '' : $inner. '-' ). substr( $written, 1 );
@@ -89,7 +129,7 @@ namespace Nino\Modules\Builder {
 				if( isset( $used[$flat] ) === true && array_slice( $used[$flat], 0, 2 ) !== [ $kind, $key ] )
 					return null;
 
-				$used[$flat] = [ $kind, $key, $link === true || ( $used[$flat][2] ?? false ) === true ];
+				$used[$flat] = [ $kind, $key, $link === true || ( $used[$flat][2] ?? false ) === true, $used[$flat][3] ?? self::_label( $node ) ];
 
 				return $flat;
 			};
@@ -104,16 +144,17 @@ namespace Nino\Modules\Builder {
 				if( $written[0] === '~' ) {
 
 					if( $source === 'none' || $name( $written, $source ) === null )
-						return 'foreign';
+						return self::_bad( 'foreign', $node );
 				}
 				// A loop of a block of the library shows the placeholder elements: the type is chosen where the block stands on a page
 				else if( $isLoop === true && preg_match( '/^\/[a-z_][a-z0-9_-]{0,63}$/D', $written ) === 1 && isset( \Nino\Elements::PLACEHOLDERS[$written] ) === false )
-					return 'loop';
+					return self::_bad( 'loop', $node );
 				// The type of the elements a loop shows, and a field of the elements below a loop, are sources of the elements and not of the page
 				else if( ( $isLoop === true && preg_match( '/^\/[a-z_][a-z0-9_-]{0,63}$/D', $written ) === 1 ) === false && ( $looped === true && preg_match( '/^\.[A-Za-z][A-Za-z0-9_-]{0,63}$/D', $written ) === 1 ) === false
-					&& isset( \Nino\Images::PLACEHOLDERS[$written] ) === false && isset( \Nino\Elements::PLACEHOLDERS[$written] ) === false )
-					return 'foreign';
+					&& isset( \Nino\Images::PLACEHOLDERS[$written] ) === false && isset( \Nino\Elements::PLACEHOLDERS[$written] ) === false && self::$frame === false )
+					return self::_bad( 'foreign', $node );
 
+				// A frame is let carry what it reads of the project: whether a block may is the kernel's to say, and it is asked of the kernel when the block stands
 				$out['s'] = $written;
 			}
 
@@ -125,19 +166,25 @@ namespace Nino\Modules\Builder {
 				if( is_string( $value ) === false || $value === '' || in_array( $type, [ 'text', 'image', 'link' ], true ) === false )
 					continue;
 
+				// A picture that a frame names and that is the picture the call has by itself is written as the call has it: nothing - the block draws the same one
+				if( self::$frame === true && $type === 'image' && $value === ( $declared['default'] ?? null ) ) {
+					unset( $given[$attribute] );
+					continue;
+				}
+
 				if( $value[0] === '~' && preg_match( '/^[^\s\[\]\x00-\x1F\x7F]+$/D', $value ) === 1 ) {
 
 					if( $name( $value, $type, $type === 'link' ) === null )
-						return 'foreign';
+						return self::_bad( 'foreign', $node );
 				}
 				// A field of the element a loop above shows is what it reads, in a text, a picture or a link
 				else if( $looped === true && preg_match( '/^\.[A-Za-z][A-Za-z0-9_-]{0,63}$/D', $value ) === 1 )
 					continue;
 				// A link of a block goes to a page of the site, to a place on the page, to a mail or a telephone or to a secure address - and to a target the one rule takes
 				else if( $type === 'link' && ( preg_match( '#^(?:page:/|\#|mailto:|tel:|https://)#i', $value ) !== 1 || \Nino\Modules\Builder\Tree::linkTarget( $appData, $value ) === false ) )
-					return 'address';
-				else if( $type !== 'link' && strpos( './', $value[0] ) !== false && preg_match( '/^[^\s\[\]\x00-\x1F\x7F]+$/D', $value ) === 1 && isset( \Nino\Images::PLACEHOLDERS[$value] ) === false )
-					return 'foreign';
+					return self::_bad( 'address', $node );
+				else if( $type !== 'link' && strpos( './', $value[0] ) !== false && preg_match( '/^[^\s\[\]\x00-\x1F\x7F]+$/D', $value ) === 1 && isset( \Nino\Images::PLACEHOLDERS[$value] ) === false && self::$frame === false )
+					return self::_bad( 'foreign', $node );
 			}
 
 			$out['a'] = $given;
@@ -150,8 +197,15 @@ namespace Nino\Modules\Builder {
 
 					if( isset( $inner['n'] ) === false ) {
 
-						if( isset( $inner['f'] ) === true || trim( (string) ( $inner['t'] ?? '' ), " \t\r\n" ) !== '' )
+						if( isset( $inner['f'] ) === true || trim( (string) ( $inner['t'] ?? '' ), " \t\r\n" ) !== '' ) {
+
+							self::_bad( 'locked', $node );
+
+							if( self::$frame === true )
+								continue;
+
 							return 'locked';
+						}
 
 						$out['c'][] = $inner;
 						continue;
@@ -159,8 +213,14 @@ namespace Nino\Modules\Builder {
 
 					$made = self::_node( $appData, $inner, $registry, $map, $template, $was, $now, $used, $looped === true || $isLoop === true );
 
-					if( is_string( $made ) === true )
+					if( is_string( $made ) === true ) {
+
+						// A frame goes on to the next part: what is refused of it is said at once
+						if( self::$frame === true )
+							continue;
+
 						return $made;
+					}
 
 					$out['c'][] = $made;
 				}
@@ -208,6 +268,31 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function parts( array &$appData, string $template, array $state, array $nodes, array $input ): array {
 
+			self::$frame = Library::wrapOf( $template ) !== Library::PAGE;
+			self::$problems = [];
+
+			try {
+				$made = self::_parts( $appData, $template, $state, $nodes, $input );
+			}
+			finally {
+				self::$frame = false;
+				self::$problems = [];
+			}
+
+			// A frame says what it was refused for in the words of a frame
+			if( isset( $made['failure'] ) === true && Library::wrapOf( $template ) !== Library::PAGE )
+				$made['failure'][2] = str_replace( 'builder_own_', 'builder_frame_', (string) $made['failure'][2] );
+
+			return $made;
+		}
+
+		/**
+		 *	parts() for the root of a page or of a frame: the one place where a block of the library and a page or a frame are mapped to one another
+		 */
+		private static function _parts( array &$appData, string $template, array $state, array $nodes, array $input ): array {
+
+			$wrap = Library::wrapOf( $template );
+
 			$registry = \Nino\Components::components( $appData );
 			$at = is_string( $input['at'] ?? null ) === true && preg_match( '/^\d+$/D', $input['at'] ) === 1 ? (int) $input['at'] : -1;
 			$root = $nodes[$at] ?? null;
@@ -216,20 +301,22 @@ namespace Nino\Modules\Builder {
 			$description = is_string( $input['description'] ?? null ) === true && trim( $input['description'] ) !== '' ? trim( $input['description'] ) : $name;
 			$category = is_string( $input['category'] ?? null ) === true ? $input['category'] : '';
 
-			if( is_array( $root ) === false || Tree::kind( $root, $registry ) !== 'block' || $root['n'] !== Library::PAGE )
+			if( is_array( $root ) === false || Tree::kind( $root, $registry ) !== 'block' || $root['n'] !== $wrap )
 				return self::_fail( 404, 'block', 'at' );
 
 			if( $key === '' || strlen( $key ) > \Nino\Components::NAME_LENGTH || preg_match( \Nino\Components::NAME, $key ) !== 1 )
 				return self::_fail( 400, 'key', 'key' );
 
-			if( $name === '' || mb_strlen( $name ) > \Nino\Blocks::MAX_NAME || mb_strlen( $description ) > \Nino\Blocks::MAX_DESCRIPTION || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $name. $description ) === 1 )
+			if( $name === '' || mb_strlen( $name ) > \Nino\Blocks::MAX_NAME || mb_strlen( $description ) > \Nino\Blocks::MAX_DESCRIPTION || preg_match( self::UNSAFE, $name. $description ) === 1 )
 				return self::_fail( 400, 'name', 'name' );
 
-			if( in_array( $category, array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ), true ) === false )
+			// A frame is a block of the category of the frames and nothing else; a block of a page is any other
+			if( in_array( $category, $wrap === Library::PAGE ? array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ) : [ 'frame' ], true ) === false )
 				return self::_fail( 400, 'category', 'category' );
 
 			$rootId = (string) ( $root['a'][Tree::idAttribute( $registry[$root['n']] )] ?? '' );
-			$base = (string) preg_replace( '/-\d+$/', '', $rootId );
+			// A frame stands on the id it has - there is no copy number to take off of it - so that what the site says of the id is said of the block
+			$base = $wrap === Library::PAGE ? (string) preg_replace( '/-\d+$/', '', $rootId ) : $rootId;
 
 			if( Tree::isId( $rootId ) === false || Tree::isId( $base ) === false )
 				return self::_fail( 400, 'id', 'at' );
@@ -239,7 +326,7 @@ namespace Nino\Modules\Builder {
 			$tree = self::_node( $appData, $root, $registry, [ $rootId, $base ], $template, $rootId, $base, $used );
 
 			if( is_string( $tree ) === true )
-				return self::_fail( 400, $tree, 'at' );
+				return self::$frame === true ? self::_frameFailure( $appData, $input ) : self::_fail( 400, $tree, 'at' );
 
 			// The words, in each language of the site and in English: what the page has for the key in the language, else English, else the native language, else any
 			$locales = array_values( array_unique( array_merge( [ \Nino\Blocks::FALLBACK ], \Nino\Locales::getAvailableLocales( $appData ) ) ) );
@@ -248,6 +335,8 @@ namespace Nino\Modules\Builder {
 			$images = [];
 			$words = is_array( $input['texts'] ?? null ) === true ? $input['texts'] : [];
 			$chosen = is_array( $input['pictures'] ?? null ) === true ? $input['pictures'] : [];
+			$gaps = [];
+			$spare = [];
 
 			foreach( $used as $flat => [ $kind, $from, $link ] ) {
 
@@ -258,8 +347,14 @@ namespace Nino\Modules\Builder {
 					$width = is_array( $slot ) === true ? ( $slot['width'] ?? null ) : null;
 					$height = is_array( $slot ) === true ? ( $slot['height'] ?? null ) : null;
 
-					if( is_int( $width ) === false || is_int( $height ) === false )
-						return self::_fail( 400, 'picture', 'at' );
+					if( is_int( $width ) === false || is_int( $height ) === false ) {
+
+						if( self::$frame === false )
+							return self::_fail( 400, 'picture', 'at' );
+
+						self::_note( 'picture', $used[$flat][3] ?? '' );
+						continue;
+					}
 
 					$width = max( 16, min( 4096, $width ) );
 					$height = max( 16, min( 4096, $height ) );
@@ -278,26 +373,87 @@ namespace Nino\Modules\Builder {
 					if( is_string( $text ) === true )
 						$have[(string) $locale] = $text;
 
+				$part = (string) ( $used[$flat][3] ?? '' );
+
+				// A frame has no text made up for a language that has none: a text that is in no language is refused, a language that lacks one is said - and filled from the language
+				// that is named, when it is named - and the language the site does not use but the kernel asks for is the only one that takes the text of the native language by itself
+				if( self::$frame === true && $have === [] ) {
+
+					self::_note( 'empty', $part );
+					continue;
+				}
+
 				foreach( $locales as $locale ) {
 
-					$text = $have[$locale] ?? $have[\Nino\Blocks::FALLBACK] ?? $have[$native] ?? ( $have === [] ? '' : reset( $have ) );
-					$text = self::_plain( (string) $text );
+					$given = $have[$locale] ?? null;
 
-					if( $text === '' )
-						return self::_fail( 400, 'empty', 'at' );
+					if( self::$frame === true && $given === null ) {
+
+						$donor = $locale === \Nino\Blocks::FALLBACK && in_array( $locale, \Nino\Locales::getTextLocales( $appData ), true ) === false ? ( $have[$native] ?? reset( $have ) ) : ( $have[(string) ( $input['fill'] ?? '' )] ?? null );
+
+						if( $donor === null ) {
+
+							$gaps[$locale][$part] = $part;
+							$spare[$locale][$flat] = self::_plain( (string) ( $have[$native] ?? reset( $have ) ) );
+							continue;
+						}
+
+						$given = $donor;
+					}
+
+					$text = self::_plain( (string) ( $given ?? $have[\Nino\Blocks::FALLBACK] ?? $have[$native] ?? ( $have === [] ? '' : reset( $have ) ) ) );
+
+					if( $text === '' ) {
+
+						if( self::$frame === false )
+							return self::_fail( 400, 'empty', 'at' );
+
+						self::_note( 'empty', $part );
+						continue;
+					}
 
 					// What a link of the block reads is a target, for each language, by the rule of every other link
-					if( $link === true && ( preg_match( '#^(?:page:/|\#|mailto:|tel:|https://)#i', $text ) !== 1 || \Nino\Modules\Builder\Tree::linkTarget( $appData, $text, ( $input['lenient'] ?? false ) !== true ) === false ) )
-						return self::_fail( 400, 'address', 'at' );
+					if( $link === true && ( preg_match( '#^(?:page:/|\#|mailto:|tel:|https://)#i', $text ) !== 1 || \Nino\Modules\Builder\Tree::linkTarget( $appData, $text, ( $input['lenient'] ?? false ) !== true ) === false ) ) {
 
-					if( mb_strlen( $text ) > \Nino\Blocks::MAX_TEXT )
-						return self::_fail( 400, 'long', 'at', [ \Nino\Blocks::MAX_TEXT ] );
+						if( self::$frame === false )
+							return self::_fail( 400, 'address', 'at' );
+
+						self::_note( 'address', $part );
+						continue;
+					}
+
+					if( mb_strlen( $text ) > \Nino\Blocks::MAX_TEXT ) {
+
+						if( self::$frame === false )
+							return self::_fail( 400, 'long', 'at', [ \Nino\Blocks::MAX_TEXT ] );
+
+						self::_note( 'long', $part, [ (string) \Nino\Blocks::MAX_TEXT ] );
+						continue;
+					}
 
 					$texts[$locale][$flat] = $text;
 				}
 			}
 
-			$meta = [ 'name' => array_fill_keys( $locales, $name ), 'description' => array_fill_keys( $locales, $description ), 'category' => $category, 'rank' => self::RANK ];
+			// A name and a description for each language the input gives one for; the others have the one that was given
+			$names = array_fill_keys( $locales, $name );
+			$about = array_fill_keys( $locales, $description );
+
+			foreach( [ 'names' => &$names, 'descriptions' => &$about ] as $field => &$target )
+				foreach( is_array( $input[$field] ?? null ) === true ? $input[$field] : [] as $locale => $line ) {
+
+					if( isset( $target[$locale] ) === false || is_string( $line ) === false || trim( $line ) === '' )
+						continue;
+
+					if( mb_strlen( trim( $line ) ) > ( $field === 'names' ? \Nino\Blocks::MAX_NAME : \Nino\Blocks::MAX_DESCRIPTION ) || preg_match( self::UNSAFE, $line ) === 1 )
+						return self::_fail( 400, 'name', 'name' );
+
+					$target[$locale] = trim( $line );
+				}
+
+			unset( $target );
+
+			$meta = [ 'name' => $names, 'description' => $about, 'category' => $category, 'rank' => self::RANK ];
 
 			if( $images !== [] )
 				$meta['images'] = $images;
@@ -312,7 +468,187 @@ namespace Nino\Modules\Builder {
 			foreach( $texts as $locale => $list )
 				$parts['texts'][$locale] = ( $list === [] ? '{}' : json_encode( $list, $flags ) ). "\n";
 
+			if( self::$frame === true ) {
+
+				// What the kernel takes as a block of a frame is the kernel's to say: it is asked of the block that stands, and what it refuses - a part after a part - is said at once
+				if( self::$problems === [] ) {
+
+					// A language that lacks a text is asked about with the text of another, for the question only: the kernel asks for the same names in each language
+					$probe = $parts;
+
+					foreach( $spare as $locale => $list )
+						$probe['texts'][$locale] = (string) json_encode( $list + (array) json_decode( (string) ( $parts['texts'][$locale] ?? '{}' ), true ) );
+
+					self::_asked( $appData, $key, $probe, $tree, $used );
+				}
+
+				if( self::$problems !== [] )
+					return self::_frameFailure( $appData, $input );
+
+				if( $gaps !== [] && ( $input['check'] ?? false ) !== true )
+					return self::_frameFailure( $appData, $input, $gaps );
+
+				if( ( $input['check'] ?? false ) === true )
+					return [ 'key' => $key, 'parts' => $parts, 'gaps' => self::_gapList( $gaps ) ];
+			}
+
 			return [ 'key' => $key, 'parts' => $parts ];
+		}
+
+		/**
+		 *	What is refused of a frame, noted once for a part
+		 */
+		private static function _note( string $code, string $part, array $extra = [] ): void {
+
+			foreach( self::$problems as $one )
+				if( $one['code'] === $code && $one['part'] === $part )
+					return;
+
+			self::$problems[] = [ 'code' => $code, 'part' => $part, 'extra' => $extra ];
+		}
+
+		/**
+		 *	The languages that lack a text, as a list: language => the parts, for the answer that tells the dialog
+		 */
+		private static function _gapList( array $gaps ): array {
+
+			$out = [];
+
+			foreach( $gaps as $locale => $parts )
+				$out[] = [ 'locale' => (string) $locale, 'parts' => array_values( $parts ) ];
+
+			return $out;
+		}
+
+		/**
+		 *	The block that stands put to the kernel, again and again: what it refuses of a source is noted with the part and the call that is the part is left out of the next question,
+		 *	so that every part that the kernel refuses is named and none is guessed at. A refusal that is no source is noted as it is
+		 */
+		private static function _asked( array &$appData, string $key, array $parts, array $tree, array $used ): void {
+
+			$containers = \Nino\Components::containers( $appData );
+
+			for( $round = 0; $round < 24; $round++ ) {
+
+				$parts['tpl'] = \Nino\Markup::write( [ $tree ], $containers ). "\n";
+				$why = \Nino\Blocks::validate( $appData, $key, $parts );
+
+				if( is_string( $why ) === false )
+					return;
+
+				if( preg_match( '/a source of "([^"]+)" - ([^ ]+) - is neither/', $why, $found ) === 1 ) {
+
+					$hit = self::_take( $tree, $found[1], static fn( array $node ): bool => ( $node['s'] ?? '' ) === $found[2], 'source' );
+
+					if( $hit !== null ) {
+						self::_note( str_starts_with( $found[2], '/project/' ) === true ? 'source-project' : 'source-other', self::_label( $hit, false ), [ $found[2] ] );
+						continue;
+					}
+				}
+				else if( preg_match( '/the value of "([^"]+)" of "([^"]+)" begins like a source/', $why, $found ) === 1 ) {
+
+					$value = '';
+					$hit = self::_take( $tree, $found[2], static function( array $node ) use ( $found, &$value ): bool {
+
+						$have = $node['a'][$found[1]] ?? null;
+						$value = is_string( $have ) === true ? $have : '';
+
+						return $value !== '' && strpos( './', $value[0] ) !== false;
+					}, $found[1] );
+
+					if( $hit !== null ) {
+						self::_note( 'source-other', self::_label( $hit, false ), [ $value ] );
+						continue;
+					}
+				}
+				else if( preg_match( '#^text/([A-Za-z_]+)\.json, "([^"]+)":#', $why, $found ) === 1 ) {
+
+					self::_note( 'text', (string) ( $used[$found[2]][3] ?? '' ), [ $found[1] ] );
+					return;
+				}
+
+				self::_note( 'kernel', '', [ $why ] );
+
+				return;
+			}
+		}
+
+		/**
+		 *	The first call of a name in a tree for which a test holds, with its source - or the attribute that is named - taken out of it
+		 *
+		 *	@return 	array|null								The call as it was; null where there is none
+		 */
+		private static function _take( array &$node, string $name, callable $test, string $what ): ?array {
+
+			if( ( $node['n'] ?? '' ) === $name && $test( $node ) === true ) {
+
+				$was = $node;
+
+				if( $what === 'source' )
+					$node['s'] = '';
+				else
+					unset( $node['a'][$what] );
+
+				return $was;
+			}
+
+			foreach( $node['c'] ?? [] as $at => $inner )
+				if( isset( $inner['n'] ) === true && ( $hit = self::_take( $node['c'][$at], $name, $test, $what ) ) !== null )
+					return $hit;
+
+			return null;
+		}
+
+		/**
+		 *	The words of a refusal of a frame: what is wrong, and the part it is wrong at, in the language of the request - one line for each part
+		 */
+		private static function _line( string $locale, string $code, string $part, array $extra ): string {
+
+			static $words = [];
+
+			$file = dirname( __DIR__ ). '/text/'. ( preg_match( '/^[a-z]{2}_[A-Z]{2}$/D', $locale ) === 1 && is_file( dirname( __DIR__ ). '/text/'. $locale. '.php' ) === true ? $locale : 'en_US' ). '.php';
+			$words[$file] ??= (array) require $file;
+			$sentence = (string) ( $words[$file]['[[/_admin/error/builder_frame_part_'. str_replace( '-', '_', $code ). ']]'] ?? $code );
+
+			foreach( $extra as $one ) {
+
+				$at = strpos( $sentence, '%s' );
+
+				if( $at !== false )
+					$sentence = substr_replace( $sentence, (string) $one, $at, 2 );
+			}
+
+			return ( $part === '' ? '' : $part. ': ' ). $sentence;
+		}
+
+		/**
+		 *	The refusal of a frame: every part that is refused at once - the code of each and the part in the sentence of the answer, which is in the words of the panel - or, for a language
+		 *	that lacks a text, the languages and the parts
+		 */
+		private static function _frameFailure( array &$appData, array $input, array $gaps = [] ): array {
+
+			$locale = is_string( $input['locale'] ?? null ) === true ? $input['locale'] : 'en_US';
+
+			if( $gaps !== [] ) {
+
+				$lines = [];
+
+				foreach( self::_gapList( $gaps ) as $gap )
+					$lines[] = $gap['locale']. ': '. implode( ', ', $gap['parts'] );
+
+				return [ 'failure' => [ 409, 'the block is not made: gaps '. implode( '; ', $lines ), 'builder_frame_gaps', [ implode( '; ', $lines ) ], 'at' ] ];
+			}
+
+			$codes = [];
+			$lines = [];
+
+			foreach( self::$problems as $one ) {
+
+				$codes[] = $one['code']. ( $one['part'] === '' ? '' : ' '. $one['part'] );
+				$lines[] = self::_line( $locale, $one['code'], $one['part'], $one['extra'] );
+			}
+
+			return [ 'failure' => [ 400, 'the block is not made: '. implode( '; ', $codes ), 'builder_frame_parts', [ implode( '; ', $lines ) ], 'at' ] ];
 		}
 
 		/**
@@ -472,7 +808,20 @@ namespace Nino\Modules\Builder {
 
 			$made = self::parts( $appData, $template, $state, $nodes, $input );
 
-			return isset( $made['failure'] ) === true ? $made : self::write( $appData, $made['key'], $made['parts'] );
+			if( isset( $made['failure'] ) === true )
+				return $made;
+
+			// A question whether the frame can be a block, and which languages lack a text: nothing is written
+			if( isset( $made['gaps'] ) === true )
+				return [ 'key' => $made['key'], 'checked' => true, 'gaps' => $made['gaps'] ];
+
+			$written = self::write( $appData, $made['key'], $made['parts'] );
+
+			// What the writing refuses of a frame is said in the words of a frame
+			if( isset( $written['failure'] ) === true && Library::wrapOf( $template ) !== Library::PAGE )
+				$written['failure'][2] = str_replace( 'builder_own_', 'builder_frame_', (string) $written['failure'][2] );
+
+			return $written;
 		}
 
 		/**

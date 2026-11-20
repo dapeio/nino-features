@@ -186,6 +186,7 @@ $every = [
 	'themelab/picture-show'	=> [ 'key' => 'karten', 'file' => 'x' ],
 	'themelab/frames'		=> [],
 	'themelab/adopt'		=> [ 'template' => 'page-home', 'tree' => [], 'at' => '0', 'key' => 'neu', 'name' => 'Neu', 'category' => 'content' ],
+	'themelab/frame-adopt'	=> [ 'template' => 'frame-header', 'key' => 'neu', 'name' => 'Neu' ],
 	'themelab/export'		=> [ 'keys' => [ 'hero-full' ], 'key' => 'x', 'version' => '1.0.0', 'name' => 'X' ],
 	'themelab/import-check'	=> [],
 	'themelab/import'		=> [ 'id' => 'x', 'items' => [] ],
@@ -199,7 +200,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = themelabCall( $site, $action, $data )[0];
 
-check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 35 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
+check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page and of a frame, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 36 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
 
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 $answers = [];

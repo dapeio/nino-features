@@ -121,15 +121,16 @@ namespace Nino\Modules\Themelab {
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		string		$origin				'project', or the key of a theme; '' for every source
+		 *	@param		bool			$frames				Whether the blocks of a header or a footer are listed with them - the list of the blocks of the project has them, the editor and the picture do not
 		 *
 		 *	@return 	array											key => the block as \Nino\Blocks::all() lists it
 		 */
-		public static function listed( array &$appData, string $origin ): array {
+		public static function listed( array &$appData, string $origin, bool $frames = false ): array {
 
 			$out = [];
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $block )
-				if( ( $block['wrap'] ?? '' ) === Library::PAGE && ( $block['missing'] ?? [] ) === [] && ( $origin === '' || (string) $block['origin'] === $origin ) )
+				if( ( ( $block['wrap'] ?? '' ) === Library::PAGE || ( $frames === true && in_array( $block['wrap'] ?? '', [ 'header-wrap', 'footer-wrap' ], true ) === true ) ) && ( $block['missing'] ?? [] ) === [] && ( $origin === '' || (string) $block['origin'] === $origin ) )
 					$out[(string) $key] = $block;
 
 			return $out;
@@ -232,7 +233,8 @@ namespace Nino\Modules\Themelab {
 				if( isset( $node['n'] ) === true && $at === null )
 					$at = $index;
 
-			if( $at === null )
+			// The root of a block of a header or a footer keeps the id the frame has: the frame stands on it, and what the site says of #header is said of it
+			if( $at === null || in_array( $nodes[$at]['n'], [ 'header-wrap', 'footer-wrap' ], true ) === true )
 				return $parts;
 
 			$registry = \Nino\Components::components( $appData );

@@ -30,6 +30,7 @@ namespace Nino\Modules\Themelab {
 	//	themelab/frames		the frames of the site, header and footer
 	//	themelab/frame-<x>	the actions of the editor, for a frame: the code of the Builder, after the right of this panel
 	//	themelab/adopt		a block of a page as a block of the project, the page unchanged
+	//	themelab/frame-adopt	a frame of the site as a block of the project, the frame unchanged
 	//	themelab/tile			a draft of a page with one block in it, for the small picture of the block in the list
 	class Admin {
 
@@ -61,6 +62,7 @@ namespace Nino\Modules\Themelab {
 				'themelab/picture-show'	=> [ self::class, 'apiPictureShow' ],
 				'themelab/frames'		=> [ self::class, 'apiFrames' ],
 				'themelab/adopt'		=> [ self::class, 'apiAdopt' ],
+				'themelab/frame-adopt'	=> [ self::class, 'apiFrameAdopt' ],
 				'themelab/export'		=> [ self::class, 'apiExport' ],
 				'themelab/import-check'	=> [ self::class, 'apiImportCheck' ],
 				'themelab/import'		=> [ self::class, 'apiImport' ],
@@ -118,6 +120,7 @@ namespace Nino\Modules\Themelab {
 				'themelab/export'		=> 'Export Blocks '. $key( 'key' ),
 				'themelab/import'		=> 'Import Blocks',
 				'themelab/adopt'		=> 'Adopt Block '. $key( 'key' ),
+				'themelab/frame-adopt'	=> 'Adopt Frame '. $key( 'template' ). ' As '. $key( 'key' ),
 				'themelab/frame-save'	=> 'Save Frame '. $key( 'template' ),
 				'themelab/frame-restore'	=> 'Restore Last Frame State '. $key( 'template' ),
 				'themelab/frame-upload'	=> 'Upload Frame Picture '. $key( 'uri' ),
@@ -241,7 +244,7 @@ namespace Nino\Modules\Themelab {
 				$name = is_array( $given ) === true && is_string( $given[$locale] ?? null ) === true ? trim( $given[$locale] ) : '';
 				$name = $name === '' ? $main : $name;
 
-				if( $name === '' || mb_strlen( $name ) > \Nino\Blocks::MAX_NAME || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $name ) === 1 ) {
+				if( $name === '' || mb_strlen( $name ) > \Nino\Blocks::MAX_NAME || preg_match( '/[<>\x00-\x1F\x7F\p{Cf}\p{Zl}\p{Zp}]|\[\[/u', $name ) === 1 ) {
 					self::_fail( $request, 400, 'the name is none', 'themelab_name', [ \Nino\Blocks::MAX_NAME ], $field );
 					return null;
 				}
@@ -389,8 +392,8 @@ namespace Nino\Modules\Themelab {
 			$tab = in_array( $asked, [ 'frames', 'info' ], true ) === true ? $asked : ( $asked === 'theme' && $theme !== null ? 'theme' : 'project' );
 			$blocks = [];
 
-			foreach( $tab === 'frames' || $tab === 'info' ? [] : Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project' ) as $key => $block )
-				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'description' => $block['description'], 'category' => (string) $block['category'], 'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'variantNames' => array_values( array_map( static fn( array $variant ): array => array_map( 'strval', (array) $variant['label'] ), (array) ( $block['alternatives'] ?? [] ) ) ), 'rank' => (int) $block['rank'] ];
+			foreach( $tab === 'frames' || $tab === 'info' ? [] : Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project', $tab !== 'theme' ) as $key => $block )
+				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'description' => $block['description'], 'category' => (string) $block['category'], 'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'variantNames' => array_values( array_map( static fn( array $variant ): array => array_map( 'strval', (array) $variant['label'] ), (array) ( $block['alternatives'] ?? [] ) ) ), 'rank' => (int) $block['rank'], 'frame' => ( $block['wrap'] ?? Library::PAGE ) !== Library::PAGE, 'template' => ( $block['wrap'] ?? '' ) === 'header-wrap' ? \Nino\Modules\Builder\Store::FRAMES['header'] : ( ( $block['wrap'] ?? '' ) === 'footer-wrap' ? \Nino\Modules\Builder\Store::FRAMES['footer'] : '' ) ];
 
 			usort( $blocks, static fn( array $one, array $other ): int => $one['rank'] <=> $other['rank'] ?: strcmp( $one['key'], $other['key'] ) );
 
@@ -403,7 +406,7 @@ namespace Nino\Modules\Themelab {
 				'tab'				=> $tab,
 				'theme'			=> $theme === null ? null : [ 'name' => $theme['name'], 'version' => $theme['version'], 'origin' => $theme['origin'] ],
 				// What the project holds of its own, for the page of the theme: the blocks and the frames
-				'counts'		=> [ 'blocks' => count( Sheet::listed( $appData, 'project' ) ), 'frames' => count( Frames::listed( $appData ) ) ],
+				'counts'		=> [ 'blocks' => count( Sheet::listed( $appData, 'project' ) ), 'frames' => count( Frames::listed( $appData ) ), 'frameBlocks' => count( Sheet::listed( $appData, 'project', true ) ) - count( Sheet::listed( $appData, 'project' ) ) ],
 				'blocks'		=> $blocks,
 				'frames'		=> Frames::listed( $appData ),
 				'library'		=> $library,
@@ -554,7 +557,7 @@ namespace Nino\Modules\Themelab {
 					$line = is_string( $words[$one] ?? null ) === true ? trim( $words[$one] ) : trim( (string) ( ( (array) $listed['description'] )[$one] ?? '' ) );
 					$line = $line === '' ? (string) ( $out['names'][$one] ?? reset( $out['names'] ) ) : $line;
 
-					if( mb_strlen( $line ) > \Nino\Blocks::MAX_DESCRIPTION || preg_match( '/[<>\x00-\x1F\x7F]|\[\[/u', $line ) === 1 ) {
+					if( mb_strlen( $line ) > \Nino\Blocks::MAX_DESCRIPTION || preg_match( '/[<>\x00-\x1F\x7F\p{Cf}\p{Zl}\p{Zp}]|\[\[/u', $line ) === 1 ) {
 						self::_fail( $request, 400, 'the description is none', 'themelab_description', [ \Nino\Blocks::MAX_DESCRIPTION ], 'description' );
 						return null;
 					}
@@ -1414,6 +1417,13 @@ namespace Nino\Modules\Themelab {
 
 			$data = \Nino\Admin\Admin::postData();
 			$from = \Nino\Admin\Admin::postString( $data, 'key' );
+
+			// A block of a header or a footer of the project is copied as the files it is: the root keeps the id the frame has, since the frame stands on it
+			if( ( \Nino\Blocks::all( $appData )[$from]['wrap'] ?? Library::PAGE ) !== Library::PAGE ) {
+				self::_copyFrame( $appData, $request, $from, $data, $locale );
+				return;
+			}
+
 			$block = self::_block( $appData, $request, $from, false );
 			$names = $block === null ? null : self::_names( $appData, $request, $data['name'] ?? null, 'name', $locale );
 
@@ -1430,6 +1440,49 @@ namespace Nino\Modules\Themelab {
 			$listed = \Nino\Blocks::all( $appData )[$from];
 
 			self::_make( $appData, $request, $block, $key, $names, (string) $listed['category'] === 'frame' ? 'content' : (string) $listed['category'], $locale, array_map( 'strval', (array) $listed['description'] ), $from );
+		}
+
+		/**
+		 *	A block of a header or of a footer, of the project, copied under a new name: the files of it, the words and the pictures as they are
+		 */
+		private static function _copyFrame( array &$appData, array &$request, string $from, array $data, string $locale ): void {
+
+			$from = self::_own( $appData, $request, $from );
+			$names = $from === null ? null : self::_names( $appData, $request, $data['name'] ?? null, 'name', $locale );
+
+			if( $from === null || $names === null || self::_distinct( $appData, $request, $names, '', 'name' ) === false )
+				return;
+
+			$key = Sheet::keyOf( (string) ( $names[$locale] ?? reset( $names ) ) );
+
+			if( Sheet::taken( $appData, $key ) === true ) {
+				self::_fail( $request, 409, 'the key is taken', 'themelab_taken', [ $key ], 'name' );
+				return;
+			}
+
+			$parts = Sheet::partsOf( $appData, $from );
+
+			if( $parts === null ) {
+				self::_fail( $request, 404, 'there is no such block of the project', 'themelab_unknown', [], 'key' );
+				return;
+			}
+
+			$meta = json_decode( $parts['json'], true );
+			$meta['name'] = $names + (array) $meta['name'];
+			$parts['json'] = json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ). "\n";
+
+			if( self::_checked( $appData, $request, $key, $parts ) === null )
+				return;
+
+			$written = Custom::write( $appData, $key, $parts );
+
+			if( isset( $written['failure'] ) === true ) {
+				self::_failed( $request, $written['failure'] );
+				return;
+			}
+
+			unset( $appData['./nino/blocks/state'] );
+			\Nino\Http::ok( $request, [ 'key' => $key ] );
 		}
 
 		public static function apiRename( array &$appData, array &$request ): void {
@@ -1457,7 +1510,8 @@ namespace Nino\Modules\Themelab {
 			}
 
 			// The details beside the name - the description, the category, the rank - are the block's when the request brings them
-			$more = array_filter( [ 'descriptions' => $data['description'] ?? null, 'category' => $data['category'] ?? null, 'rank' => $data['rank'] ?? null ], static fn( mixed $value ): bool => $value !== null );
+			$isFrame = ( \Nino\Blocks::all( $appData )[$key]['wrap'] ?? Library::PAGE ) !== Library::PAGE;
+			$more = array_filter( [ 'descriptions' => $data['description'] ?? null, 'category' => $isFrame === true ? null : ( $data['category'] ?? null ), 'rank' => $data['rank'] ?? null ], static fn( mixed $value ): bool => $value !== null );
 			$details = self::_details( $appData, $request, [ 'details' => $more ], \Nino\Blocks::all( $appData )[$key], $locale );
 
 			if( $details === null )
@@ -1654,6 +1708,37 @@ namespace Nino\Modules\Themelab {
 				return;
 
 			\Nino\Modules\Builder\Admin::adopt( $appData, $request );
+		}
+
+		/**
+		 *	A frame of the site as a block of the project - the frame is not changed. What is asked here is what is a rule of this panel for any new block - the names, one of them in each
+		 *	language, no name of another block, a key no block has - and the rest is the Builder's: the frame as it is saved, mapped by the one rule of the blocks. The request names a
+		 *	frame of the site and nothing of what is in it
+		 */
+		public static function apiFrameAdopt( array &$appData, array &$request ): void {
+
+			if( Frames::guard( $appData, $request ) === false )
+				return;
+
+			$locale = self::_locale( $appData, $request );
+
+			if( $locale === null )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$names = self::_names( $appData, $request, $data['name'] ?? null, 'name', $locale );
+
+			if( $names === null || self::_distinct( $appData, $request, $names, '', 'name' ) === false )
+				return;
+
+			$key = \Nino\Admin\Admin::postString( $data, 'key' );
+
+			if( $key !== '' && strlen( $key ) <= \Nino\Components::NAME_LENGTH && preg_match( \Nino\Components::NAME, $key ) === 1 && Sheet::taken( $appData, $key ) === true ) {
+				self::_fail( $request, 409, 'the key is taken', 'themelab_taken', [ $key ], 'key' );
+				return;
+			}
+
+			Frames::pass( $appData, $request, 'apiFrameAdopt' );
 		}
 
 		public static function apiTile( array &$appData, array &$request ): void {

@@ -1705,4 +1705,136 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 		second !== undefined && second.payload.key === 'held' && w.requests.filter( function( entry ) { return entry.action === 'themelab/remove' } ).length === 2 );
 }
 
+// --- H. a frame of the site as a block of the project -----------------------------------------------------------------------------
+
+/** What was asked of the panel, in the order it was asked */
+const asked = function( w, action ) { return w.requests.filter( function( entry ) { return entry.action === action } ) };
+
+// The block of a frame stands in the list of the own blocks as the block of a frame: its category is the frame's, a quiet line says where it is put in and changed, its picture is the tile of its frame - asked the way
+// of the frames, naming the template - and a press on the row opens its details: no row that does nothing; the details do not ask for a category
+{
+	const list = LIST( { counts : { blocks : 2, frames : 2, frameBlocks : 1 }, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'frame', group : 'frame', variants : 0, rank : 0, frame : true, template : 'frame-header' } ] ) } );
+	const { w } = shown( '#themelab', list );
+	const head = rowsOfList( w ).find( function( row ) { return row.dataset.row === 'mein-kopf' } );
+	const tiles = asked( w, 'themelab/frame-tile' ).concat( asked( w, 'themelab/tile' ) ).map( function( entry ) { return entry.action+ ':'+ entry.payload.key+ ':'+ ( entry.payload.template ?? '' ) } );
+
+	check( 'H. the block of a frame is a row of the list with the category of the frames and a quiet line that says where it is put in and changed; its picture is asked for by the action of the frames, with the template of its frame - and the blocks of a page by the action they had',
+		head !== undefined && textOf( head ).indexOf( W('cat/frame') ) !== -1 && textOf( head ).indexOf( W('list/frame-hint') ) !== -1 && tiles.indexOf( 'themelab/frame-tile:mein-kopf:frame-header' ) !== -1 && tiles.indexOf( 'themelab/tile:karten:' ) !== -1 && tiles.indexOf( 'themelab/tile:mein-kopf:' ) === -1 );
+
+	w.requests.length = 0;
+	fire( head, 'click' );
+	const opened = dialogOf( w );
+
+	check( 'H. a press on the row of the block of a frame opens its details - no editor is asked for, the address stays - and the details have a name, a description and a rank, and no category to choose',
+		request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab' && opened !== undefined && textOf( opened ).indexOf( W( 'details/title', 'My head' ) ) !== -1 && findAll( opened, function( el ) { return el.tagName === 'SELECT' } ).length === 0 );
+
+	pressed( opened, W('details/submit') );
+	const sent = request( w, 'themelab/rename' );
+
+	check( 'H. what the details of a block of a frame send has the category of the frames', sent !== undefined && sent.payload.category === 'frame' && sent.payload.key === 'mein-kopf' );
+
+	fire( opened, 'close' );
+}
+
+// "Save as frame block": a row of the tab of the frames has the action, the dialog begins with a name made of the frame's, and the field of the key is the key that is written: it follows the name that is typed
+// until it is typed over, and what is asked is asked with what stands in the field - first as a question, check, and then written
+{
+	const inputsOf = function( dialog ) { return findAll( dialog, function( el ) { return el.tagName === 'INPUT' && String( el.className ).indexOf('nino-admin-input') !== -1 } ) };
+	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', template : 'frame-header' }, { key : 'footer', template : 'frame-footer' } ] } ) );
+	const action = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/header') ) } )[0];
+
+	check( 'H. a row of the frames has the action "Save as frame block", named for its frame', action !== undefined );
+
+	w.requests.length = 0;
+	fire( action, 'click' );
+
+	const dialog = dialogOf( w );
+	const inputs = inputsOf( dialog );
+
+	check( 'H. the dialog names the frame, begins with the name "Header of the site" in the working language and the key made of it, and has a description in each language',
+		textOf( dialog ).indexOf( W( 'adopt/title', W('frames/header') ) ) !== -1 && inputs[0].value === W( 'adopt/default-name', W('frames/header') ) && inputs[2].value === 'header-of-the-site' && findAll( dialog, function( el ) { return el.tagName === 'TEXTAREA' } ).length === 2 );
+
+	inputs[0].value = 'Mein Kopf';
+	fire( inputs[0], 'input' );
+
+	check( 'H. the field of the key shows the key that is written: it follows the name in the working language as it is typed', inputs[2].value === 'mein-kopf' );
+
+	inputs[2].value = 'eigener-kopf';
+	fire( inputs[2], 'input' );
+	inputs[0].value = 'Mein Kopf zwei';
+	fire( inputs[0], 'input' );
+
+	check( 'H. a key that was typed by hand stays as it was typed: the name that is typed after it does not change it', inputs[2].value === 'eigener-kopf' );
+
+	pressed( dialog, W('adopt/submit') );
+
+	const question = asked( w, 'themelab/frame-adopt' );
+
+	check( 'H. the first request is a question - check, nothing is written - for the frame, with the names, the description and the key that stands in the field, and no tree and no text of the frame',
+		question.length === 1 && question[0].payload.check === true && question[0].payload.template === 'frame-header' && question[0].payload.name.de_DE === 'Mein Kopf zwei' && question[0].payload.key === 'eigener-kopf' && question[0].payload.tree === undefined && question[0].payload.texts === undefined && question[0].payload.locale === 'de_DE' );
+
+	answerOf( question[0], 200, { key : 'eigener-kopf', checked : true, gaps : [] } );
+
+	const written = asked( w, 'themelab/frame-adopt' )[1];
+
+	check( 'H. where no language lacks a text the frame is written at once, with the same key and no check', written !== undefined && written.payload.check === undefined && written.payload.key === 'eigener-kopf' && written.payload.fill === undefined );
+
+	answerOf( written, 409, { error : 'x', code : 'themelab_taken', params : [ 'eigener-kopf' ], field : 'key' } );
+
+	check( 'H. a key that is taken is refused by the server and the dialog names the key that stands in the field, at the field, and stays open', textOf( dialog ).indexOf( 'eigener-kopf' ) !== -1 && dialog.open !== false );
+
+	fire( dialog, 'close' );
+
+	const footer = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/footer') ) } )[0];
+
+	w.requests.length = 0;
+	fire( footer, 'click' );
+	pressed( dialogOf( w ), W('adopt/submit') );
+
+	check( 'H. the footer is kept the same way: the question names the template of the footer and the key is made of its name', asked( w, 'themelab/frame-adopt' )[0].payload.template === 'frame-footer' && asked( w, 'themelab/frame-adopt' )[0].payload.key === 'footer-of-the-site' );
+
+	fire( dialogOf( w ), 'close' );
+}
+
+// A language that has no text for a part: the dialog says which language lacks which part before anything is written, and offers to fill it from the working language - or to stop; nothing is filled by itself
+{
+	const { w } = shown( '#themelab/frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', template : 'frame-header' } ] } ) );
+	const action = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/header') ) } )[0];
+
+	w.requests.length = 0;
+	fire( action, 'click' );
+	const dialog = dialogOf( w );
+
+	pressed( dialog, W('adopt/submit') );
+	answerOf( asked( w, 'themelab/frame-adopt' )[0], 200, { key : 'header-of-the-site', checked : true, gaps : [ { locale : 'en_US', parts : [ '[button]' ] } ] } );
+	const choice = dialogOf( w );
+
+	check( 'H. a language that lacks a text is said before anything is written: the dialog names the language and the part and offers to fill from the working language, and to cancel - and writes nothing yet',
+		choice !== dialog && textOf( choice ).indexOf( '[button]' ) !== -1 && textOf( choice ).indexOf( W( 'adopt/gaps-fill', 'Deutsch' ) ) !== -1 && asked( w, 'themelab/frame-adopt' ).length === 1 );
+
+	pressed( choice, 'Cancel' );
+	fire( choice, 'close' );
+
+	check( 'H. cancel writes nothing: no second request', asked( w, 'themelab/frame-adopt' ).length === 1 );
+
+	pressed( dialog, W('adopt/submit') );
+	answerOf( asked( w, 'themelab/frame-adopt' )[1], 200, { key : 'header-of-the-site', checked : true, gaps : [ { locale : 'en_US', parts : [ '[button]' ] } ] } );
+	const second = dialogOf( w );
+
+	pressed( second, W( 'adopt/gaps-fill', 'Deutsch' ) );
+	fire( second, 'close' );
+	const filled = asked( w, 'themelab/frame-adopt' )[2];
+
+	check( 'H. "Fill from the working language" writes, naming that language - and no other - for the languages that lack a text', filled !== undefined && filled.payload.fill === 'de_DE' && filled.payload.check === undefined );
+
+	fire( dialog, 'close' );
+}
+
+// The tab of the theme counts the own blocks of the frames besides the blocks and the frames
+{
+	const { w } = shown( '#themelab/info', LIST( { tab : 'info', counts : { blocks : 2, frames : 2, frameBlocks : 3 } } ) );
+
+	check( 'H. the tab of the theme counts the own blocks of the frames', textOf( w.page ).indexOf( W('info/frame-blocks') ) !== -1 && /3/.test( textOf( w.page ).slice( textOf( w.page ).indexOf( W('info/frame-blocks') ) ) ) );
+}
+
 done();

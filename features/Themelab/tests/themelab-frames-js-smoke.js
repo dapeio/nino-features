@@ -48,5 +48,8 @@ check( 'C1. "Insert block" in a frame offers the blocks that this panel has for 
 	has( /editor\(\)\.call\( 'blocks', \{\}/ ) === true && has( /editor\(\)\.call\( 'block', \{ key : key \}/ ) === true && has( /editor\(\)\.replace\( block,/ ) === true && /replace : replaceFrame,/.test( builder ) === true );
 check( 'C2. the list gives up its previews when an editor is open - a frame of the site each - and is drawn again where the person comes back to it',
 	has( /const unloadList = function\(\) \{[\s\S]*?list\.innerHTML = '';/ ) === true && ( script.match( /unloadList\(\);/g ) ?? [] ).length === 2 );
+check( 'C3. "Save as frame block" is a button of the editor of a frame, and unsaved work is asked about first - the question of the workbench, Save or Discard - before the dialog, which keeps the frame as it is SAVED',
+	has( /key : 'frameadopt',[\s\S]*?Nino\.admin\.dirty\.guard\( \[ 'themelab' \], function\(\) \{ askFrameAdopt\( frame,/ ) === true && has( /Nino\.admin\.themelab\.call\( 'frame-adopt', asked\( values,/ ) === true && has( /template : 'frame-'\+ frame, key :/ ) === true );
+
 
 done();
