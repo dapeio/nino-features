@@ -9921,7 +9921,12 @@
 		} );
 	};
 
-	// The two frames in the list of the pages, for the one who designs: each a row with the choice of its block, the way back to what it was, and - where Themelab is on and the account may
+	// What a frame is called: the standard ones by the words of the panel, a named one by its word
+	const frameName = function( key ) {
+		return key === 'header' || key === 'footer' ? word( 'frame/'+ key ) : key.replace( /^(?:header|footer)-/, '' );
+	};
+
+	// The frames in the list of the pages - the standard ones and the named ones the site has -, for the one who designs: each a row with the choice of its block, the way back to what it was, and - where Themelab is on and the account may
 	// use it - the way to its editor. A frame is changed here by being given another block of its kind; what is built in it is built in Themelab
 	const framesList = function( data ) {
 
@@ -9939,7 +9944,7 @@
 
 		const rows = data.frames.map( function( frame ) {
 
-			const name = word( 'frame/'+ frame.key );
+			const name = frameName( frame.key );
 			const actions = [];
 
 			actions.push( Nino.adminUi.button( word('frame/choose'), function( event ) {

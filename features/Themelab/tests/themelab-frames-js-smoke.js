@@ -28,8 +28,8 @@ console.log( '\nA. The tab and the address' );
 
 check( 'A1. the frames are the second tab - after the blocks and before the theme - and the list of them is two rows, each a link to the frame, with no button of a new block and no table',
 	has( /const items = \[ \{ key : 'blocks', label : word\('tab\/blocks'\) \}, \{ key : 'frames', label : word\('tab\/frames'\) \}, \{ key : 'info', label : word\('tab\/info'\) \} \];/ ) === true && has( /items\.(reverse|sort|unshift)\(/ ) === false && has( /if\( data\.tab === 'frames' \) \{[\s\S]*?return;\s*\}/ ) === true && has( /Nino\.admin\.themelab\.go\( partsOf\( 'frames', frame\.key \) \)/ ) === true );
-check( 'A2. an address names a frame by the word of its side and no other: #themelab/frames/header and #themelab/frames/footer; a key of a block is no frame and a frame is no key of a block',
-	/\( tab === 'frames' \? \/\^\(\?:header\|footer\)\$\//.test( script ) === true && has( /if\( target\.tab === 'frames' \)\s*openFrame\( target\.key \)/ ) === true );
+check( 'A2. an address names a frame by the word of its side and the word of the frame, if it has one: #themelab/frames/header, #themelab/frames/footer, #themelab/frames/header-landing - and no other; a key of a block is no frame and a frame is no key of a block',
+	script.includes( "tab === 'frames' ? /^(?:header|footer)(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?$/ :" ) === true && has( /if\( target\.tab === 'frames' \)\s*openFrame\( target\.key \)/ ) === true );
 
 console.log( '\nB. The sheet of a frame' );
 
@@ -51,5 +51,8 @@ check( 'C2. the list gives up its previews when an editor is open - a frame of t
 check( 'C3. "Save as frame block" is a button of the editor of a frame, and unsaved work is asked about first - the question of the workbench, Save or Discard - before the dialog, which keeps the frame as it is SAVED',
 	has( /key : 'frameadopt',[\s\S]*?Nino\.admin\.dirty\.guard\( \[ 'themelab' \], function\(\) \{ askFrameAdopt\( frame,/ ) === true && has( /Nino\.admin\.themelab\.call\( 'frame-adopt', asked\( values,/ ) === true && has( /template : 'frame-'\+ frame, key :/ ) === true );
 
+
+check( 'C4. a frame of the list is named by its word - a named one - or by the word of the panel - the standard ones - in the tab, in the editor and in the dialog that keeps it as a block; the request names the template as frame-<key>',
+	has( /title\s*: frameName\( frame\.key \)/ ) === true && has( /const title = frameName\( frame \);\s*const template = 'frame-'\+ frame;/ ) === true && has( /String\( key \)\.replace\( \/\^\(\?:header\|footer\)-\/, '' \)/ ) === true );
 
 done();

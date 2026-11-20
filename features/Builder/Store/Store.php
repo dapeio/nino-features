@@ -26,11 +26,134 @@ namespace Nino\Modules\Builder {
 		public const int MAX_KEYS = 600;
 		public const int MAX_LENGTH = 20000;
 
-		// The frames of the site and what the Builder calls them
+		// The standard frame of each side of the site, and what the Builder calls it: a site has more of them - frame-<side>-<word> - which frames() lists
 		public const array FRAMES = [ 'header' => 'frame-header', 'footer' => 'frame-footer' ];
 
+		// The word of a named frame, its longest, and the two it may not be: they stand for no frame at a call of the frames
+		public const string FRAME_WORD = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D';
+		public const int FRAME_WORD_MAX = 40;
+		public const array FRAME_RESERVED = [ 'none', 'default' ];
+
 		/**
-		 *	What a name is, as the Builder may open it: a template of a page - page-<word> - or one of the two frames
+		 *	Which side of the page a template is a frame of - 'header' or 'footer' - by its NAME alone: the standard frame, or frame-<side>-<word> with a word of the form a word has.
+		 *	Nothing of a path, a dot, a capital or a space gets through; null for every other name. Whether the file is there is frames()'s to say
+		 *
+		 *	@param		string		$name
+		 *
+		 *	@return 	string|null
+		 */
+		public static function side( string $name ): ?string {
+
+			foreach( self::FRAMES as $side => $standard ) {
+
+				if( $name === $standard )
+					return $side;
+
+				if( str_starts_with( $name, $standard. '-' ) === true ) {
+
+					$word = substr( $name, strlen( $standard ) + 1 );
+
+					if( $word !== '' && strlen( $word ) <= self::FRAME_WORD_MAX && preg_match( self::FRAME_WORD, $word ) === 1 && in_array( $word, self::FRAME_RESERVED, true ) === false )
+						return $side;
+				}
+			}
+
+			return null;
+		}
+
+		/**
+		 *	The frames the site has, each by its key - the template without frame-: header, footer, header-landing - and the template: of each side the standard first, then the named ones in
+		 *	the order of their names. The templates are read from the folder of the templates - or, where the kernel lists them, as it does - and every name is held to side() and to a file
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											key => template
+		 */
+		public static function frames( array &$appData ): array {
+
+			$found = self::_kernelFrames( $appData ) ?? self::_scanFrames( $appData );
+
+			$out = [];
+
+			foreach( self::FRAMES as $side => $standard ) {
+
+				$out[$side] = $standard;
+				$named = array_filter( array_unique( $found ), static fn( string $name ): bool => $name !== $standard && self::side( $name ) === $side && is_file( \Nino\Filesystem::path( $appData, '/templates/'. $name. '.tpl' ) ) === true && is_link( \Nino\Filesystem::path( $appData, '/templates/'. $name. '.tpl' ) ) === false );
+
+				sort( $named, SORT_STRING );
+
+				foreach( $named as $name )
+					$out[substr( $name, 6 )] = $name;
+			}
+
+			return $out;
+		}
+
+		/**
+		 *	The call of the kernel that lists the frames, as class and method
+		 *
+		 *	@return 	array{string, string}
+		 */
+		private static function _kernelCall(): array {
+			return [ '\\Nino\\Modules\\Template', 'frames' ];
+		}
+
+		/**
+		 *	The templates the kernel says are frames - \Nino\Modules\Template::frames(), which answers side => [ 'default', the words ] - as names of templates; null where the kernel has no such
+		 *	call or answers in another form, so that the folder is read instead and never "no frames"
+		 */
+		private static function _kernelFrames( array &$appData ): ?array {
+
+			// Asked through a callable, since a kernel before the call of the frames has no such method: the answer is of no known type here and is held to its form
+			$call = self::_kernelCall();
+
+			if( is_callable( $call ) === false )
+				return null;
+
+			/** @var mixed $answer */
+			$answer = call_user_func_array( $call, [ &$appData ] );
+
+			if( is_array( $answer ) === false || array_keys( $answer ) !== array_keys( self::FRAMES ) )
+				return null;
+
+			$names = [];
+
+			foreach( self::FRAMES as $side => $standard ) {
+
+				if( is_array( $answer[$side] ) === false || array_filter( $answer[$side], 'is_string' ) !== $answer[$side] )
+					return null;
+
+				foreach( $answer[$side] as $word )
+					$names[] = $word === 'default' ? $standard : $standard. '-'. $word;
+			}
+
+			return $names;
+		}
+
+		/**
+		 *	The templates of the folder of the templates, by name
+		 */
+		private static function _scanFrames( array &$appData ): array {
+
+			$dir = \Nino\Filesystem::path( $appData, '/templates' );
+			$found = [];
+
+			foreach( is_dir( $dir ) === true ? (array) scandir( $dir ) : [] as $file )
+				if( is_string( $file ) === true && str_ends_with( $file, '.tpl' ) === true )
+					$found[] = substr( $file, 0, -4 );
+
+			return $found;
+		}
+
+		/**
+		 *	Whether a name is a frame of this site: a standard frame, or a named one whose file is there - the form is side()'s, nothing of a request is taken unchecked
+		 */
+		public static function isFrame( array &$appData, string $name ): bool {
+			return self::side( $name ) !== null && in_array( $name, self::frames( $appData ), true ) === true;
+		}
+
+		/**
+		 *	What a name is, as the Builder may open it: a template of a page - page-<word> - or a frame of the site, by its name (the file is the state's to find)
 		 *
 		 *	@param		string		$name
 		 *
@@ -38,7 +161,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function named( string $name ): ?array {
 
-			if( in_array( $name, self::FRAMES, true ) === true )
+			if( self::side( $name ) !== null )
 				return [ 'name' => $name, 'frame' => true ];
 
 			return preg_match( '/^page-[a-z0-9]+(?:-[a-z0-9]+)*$/D', $name ) === 1 && strlen( $name ) <= 80 ? [ 'name' => $name, 'frame' => false ] : null;

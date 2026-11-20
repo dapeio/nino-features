@@ -71,10 +71,9 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function wrapOf( string $template ): string {
 
-			if( $template === Store::FRAMES['header'] )
-				return 'header-wrap';
+			$side = Store::side( $template );
 
-			return $template === Store::FRAMES['footer'] ? 'footer-wrap' : self::PAGE;
+			return $side === 'header' ? 'header-wrap' : ( $side === 'footer' ? 'footer-wrap' : self::PAGE );
 		}
 
 		/**

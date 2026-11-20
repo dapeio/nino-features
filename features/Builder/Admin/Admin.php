@@ -250,7 +250,7 @@ namespace Nino\Modules\Builder {
 			if( $keys === [] )
 				return [];
 
-			$templates = [ 'frame-header', 'frame-footer' ];
+			$templates = array_values( Store::frames( $appData ) );
 
 			foreach( Pages::all( $appData, $locale ) as $page )
 				$templates[] = (string) $page['template'];
@@ -1244,13 +1244,13 @@ namespace Nino\Modules\Builder {
 
 			$out = [];
 
-			foreach( Store::FRAMES as $key => $template )
+			foreach( Store::frames( $appData ) as $key => $template )
 				if( ( $state = Store::state( $appData, $template ) ) !== null ) {
 
 					$stamp = Store::stamp( $state );
 
 					// The way back is for the frame the choice wrote: as long as the frame is that one, and no other
-					$out[] = [ 'key' => $key, 'template' => $template, 'stamp' => $stamp, 'last' => self::_last( $appData, $template ), 'undo' => self::_last( $appData, $template ) > 0 && self::_chosen( $appData, $template ) === $stamp ];
+					$out[] = [ 'key' => $key, 'side' => Store::side( $template ), 'template' => $template, 'stamp' => $stamp, 'last' => self::_last( $appData, $template ), 'undo' => self::_last( $appData, $template ) > 0 && self::_chosen( $appData, $template ) === $stamp ];
 				}
 
 			return $out;
@@ -1295,7 +1295,7 @@ namespace Nino\Modules\Builder {
 
 			$template = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' );
 
-			if( in_array( $template, Store::FRAMES, true ) === false ) {
+			if( Store::isFrame( $appData, $template ) === false ) {
 				self::_fail( $request, [ 400, 'the request names no frame of the site', 'builder_unknown', [], 'template' ] );
 				return null;
 			}

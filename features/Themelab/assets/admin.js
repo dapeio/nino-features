@@ -86,8 +86,8 @@
 		if( tab === 'info' )
 			return null;
 
-		// A frame is the header or the footer; a block is any key of the form of a key
-		return rest.length === 1 && ( tab === 'frames' ? /^(?:header|footer)$/ : /^[a-z][a-z0-9-]{0,63}$/ ).test( rest[0] ) === true ? { tab : tab, key : rest[0] } : null;
+		// A frame is a header or a footer - the standard one or a named one: header-landing; a block is any key of the form of a key
+		return rest.length === 1 && ( tab === 'frames' ? /^(?:header|footer)(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?$/ : /^[a-z][a-z0-9-]{0,63}$/ ).test( rest[0] ) === true ? { tab : tab, key : rest[0] } : null;
 	};
 
 	const sheetOpen = function() {
@@ -131,6 +131,11 @@
 			call	: function( action, payload, done, extra ) { Nino.admin.themelab.call( action, payload, done, extra ) },
 			base	: function() { return { locale : N.data.contentLocale } },
 		};
+	};
+
+	// What a frame is called: the standard ones by the words of the panel, a named one by its word
+	const frameName = function( key ) {
+		return key === 'header' || key === 'footer' ? word( 'frames/'+ key ) : String( key ).replace( /^(?:header|footer)-/, '' );
 	};
 
 	const categoryWord = function( category ) {
@@ -584,11 +589,11 @@
 
 				return {
 					key		: frame.key,
-					title	: word( 'frames/'+ frame.key ),
+					title	: frameName( frame.key ),
 					detail	: word('frames/hint'),
 					href	: Nino.admin.router.href( 'themelab', partsOf( 'frames', frame.key ) ),
 					onOpen	: function() { Nino.admin.themelab.go( partsOf( 'frames', frame.key ) ) },
-					actions	: [ Nino.adminUi.iconButton( 'copy', word( 'adopt/row', word( 'frames/'+ frame.key ) ), function( event ) { askFrameAdopt( frame.key, event.currentTarget ) }, { small : true } ) ],
+					actions	: [ Nino.adminUi.iconButton( 'copy', word( 'adopt/row', frameName( frame.key ) ), function( event ) { askFrameAdopt( frame.key, event.currentTarget ) }, { small : true } ) ],
 				};
 			} ), { title : word('tab/frames'), level : 2 } ) );
 
@@ -906,7 +911,7 @@
 
 		clearFail();
 
-		const title = word( 'frames/'+ frame );
+		const title = frameName( frame );
 		const work = Nino.admin.workLocale.current;
 		const locales = N.data.locales.map( function( entry ) { return entry.locale } );
 		const first = word( 'adopt/default-name', title );
@@ -1920,7 +1925,7 @@
 	// The sheet of a frame: the requests are the code of the Builder for it, passed on after the right of this panel; the template is the one every request names
 	const frameAdapterOf = function( frame, response ) {
 
-		const title = word( 'frames/'+ frame );
+		const title = frameName( frame );
 		const template = 'frame-'+ frame;
 
 		const adapter = {
@@ -1975,7 +1980,7 @@
 				return;
 			}
 
-			N.open = { tab : 'frames', key : frame, names : word( 'frames/'+ frame ) };
+			N.open = { tab : 'frames', key : frame, names : frameName( frame ) };
 
 			unloadList();
 		} );

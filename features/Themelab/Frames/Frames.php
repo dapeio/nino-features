@@ -23,9 +23,9 @@ namespace Nino\Modules\Themelab {
 
 			$frames = [];
 
-			foreach( Store::FRAMES as $key => $template )
+			foreach( Store::frames( $appData ) as $key => $template )
 				if( is_file( \Nino\Filesystem::path( $appData, '/templates/'. $template. '.tpl' ) ) === true )
-					$frames[] = [ 'key' => $key, 'template' => $template ];
+					$frames[] = [ 'key' => $key, 'side' => Store::side( $template ), 'template' => $template ];
 
 			return $frames;
 		}
@@ -43,7 +43,7 @@ namespace Nino\Modules\Themelab {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, \Nino\Modules\Themelab::PERM ) === false )
 				return false;
 
-			if( in_array( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ), Store::FRAMES, true ) === false ) {
+			if( Store::isFrame( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) ) === false ) {
 				\Nino\Http::fail( $request, 400, 'the request names no frame of the site', 'themelab_frame', [], 'template' );
 				return false;
 			}
