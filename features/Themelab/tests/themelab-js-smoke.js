@@ -2108,6 +2108,30 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	check( 'K. the addresses of before, without the @, open the tab where no block of that key is: and are written with the @', old.join() === 'true,true,true' );
 }
 
+// The address names a block by its key and a tab or a source by a part with the @, which no key has: a block called "blocks" opens as the block, and a theme called "theme" is a source of
+// the list and not the theme in use - that is what the address of before, #themelab/@theme-blocks, stands for
+{
+	const blocks = shown( '#themelab/blocks', LIST( { ownKeys : [ 'karten', 'blocks' ] } ) ).w;
+	const opened = request( blocks, 'themelab/open' );
+
+	check( 'K2. the block "blocks" of the project opens its editor by #themelab/blocks - the part of the tab of the blocks is @blocks, which no key has',
+		opened !== undefined && opened.payload.key === 'blocks' && blocks.state.hash === '#themelab/blocks' );
+
+	const sources = [ { key : 'theme', label : { en_US : 'Theme', de_DE : 'Theme' }, theme : false }, { key : 'nino', label : { en_US : 'Nino', de_DE : 'Nino' }, theme : true } ];
+	const rows = THEME().blocks.map( function( block, at ) { return Object.assign( {}, block, { origin : at === 0 ? 'theme' : 'nino' } ) } );
+	const named = shown( '#themelab/@blocks/theme', LIST( { sources : sources, blocks : rows } ) ).w;
+	const select = findAll( named.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0];
+	const old = shown( '#themelab/@theme-blocks', LIST( { sources : sources, blocks : rows } ) ).w;
+	const oldSelect = findAll( old.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0];
+
+	check( 'K2. a theme whose key is "theme" is the source #themelab/@blocks/theme - its blocks - and the address of before, #themelab/@theme-blocks, is the theme in use, written as its own source',
+		select.value === 'theme' && rowsOfList( named ).length === 1 && named.state.hash === '#themelab/@blocks/theme' && oldSelect.value === 'nino' && old.state.hash === '#themelab/@blocks/nino' );
+
+	check( 'K2. the resolution of an address is fixed by structure: every fixed part has the @ that no key of a block has - the key of a block is of the form [a-z][a-z0-9-]* - and the theme in use has a name of its own, not the key "theme"',
+		/const FIXED = \{ '@theme-blocks' : 'theme', '@frames' : 'frames', '@theme' : 'info', '@blocks' : 'blocks' \};/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true && /const IN_USE = '@in-use';/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true
+		&& /\^\[a-z\]\[a-z0-9-\]\{0,63\}\$/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true );
+}
+
 // A block that is made with the key of a fixed address - "frames" - opens as the block: the key is a key of the project from the moment the server has made it
 {
 	const x = shown( '#themelab', LIST( { ownKeys : [ 'karten', 'held' ] } ) );

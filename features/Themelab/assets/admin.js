@@ -73,6 +73,10 @@
 		return value;
 	};
 
+	// What the address of before, #themelab/@theme-blocks, means as the source of a list: the theme in use. It has the @ that no key of a source has - a theme may be called "theme" -, and the
+	// sources "all" and "own" are the choices of the list, which a theme of that key would share
+	const IN_USE = '@in-use';
+
 	const N = {
 		fresh		: '',
 		frames	: null,
@@ -120,7 +124,7 @@
 			return rest.length <= 1 && /^[a-z0-9_-]{0,64}$/i.test( rest[0] ?? '' ) === true ? { tab : 'blocks', key : '', from : rest[0] ?? N.from } : null;
 
 		if( tab === 'theme' && rest.length === 0 )
-			return { tab : 'blocks', key : '', from : 'theme' };
+			return { tab : 'blocks', key : '', from : IN_USE };
 
 		if( rest.length === 0 )
 			return { tab : tab === 'project' ? 'blocks' : tab, key : '', from : N.from };
@@ -600,10 +604,10 @@
 		N.frames = Array.isArray( data.frames ) === true ? data.frames : N.frames;
 		N.tab = data.tab;
 
-		// The choice of where the blocks come from: 'theme' - the address of before - is the theme in use, and a source the site no longer has is the own blocks
+		// The choice of where the blocks come from: IN_USE - the address of before - is the theme in use, and a source the site no longer has is the own blocks
 		if( data.tab === 'blocks' ) {
 
-			if( N.from === 'theme' ) {
+			if( N.from === IN_USE ) {
 
 				N.from = data.theme === null ? 'own' : data.theme.key;
 				Nino.admin.router.set( 'themelab', tabParts( 'blocks' ) );
