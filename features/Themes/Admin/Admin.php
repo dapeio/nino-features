@@ -148,7 +148,7 @@ namespace Nino\Modules\Themes {
 			\Nino\Preview::tidy( $appData );
 			self::_dropOld( $appData );
 
-			\Nino\Http::ok( $request, [ 'themes' => $themes, 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'package' => [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => self::pages( $appData ) ] + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'themes' => self::_objects( [ 'themes' => $themes ], [ 'themes.*.from', 'themes.*.parts', 'themes.*.brand' ] )['themes'], 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'package' => [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => self::pages( $appData ) ] + self::_state( $appData, $state ) );
 		}
 
 		/**
@@ -708,12 +708,47 @@ namespace Nino\Modules\Themes {
 			$fonts = Brand::fonts( $appData );
 			$unavailable = array_values( array_filter( [ 'font-title', 'font-text', 'font-button' ], static fn( string $key ): bool => in_array( $key, $plan['named'], true ) === true && isset( $fonts[$values[$key]] ) === false ) );
 
-			return [
+			// The maps of the answer stay maps where they are empty: a group whose theme brings no values, a page that suggests no brand, a knob of the page whose step sets no token
+			return self::_objects( [
 				'groups'	=> $groups,
 				'brand'		=> [ 'stored' => $brand, 'effective' => $values, 'named' => $plan['named'], 'suggested' => $plan['page']['brand'], 'defaults' => Brand::DEFAULTS, 'unavailable' => $unavailable, 'fonts' => array_keys( $fonts ) ],
 				'palette'	=> [ 'source' => $source, 'veil' => Palette::VEIL, 'colors' => $palette, 'contrast' => $palette === [] ? [] : array_map( static fn( float $ratio ): float => floor( $ratio * 100 + 1e-9 ) / 100, Palette::pairs( $palette, $palette['color-1'], $palette['color-2'] ) ) ],
 				'notes'		=> $plan['notes'],
-			];
+			], [ 'groups.*.offers.*.values', 'groups.*.knobs.*.default', 'groups.*.knobs.*.ladder.*', 'brand.stored', 'brand.effective', 'brand.suggested', 'palette.colors', 'palette.contrast' ] );
+		}
+
+		/**
+		 *	An answer with its empty maps as objects: PHP has no empty map, json_encode() writes [] for one, which a client takes for a list. The paths name the maps - dotted,
+		 *	a * for every key of a list or of a map - and an array there that is empty is made an object; what is not empty, or not an array, is left as it is
+		 *
+		 *	@param		array			$data					The answer, or a part of it
+		 *	@param		array			$paths				Dotted paths, eg. 'groups.*.offers.*.values'
+		 *
+		 *	@return 	array
+		 */
+		private static function _objects( array $data, array $paths ): array {
+
+			foreach( $paths as $path )
+				$data = self::_object( $data, explode( '.', $path ) );
+
+			return $data;
+		}
+
+		private static function _object( mixed $node, array $path ): mixed {
+
+			if( $path === [] )
+				return $node === [] ? new \stdClass() : $node;
+
+			if( is_array( $node ) === false )
+				return $node;
+
+			$head = array_shift( $path );
+
+			foreach( $node as $key => $child )
+				if( $head === '*' || (string) $key === $head )
+					$node[$key] = self::_object( $child, $path );
+
+			return $node;
 		}
 
 		/**
@@ -829,10 +864,7 @@ namespace Nino\Modules\Themes {
 		 */
 		private static function _wired( array $mix ): array {
 
-			if( ( $mix['parts'] ?? null ) === [] )
-				$mix['parts'] = new \stdClass();
-
-			return $mix;
+			return self::_objects( [ 'mix' => $mix ], [ 'mix.parts' ] )['mix'];
 		}
 
 		/**
@@ -1010,7 +1042,8 @@ namespace Nino\Modules\Themes {
 					'stale'		=> ( $active['feature'] ?? '' ) !== (string) ( \Nino\Features::get( $appData, 'themes' )['version'] ?? '' ) || ( $active['register'] ?? '' ) !== \Nino\Components::version( $appData ) || $back !== [] || $drifted === true,
 					// The stylesheet names files of a font that its folder has not: the list says that, and not that the feature changed
 					'fonts'		=> $drifted,
-					'back'		=> $back,
+					// The fonts that are there again, by the key of the brand: a map, and an empty one goes out as an object
+					'back'		=> $back === [] ? new \stdClass() : $back,
 				],
 				'foreign'		=> $text === false || ( $text !== null && $text !== '' && Compiler::isOwn( $text ) === false ),
 				'unreadable'	=> $text === false,

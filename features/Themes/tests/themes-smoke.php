@@ -1167,7 +1167,41 @@ check( 'one that is not there is 404', $status === 404 && $body['code'] === 'the
 
 [ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Hollow', [] ) ] );
 [ $openStatus, $opened ] = themesCall( $site, 'themes/open', [ 'theme' => 'own:hollow' ] );
+[ , $listed ] = themesCall( $site, 'themes/list' );
+[ , $openedShipped ] = themesCall( $site, 'themes/open', [ 'theme' => 'nino' ] );
+[ , $previewed ] = themesCall( $site, 'themes/preview', [ 'mix' => themesMix( 'Draft', [] ) ] );
 themesCall( $site, 'themes/delete', [ 'theme' => 'own:hollow' ] );
+
+/** The paths of the empty arrays of an answer - an index is #, an object is looked into - so that a test says which of them are lists */
+function themesEmpties( mixed $value, string $path, array &$found ): void {
+
+	if( is_array( $value ) === true && $value === [] )
+		$found[] = ltrim( $path, '.' );
+	else if( is_array( $value ) === true || is_object( $value ) === true )
+		foreach( (array) $value as $key => $inner )
+			themesEmpties( $inner, $path. '.'. ( is_int( $key ) === true ? '#' : $key ), $found );
+}
+
+// The lists an answer of the panel may have empty; every other empty thing in it is a map and is an object
+$lists = '~^(?:themes\.#\.frames|rejected|pages|cssFaults|notes|groups\.[a-z-]+\.(?:knobs|components)|brand\.(?:unavailable|named))$~D';
+$arrays = [];
+
+foreach( [ 'list' => $listed, 'open' => $openedShipped, 'open of an own theme' => $opened, 'preview' => $previewed ] as $name => $answer ) {
+
+	$found = [];
+	themesEmpties( $answer, '', $found );
+	$arrays[$name] = array_values( array_filter( $found, static fn( string $path ): bool => preg_match( $lists, $path ) !== 1 ) );
+}
+
+$own = array_values( array_filter( $listed['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:hollow' ) )[0] ?? [];
+
+check( 'the list says what an own theme is made of as a map, an own theme with no parts included: an object, not the list a client would take for none',
+	is_object( $own['from'] ?? null ) === true && str_contains( (string) json_encode( $own ), '"from":{}' ) === true && $arrays['list'] === [] );
+
+check( 'what a theme of a package brings - the values of a part for a group, the steps a part gives, the page that suggests no brand - is a map in the answer that opens it and in the one that draws a draft, empty or not: no empty map goes out as a list',
+	$arrays['open'] === [] && $arrays['open of an own theme'] === [] && $arrays['preview'] === [] && is_object( $opened['brand']['suggested'] ?? null ) === true && is_object( $previewed['brand']['suggested'] ?? null ) === true
+	&& is_object( $openedShipped['groups']['page']['offers'][0]['values'] ?? null ) === true && str_contains( (string) json_encode( $openedShipped['groups']['page']['knobs'] ), '[]' ) === false );
+
 check( 'an own theme saved with no parts is opened with its parts as a map: an empty map stays an object on the wire, not a list the editor would take for none',
 	$status === 200 && $openStatus === 200 && is_object( $opened['mix']['parts'] ?? null ) === true && str_contains( (string) json_encode( $opened['mix'] ), '"parts":{}' ) === true );
 
@@ -2875,13 +2909,14 @@ $fontsFolder = \Nino\Filesystem::path( $fonts, '/fonts/open-sans' );
 themesCall( $fonts, 'themes/save-as', [ 'mix' => themesMix( 'Typed', [] ), 'brand' => [ 'font-title' => [ 'own' => true, 'value' => 'open-sans' ], 'color-1' => [ 'own' => false ], 'color-2' => [ 'own' => false ], 'tone' => [ 'own' => false ], 'mode' => [ 'own' => false ], 'font-text' => [ 'own' => false ], 'font-button' => [ 'own' => false ] ] ] );
 themesCall( $fonts, 'themes/apply', [ 'theme' => 'own:typed' ] );
 $activeOf = static fn(): array => themesCall( $fonts, 'themes/list' )[1]['active'];
-check( 'M. a font that is there when the stylesheet is built is in it, and the stylesheet is as it should be: it is not stale, no font is back', $activeOf()['stale'] === false && $activeOf()['back'] === [] && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === true );
+check( 'M. a font that is there when the stylesheet is built is in it, and the stylesheet is as it should be: it is not stale, no font is back', $activeOf()['stale'] === false && (array) $activeOf()['back'] === [] && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === true );
+check( 'the fonts that are back are a map by the key of the brand - none is an object in the state of every answer, not the list a client would take for none', is_object( $activeOf()['back'] ) === true && str_contains( (string) json_encode( $activeOf() ), '"back":{}' ) === true );
 
 rename( $fontsFolder, $fontsFolder. '.gone' );
 unset( $fonts['./nino/themes/read'] );
 themesCall( $fonts, 'themes/save', [ 'theme' => 'own:typed', 'mix' => themesMix( 'Typed', [] ), 'css' => '' ] );
 $gone = json_decode( (string) file_get_contents( $fontState. '/state/active.json' ), true );
-check( 'M. a font whose folder is gone when the stylesheet is built is the stack of the system in it, and the state says which fonts were gone: by the key of the brand and the folder', $gone['gone'] === [ 'font-title' => 'open-sans' ] && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === false && $activeOf()['stale'] === false && $activeOf()['back'] === [] );
+check( 'M. a font whose folder is gone when the stylesheet is built is the stack of the system in it, and the state says which fonts were gone: by the key of the brand and the folder', $gone['gone'] === [ 'font-title' => 'open-sans' ] && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === false && $activeOf()['stale'] === false && (array) $activeOf()['back'] === [] );
 
 rename( $fontsFolder. '.gone', $fontsFolder );
 $list = themesCall( $fonts, 'themes/list' )[1];
@@ -2889,14 +2924,14 @@ check( 'M. a font that comes back is not in the stylesheet before the next build
 check( 'M. ...and every answer that says the state says it: open, save, apply and the list', themesCall( $fonts, 'themes/open', [ 'theme' => 'own:typed' ] )[1]['active']['back'] === [ 'font-title' => 'open-sans' ] );
 
 [ $status ] = themesCall( $fonts, 'themes/save', [ 'theme' => 'own:typed', 'mix' => themesMix( 'Typed', [] ) ] );
-check( 'M. a save with nothing changed builds the stylesheet again - the font is in it, the state no longer says it was gone, and the API says that the stylesheet is as it should be', $status === 200 && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === true && $activeOf()['stale'] === false && $activeOf()['back'] === []
+check( 'M. a save with nothing changed builds the stylesheet again - the font is in it, the state no longer says it was gone, and the API says that the stylesheet is as it should be', $status === 200 && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === true && $activeOf()['stale'] === false && (array) $activeOf()['back'] === []
 	&& ( json_decode( (string) file_get_contents( $fontState. '/state/active.json' ), true )['gone'] ?? null ) === [] );
 
 // a stylesheet that is stale for another reason is stale all the same
 $active = json_decode( (string) file_get_contents( $fontState. '/state/active.json' ), true );
 $active['register'] = 'another register';
 file_put_contents( $fontState. '/state/active.json', json_encode( $active ) );
-check( 'M. a stylesheet that was built for another version of the register is stale, whether or not a font is back, and a save with nothing changed builds it again', $activeOf()['stale'] === true && $activeOf()['back'] === [] && themesCall( $fonts, 'themes/save', [ 'theme' => 'own:typed', 'mix' => themesMix( 'Typed', [] ) ] )[0] === 200 && $activeOf()['stale'] === false );
+check( 'M. a stylesheet that was built for another version of the register is stale, whether or not a font is back, and a save with nothing changed builds it again', $activeOf()['stale'] === true && (array) $activeOf()['back'] === [] && themesCall( $fonts, 'themes/save', [ 'theme' => 'own:typed', 'mix' => themesMix( 'Typed', [] ) ] )[0] === 200 && $activeOf()['stale'] === false );
 
 // -- a font that a hand wrote into brand.json: a slug, and not longer than a name of a folder is
 $write = static fn( int $length ): array => \Nino\Modules\Themes\Brand::read( $fonts, [ 'font-title' => [ 'own' => true, 'value' => str_repeat( 'a', $length ) ] ] )['font-title'];
