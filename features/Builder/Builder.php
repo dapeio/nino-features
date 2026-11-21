@@ -66,6 +66,7 @@ namespace Nino\Modules {
 
 		public static function init( array &$appData ): void {
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/request', [ self::class, 'request' ] );
+			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response', [ self::class, 'refuse' ], 9 );
 			\Nino\Callbacks::registerCallback( $appData, '/nino/pages/removed', [ self::class, 'removed' ] );
 		}
 
@@ -212,6 +213,52 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	Whether the query names a draft that no kind of the website holds: a token of the right form with no folder, or whose time is out - as one that was dropped or ran out is. A token that is
+		 *	held - by this feature, by another, for another account or without the right - is not stray: it keeps the answer it has
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *
+		 *	@return 	bool
+		 */
+		public static function stray( array &$appData, array &$request ): bool {
+
+			$token = $request['/nino/http/request']['query'][\Nino\Preview::QUERY] ?? null;
+
+			if( is_string( $token ) === false || preg_match( \Nino\Preview::TOKEN, $token ) !== 1 )
+				return false;
+
+			// A folder of any kind that is there and whose time is not out: a draft that ran out is no more a draft than one that was dropped - its folder is cleared with the next token that is given
+			foreach( glob( \Nino\Filesystem::path( $appData, \Nino\Preview::DIR ). '/*/'. $token ) ?: [] as $folder ) {
+
+				$meta = \Nino\Filesystem::getFileContent( $appData, \Nino\Preview::DIR. '/'. basename( dirname( $folder ) ). '/'. $token. '/meta.json', [] );
+
+				if( is_array( $meta ) === true && (int) ( $meta['expires'] ?? 0 ) > time() )
+					return false;
+			}
+
+			return true;
+		}
+
+		/**
+		 *	The answer to the address of a draft that nobody holds: no page - an empty one, as not found - and nothing that is stored
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) The request
+		 *
+		 *	@return 	void
+		 */
+		public static function refuse( array &$appData, array &$request ): void {
+
+			if( ( $appData['./nino/builder/stray'] ?? false ) !== true )
+				return;
+
+			$request['/nino/http/response']['statusCode'] = 404;
+			$request['/nino/http/response']['body'] = '';
+			$request['/nino/http/response']['header'] = [ 'Cache-Control' => 'no-store', 'Referrer-Policy' => 'no-referrer', 'X-Robots-Tag' => 'noindex' ] + (array) ( $request['/nino/http/response']['header'] ?? [] );
+		}
+
+		/**
 		 *	The first stage of a request: does it ask for the draft of a page, and may it have it. A request without the query is not looked at; one with it that
 		 *	may not have the draft - another session, an account without the right, a token that ran out - is the page as the visitors have it
 		 *
@@ -249,8 +296,14 @@ namespace Nino\Modules {
 				$tile = false;
 			}
 
-			if( $held === null )
+			if( $held === null ) {
+
+				// A draft that nobody holds any more - its token went out of the newest ones of its session, or ran out - is no page: the address of a picture never shows the page of the website
+				if( self::stray( $appData, $request ) === true )
+					$appData['./nino/builder/stray'] = true;
+
 				return;
+			}
 
 			// The right was checked where the draft was held: the token is the session's and the account still has the permission
 			self::draw( $appData, $request, $held['data'], true, $tile === false );

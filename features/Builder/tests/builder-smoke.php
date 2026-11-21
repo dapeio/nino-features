@@ -1426,6 +1426,50 @@ ninoUser( $site, 'other@example.com', [ '/_admin/builder/manage' ] );
 $others = $draw( $site, $tile['query'] );
 \Nino\Auth::loginUser( $site, 'builder@example.com', 'correct horse battery staple' );
 
+// the address of a picture that nobody holds any more - its token went out of the newest of the session, never was, or ran out - is no page of the website: an empty answer, not found, that is stored
+// nowhere; a token that is held - by this feature or by another - and a request with none keep their answers; and a token of a wrong form is never looked up in the files
+$strayOf = static function( array &$appData, string $query ): array {
+
+	$booted = builderReboot( $appData );
+	$request = ninoVisit( $booted, $query );
+
+	return [ ( $booted['./nino/builder/stray'] ?? false ) === true, $booted, $request ];
+};
+$word = static fn( string $token ): string => '/?'. \Nino\Preview::QUERY. '='. $token;
+
+[ $goneStray, $gone, $goneRequest ] = $strayOf( $site, $word( bin2hex( random_bytes( 16 ) ) ) );
+$goneRequest['/nino/http/response']['body'] = '<html>the page of the website</html>';
+$goneRequest['/nino/http/response']['header']['Cache-Control'] = 'public, max-age=3600';
+\Nino\Callbacks::doCallbacks( $gone, '/nino/http/response', $goneRequest );
+
+[ $freshStatus, $fresh ] = builderCall( $site, 'builder/tile', [ 'template' => 'page-home', 'key' => 'text-narrow' ] );
+[ $keptStray ] = $strayOf( $site, '/?'. ( $freshStatus === 200 ? $fresh['query'] : '' ) );
+[ $plainStray ] = $strayOf( $site, '/' );
+
+// held by another feature - a tile of Themelab, a draft of Themes - and by the account that is signed in: not stray
+$foreign = [];
+
+foreach( [ 'themelab-tile', 'themes-pictures' ] as $kind )
+	$foreign[$kind] = $strayOf( $site, $word( \Nino\Preview::issue( $site, $kind, \Nino\Modules\Builder::PERM, [ 'a' => 1 ] ) ) )[0];
+
+// a token whose time is out, its folder still there: no draft, like one that was dropped
+$ran = \Nino\Preview::issue( $site, 'themelab-tile', \Nino\Modules\Builder::PERM, [ 'a' => 1 ] );
+\Nino\Filesystem::putFileContent( $site, \Nino\Preview::DIR. '/themelab-tile/'. $ran. '/meta.json', [ 'user' => 'builder@example.com', 'expires' => time() - 5 ] );
+[ $ranStray ] = $strayOf( $site, $word( $ran ) );
+
+// a token of a wrong form is none: capitals, a short one, a path, a pattern, a list, nothing - whatever the files hold
+$wrong = [];
+
+foreach( [ strtoupper( bin2hex( random_bytes( 16 ) ) ), bin2hex( random_bytes( 15 ) ). 'a', '../../x', '*', '', 'a[]=b' ] as $form )
+	$wrong[$form] = $strayOf( $site, $form === 'a[]=b' ? '/?'. \Nino\Preview::QUERY. '[]=b' : $word( $form ) )[0];
+
+check( 'the address of a draft that nobody holds - dropped, never given, or run out - answers not found with an empty body and no-store, and the answer is the response stage\'s: a page that was drawn is emptied and a header that lets it be stored is replaced',
+	$goneStray === true && $goneRequest['/nino/http/response']['statusCode'] === 404 && $goneRequest['/nino/http/response']['body'] === '' && $goneRequest['/nino/http/response']['header']['Cache-Control'] === 'no-store'
+	&& $freshStatus === 200 && $keptStray === false && $plainStray === false && $ranStray === true );
+
+check( 'a draft that another feature holds is no stray, and a token of a wrong form is never one - it does not go to the files',
+	$foreign === [ 'themelab-tile' => false, 'themes-pictures' => false ] && array_filter( $wrong ) === [] );
+
 check( 'the tile of one session is the page as it is for another', str_contains( $others, $narrow['texts']['de_DE']['title'] ) === false );
 
 // what the tile draws is what a save takes: the root of the block is the block of the kernel - laid out, with the pictures of the kernel in the place of the slots

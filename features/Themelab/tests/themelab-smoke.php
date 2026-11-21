@@ -773,7 +773,7 @@ echo "\nG. What the panel is built of\n";
 $ownFunctions = [ 'Nino.adminUi.tree(', 'Nino.adminUi.previewFrame(', 'Nino.adminUi.hoverSync(', 'Nino.adminUi.split(', 'Nino.adminUi.saveBar(', 'Nino.adminUi.contextBar(', 'Nino.adminUi.previewTools(' ];
 
 check( 'the panel draws the editor with the editor of the Builder and with nothing of its own: no tree, no frame, no hover switchboard, no bar - it opens a sheet through Nino.admin.builder.editor, names its adapter and draws the tiles through it',
-	array_filter( $ownFunctions, static fn( string $call ): bool => str_contains( $script, $call ) === true ) === [] && str_contains( $script, 'editor().open( adapterOf(' ) === true && str_contains( $script, 'editor().tile( box, tiles() )' ) === true && str_contains( $script, 'Nino.admin.builder.editor' ) === true
+	array_filter( $ownFunctions, static fn( string $call ): bool => str_contains( $script, $call ) === true ) === [] && str_contains( $script, 'editor().open( adapterOf(' ) === true && str_contains( $script, 'editor().tile( box, adapter )' ) === true && str_contains( $script, 'pictureWhenSeen( box, tiles() )' ) === true && str_contains( $script, 'Nino.admin.builder.editor' ) === true
 	&& str_contains( $script, 'panel		: \'themelab\'' ) === true && str_contains( $script, 'sources	: \'block\'' ) === true
 	&& preg_match( '/workLocale\.follow\( \'themelab\', function\(\) \{\s*\/\/[^\n]*\n\s*if\( here\(\)\.panel !== \'themelab\' \)\s*return;/', $script ) === 1
 	&& str_contains( $script, 'Nino.adminUi.notice( Nino.adminUi.api.errorText(' ) === true && str_contains( $script, "'nino-admin-notice'" ) === false );

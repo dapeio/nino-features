@@ -240,12 +240,25 @@ function world( options ) {
 
 	const sandbox = { console : console, document : doc, Nino : Nino, URL : URL, encodeURIComponent : encodeURIComponent, TextEncoder : TextEncoder };
 
+	const observers = [];
+
 	sandbox.window = {
 		Nino : Nino,
 		location : { hash : '', href : 'http://workbench.test/_admin/' },
 		setTimeout : function( fn ) { timers.push( fn ); return timers.length },
 		clearTimeout : function() {},
 	};
+
+	// A browser that tells when a box is on screen: the test says when, by seeing( box )
+	if( options.observer === true )
+		sandbox.window.IntersectionObserver = function( callback ) {
+			this.callback = callback;
+			this.nodes = [];
+			this.gone = false;
+			this.observe = function( node ) { this.nodes.push( node ) };
+			this.disconnect = function() { this.gone = true };
+			observers.push( this );
+		};
 
 	const context = vm.createContext( sandbox );
 
@@ -259,7 +272,7 @@ function world( options ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, posted : posted, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, observers : observers, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, posted : posted, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -405,7 +418,7 @@ const typed = function( dialog, values ) {
 		const view = findAll( x.w.page, function( el ) { return String( el.className ).split(' ').indexOf('themelab-info') !== -1 } )[0];
 		const writing = view === undefined ? [ 'none' ] : findAll( view, function( el ) { return /^(INPUT|SELECT|TEXTAREA)$/.test( el.tagName ) || ( el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-help') === -1 && el.attributes['aria-expanded'] === undefined ) } );
 
-		return request( x.w, 'themelab/list' ).payload.tab === 'info' && page.indexOf('1.2.0') !== -1 && page.indexOf( W('info/origin-package') ) !== -1 && page.indexOf( W('info/package-design') ) !== -1 && writing.length === 0 && page.indexOf( W('new/button') ) === -1;
+		return x.asked.payload.tab === 'info' && page.indexOf('1.2.0') !== -1 && page.indexOf( W('info/origin-package') ) !== -1 && page.indexOf( W('info/package-design') ) !== -1 && writing.length === 0 && page.indexOf( W('new/button') ) === -1;
 	} )() );
 	check( 'A. a block of the project has three things to do in its row - duplicate, rename, delete - and each is named for the block; one of the theme has one: copy it as a block of the project', ( function() {
 		const theme = shown( '#themelab/@blocks/nino', THEME() ).w;
@@ -2216,6 +2229,47 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	check( 'F299 T2. a row of the variants has no box-shadow of an input and keeps its parts on one middle line: the row and the button that chooses the variant have align-items: center, the button has no shadow, and its focus is drawn by an outline',
 		/align-items: center;/.test( rule('.builder-var-row') ) === true && /align-items: center;/.test( rule('.builder-var-pick') ) === true && /box-shadow: none;/.test( rule('.builder-var-pick') ) === true
 		&& /outline: 2px solid/.test( rule('.builder-var-pick:focus-visible') ) === true && /baseline/.test( rule('.builder-var-pick') ) === false );
+}
+
+{
+	const lists = function( w ) { return w.requests.filter( function( entry ) { return entry.action === 'themelab/list' } ).length };
+	const tilesAsked = function( w ) { return w.requests.filter( function( entry ) { return entry.action === 'themelab/tile' } ).length };
+	const look = function( watch ) { if( watch.gone === true ) return; watch.callback( [ { isIntersecting : true, target : watch.nodes[0] } ] ) };
+
+	// the list is asked for once at the start: the panel asks, and the first address it follows is that list - the second asks again, whatever the time between
+	const x = shown( '#themelab', LIST() );
+
+	check( 'F317 a. the list is asked for and drawn ONCE at the start - the first address that is followed is the list the panel asked for -, and the second asks again: Back from the editor right after the start loads the list anew',
+		lists( x.w ) === 0 && ( x.w.panel.follow(), lists( x.w ) === 1 ) );
+
+	// a first address that names a block uses the mark up: the list of the next address is asked for
+	const block = shown( '#themelab/karten', LIST( { ownKeys : [ 'karten' ] } ) ).w;
+
+	block.requests.length = 0;
+	block.state.hash = '#themelab';
+	block.panel.follow();
+
+	check( 'F317 a. the mark of the start is used up by the first address, whatever it names: the block that was opened first leaves the list to be asked for', lists( block ) === 1 );
+
+	// the pictures: asked when the box is on screen, not before, and once
+	const w = shown( '#themelab', LIST( { blocks : LIST().blocks.concat( [ Object.assign( {}, LIST().blocks[0], { key : 'zweites', name : { de_DE : 'Zweites', en_US : 'Second' } } ) ] ) } ), { observer : true } ).w;
+	const before = tilesAsked( w );
+	const rows = rowsOfList( w ).length;
+	const first = w.observers[0];
+	const watchers = w.observers.length;
+
+	look( first );
+
+	const after = tilesAsked( w );
+
+	look( first );
+
+	check( 'F317 b. the picture of a block is asked for when its box is on screen and not before - a box of a row that is not seen asks nothing -, and once for a box: the observer of a box that was seen is let go, and a second look asks nothing',
+		before === 0 && rows > 1 && watchers >= rows && after === 1 && tilesAsked( w ) === 1 && first.gone === true && w.observers.filter( function( one ) { return one.gone === false } ).length === watchers - 1 );
+
+	const plain = shown( '#themelab', LIST() ).w;
+
+	check( 'F317 b. where the browser has no observer the picture of every row is asked for at once', tilesAsked( plain ) >= rowsOfList( plain ).length && tilesAsked( plain ) > 1 );
 }
 
 {

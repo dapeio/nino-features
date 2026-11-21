@@ -86,6 +86,7 @@
 		drawn		: '',
 		query		: '',
 		open		: null,
+		startup	: false,
 		button	: null,
 		data		: null,
 		keys		: false,
@@ -221,14 +222,37 @@
 		// A block of a frame is drawn on the bare page of its frame - the way the dialog of the choice draws it
 		if( row.frame === true ) {
 
-			editor().tile( box, frameTiles( row.template ) );
+			pictureWhenSeen( box, frameTiles( row.template ) );
 
 			return box;
 		}
 
-		editor().tile( box, tiles() );
+		pictureWhenSeen( box, tiles() );
 
 		return box;
+	};
+
+	// The picture of a block is asked for when its box is on screen - not for every row of a long list at once, which the server keeps no more than a few of: the others would be gone
+	// before their frames load. Where there is no observer, it is asked at once
+	const pictureWhenSeen = function( box, adapter ) {
+
+		if( typeof wn.IntersectionObserver !== 'function' ) {
+			editor().tile( box, adapter );
+			return;
+		}
+
+		const watch = new wn.IntersectionObserver( function( seen ) {
+
+			if( seen.some( function( entry ) { return entry.isIntersecting === true } ) === false )
+				return;
+
+			watch.disconnect();
+
+			if( box.isConnected !== false )
+				editor().tile( box, adapter );
+		}, { rootMargin : '120px' } );
+
+		watch.observe( box );
 	};
 
 	// The adapter of the tiles of the blocks of a frame: the request is the one of the frames, naming the template of the frame the block is for
@@ -2496,6 +2520,11 @@
 
 			clearFail();
 
+			// The first address that is followed after the start is the one the list was asked for: the mark is used up by it, whatever it names
+			const startup = N.startup;
+
+			N.startup = false;
+
 			const at = here();
 			const target = targetOf( at.panel === 'themelab' ? at.parts : [] );
 
@@ -2525,6 +2554,15 @@
 					return;
 				}
 
+				// The list the panel asked for at the start is the list of the address it follows for the first time: it is not asked for and drawn a second time, which asked the pictures of its
+				// blocks twice. Any address after that asks again
+				if( startup === true && N.data !== null && N.data.tab === target.tab ) {
+
+					Nino.adminUi.showLevel( 'themelab-list', { focus : N.button !== null && N.button.isConnected === true ? N.button : Nino.adminUi.panelName( dc.getElementById('themelab-list') ) } );
+
+					return;
+				}
+
 				// The list of the tab that the address names: asked again where it is another tab or the blocks changed
 				N.tab = target.tab;
 				Nino.admin.themelab.reload( function() { Nino.adminUi.showLevel( 'themelab-list', { focus : N.button !== null && N.button.isConnected === true ? N.button : Nino.adminUi.panelName( dc.getElementById('themelab-list') ) } ) } );
@@ -2548,6 +2586,7 @@
 			const proceed = function() { Nino.admin.themelab.follow() };
 
 			if( Nino.admin.themelab.ready === false ) {
+				N.startup = true;
 				Nino.admin.themelab.init( proceed );
 				return;
 			}
