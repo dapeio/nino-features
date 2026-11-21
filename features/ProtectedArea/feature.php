@@ -61,8 +61,8 @@ return [
 		],
 		'install' => [
 			'templates/page-protected.tpl' => [
-				'en_US' => 'The sign-in page the gate answers with, made of components and the frame of the site.',
-				'de_DE' => 'Die Anmeldeseite, mit der das Tor antwortet, aus Komponenten und dem Rahmen der Website.',
+				'en_US' => 'The sign-in page the gate answers with, made of components and the header/footer of the site.',
+				'de_DE' => 'Die Anmeldeseite, mit der das Tor antwortet, aus Komponenten und dem Kopf-/Fußbereich der Website.',
 			],
 			'text/<locale>.php' => [
 				'en_US' => 'Puts the words of the form and of the page into the Text panel.',

@@ -6,7 +6,7 @@ return [
 	'name'				=> [ 'en_US' => 'Menu', 'de_DE' => 'Menü' ],
 	'description'	=> [
 		'en_US' => 'Menu lets you build a navigation whose entries open panels of content of their own: titles, pictures, links and HTML+ in one to four columns. A component draws it in the header or the footer, and a script turns the panels as a keyboard and a screen reader expect. Without a script every panel stands open under its entry.',
-		'de_DE' => 'Das Menü ermöglicht eine Navigation, deren Einträge Panels mit eigenem Inhalt öffnen: Titel, Bilder, Links und HTML+ in einer bis vier Spalten. Eine Komponente zeichnet es im Header oder im Footer, und ein Skript klappt die Panels so auf, wie es Tastatur und Screenreader erwarten. Ohne Skript steht jedes Panel offen unter seinem Eintrag.',
+		'de_DE' => 'Das Menü ermöglicht eine Navigation, deren Einträge Panels mit eigenem Inhalt öffnen: Titel, Bilder, Links und HTML+ in einer bis vier Spalten. Eine Komponente zeichnet es im Kopfbereich oder im Fußbereich, und ein Skript klappt die Panels so auf, wie es Tastatur und Screenreader erwarten. Ohne Skript steht jedes Panel offen unter seinem Eintrag.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
@@ -16,11 +16,11 @@ return [
 			],
 			'[menu label="Main"]' => [
 				'en_US' => 'The name a screen reader gives the navigation; without it the site\'s word for the main navigation, in the footer the one for the foot.',
-				'de_DE' => 'Der Name, den ein Screenreader der Navigation gibt; ohne ihn das Wort der Website für die Hauptnavigation, im Footer das für die Fußnavigation.',
+				'de_DE' => 'Der Name, den ein Screenreader der Navigation gibt; ohne ihn das Wort der Website für die Hauptnavigation, im Fußbereich das für die Fußnavigation.',
 			],
 			'header-wrap, footer-col' => [
 				'en_US' => 'The two places the component is offered in: where the header of Basis has its menu, and a column of the footer; in the header, swap header-nav for it in the Builder.',
-				'de_DE' => 'Die zwei Plätze, an denen die Komponente angeboten wird: dort, wo der Header von Basis sein Menü hat, und in einer Spalte des Footers; im Header tauschst Du header-nav im Builder gegen sie.',
+				'de_DE' => 'Die zwei Plätze, an denen die Komponente angeboten wird: im Kopfbereich von Basis, wo dessen Menü steht, und in einer Spalte des Fußbereichs; dort tauschst Du header-nav im Builder gegen sie.',
 			],
 		],
 		'markup' => [
@@ -64,7 +64,7 @@ return [
 			],
 			'blocks/menu-header/' => [
 				'en_US' => 'A block: the header with the logo and the first menu, kept at the top.',
-				'de_DE' => 'Ein Block: der Header mit dem Logo und dem ersten Menü, oben festgehalten.',
+				'de_DE' => 'Ein Block: der Kopfbereich mit dem Logo und dem ersten Menü, oben festgehalten.',
 			],
 			'/data/menus.php' => [
 				'en_US' => 'The menus, a map of menu keys to their entries; the file of Nino 1 is read as it is, and its texts stay under /feature/menu/<menu>/<name>.',

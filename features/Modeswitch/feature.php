@@ -7,7 +7,7 @@ return [
 	'name'				=> [ 'en_US' => 'Light/Dark Switch', 'de_DE' => 'Hell/Dunkel-Schalter' ],
 	'description'	=> [
 		'en_US' => 'Light/Dark Switch lets visitors read the site light, dark, or the way their system asks for it. A three-state switch can be put into the header, the footer or any page. It shows only where the brand leaves the mode to the visitor.',
-		'de_DE' => 'Der Hell/Dunkel-Schalter ermöglicht es Besuchern, die Seite hell, dunkel oder so zu lesen, wie ihr System es vorgibt. Ein Schalter mit drei Zuständen lässt sich in die Kopfzeile, die Fußzeile oder auf jede Seite setzen. Er erscheint nur, wo die Marke den Modus dem Besucher überlässt.',
+		'de_DE' => 'Der Hell/Dunkel-Schalter ermöglicht es Besuchern, die Seite hell, dunkel oder so zu lesen, wie ihr System es vorgibt. Ein Schalter mit drei Zuständen lässt sich in den Kopfbereich, den Fußbereich oder auf jede Seite setzen. Er erscheint nur, wo die Marke den Modus dem Besucher überlässt.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
@@ -17,7 +17,7 @@ return [
 			],
 			'[mode-switch icons]' => [
 				'en_US' => 'The same without the words, for a crowded header bar.',
-				'de_DE' => 'Dasselbe ohne die Wörter, für eine volle Kopfzeile.',
+				'de_DE' => 'Dasselbe ohne die Wörter, für einen vollen Kopfbereich.',
 			],
 		],
 		'markup' => [

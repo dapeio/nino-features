@@ -2186,6 +2186,15 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 }
 
 {
+	const css = fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' );
+	const rule = function( selector ) { const found = new RegExp( selector.replace( /[.[\]()]/g, '\\$&' )+ ' \\{([^}]*)\\}' ).exec( css ); return found === null ? '' : found[1] };
+
+	check( 'F299 T2. a row of the variants has no box-shadow of an input and keeps its parts on one middle line: the row and the button that chooses the variant have align-items: center, the button has no shadow, and its focus is drawn by an outline',
+		/align-items: center;/.test( rule('.builder-var-row') ) === true && /align-items: center;/.test( rule('.builder-var-pick') ) === true && /box-shadow: none;/.test( rule('.builder-var-pick') ) === true
+		&& /outline: 2px solid/.test( rule('.builder-var-pick:focus-visible') ) === true && /baseline/.test( rule('.builder-var-pick') ) === false );
+}
+
+{
 	// The word for the head and the foot of a page: in German "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich", in English "header" and "footer" and "header/footer" - the old words are in no text of the
 	// panel and in no line of its manual - a technical name, as frame-header or [frame ...], is no word of it. The exceptions are named by their text, each with its reason
 	const readWords = function( file, locale ) {

@@ -10488,7 +10488,7 @@
 			const blank = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 			const shown = Nino.adminUi.pickDialog( {
-				title		: word('frame/choose'),
+				title		: word('frame/choose-title'),
 				message	: word('frame/pick-note'),
 				items		: sorted.map( function( one ) { return { value : one.entry.key, label : localized( one.entry.name ), description : localized( one.entry.description ), group : one.group, image : blank } } ),
 				cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),

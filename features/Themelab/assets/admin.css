@@ -114,16 +114,22 @@
 	min-width: 0;
 	display: flex;
 	flex-wrap: wrap;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--nino-admin-space-2);
 	min-height: 2rem;
 	padding: 0 var(--nino-admin-space-1);
 	border: 0;
+	box-shadow: none;
 	background: none;
 	color: inherit;
 	font: inherit;
 	text-align: left;
 	cursor: pointer;
+}
+
+.builder-var-pick:focus-visible {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: 2px;
 }
 
 .builder-var-actions {

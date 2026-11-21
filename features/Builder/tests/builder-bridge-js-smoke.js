@@ -136,6 +136,11 @@ check( 'D4. the notation of a component is no part of a page: the button behind 
 check( 'D5. the notices of the third party name no strokes of the Builder: it draws no icon of its own',
 	/The catalogue's own code/.test( notices ) === false || /GLYPHS/.test( notices ) === false );
 
+check( 'F299 T1. the button of a row of the tab of the header/footer says "Auswählen" / "Choose" and keeps its name for each side - "%s auswählen" / "Choose %s" -, and the dialog it opens has a title of its own that names what is chosen: the two do not share a key',
+	word( de, 'frame/choose' ) === 'Auswählen' && word( en, 'frame/choose' ) === 'Choose' && word( de, 'frame/choose-of' ) === '%s auswählen' && word( en, 'frame/choose-of' ) === 'Choose %s'
+	&& word( de, 'frame/choose-title' ) === 'Kopf-/Fußbereich wählen' && word( en, 'frame/choose-title' ) === 'Choose header/footer'
+	&& has( /title\s*: word\('frame\/choose-title'\)/ ) === true && has( /Nino\.adminUi\.button\( word\('frame\/choose'\)/ ) === true );
+
 console.log( '\nF294. The panel after the owner\'s look at it' );
 
 check( 'F294 T2. a double click on a row of the tree of the extended view, of the outline or of the list marks no text: user-select is off for the two places of the tree - the feature names no class of the workbench tree - and for the rows of the list, and stays on for a field in them',

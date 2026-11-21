@@ -88,7 +88,7 @@ return [
 	'[[/_admin/themelab/adopt/button-of]]'	=> '%s als eigenen Block speichern',
 	'[[/_admin/themelab/adopt/row]]'	=> '%s als Block speichern',
 	'[[/_admin/themelab/adopt/title]]'	=> '%s als Block speichern',
-	'[[/_admin/themelab/adopt/message]]'	=> 'Der Kopf-/Fußbereich, wie er gespeichert ist, wird als eigener Block der Kategorie Kopf-/Fußbereich aufgehoben. Der Kopf-/Fußbereich der Website bleibt, wie er ist; der Block kann ihn wieder ersetzen, hier und im Builder unter „Kopf-/Fußbereich wählen“.',
+	'[[/_admin/themelab/adopt/message]]'	=> 'Der Kopf-/Fußbereich, wie er gespeichert ist, wird als eigener Block der Kategorie Kopf-/Fußbereich aufgehoben. Der Kopf-/Fußbereich der Website bleibt, wie er ist; der Block kann ihn wieder ersetzen, hier und im Builder im Reiter „Kopf-/Fußbereich“ mit „Auswählen“.',
 	'[[/_admin/themelab/adopt/key]]'	=> 'Schlüssel',
 	'[[/_admin/themelab/adopt/key-help]]'	=> 'Kleine Buchstaben, Ziffern und Bindestriche; er ist der Name des Ordners des Blocks und muss unter allen Blocks frei sein.',
 	'[[/_admin/themelab/adopt/description]]'	=> 'Beschreibung',
