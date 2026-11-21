@@ -954,8 +954,8 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return bad.length === 0 && /const placePen = function/.test( script ) === true && /penSpot\( box, size, view \)/.test( script ) === true && /penSide|sides\[0\]|side : 'right'/.test( script ) === false;
 	} )() );
 
-	check( 'I. 4: the place for a block between two blocks is a soft, larger button with a plus and no word - a dashed line round it, 32 pixels at least - and its name and tooltip are the words', ( function() {
-		return /const button = pill\( '', word\(/.test( script ) === true && /button\.insert\{min-width:44px;min-height:32px;[^']*border-style:dashed/.test( script ) === true;
+	check( 'I. 4: the place for a block between two blocks is a soft, larger button of glass with a plus and no word - no dashed line round it, 36 pixels with a 20 pixel plus - and its name and tooltip are the words', ( function() {
+		return /const button = pill\( '', word\(/.test( script ) === true && /button\.insert\{--glass:36px;width:auto\}/.test( script ) === true && /button\.insert svg\{width:20px;height:20px\}/.test( script ) === true;
 	} )() );
 
 	check( 'I. 4b. a seam has its middle on the edge - the middle of the gap between two sections, the top of the first, the foot of the last - the same every time it is asked, held in only by the top and the foot of the page, and in the middle of the page', ( function() {

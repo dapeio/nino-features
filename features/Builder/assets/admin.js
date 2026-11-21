@@ -1996,6 +1996,19 @@
 			+ '@media (prefers-reduced-motion:reduce){[data-nino-block]{transition:none}}';
 	};
 
+	// The two buttons of the page that stand on it alone - the pencil at a component and the place to put a block in - are ONE button: the same milk glass, size, radius, edge, shadow and
+	// icon colour - a deep blue on the light glass, whatever the workbench is -, the rules of one string that both shadows take; they differ in the icon, which the plus has a little larger, and so in the size. Where the browser has no backdrop-filter
+	// the surface is more solid, so that the icon reads
+	const GLASS_CSS = 'button.pen,button.insert{--glass:32px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:var(--glass);height:var(--glass);min-height:24px;margin:0;padding:0 7px;'
+		+ 'border:1px solid rgba(255,255,255,.6);border-radius:12px;background:rgba(255,255,255,.8);color:rgb(29,78,216);'
+		+ '-webkit-backdrop-filter:blur(12px) saturate(1.5);backdrop-filter:blur(12px) saturate(1.5);box-shadow:0 4px 16px rgba(15,23,42,.18);font:600 13px/1 system-ui,sans-serif;cursor:pointer}'
+		+ 'button.pen{width:var(--glass);padding:0}button.insert{--glass:36px;width:auto}'
+		+ 'button.pen svg{width:16px;height:16px}button.insert svg{width:20px;height:20px}'
+		+ 'button.pen:hover,button.insert:hover{background:rgba(255,255,255,.92);border-color:rgba(255,255,255,.85)}'
+		+ 'button.pen:active,button.insert:active{background:rgba(255,255,255,.98);box-shadow:0 2px 8px rgba(15,23,42,.18);transform:scale(.96)}'
+		+ 'button.pen:focus-visible,button.insert:focus-visible{outline:2px solid var(--b-ink);outline-offset:2px;background:rgba(255,255,255,.92)}'
+		+ '@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){button.pen,button.insert{background:rgba(255,255,255,.95)}}';
+
 	// The bars stand in the shadow of one element at the end of the page: nothing of the website's style reaches them and they reach nothing of its. A bar, the frame
 	// of its block and the places to put a block in are shown only for the block that is on - the pointer or the focus is in it, or it is the chosen one
 	const BAR_CSS = ':host{all:initial;position:absolute;top:0;left:0;width:0;height:0;z-index:2147483000}'
@@ -2019,18 +2032,16 @@
 		+ 'span.note{flex:1 0 100%;padding:0 6px 2px;color:var(--b-red);font-weight:600;white-space:normal}'
 		+ '.frame{position:absolute;display:none;pointer-events:none;box-sizing:border-box;border:2px solid var(--b-blue);border-radius:3px}'
 		+ '.frame[data-on]{display:block}'
-		+ 'button.insert{position:absolute;width:max-content;max-width:calc(100vw - 16px);border:1px solid var(--b-line);background:var(--b-ground);color:var(--b-ink);box-shadow:var(--b-ring);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s}'
-		+ 'button.insert{min-width:44px;min-height:32px;padding:0 12px;border-width:2px;border-style:dashed;border-color:var(--b-blue);border-radius:var(--b-radius);color:var(--b-blue)}'
-		+ 'button.insert svg{width:18px;height:18px}'
-		+ 'button.insert:hover,button.insert:focus-visible{border-color:var(--b-blue);background:var(--b-soft);background:color-mix(in srgb,var(--b-blue) 16%,var(--b-ground))}'
+		+ 'button.insert{position:absolute;max-width:calc(100vw - 16px);white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s,box-shadow .12s}'
+		+ GLASS_CSS
 		+ '@media (prefers-reduced-motion:reduce){.bar,button.insert{transition:none}}';
 
 	// The pencil stands in a shadow of its own, in the window of the page: it is moved in the page to stand next to the component the keyboard is on, so that the Tab key reaches it
 	// next to the component, and that place may lie in a box of the page that is positioned
 	const PEN_CSS = ':host{all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483000}'
-		+ 'button.pen{position:fixed;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:24px;min-height:24px;margin:0;padding:0;border:1px solid var(--b-blue);border-radius:var(--b-radius);background:var(--b-blue);color:var(--b-ground);box-shadow:var(--b-ring);cursor:pointer;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s}'
+		+ 'button.pen{position:fixed;opacity:0;visibility:hidden;transition:opacity .12s,visibility 0s .12s,background-color .12s,border-color .12s,box-shadow .12s}'
 		+ 'button.pen[data-on],button.pen:focus-visible{opacity:1;visibility:visible;transition-delay:0s}'
-		+ 'button.pen:hover{border-color:var(--b-bluehover);background:var(--b-bluehover)}button.pen:focus-visible{outline:2px solid var(--b-ink);outline-offset:3px}'
+		+ GLASS_CSS
 		+ '.mark{display:none;position:fixed;box-sizing:border-box;margin:0;pointer-events:none;border:1px solid var(--b-blue);border-radius:0;box-shadow:inset 0 0 0 1px var(--b-ground)}'
 		+ '.mark.chosen{border-width:2px;border-style:solid;opacity:1}'
 		+ '.mark.hovered{border-width:1px;border-style:solid;opacity:.6}'
@@ -2655,6 +2666,9 @@
 	// of what is in sight (and never below the foot of the box); where it reaches beyond the window at the right it keeps to the edge of the window. A component that is smaller than the
 	// pencil has it aligned at its top right corner, covering the component rather than standing outside it
 	const PEN_INSET = 2;
+
+	// The size of the pencil in the page, as GLASS_CSS draws it
+	const PEN_SIZE = 32;
 
 	const penSpot = function( box, size, view ) {
 
@@ -3350,7 +3364,7 @@
 			}
 
 			const back = scaleBack();
-			const size = 26 * back;
+			const size = PEN_SIZE * back;
 			const view = { top : win.scrollY, left : win.scrollX, width : win.innerWidth };
 
 			pen.title = aimed.pen.name;
@@ -3600,7 +3614,7 @@
 				if( box === null )
 					return;
 
-				const size = 26 * back;
+				const size = PEN_SIZE * back;
 				const spot = penSpot( box, size, { top : win.scrollY, left : win.scrollX, width : win.innerWidth } );
 
 				held.button.style.transformOrigin = '0 0';
@@ -9910,11 +9924,15 @@
 		push( attribute('height') );
 
 		// The variant of the block and of the component: where the look of a section begins
-		if( rel === 'root' && S.frame === false && variantOfBlock( rootAt() ) !== undefined )
+		const ofBlock = rel === 'root' && S.frame === false && variantOfBlock( rootAt() ) !== undefined;
+
+		if( ofBlock === true )
 			rows.push( blockVariantField( rootAt() ) );
 
 		if( schema.variants.length > 0 ) {
-			rows.push( variantField( rel, node, schema, rows.length > 0 || typeof S.adapter.note === 'function' ) );
+
+			// The title of the dialog says it is the section, so "Variant" is enough - unless the block has a variant of its own beside it, or the sheet says what each variant sets
+			rows.push( variantField( rel, node, schema, ofBlock === true || typeof S.adapter.note === 'function' ) );
 			decorate( rows[rows.length - 1], rel, [ 'variant' ] );
 		}
 
@@ -11089,7 +11107,7 @@
 			addComponent : addComponent, relNode : relNode, sourceOf : sourceOf, setAttr : setAttr, widthsOf : widthsOf, widthsWritten : widthsWritten, fixAttrs : fixAttrs, hintOf : hintOf, partsOf : partsOf,
 			slugOf : slugOf, loopOf : loopOf, keyOf : keyOf, applySource : applySource, fallbackText : fallbackText, picturesNow : picturesNow, pictureTargets : pictureTargets, layoutsOf : layoutsOf, freshText : freshText, backOf : backOf, paintBar : paintBar, hintWord : hintWord, api : api, save : save,
 			build : build, keyAt : keyAt, atOf : atOf, rowOf : rowOf, outlineItems : outlineItems, leaveExtended : leaveExtended, penOf : penOf, iconOf : iconOf, activeOf : activeOf, lookOf : lookOf,
-			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, tileTo : tileTo, markedFrame : markedFrame, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, PEN_INSET : PEN_INSET, markBox : markBox, boxOf : boxOf, aimFor : aimFor, seamAt : seamAt, renameBlock : renameBlock, setFrames : setFrames, sideOfCall : sideOfCall, choiceOfCall : choiceOfCall, frameWord : frameWord, frameGroups : frameGroups, frameValues : frameValues, frameTileChoice : frameTileChoice, legacyTiles : legacyTiles, identProblem : identProblem, identWhy : identWhy, sectionPen : sectionPen, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
+			glyphOf : glyphOf, glyph : glyph, DEVICES : DEVICES, selectBlock : selectBlock, variantOfBlock : variantOfBlock, chooseVariant : chooseVariant, blockVariantField : blockVariantField, tileOf : tileOf, typeTitle : typeTitle, loopElements : loopElements, pageDrawn : pageDrawn, seatAfter : seatAfter, roveTo : roveTo, tileTo : tileTo, markedFrame : markedFrame, shownOf : shownOf, rowAction : rowAction, redrawBox : redrawBox, focusWork : focusWork, sortSteps : sortSteps, sortWritten : sortWritten, sortSentence : sortSentence, directionWord : directionWord, sortKind : sortKind, penSpot : penSpot, PEN_INSET : PEN_INSET, PEN_SIZE : PEN_SIZE, markBox : markBox, boxOf : boxOf, aimFor : aimFor, seamAt : seamAt, renameBlock : renameBlock, setFrames : setFrames, sideOfCall : sideOfCall, choiceOfCall : choiceOfCall, frameWord : frameWord, frameGroups : frameGroups, frameValues : frameValues, frameTileChoice : frameTileChoice, legacyTiles : legacyTiles, identProblem : identProblem, identWhy : identWhy, sectionPen : sectionPen, carrierOf : carrierOf, seatOf : seatOf, stopsOf : stopsOf, loopStopsOf : loopStopsOf, openProperties : openProperties, readsOf : readsOf, frameCss : frameCss, paintOutline : paintOutline, elementsOfKey : elementsOfKey, keyInPage : keyInPage,
 		},
 
 		/**

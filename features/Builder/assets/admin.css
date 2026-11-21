@@ -667,6 +667,12 @@
 	margin-top: .5rem;
 }
 
+/* The field that takes the file and the line that tells how it went are two items of the grid even where they show nothing: they add no gap between the buttons of the picture */
+.builder-picture > .builder-picture-file,
+.builder-picture > .builder-picture-line:empty {
+	display: none;
+}
+
 .builder-picture-image {
 	max-width: 100%;
 	max-height: 10rem;

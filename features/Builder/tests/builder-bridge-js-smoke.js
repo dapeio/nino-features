@@ -79,11 +79,14 @@ check( 'C1. the words of a width say what is inherited: "Inherited from tablet",
 	&& word( en, 'rows/below-desktop' ) === 'Inherited from tablet' && word( en, 'rows/below-tablet' ) === 'Inherited from smartphone' && word( en, 'rows/all' ) === 'Smartphone' );
 check( 'C2. the pencil is inside the frame of its component, in its top corner on the right, and nowhere else: one place for it, no side to go to and no row that has it at the left',
 	has( /const spot = penSpot\( box, size, view \);/ ) === true && has( /sides\[0\]|side : 'right'|row === true \? box\.left/ ) === false && has( /const PEN_INSET = 2;/ ) === true );
-check( 'C3. the pencil, the plus and the bar have a ground and a colour of their own from the tokens of the workbench - not the colours of the page, which they are drawn over - and the same in rest, over and in focus: a solid ground that is no tint of what is behind it, and two rings that tell it from a light page and a dark one',
-	/button\.pen\{[^']*border:1px solid var\(--b-blue\);[^']*background:var\(--b-blue\);color:var\(--b-ground\);box-shadow:var\(--b-ring\)/.test( script ) === true && /button\.pen:hover\{border-color:var\(--b-bluehover\);background:var\(--b-bluehover\)\}/.test( script ) === true
-	&& /button\.insert\{[^']*box-shadow:var\(--b-ring\)/.test( script ) === true && /\.bar\{[^']*box-shadow:var\(--b-ring\)/.test( script ) === true && /button:hover\{background:var\(--b-soft\);background:color-mix\(in srgb,var\(--b-blue\) 16%,var\(--b-ground\)\)\}/.test( script ) === true
-	&& /ring : '0 0 0 1px '\+ read\('--editor-bg-elevated'\)\+ ', 0 0 0 2px '\+ read\('--editor-text'\)/.test( script ) === true && /bluehover : read\('--editor-blue-hover'\)/.test( script ) === true
-	&& /PEN_CSS = [\s\S]*?prefers-reduced-motion:reduce\)\{button\.pen\{transition:none\}\}/.test( script ) === true && /(?:BAR_CSS|PEN_CSS) = [^;]*#[0-9a-fA-F]{3,6}\b/.test( script ) === false );
+check( 'C3. the pencil and the plus are ONE button of milk glass - a light, half see-through surface with a backdrop filter and a more solid one where there is none, a fine light edge, a soft shadow, a radius, a deep blue icon - and the rules are one string, GLASS_CSS, that both shadows take; the plus is 36 pixels with a 20 pixel icon, the pencil 32 with a 16 pixel one, none has a dashed edge, and the bar keeps the ground, the colour and the rings of the workbench',
+	has( /const GLASS_CSS = 'button\.pen,button\.insert\{--glass:32px;/ ) === true && /BAR_CSS = [\s\S]*?\+ GLASS_CSS\s*\+ '@media/.test( script ) === true && /PEN_CSS = [\s\S]*?\+ GLASS_CSS\s*\+ '\.mark/.test( script ) === true
+	&& has( /backdrop-filter:blur\(12px\) saturate\(1\.5\)/ ) === true && has( /@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)\{button\.pen,button\.insert\{background:rgba\(255,255,255,\.95\)\}\}/ ) === true
+	&& has( /button\.pen\{width:var\(--glass\);padding:0\}button\.insert\{--glass:36px;width:auto\}/ ) === true && has( /button\.pen svg\{width:16px;height:16px\}button\.insert svg\{width:20px;height:20px\}/ ) === true
+	&& has( /button\.pen:focus-visible,button\.insert:focus-visible\{outline:2px solid var\(--b-ink\)/ ) === true && has( /button\.pen:active,button\.insert:active/ ) === true && has( /const PEN_SIZE = 32;/ ) === true
+	&& script.slice( script.indexOf( 'const GLASS_CSS' ), script.indexOf( 'const traced' ) ).indexOf( 'dashed' ) === -1
+	&& /\.bar\{[^']*box-shadow:var\(--b-ring\)/.test( script ) === true && /button:hover\{background:var\(--b-soft\);background:color-mix\(in srgb,var\(--b-blue\) 16%,var\(--b-ground\)\)\}/.test( script ) === true
+	&& /ring : '0 0 0 1px '\+ read\('--editor-bg-elevated'\)\+ ', 0 0 0 2px '\+ read\('--editor-text'\)/.test( script ) === true && /PEN_CSS = [\s\S]*?prefers-reduced-motion:reduce\)\{button\.pen\{transition:none\}\}/.test( script ) === true );
 check( 'C4. the pictures of the devices, the alignments and the directions are the workbench\'s: no strokes of the panel, steps() with an icon in the lightbox, the devices of the preview bar by previewTools({ icons }), one table that says which picture a value has - and the stretch is the tall bars',
 	has( /GLYPHS/ ) === false && has( /createElementNS/ ) === false && /builder-step-glyph/.test( sheet ) === false && has( /icon : pictured_ === true \? pictures\[at\] : undefined/ ) === true && has( /icon : device\.glyph/ ) === true
 	&& has( /previewTools\( \{\s*icons\s*: true,/ ) === true && has( /pictured\(/ ) === false && has( /valign\s*: \{ stretch : 'stretch-vertical'/ ) === true && has( /smartphone/ ) === true && has( /monitor/ ) === true );
@@ -140,6 +143,12 @@ check( 'F299 T1. the button of a row of the tab of the header/footer says "Ausw�
 	word( de, 'frame/choose' ) === 'Auswählen' && word( en, 'frame/choose' ) === 'Choose' && word( de, 'frame/choose-of' ) === '%s auswählen' && word( en, 'frame/choose-of' ) === 'Choose %s'
 	&& word( de, 'frame/choose-title' ) === 'Kopf-/Fußbereich wählen' && word( en, 'frame/choose-title' ) === 'Choose header/footer'
 	&& has( /title\s*: word\('frame\/choose-title'\)/ ) === true && has( /Nino\.adminUi\.button\( word\('frame\/choose'\)/ ) === true );
+
+console.log( '\nF302. The section dialog' );
+
+check( 'F302 a. the dialog of a section names the variant "Variant" - its title says it is the section - and the long name only where a block variant stands beside it or the sheet says what each variant sets; the two buttons of the picture stand one under the other at the distance of buttons: the field of the file and the empty line of the answer take no row of the grid',
+	has( /rows\.push\( variantField\( rel, node, schema, ofBlock === true \|\| typeof S\.adapter\.note === 'function' \) \);/ ) === true && has( /const ofBlock = rel === 'root' && S\.frame === false && variantOfBlock\( rootAt\(\) \) !== undefined;/ ) === true
+	&& /\.builder-picture > \.builder-picture-file,\s*\.builder-picture > \.builder-picture-line:empty \{\s*display: none;/.test( sheet ) === true );
 
 console.log( '\nF301. The lightboxes of the properties' );
 
