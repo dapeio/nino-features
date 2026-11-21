@@ -532,6 +532,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return { w : w, S : S, model : w.panel.model };
 	};
 	const heads = function( dialog ) { return findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined && el.attributes['aria-controls'] !== undefined && el.className.indexOf('nino-admin-help-button') === -1 } ) };
+	const bodies = function( dialog ) { return findAll( dialog, function( el ) { return String( el.className ).split(' ').indexOf('builder-box-body') !== -1 } ).length };
 	const names = function( dialog ) { return heads( dialog ).map( function( head ) { return textOf( head ).replace( /\s+/g, ' ' ).trim() } ) };
 	const open = function( x, rel ) {
 
@@ -544,7 +545,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return { dialog : x.w.dialogs[x.w.dialogs.length - 1], back : back, opener : opener, close : function() { const dialog = x.w.dialogs[x.w.dialogs.length - 1]; fire( dialog, 'close' ) } };
 	};
 
-	check( 'E. the lightbox is one dialog of the workbench in the size of a form with the title "<kind> edit", and its sections stand in the fixed order - the source first, and open, where the content comes from one, then the content, how it looks, the advanced part - each only where it has something to show (the title of its own has no source, the column has neither source nor content, and none of them has an advanced part: the id of a component below the section is no row)', ( function() {
+	check( 'E. the lightbox is one dialog of the workbench in the size of a form with the title "<kind> edit", and its sections stand in the fixed order - the source first, and open, where the content comes from one, then the content, how it looks, the advanced part - each only where it has something to show (the title of its own has no source, the column has neither source nor content, and none of them has an advanced part: the id of a component below the section is no row; the column has the look alone, open, with no head)', ( function() {
 		const x = world2( 3 );
 		const field = open( x, '3.1' );
 		const fieldHeads = names( field.dialog );
@@ -555,6 +556,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		own.close();
 		const column = open( x, '5' );
 		const columnHeads = names( column.dialog );
+		const columnBodies = bodies( column.dialog );
 		const form = column.dialog.className.indexOf('nino-admin-dialog--form') !== -1;
 		const title = textOf( column.dialog.querySelector('.nino-admin-dialog-title') );
 
@@ -562,10 +564,10 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return fieldHeads.length === 3 && [ 'source', 'content', 'look' ].every( function( key, at ) { return fieldHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } ) && fieldOpen === 'true,false,false'
 			&& ownHeads.length === 2 && [ 'content', 'look' ].every( function( key, at ) { return ownHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } )
-			&& columnHeads.length === 1 && columnHeads[0].indexOf( W('box/look') ) === 0 && form === true && title === W( 'label/edit-component', 'Column' );
+			&& columnHeads.length === 0 && columnBodies === 1 && form === true && title === W( 'label/edit-component', 'Column' );
 	} )() );
 
-	check( 'F294 T5. the advanced part is where an anchor is read - the id of a section of the page - and nowhere else: a component below it has no "Id" row and no part, the section has both, the id is read and not written, and a section with no id and nothing else says there is nothing to set',
+	check( 'F294 T5. the advanced part is where an anchor is read - the id of a section of the page - and nowhere else: a component below it has no "Id" row and no part; the section has the id as text, in the one flat list of its dialog, and a button to rename it - and a section with no id and nothing else says there is nothing to set',
 		( function() {
 			const w = opened( { page : pageAnswer( { tree : tree, level : 3, schemas : Object.assign( {}, pageAnswer().schemas, attributes, { 'section-wrap' : schema( 'Section', 'rows', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' } } } ) } ) } ) } );
 			const x = { w : w, S : w.panel.model.state, model : w.panel.model };
@@ -575,7 +577,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 			const below = open( x, '3.1' );
 			const belowText = textOf( below.dialog );
 			const belowHeads = names( below.dialog ).join('|');
-			const belowId = findAll( below.dialog, function( el ) { return el.tagName === 'CODE' } ).length;
+			const belowId = findAll( below.dialog, function( el ) { return String( el.className ).indexOf('builder-id-text') !== -1 } ).length;
 			below.close();
 
 			const column = open( x, '5' );
@@ -584,12 +586,8 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 			const section = open( x, 'root' );
 			const sectionHeads = names( section.dialog );
-			const last = heads( section.dialog ).filter( function( head ) { return textOf( head ).indexOf( W('box/advanced') ) === 0 } )[0];
-
-			if( last !== undefined )
-				fire( last, 'click' );
-
-			const rows = findAll( section.dialog, function( el ) { return el.tagName === 'CODE' && String( el.className ).indexOf('builder-field-value') !== -1 } );
+			const texts = findAll( section.dialog, function( el ) { return el.tagName === 'CODE' && String( el.className ).indexOf('builder-id-text') !== -1 } );
+			const rename = findAll( section.dialog, function( el ) { return el.dataset !== undefined && el.dataset.key === 'root:id-rename' } ).length;
 			const inputs = findAll( section.dialog, function( el ) { return el.tagName === 'INPUT' && el.dataset.key !== undefined && /:id$/.test( el.dataset.key ) } ).length;
 
 			section.close();
@@ -600,7 +598,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 			poor.close();
 
 			return belowHeads.indexOf( W('box/advanced') ) === -1 && belowText.indexOf( W('field/read-id') ) === -1 && belowId === 0 && columnHeads.indexOf( W('box/advanced') ) === -1
-				&& sectionHeads.length === 1 && sectionHeads[0].indexOf( W('box/advanced') ) === 0 && rows.length === 1 && inputs === 0 && none === true;
+				&& sectionHeads.length === 0 && texts.length === 1 && textOf( texts[0] ) === 'team' && rename === 1 && inputs === 0 && none === true;
 		} )() );
 
 	check( 'E. a value that is changed in the lightbox is in the draft at once and is one step of the undo, the lightbox has nothing to apply - Close is its only button - and the undo takes the changes back one by one', ( function() {
@@ -639,7 +637,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return box.back.called === 1 && x.S.box === null;
 	} )() );
 
-	check( 'E. the account that may only write the content is given the source, to read, and the content - and no look, no advanced part: the lightbox of a column has nothing to show it and is not opened', ( function() {
+	check( 'E. the account that may only write the content is given the source, to read, or the content - one section each, open, with no head - and no look, no advanced part: the lightbox of a column has nothing to show it and is not opened', ( function() {
 		const x = world2( 1 );
 		const field = open( x, '3.1' );
 		const fieldHeads = names( field.dialog );
@@ -652,7 +650,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const refused = column.back.refused === true;
 		x.S.box = null;
 
-		return fieldHeads.length === 1 && fieldHeads[0].indexOf( W('box/source') ) === 0 && noSetting === true && ownHeads.length === 1 && ownHeads[0].indexOf( W('box/content') ) === 0 && refused === true;
+		return fieldHeads.length === 0 && bodies( field.dialog ) === 1 && noSetting === true && ownHeads.length === 0 && bodies( own.dialog ) === 1 && refused === true;
 	} )() );
 }
 
@@ -1398,22 +1396,19 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return { dialog : dialog, heads : heads, keys : keys, field : field, close : function() { fire( dialog, 'close' ) } };
 	};
 
-	check( 'I. the source of a loop is its first section, open, and holds its type, its sort, how many at most, from which on and the query, and what it shows now; none of them is in the look or in the advanced part', ( function() {
+	check( 'I. the source of a loop is the one section of its lightbox - open, with no head of an accordion - and holds its type, its sort, how many at most, from which on and the query, and what it shows now; none of them is in the look or in the advanced part', ( function() {
 		const x = ofLoop( 3, '-date,title' );
 		const box = open( x );
-		const first = textOf( box.heads[0] );
-		const opened = box.heads.map( function( head ) { return head.attributes['aria-expanded'] } ).join();
+		const heads = box.heads.length;
 		const inSource = box.keys();
 		const names = [ '1.1:limit', '1.1:offset', '1.1:query', '1.1:sort:0:field', '1.1:sort:1:field', '1.1:sort:add', '1.1:source:' ];
-
-		box.heads.slice( 1 ).forEach( function( head ) { fire( head, 'click' ) } );
 
 		const everywhere = box.keys();
 		const once = names.every( function( key ) { return inSource.indexOf( key ) !== -1 && everywhere.filter( function( other ) { return other === key } ).length === 1 } );
 
 		box.close();
 
-		return first.indexOf( W('box/source') ) === 0 && opened.indexOf('true') === 0 && once === true;
+		return heads === 0 && once === true;
 	} )() );
 	check( 'I. the sort is a list of steps that is the attribute in both directions: a step is a field and a direction, a change writes the attribute in its form, a step is added and taken away, at most three - and a value the list cannot show stays as it is written until a new one is made', ( function() {
 		const x = ofLoop( 3, '-date,title' );
@@ -1541,7 +1536,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		box.close();
 
-		return filter.loop === undefined && filter.icon === 'sliders-horizontal' && typeof inner.loop === 'object' && inner.icon === 'list' && readOnly === true && box.heads.length === 1;
+		return filter.loop === undefined && filter.icon === 'sliders-horizontal' && typeof inner.loop === 'object' && inner.icon === 'list' && readOnly === true && box.heads.length === 0;
 	} )() );
 }
 

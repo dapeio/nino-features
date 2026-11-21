@@ -3205,13 +3205,12 @@
 		// The picture a call reads as an attribute: a button in the foot corner of the call
 		behind.forEach( function( item ) {
 
-			// The one who designs has "Edit background" at every section, with or without a picture; the one who writes the content has the picture of it to exchange
-			const background = item.target.background === true;
-			const button = pill( background === true ? word('bg/edit') : word('picture/replace-title'), background === true ? word( 'bg/edit-of', item.target.label ) : word( 'picture/replace-of', item.target.label ), function( opener ) {
+			// The picture behind a section is set in the dialog of the section and has no button in the page; the one who writes the content has the picture of it to exchange
+			const button = pill( word('picture/replace-title'), word( 'picture/replace-of', item.target.label ), function( opener ) {
 
 				if( S.stale === false && S.editing === null )
-					background === true ? openBackground( Number( item.target.path ), opener ) : openImage( item.target, opener );
-			}, background === true ? 'sliders-horizontal' : 'image' );
+					openImage( item.target, opener );
+			}, 'image' );
 
 			button.dataset.image = item.target.key;
 			button.setAttribute( 'data-on', '' );
@@ -4078,7 +4077,10 @@
 				return;
 
 			if( target.attribute === true ) {
-				behind.push( { target : Object.assign( {}, target, { background : S.level >= 2 && ( nodeAt( target.path ) ?? {} ).n === 'section-wrap' } ), element : element } );
+				// The picture behind a section of a page is set in the dialog of the section, for the one who designs: it has no button in the page
+				if( S.level < 2 || ( nodeAt( target.path ) ?? {} ).n !== 'section-wrap' )
+					behind.push( { target : target, element : element } );
+
 				return;
 			}
 
@@ -4123,18 +4125,6 @@
 		} );
 		doc.addEventListener( 'submit', function( event ) { event.preventDefault() }, true );
 		doc.addEventListener( 'keydown', function( event ) { keys( event, found.blocks, doc ) } );
-
-		// Every section has "Edit background" for the one who designs, with or without a picture behind it
-		if( S.level >= 2 )
-			found.blocks.forEach( function( block ) {
-
-				const node = S.top[block.at];
-
-				if( node === undefined || node.n !== 'section-wrap' || behind.some( function( item ) { return item.target.background === true && item.target.path === String( block.at ) } ) === true || block.elements[0] === undefined )
-					return;
-
-				behind.push( { target : { path : String( block.at ), key : 'background:'+ block.at, attribute : true, background : true, alt : '', label : titleOf( node ) }, element : block.elements[0] } );
-			} );
 
 		bars( frame, found.blocks, behind );
 
@@ -9443,6 +9433,38 @@
 			|| ( rel === 'root' && S.sheet === 'page' && S.bridge === true );
 	};
 
+		// The way from a page to the editor of the blocks, for the one who holds the right of that panel: the block of the page is taken as a block of the project - the page
+		// stays as it is - or, where it is built like one, opened in the editor. The lightbox gives way to the dialog that asks for its name
+	const bridgeRow = function( rel, box ) {
+
+		if( rel === 'root' && S.sheet === 'page' && S.bridge === true ) {
+
+			const row = el( 'div', 'builder-box-change' );
+			const own = Nino.adminUi.button( word('own/open'), function() {
+				box.then = 'own';
+				box.close();
+			}, { className : 'nino-admin-btn--small' } );
+
+			own.dataset.key = 'block:own';
+			row.appendChild( own );
+
+			if( S.own[box.block] !== undefined ) {
+
+				const edit = Nino.adminUi.button( word('own/edit'), function() {
+					box.then = 'edit';
+					box.close();
+				}, { className : 'nino-admin-btn--small' } );
+
+				edit.dataset.key = 'block:edit';
+				row.appendChild( edit );
+			}
+
+			return row;
+		}
+
+		return null;
+	};
+
 	const advancedRows = function( rel, box ) {
 
 		const node = relNode( rel );
@@ -9466,32 +9488,10 @@
 		if( node.n === 'html' && S.level >= DEVELOP )
 			rows.push( htmlRow( rel, node ) );
 
-		// The way from a page to the editor of the blocks, for the one who holds the right of that panel: the block of the page is taken as a block of the project - the page
-		// stays as it is - or, where it is built like one, opened in the editor. The lightbox gives way to the dialog that asks for its name
-		if( rel === 'root' && S.sheet === 'page' && S.bridge === true ) {
+		const bridge = bridgeRow( rel, box );
 
-			const row = el( 'div', 'builder-box-change' );
-			const own = Nino.adminUi.button( word('own/open'), function() {
-				box.then = 'own';
-				box.close();
-			}, { className : 'nino-admin-btn--small' } );
-
-			own.dataset.key = 'block:own';
-			row.appendChild( own );
-
-			if( S.own[box.block] !== undefined ) {
-
-				const edit = Nino.adminUi.button( word('own/edit'), function() {
-					box.then = 'edit';
-					box.close();
-				}, { className : 'nino-admin-btn--small' } );
-
-				edit.dataset.key = 'block:edit';
-				row.appendChild( edit );
-			}
-
-			rows.push( row );
-		}
+		if( bridge !== null )
+			rows.push( bridge );
 
 		return rows;
 	};
@@ -9744,6 +9744,235 @@
 		title.focus();
 	};
 
+	// The id of a section as text - the anchor #id of it on the page - with a button to rename it: the button turns the text into a field in the same place, as the bar of the section does
+	// - Enter and leaving the field take it, Escape leaves it as it was, and what is wrong with it is said at the field. The ids below it go with it, and so do the links of the page. Where the
+	// id is not the account's to change - the page's own, the block's own - it is the text and why it stays
+	const idRow = function( rel, box ) {
+
+		const node = relNode( rel );
+		const name = Object.keys( S.schemas[node.n].attributes ).find( function( attribute ) { return S.schemas[node.n].attributes[attribute].type === 'id' } );
+
+		if( name === undefined || rel !== 'root' || S.sheet !== 'page' )
+			return null;
+
+		const at = rootAt();
+		const row = el( 'div', 'nino-admin-field builder-box-row builder-id-row' );
+		const label = el( 'span', '', word('field/section-id') );
+		const cell = el( 'span', 'builder-id-cell' );
+		const why = identWhy( node ) === '' ? '' : word( 'ident/why-'+ identWhy( node ) );
+		const draw = function() {
+
+			const id = idOf( node );
+			const text = el( 'code', 'builder-id-text', id === '' ? '-' : id );
+
+			cell.innerHTML = '';
+			cell.appendChild( text );
+
+			if( why !== '' ) {
+				text.title = why;
+				return;
+			}
+
+			const rename = Nino.adminUi.iconButton( 'pencil', word( 'ident/change-of', id ), function() { edit( id ) }, { small : true } );
+
+			rename.dataset.key = 'root:id-rename';
+			cell.appendChild( rename );
+		};
+		const edit = function( id ) {
+
+			const input = Nino.adminUi.textField( { key : 'root:id', label : word('field/section-id'), value : id } ).querySelector('input');
+			let ended = false;
+
+			input.maxLength = MAX_ID;
+			input.spellcheck = false;
+			input.className += ' builder-id-input';
+			input.setAttribute( 'aria-label', word( 'ident/field-of', id ) );
+			cell.innerHTML = '';
+			cell.appendChild( input );
+			input.focus();
+			input.select();
+
+			const end = function() {
+
+				if( ended === true )
+					return;
+
+				ended = true;
+				Nino.adminUi.clearFieldErrors( row );
+				draw();
+			};
+			const take = function( leaving ) {
+
+				if( ended === true )
+					return;
+
+				const value = input.value.trim();
+				const problem = value === id ? '' : identProblem( at, value );
+
+				if( problem !== '' ) {
+
+					Nino.adminUi.clearFieldErrors( row );
+					Nino.adminUi.fieldError( row, input, 'builder-id-error', word( 'ident/'+ problem ) );
+
+					if( leaving !== true )
+						input.focus();
+
+					return;
+				}
+
+				if( value === id ) {
+					end();
+					return;
+				}
+
+				ended = true;
+				S.relinked = 0;
+
+				const wasIds = identIds( at );
+
+				// The lightbox is the block's and the block has a new id: it stays with it
+				box.block = value;
+
+				if( renameBlock( at, value ) === '' )
+					announceLinks( id, value, wasIds, S.relinked );
+				else
+					box.block = id;
+
+				redrawBox();
+			};
+
+			input.addEventListener( 'input', function() {
+				Nino.adminUi.clearFieldErrors( row );
+			} );
+			input.addEventListener( 'keydown', function( event ) {
+
+				if( event.key === 'Enter' ) {
+					event.preventDefault();
+					take( false );
+				}
+				else if( event.key === 'Escape' ) {
+					event.preventDefault();
+					event.stopPropagation();
+					end();
+				}
+			} );
+			input.addEventListener( 'blur', function() { take( true ) } );
+		};
+
+		label.appendChild( Nino.adminUi.fieldHelp( word('field/read-id'), { field : cell, name : word('field/section-id') } ) );
+		row.appendChild( label );
+		row.appendChild( cell );
+		draw();
+
+		return row;
+	};
+
+	// A section of a page, for the one who designs, as ONE flat list - no head over it, no section in it -: its id, the height, the variant, the ground, whether the picture behind it shows and, only
+	// where it does, the picture and whether it is dimmed. What the section has besides follows; the way into the editor of the blocks is a quiet button under the list. Where the picture does not show, what is
+	// about it is not drawn - it is there again, with the values it has, the moment the picture shows
+	const sectionRows = function( rel, plan, box ) {
+
+		const node = relNode( rel );
+		const schema = S.schemas[node.n];
+		const declared = schema.attributes;
+		const rows = [];
+		const about = [];
+		const done = { id : true, image : true };
+		const attribute = function( name ) {
+
+			if( declared[name] === undefined || done[name] === true )
+				return null;
+
+			done[name] = true;
+
+			const row = attributeField( rel, name, declared[name] );
+
+			decorate( row, rel, [ name ] );
+
+			return row;
+		};
+		const push = function( row, list ) {
+
+			if( row !== null ) {
+				rows.push( row );
+
+				if( list !== undefined )
+					list.push( row );
+			}
+
+			return row;
+		};
+		const id = idRow( rel, box );
+
+		if( id !== null )
+			rows.push( id );
+
+		push( attribute('height') );
+
+		// The variant of the block and of the component: where the look of a section begins
+		if( rel === 'root' && S.frame === false && variantOfBlock( rootAt() ) !== undefined )
+			rows.push( blockVariantField( rootAt() ) );
+
+		if( schema.variants.length > 0 ) {
+			rows.push( variantField( rel, node, schema, rows.length > 0 || typeof S.adapter.note === 'function' ) );
+			decorate( rows[rows.length - 1], rel, [ 'variant' ] );
+		}
+
+		push( attribute('ground') );
+
+		const shows = push( attribute('picture') );
+
+		// The picture: what the section reads as its picture, with the way to change its source - and, where it has none, the way to give it one
+		contentRows( rel, plan ).forEach( function( row ) { push( row, about ) } );
+
+		if( declared.image !== undefined && typeof ( node.a ?? {} ).image !== 'string' && S.adapter.uploads !== false && idOf( node ) !== '' )
+			push( addPicture( rel, localized( declared.image.label ) ), about );
+
+		push( attribute('dim'), about );
+
+		Object.keys( declared ).forEach( function( name ) {
+
+			if( [ 'text', 'link', 'image', 'id' ].indexOf( declared[name].type ) === -1 && isLinkTarget( schema, name ) === false )
+				push( attribute( name ) );
+		} );
+
+		const sync = function() {
+			about.forEach( function( row ) { row.hidden = ( relNode( rel ).a ?? {} ).picture === 'off' } );
+		};
+
+		sync();
+
+		if( shows !== null && shows.querySelector('input') !== null )
+			shows.querySelector('input').addEventListener( 'change', sync );
+
+		const bridge = bridgeRow( rel, box );
+
+		if( bridge !== null )
+			rows.push( bridge );
+
+		return rows;
+	};
+
+	// A section that has no picture is given one: its place is made when the page is saved
+	const addPicture = function( rel, label ) {
+
+		const node = relNode( rel );
+		const add = Nino.adminUi.button( word('bg/add'), function() {
+
+			const place = '/template/'+ S.template+ '/'+ idOf( node )+ '/background';
+
+			change( function() {
+				relNode( rel ).a = Object.assign( {}, relNode( rel ).a ?? {}, { image : '~background' } );
+				S.pictures[place] = { label : label, width : 1920, height : 1080 };
+			} );
+			redrawBox();
+		}, { className : 'nino-admin-btn--small' } );
+
+		add.dataset.key = 'background:add';
+
+		return add;
+	};
+
 	/**
 	 *	The properties of one component of a page - the one form of them in the whole Builder, whoever opens it: the pencil at the component in the page, its row in the tree of the
 	 *	extended view, the row of a block in the outline. A modal dialog of the workbench in the size of a form, its sections in a fixed order - the source where the content comes
@@ -9757,13 +9986,13 @@
 	 *
 	 *	@return		{boolean}									Whether it was opened
 	 */
-	const openProperties = function( at, rel, opener, back, only ) {
+	const openProperties = function( at, rel, opener, back ) {
 
 		const root = S.top[at];
 
 		// Where the properties open: in a lightbox - the page, and every sheet that does not say otherwise - or, where the sheet says so, in the column beside the preview, in place of
 		// the outline. The rows are the same in both; a column that is open is given another component by the one that is asked for
-		const inPanel = only === undefined && S.adapter.props === 'panel' && S.mode === 'advanced' && S.view !== null && S.view.split !== undefined && S.view.split.settings !== undefined && S.view.split.settings !== null;
+		const inPanel = S.adapter.props === 'panel' && S.mode === 'advanced' && S.view !== null && S.view.split !== undefined && S.view.split.settings !== undefined && S.view.split.settings !== null;
 
 		if( inPanel === true && S.box !== null && S.box.panel === true ) {
 
@@ -9779,7 +10008,7 @@
 		const box = { panel : inPanel, leave : null, block : idOf( root ), rel : rel, width : undefined, open : '', code : null, notationOn : false, asked : 0, then : '', draw : null, close : null, gone : false, recount : null };
 
 		// The notation is read and copied from a small window of its own, for the account that designs: the one that writes content has no such button
-		if( S.level >= 2 && only === undefined && S.sheet === 'block' ) {
+		if( S.level >= 2 && S.sheet === 'block' ) {
 			box.code = el( 'pre', 'builder-code', '' );
 			box.code.tabIndex = 0;
 		}
@@ -9836,13 +10065,10 @@
 			const plan = contentPlan( rel, reads );
 			const sections = [];
 
-			// The background of a section: only the settings of it that the register names - the ground, the picture, whether it shows, whether it is dimmed - and the picture itself
-			if( only !== undefined ) {
+			// A section of a page is one flat list for the one who designs: its id, the height, the variant, the ground and the picture behind it - no section, no head
+			const flat = S.level >= 2 && placing() === false && now.n === 'section-wrap' && rel === 'root';
 
-				sections.push( { key : 'background', label : word('bg/title'), content : function() { return body( backgroundRows( at, rel, only ), 'background' ) } } );
-				box.open = 'background';
-			}
-			else if( placing() === true ) {
+			if( placing() === true ) {
 
 				// A block of the library has no source and no content of its own to write: it has places, with an id and a sample - the page chooses the rest
 				const isLoop = reads.some( function( read ) { return read.form === 'type' } );
@@ -9859,13 +10085,20 @@
 			else if( reads.some( function( read ) { return read.where !== 'own' } ) === true )
 				sections.push( { key : 'source', label : word('box/source'), content : function() { return body( sourceRows( rel, reads ), 'source' ) } } );
 
-			if( only === undefined && placing() === false && plan.length > 0 )
+			if( flat === false && placing() === false && plan.length > 0 )
 				sections.push( { key : 'content', label : word('box/content'), summary : ownText( now, rel, 40 ), content : function() { return body( contentRows( rel, plan ), 'content' ) } } );
 
-			if( only === undefined && S.level >= 2 && lookRows( rel ).length > 0 )
+			const flatRows = flat === true ? sectionRows( rel, plan, box ) : [];
+
+			if( flat === true ) {
+
+				if( flatRows.length > 0 )
+					sections.push( { key : 'look', label : word('box/look'), content : function() { return body( flatRows, 'look' ) } } );
+			}
+			else if( S.level >= 2 && lookRows( rel ).length > 0 )
 				sections.push( { key : 'look', label : word('box/look'), summary : variantSummary( now ), content : function() { return body( lookRows( rel ), 'look' ) } } );
 
-			if( only === undefined && S.level >= 2 && advancedWants( rel ) === true )
+			if( flat === false && S.level >= 2 && advancedWants( rel ) === true )
 				sections.push( { key : 'advanced', label : word('box/advanced'), content : function() { return body( advancedRows( rel, box ) ) } } );
 
 			if( sections.length > 0 && sections.some( function( section ) { return section.key === box.open } ) === false )
@@ -9882,6 +10115,29 @@
 			// A component with nothing to set - no source, no content, no look, no advanced part - says so, in one line: no empty section
 			if( sections.length === 0 ) {
 				holder.appendChild( el( 'p', 'builder-props-none', word('box/none') ) );
+				return;
+			}
+
+			// ONE section is the whole of the lightbox: its rows stand open, with no head of the accordion and no heading over them - the title of the dialog says what it is
+			if( sections.length === 1 ) {
+
+				if( inPanel === true ) {
+
+					// In the column the one section stays a group of its own - without its heading
+					const group = el( 'section', 'builder-props-group' );
+
+					group.dataset.section = sections[0].key;
+					group.appendChild( sections[0].content() );
+					holder.appendChild( group );
+				}
+				else
+					holder.appendChild( sections[0].content() );
+
+				const only = held === undefined ? null : holder.querySelector( '[data-key="'+ held+ '"]' );
+
+				if( only !== null )
+					only.focus();
+
 				return;
 			}
 
@@ -9966,7 +10222,7 @@
 		box.draw();
 
 		// The types of elements are the design's to read: a loop is told by the path of its type to the step below
-		if( S.level >= 2 && only === undefined ) {
+		if( S.level >= 2 ) {
 			askTypes( redrawBox );
 			askFields( redrawBox );
 		}
@@ -9980,11 +10236,11 @@
 			return true;
 		}
 
-		const first = accordion === null || accordion === undefined ? null : accordion.body( box.open ).querySelector('input, textarea, select, button');
+		const first = accordion === null || accordion === undefined ? holder.querySelector('input, textarea, select, button') : accordion.body( box.open ).querySelector('input, textarea, select, button');
 
 		Nino.adminUi.choiceDialog( {
 			title			: word( 'label/edit-component', name ),
-			message		: only === undefined ? word( 'label/edit-component', name ) : word('bg/edit'),
+			message		: word( 'label/edit-component', name ),
 			content		: holder,
 			size			: 'form',
 			className	: 'builder-lightbox',
@@ -10017,75 +10273,6 @@
 		} );
 
 		return true;
-	};
-
-	// The rows of the dialog "Edit background" of a section: its settings by name - the ones the register has, nothing else -, and the picture it shows, to look at and to exchange. Each
-	// change is in the draft at once and is one step of the undo, as in the lightbox
-	const backgroundRows = function( at, rel, names ) {
-
-		const node = relNode( rel );
-		const declared = S.schemas[node.n].attributes;
-		const rows = [];
-		const written = ( node.a ?? {} ).image;
-		const target = pictureTargets().find( function( candidate ) { return candidate.attribute === true && candidate.path === String( at ) } );
-
-		// The picture the section has: its place by the source it is written with - known before the page was drawn again - or by what the page told
-		const key = typeof written === 'string' && written.charAt(0) === '~' && idOf( node ) !== '' ? '/template/'+ S.template+ '/'+ idOf( node )+ '/'+ written.slice( 1 ) : ( target === undefined ? '' : target.key );
-		const label = declared.image === undefined ? '' : localized( declared.image.label );
-
-		names.forEach( function( name ) {
-
-			if( declared[name] === undefined )
-				return;
-
-			// What is about the picture is there where there is one: it shows or not, it is dimmed or not
-			if( ( name === 'picture' || name === 'dim' ) && key === '' )
-				return;
-
-			// The picture comes after the ground and before what is about it
-			if( name === 'picture' ) {
-
-				const holder = el( 'div', 'builder-picture-holder' );
-				const draw = function() {
-
-					holder.innerHTML = '';
-					holder.appendChild( pictureBox( key, label, draw, key.indexOf( '/template/'+ S.template+ '/' ) === 0 ? { label : label, width : 1920, height : 1080 } : undefined ) );
-				};
-
-				draw();
-				rows.push( holder );
-			}
-
-			rows.push( attributeField( rel, name, declared[name] ) );
-
-			// A section that has no picture is given one here, where the register allows it: its place is made when the page is saved
-			if( name === 'ground' && key === '' && declared.image !== undefined && S.adapter.uploads !== false && idOf( node ) !== '' ) {
-
-				const add = Nino.adminUi.button( word('bg/add'), function() {
-
-					const place = '/template/'+ S.template+ '/'+ idOf( node )+ '/background';
-
-					change( function() {
-						relNode( rel ).a = Object.assign( {}, relNode( rel ).a ?? {}, { image : '~background' } );
-						S.pictures[place] = { label : label, width : 1920, height : 1080 };
-					} );
-					redrawBox();
-				}, { className : 'nino-admin-btn--small' } );
-
-				add.dataset.key = 'background:add';
-				rows.push( add );
-			}
-		} );
-
-		return rows;
-	};
-
-	// "Edit background" at a section: the lightbox with the settings of its background and nothing else
-	// The settings of the background of a section, by name
-	const BACKGROUND = [ 'ground', 'picture', 'dim' ];
-
-	const openBackground = function( at, opener ) {
-		return openProperties( at, 'root', opener, undefined, BACKGROUND );
 	};
 
 	// --- the extended view: the tree of a block ---

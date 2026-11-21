@@ -663,7 +663,7 @@ const sheetOf = function( hash, extra ) {
 		w.builder.editor.properties( rootAt, rel, element('button'), function() {} );
 
 		const holder = lightbox === true ? dialogOf( w ) : boxOf( w );
-		const keys = keysOf( holder )+ '#'+ ( lightbox === true ? findAll( holder, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-accordion-button') !== -1 } ).length : findAll( holder, function( el ) { return el.dataset !== undefined && el.dataset.section !== undefined } ).length );
+		const keys = keysOf( holder )+ '#'+ ( lightbox === true ? Math.max( findAll( holder, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-accordion-button') !== -1 } ).length, findAll( holder, function( el ) { return String( el.className ).indexOf('builder-box-body') !== -1 } ).length > 0 ? 1 : 0 ) : findAll( holder, function( el ) { return el.dataset !== undefined && el.dataset.section !== undefined } ).length );
 
 		if( lightbox === true )
 			fire( dialogOf( w ), 'close' );

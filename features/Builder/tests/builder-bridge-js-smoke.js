@@ -103,19 +103,19 @@ check( 'C6. the pencil belongs to the component under a pointer that stands stil
 	&& /place\(\);\s*rollAim\(\);/.test( script ) === true );
 check( 'C6b. the window of the workbench rolled under a pointer that stands still asks again what is under it - from where the pointer of the window falls on the page - and its listener goes with the page',
 	has( /let outerAt = null;/ ) === true && has( /wn\.addEventListener\( 'scroll', function\(\) \{\s*if\( outerAt === null \)/ ) === true && has( /signal : outer\.signal/ ) === true && has( /win\.addEventListener\( 'pagehide', function\(\) \{ outer\.abort\(\) \} \)/ ) === true );
-check( 'C7. every section has "Edit background" for the one who designs - with or without a picture -, and the one who writes the content keeps "Replace picture" where there is a picture',
-	has( /background : S\.level >= 2 && \( nodeAt\( target\.path \) \?\? \{\} \)\.n === 'section-wrap'/ ) === true && has( /node\.n !== 'section-wrap'/ ) === true && has( /if\( S\.level >= 2 \)\s*found\.blocks\.forEach/ ) === true
-	&& word( de, 'bg/edit' ) === 'Hintergrund bearbeiten' && word( en, 'bg/edit' ) === 'Edit background' );
-check( 'C8. the dialog of the background has the settings the register names - the ground, the picture, whether it shows, whether it is dimmed - and the picture itself, nothing free: each by the same control and the same step of the undo as in the lightbox',
-	has( /const BACKGROUND = \[ 'ground', 'picture', 'dim' \];/ ) === true && has( /if\( declared\[name\] === undefined \)\s*return;/ ) === true && has( /rows\.push\( attributeField\( rel, name, declared\[name\] \) \)/ ) === true
-	&& has( /openProperties\( at, 'root', opener, undefined, BACKGROUND \)/ ) === true );
-
-check( 'C9. the background of a section that has no picture is the ground and "Add picture" - no sentence about a place of another page, and "show" and "dim" only where there is a picture; the place is made with the same step of the undo as the setting, and the page makes it when it is saved',
-	has( /\( name === 'picture' \|\| name === 'dim' \) && key === ''\s*\)?\s*return;/ ) === true && has( /name === 'ground' && key === '' && declared\.image !== undefined/ ) === true
-	&& has( /relNode\( rel \)\.a = Object\.assign\( \{\}, relNode\( rel \)\.a \?\? \{\}, \{ image : '~background' \} \);\s*S\.pictures\[place\] =/ ) === true && word( de, 'bg/add' ) === 'Bild hinzufügen' && word( en, 'bg/add' ) === 'Add picture' );
+check( 'C7. the picture behind a section is set in the dialog of the section and has no button in the page: no "Edit background" - no text, no way, no call - and the one who writes the content keeps "Replace picture" where there is a picture',
+	has( /openBackground|backgroundRows|const BACKGROUND|bg\/edit|bg\/title|'sliders-horizontal'/ ) === false && has( /if\( S\.level < 2 \|\| \( nodeAt\( target\.path \) \?\? \{\} \)\.n !== 'section-wrap' \)\s*behind\.push\( \{ target : target, element : element \} \);/ ) === true
+	&& word( de, 'bg/edit' ) === '' && word( en, 'bg/edit' ) === '' && word( de, 'bg/title' ) === '' && word( en, 'bg/title' ) === '' && has( /openProperties = function\( at, rel, opener, back \)/ ) === true );
+check( 'C8. a section is ONE flat list for the one who designs, in the order of the form: the id, the height, the variant, the ground, whether the picture shows, the picture, whether it is dimmed - then what the section has besides, and the way into the editor of the blocks under the list; each by the same control and the same step of the undo as in any other lightbox',
+	has( /const flat = S\.level >= 2 && placing\(\) === false && now\.n === 'section-wrap' && rel === 'root';/ ) === true
+	&& /const id = idRow\( rel, box \);[\s\S]*?push\( attribute\('height'\) \);[\s\S]*?variantField\( rel, node, schema[\s\S]*?push\( attribute\('ground'\) \);[\s\S]*?const shows = push\( attribute\('picture'\) \);[\s\S]*?contentRows\( rel, plan \)[\s\S]*?push\( attribute\('dim'\), about \);[\s\S]*?const bridge = bridgeRow\( rel, box \);/.test( script ) === true );
+check( 'C9. what is about the picture of a section - the picture and whether it is dimmed - is not drawn where the picture does not show, and is there again with its values the moment it shows: hidden by the switch, never written by it; a section with no picture has "Add picture", and the place is made with the same step of the undo as the setting',
+	has( /about\.forEach\( function\( row \) \{ row\.hidden = \( relNode\( rel \)\.a \?\? \{\} \)\.picture === 'off' \} \);/ ) === true && has( /shows\.querySelector\('input'\)\.addEventListener\( 'change', sync \)/ ) === true
+	&& /\.builder-box-body \[hidden\] \{\s*display: none;/.test( sheet ) === true
+	&& has( /name === 'ground'/ ) === false && has( /const addPicture = function\( rel, label \)/ ) === true && has( /relNode\( rel \)\.a = Object\.assign\( \{\}, relNode\( rel \)\.a \?\? \{\}, \{ image : '~background' \} \);\s*S\.pictures\[place\] =/ ) === true && word( de, 'bg/add' ) === 'Bild hinzufügen' && word( en, 'bg/add' ) === 'Add picture' );
 
 check( 'C10. the picture of a section whose place is written and not made yet is the placeholder with "Upload picture" - the place is the page\'s own - and no sentence of a place of another page; a place that is another page\'s still says so',
-	has( /const pictureBox = function\( key, label, again, fallback \)/ ) === true && has( /Object\.assign\( \{\}, fallback, S\.images\[key\], S\.pictures\[key\] \)/ ) === true && has( /pictureBox\( key, label, draw, key\.indexOf\( '\/template\/'\+ S\.template\+ '\/' \) === 0 \? \{ label : label, width : 1920, height : 1080 \} : undefined \)/ ) === true
+	has( /const pictureBox = function\( key, label, again, fallback \)/ ) === true && has( /Object\.assign\( \{\}, fallback, S\.images\[key\], S\.pictures\[key\] \)/ ) === true && has( /pictureBox\( step\.key, step\.read\.label, redrawBox \)/ ) === true
 	&& has( /word\( key === '' \? 'picture\/no-slot' : 'picture\/other' \)/ ) === true );
 
 console.log( '\nD. The lightbox' );
@@ -132,7 +132,7 @@ check( 'D3. the row of the devices has no caption on the screen and keeps its na
 	has( /el\( 'span', 'nino-admin-sr-only', word\('rows\/width'\) \)/ ) === true && has( /'builder-widths-group builder-widths-box'/ ) === true && has( /'nino-admin-field builder-widths-set builder-widths-box'/ ) === true
 	&& /\.builder-lightbox \.builder-widths-box \{[^}]*background: var\(--editor-bg\);/.test( sheet ) === true && /\.builder-lightbox \.builder-width-pick \{[^}]*justify-content: flex-end/.test( sheet ) === true );
 check( 'D4. the notation of a component is no part of a page: the button behind the code is for a sheet of the editor of the blocks and for the one who designs',
-	has( /S\.level >= 2 && only === undefined && S\.sheet === 'block'/ ) === true );
+	has( /S\.level >= 2 && S\.sheet === 'block'/ ) === true );
 check( 'D5. the notices of the third party name no strokes of the Builder: it draws no icon of its own',
 	/The catalogue's own code/.test( notices ) === false || /GLYPHS/.test( notices ) === false );
 
@@ -140,6 +140,16 @@ check( 'F299 T1. the button of a row of the tab of the header/footer says "Ausw�
 	word( de, 'frame/choose' ) === 'Auswählen' && word( en, 'frame/choose' ) === 'Choose' && word( de, 'frame/choose-of' ) === '%s auswählen' && word( en, 'frame/choose-of' ) === 'Choose %s'
 	&& word( de, 'frame/choose-title' ) === 'Kopf-/Fußbereich wählen' && word( en, 'frame/choose-title' ) === 'Choose header/footer'
 	&& has( /title\s*: word\('frame\/choose-title'\)/ ) === true && has( /Nino\.adminUi\.button\( word\('frame\/choose'\)/ ) === true );
+
+console.log( '\nF301. The lightboxes of the properties' );
+
+check( 'F301 B1. a lightbox - and the column - with ONE section has no accordion and no head: the rows of the section stand open and the title of the dialog is all that says what they are; with two sections or more the accordion stays',
+	has( /if\( sections\.length === 1 \) \{\s*if\( inPanel === true \) \{[\s\S]*?holder\.appendChild\( sections\[0\]\.content\(\) \);[\s\S]*?return;\s*\}\s*if\( inPanel === true \) \{/ ) === true && has( /accordion = Nino\.adminUi\.accordion\( \{\s*id\s*: 'builder-box-acc'/ ) === true );
+check( 'F301 B4. the id of a section is TEXT - in the monospace of the identifiers - with a button "Rename" beside it, which turns it into a field of the workbench in the same place: it is taken with the same check as the bar of the section - form, length, taken on the page - and the same rename, which moves the texts and the links; where the id is not changeable the button is not there, and no raw field is made',
+	has( /const idRow = function\( rel, box \)/ ) === true && has( /el\( 'code', 'builder-id-text'/ ) === true && has( /Nino\.adminUi\.iconButton\( 'pencil', word\( 'ident\/change-of', id \)/ ) === true
+	&& has( /Nino\.adminUi\.textField\( \{ key : 'root:id'/ ) === true && has( /identProblem\( at, value \)/ ) === true && has( /renameBlock\( at, value \) === ''\s*\)\s*announceLinks\( id, value, wasIds, S\.relinked \)/ ) === true
+	&& has( /if\( why !== '' \) \{\s*text\.title = why;\s*return;/ ) === true && /\.builder-id-text \{\s*font-family: var\(--nino-admin-mono\);/.test( sheet ) === true
+	&& word( de, 'field/section-id' ) === 'ID der Sektion' && word( en, 'field/section-id' ) === 'Section ID' );
 
 console.log( '\nF294. The panel after the owner\'s look at it' );
 

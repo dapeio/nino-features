@@ -930,3 +930,31 @@
 	-webkit-user-select: text;
 	user-select: text;
 }
+
+/* What is hidden in a lightbox or in the column stays hidden: a row of the form is a grid where the column is wide, and a grid would show it */
+.builder-box-body [hidden] {
+	display: none;
+}
+
+/* The id of a section as text with the button to rename it: the id in the monospace of the identifiers, the button beside it; renamed, the field in its place takes the width */
+.builder-id-cell {
+	display: flex;
+	align-items: center;
+	gap: var(--nino-admin-space-2);
+	min-width: 0;
+}
+
+.builder-id-text {
+	font-family: var(--nino-admin-mono);
+	overflow-wrap: anywhere;
+}
+
+.builder-id-row > .nino-admin-field-error {
+	grid-column: 2;
+}
+
+.builder-id-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-family: var(--nino-admin-mono);
+}
