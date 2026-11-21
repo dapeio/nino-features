@@ -241,6 +241,11 @@ check( 'A. the pane of the themes has four tabs and one strip, the kernel\'s: th
 	&& $tabs['themes-fonts']['panes'] === [ 'themes-fonts-list' ] && $tabs['themes-fonts']['tab'] === '/_admin/themes/fonts/tab/fonts' && $tabs['themes-settings']['class'] === \Nino\Modules\Features\Settings::class && $tabs['themes-settings']['perm'] === '/_admin/features/manage'
 	&& $tabs['themes-settings']['feature'] === 'themes' && $panels['themes']['own'] === true );
 
+check( 'A. the panel is called Theme - the label of the rail and of the head of the pane, and of the right in the lists of the roles - and the first tab of the pane, which is its own screen, is called Themes: two words of the feature, in both languages',
+	$panels['themes']['label'] === '/_admin/themes/nav' && $panels['themes']['tab'] === '/_admin/themes/tab/list/name' && \Nino\Modules\Themes\Admin::tab() === '/_admin/themes/tab/list/name'
+	&& ( require dirname( __DIR__ ). '/text/en_US.php' )['[[/_admin/themes/nav]]'] === 'Theme' && ( require dirname( __DIR__ ). '/text/de_DE.php' )['[[/_admin/themes/nav]]'] === 'Theme'
+	&& ( require dirname( __DIR__ ). '/text/en_US.php' )['[[/_admin/themes/tab/list/name]]'] === 'Themes' && ( require dirname( __DIR__ ). '/text/de_DE.php' )['[[/_admin/themes/tab/list/name]]'] === 'Themes' );
+
 $assets = Typefaces::assets();
 $script = (string) file_get_contents( $featureDir. '/assets/admin-fonts.js' );
 $sheet = (string) file_get_contents( $featureDir. '/assets/admin-fonts.css' );

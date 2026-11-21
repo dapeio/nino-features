@@ -1760,7 +1760,7 @@ function previewDialog( w, preview ) {
 	w.tick();
 	w.serve();
 
-	check( 'L. the standard variant says where it applies', w.text( w.byClass( w.theme, 'nino-admin-field-label' )[0] ).indexOf( words.en['/_admin/themes/hint/variant'] ) !== -1 );
+	check( 'L. the standard variant says where it applies', w.text( w.byClass( w.theme, 'nino-admin-field-name' )[0] ).indexOf( words.en['/_admin/themes/hint/variant'] ) !== -1 );
 }
 
 {
@@ -2430,8 +2430,8 @@ function pressed( w, label ) {
 
 	const text = byId( w.theme, 'themes-css' );
 
-	check( 'Q. the own css is a section of the first level with an address of its own, and it is open: a field of text, named by the label that holds it, in a face of fixed width, off spell checking, wrapping nothing', w.state.hash === '#themes/own.lindner/css' && text.tagName === 'TEXTAREA' && text.parentNode.tagName === 'LABEL' && w.text( text.parentNode ).indexOf( W('label/css') ) !== -1 && text.className.indexOf('themes-code') !== -1 && text.spellcheck === false && text.attributes.wrap === 'off' );
-	check( 'Q. one sentence at the field says that the text goes into the website as it is, unchecked, after the parts of the theme and before the stylesheet of the project - and the field points at it', w.text( byId( w.theme, 'themes-css-hint' ) ) === Wp( 'hint/css', 64 ) && text.attributes['aria-describedby'] === 'themes-css-hint' );
+	check( 'Q. the own css is a section of the first level with an address of its own, and it is open: a field of text, named by the label that holds it, in a face of fixed width, off spell checking, wrapping nothing', w.state.hash === '#themes/own.lindner/css' && text.tagName === 'TEXTAREA' && text.parentNode.tagName === 'LABEL' && w.text( text.parentNode ).indexOf( W('label/css') ) === -1 && text.className.indexOf('themes-code') !== -1 && text.spellcheck === false && text.attributes.wrap === 'off' );
+	check( 'Q. one sentence at the field says that the text goes into the website as it is, unchecked, after the parts of the theme and before the stylesheet of the project - and the field points at it', w.text( byId( w.theme, 'themes-css-hint' ) ).indexOf( Wp( 'hint/css', 64 ) ) === 0 && text.attributes['aria-describedby'] === 'themes-css-hint' );
 	check( 'Q. a theme with no css says so in the head of the section, and nothing is changed', w.text( byId( w.theme, 'themes-groups-2-head' ) ).indexOf('none') !== -1 && w.dirty.entries.themes.isDirty() === false );
 
 	type( text, 'a { color: red }\nb { color: blue }' );
@@ -2507,7 +2507,7 @@ function pressed( w, label ) {
 
 	check( 'Q. a text with a closing tag of a style, a script and a brace that is never closed is the text that goes to the preview, untouched - and nothing of it is a node of the panel', w.requests[0]?.payload?.mix?.css === hostile && w.byTag( w.theme, 'script' ).length === 0 && w.byTag( w.theme, 'style' ).length === 0 && byId( w.theme, 'themes-css-problem' ) === undefined );
 	w.serve();
-	check( 'Q. ...and the field holds what was typed, and the panel is whole: the groups and the settings are there', byId( w.theme, 'themes-css' ).value === hostile && w.theme.querySelectorAll('[aria-expanded]').length === 3 );
+	check( 'Q. ...and the field holds what was typed, and the panel is whole: the groups and the settings are there', byId( w.theme, 'themes-css' ).value === hostile && w.byClass( w.theme, 'nino-admin-accordion-button' ).length === 3 );
 }
 
 // --- R. the settings of a theme: its name, what it is made of, the last state, deleting ----------------------------------------------
@@ -4143,8 +4143,8 @@ function nameField( w ) {
 
 	const helps = function( w ) { return w.byClass( w.list, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ) };
 
-	check( 'N3. the sentence under the list stands behind a (?) beside the button that chooses a package, and nowhere as an open line: with a theme on the website the sentence of the list, with none the other',
-		helps( en ).indexOf( words.en['/_admin/themes/hint/list'] ) !== -1 && helps( en ).indexOf( words.en['/_admin/themes/hint/list-none'] ) === -1 && en.byClass( en.byClass( en.list, 'themes-list-actions' )[0], 'nino-admin-help-button' ).length === 1 && en.byClass( en.list, 'nino-admin-hint' ).every( function( node ) { return node.textContent !== words.en['/_admin/themes/hint/list'] } ) );
+	check( 'N3. the sentence under the list stands behind a (?) beside the search, and nowhere as an open line: with a theme on the website the sentence of the list, with none the other',
+		helps( en ).indexOf( words.en['/_admin/themes/hint/list'] ) !== -1 && helps( en ).indexOf( words.en['/_admin/themes/hint/list-none'] ) === -1 && en.byClass( en.byClass( en.list, 'nino-admin-filterbar' )[0], 'nino-admin-help-button' ).length === 1 && en.byClass( en.list, 'nino-admin-hint' ).every( function( node ) { return node.textContent !== words.en['/_admin/themes/hint/list'] } ) );
 
 	const none = world( { active : '' } );
 
@@ -4156,13 +4156,12 @@ function nameField( w ) {
 	group.at( '#themes/nino/section/section-wrap' );
 	const heading = group.byClass( group.theme, 'themes-title' )[0];
 
-	check( 'N3. what explains a group stands behind a (?) at its title, and is no open line under the sections',
-		group.byClass( heading, 'nino-admin-help-button' ).length === 1 && group.byClass( group.theme, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ).join() === words.en['/_admin/themes/hint/group']
-		&& group.byClass( group.theme, 'nino-admin-hint' ).every( function( node ) { return node.textContent !== words.en['/_admin/themes/hint/group'] } ) );
+	check( 'T9. the title of a group has no (?) and the screen of a group has no sentence of help of its own: the heading is the words of the group alone',
+		group.byClass( heading, 'nino-admin-help-button' ).length === 0 && group.byClass( group.theme, 'nino-admin-help-text' ).length === 0 && words.en['/_admin/themes/hint/group'] === undefined && words.de['/_admin/themes/hint/group'] === undefined );
 
 	group.state.hash = '#themes/nino/page/type';
 	group.panel.showCurrent();
-	check( 'N3. the page base says its own sentence the same way', group.byClass( group.theme, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ).join() === words.en['/_admin/themes/hint/page'] );
+	check( 'T9. nor has the title of the page base', group.byClass( group.byClass( group.theme, 'themes-title' )[0], 'nino-admin-help-button' ).length === 0 && words.en['/_admin/themes/hint/page'] === undefined && words.de['/_admin/themes/hint/page'] === undefined );
 
 	group.state.hash = '#themes/nino/brand';
 	group.panel.showCurrent();
@@ -4195,6 +4194,137 @@ function nameField( w ) {
 
 	check( 'F296. the words of Themes say "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich" in German and "header", "footer" and "header/footer" in English: no text of the panel and no line of its manual has "Rahmen", "Header" or "Footer" in German or "frame" in English for the head and the foot of a page, but the exceptions that are named here - and both languages have the same keys',
 		offending('de_DE').length === 0 && offending('en_US').length === 0 && keysOf('de_DE') === keysOf('en_US') && /Kopf-\/Fußbereich/.test( fs.readFileSync( path.join( featureDir, 'text/de_DE.php' ), 'utf8' ) ) === true );
+}
+
+// --- AC. the second look of the owner at the overview: the name, the bar, delete, edit, the filter, the icons, the screens of a theme ---------------------------------
+
+{
+	const en = world( { active : 'nino' } );
+	const de = world( { lang : 'de-DE', active : 'nino' } );
+
+	en.at( '#themes' );
+	de.at( '#themes' );
+
+	const cardOf = function( w, key ) { return w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === key } ) };
+	const shown = function( w ) { return w.byTag( w.list, 'article' ).filter( function( one ) { return one.hidden !== true } ).map( function( one ) { return one.dataset.theme } ).join() };
+	const classes = function( node ) { return String( node.className ).split(/\s+/) };
+
+	check( 'T1. the panel is called Theme in the rail and over the pane, in both languages, and the first tab of the pane - the list - keeps the word Themes',
+		words.en['/_admin/themes/nav'] === 'Theme' && words.de['/_admin/themes/nav'] === 'Theme' && words.en['/_admin/themes/tab/list/name'] === 'Themes' && words.de['/_admin/themes/tab/list/name'] === 'Themes' );
+
+	const last = en.list.children[en.list.children.length - 1];
+
+	check( 'T2. the button that chooses a package stands in the bar at the foot of the list - the bar of the workbench, with the main button - and not above the cards',
+		classes( last ).indexOf('nino-admin-actionbar') !== -1 && en.byClass( last, 'nino-admin-btn-primary' ).length === 1 && en.byClass( last, 'nino-admin-btn-primary' )[0].id === 'themes-upload'
+		&& en.byClass( en.list, 'themes-list-actions' ).length === 0 && findAll( en.list, function( node ) { return node.id === 'themes-upload' } ).length === 1 );
+
+	const own = cardOf( en, 'own:lindner' );
+	const deleteOf = function( root ) { return findAll( root, function( node ) { return node.dataset.delete !== undefined } ) };
+
+	check( 'T3. an own theme has a button to delete it on its card - with an icon, named by the theme - and a theme of a package, a theme that was uploaded and the theme on the website have none',
+		deleteOf( own ).length === 1 && deleteOf( own )[0].attributes['aria-label'] === W( 'card/delete-of' ).replace( '%s', 'Lindner' ) && deleteOf( en.list ).length === 1 );
+
+	const onSite = world( { active : 'own:lindner' } );
+
+	onSite.at( '#themes' );
+	check( 'T3. the theme that the website shows is not deleted: it has no button, as the server would say no', deleteOf( onSite.list ).length === 0 );
+
+	fire( deleteOf( own )[0], 'click' );
+
+	const ask = en.dialogs[en.dialogs.length - 1];
+
+	check( 'T3. the question names the theme; its answer, Delete, sends the delete of the editor - the same action - with the theme and the state it was read in',
+		en.text( ask ).indexOf( W( 'confirm/delete-title' ).replace( '%s', 'Lindner' ) ) !== -1 );
+
+	fire( findAll( ask, function( node ) { return node.tagName === 'BUTTON' && node.textContent === words.en['/_admin/themes/label/delete'] } )[0], 'click' );
+
+	check( 'T3. ...one request: themes/delete of the own theme, on its stamp', en.requests.length === 1 && en.requests[0].action === 'themes/delete' && en.requests[0].payload.theme === 'own:lindner' && typeof en.requests[0].payload.base === 'string' );
+
+	const pressed = en.byTag( en.list, 'article' ).map( function( card ) {
+		const button = findAll( card, function( node ) { return node.tagName === 'BUTTON' && node.dataset.editbutton === card.dataset.theme } )[0];
+
+		if( button === undefined )
+			return false;
+
+		en.state.hash = '#themes';
+		fire( button, 'click' );
+
+		return button.textContent === words.en['/_admin/themes/card/edit'] && en.state.hash === '#themes/'+ card.dataset.theme.replace( ':', '.' );
+	} );
+
+	en.state.hash = '#themes';
+	check( 'T4. every card has a button to edit with the word Edit, beside the link of the card, and it leads to the address the link has', pressed.length === 4 && pressed.every( function( one ) { return one === true } ) && words.de['/_admin/themes/card/edit'] === 'Bearbeiten' );
+
+	const select = en.byTag( en.list, 'select' ).find( function( one ) { return one.parentNode !== null && classes( one.parentNode ).indexOf('themes-from') !== -1 } );
+	const bar = en.byClass( en.list, 'nino-admin-filterbar' )[0];
+
+	check( 'T5. a choice of the origin stands over the list at the left of the search, in the bar of the filter, with the origins the site has - all, own, uploaded, catalogue, shipped - and none of the others; all is the one that is chosen',
+		select !== undefined && select.children.map( function( option ) { return option.value } ).join() === 'all,own,uploaded,catalogue,shipped' && select.value === 'all' && bar.children[0] === select.parentNode
+		&& select.children.map( function( option ) { return option.textContent } ).join() === 'All,Own themes,Uploaded themes,Catalogue themes,Shipped' && shown( en ) === 'nino,rest,craft,own:lindner' );
+
+	const asked = en.requests.length;
+
+	select.value = 'own';
+	fire( select, 'change' );
+
+	check( 'T5. the choice filters at once, with no request, and says so in the address', shown( en ) === 'own:lindner' && decodeURIComponent( en.state.hash ) === '#themes/@own' && en.requests.length === asked );
+
+	const search = en.byTag( en.list, 'input' ).find( function( one ) { return one.id === 'themes-search' } );
+
+	search.value = 'zzz';
+	fire( search, 'input' );
+	check( 'T5. a search that finds nothing hides the cards and shows a quiet sentence', shown( en ) === '' && en.byClass( en.list, 'themes-nothing' )[0].hidden !== true );
+
+	search.value = 'lind';
+	fire( search, 'input' );
+	check( 'T5. the search is of the name and goes with the choice: what the choice leaves and the name has is shown, the sentence is not', shown( en ) === 'own:lindner' && en.byClass( en.list, 'themes-nothing' )[0].hidden === true );
+
+	search.value = '';
+	select.value = 'all';
+	fire( select, 'change' );
+	fire( search, 'input' );
+
+	check( 'T5. all, with nothing to search, shows every card - the theme of the website first - and writes the address of the list as it was; the words of the origins are German in German',
+		shown( en ) === 'nino,rest,craft,own:lindner' && en.state.hash === '#themes' && en.byTag( en.list, 'article' )[0].dataset.theme === 'nino' && words.de['/_admin/themes/list/from/own'] === 'Eigene Themes' && words.de['/_admin/themes/list/from/shipped'] === 'Mitgeliefert' );
+
+	const actions = findAll( cardOf( en, 'craft' ), function( node ) { return classes( node ).indexOf('themes-card-actions') !== -1 } )[0];
+	const kinds = actions.children.map( function( node ) { return node.tagName === 'BUTTON' ? ( node.dataset.editbutton !== undefined ? 'edit' : ( node.dataset.apply !== undefined ? 'apply' : 'button' ) ) : 'icons' } ).join();
+	const icons = findAll( actions, function( node ) { return classes( node ).indexOf('themes-card-icons') !== -1 } )[0];
+
+	check( 'T6. the buttons of a card are Edit and Apply with their words, then the icons - duplicate, and remove or delete - each with no word, the name of the theme in its name and in its title: edit, apply, duplicate, remove',
+		kinds === 'edit,apply,icons' && icons.children.map( function( node ) { return node.dataset.duplicate !== undefined ? 'duplicate' : ( node.dataset.remove !== undefined ? 'remove' : ( node.dataset.delete !== undefined ? 'delete' : '?' ) ) } ).join() === 'duplicate,remove'
+		&& icons.children.every( function( node ) { return node.textContent.trim() === '' && node.attributes['aria-label'] !== '' && node.title === node.attributes['aria-label'] && node.attributes['aria-label'].indexOf('Craft') !== -1 } ) );
+}
+
+{
+	const lindner = world( { active : 'nino' } );
+
+	lindner.at( '#themes/own.lindner/css', { listExtra : { limits : { css : 131072, name : 60, key : 40 } } } );
+
+	const area = findAll( lindner.theme, function( node ) { return node.id === 'themes-css' } )[0];
+	const hint = findAll( lindner.theme, function( node ) { return node.id === 'themes-css-hint' } )[0];
+
+	check( 'T7. the css of a theme is called Theme CSS - Theme-CSS - the head of its section, and it is not named a second time over the field; the line under the field says how much it takes and that it stays with the theme, the number read from the limit',
+		words.en['/_admin/themes/label/css'] === 'Theme CSS' && words.de['/_admin/themes/label/css'] === 'Theme-CSS' && lindner.byClass( lindner.theme, 'nino-admin-accordion-label' ).map( lindner.text ).indexOf('Theme CSS') !== -1
+		&& area.parentNode.children.filter( function( node ) { return node.tagName === 'SPAN' } ).length === 0 && lindner.text( area.parentNode ).indexOf('Theme CSS') === -1
+		&& classes_( hint ).indexOf('nino-admin-hint') !== -1 && lindner.text( hint ).indexOf( 'At most 128 KB, stays with the theme.' ) === 0 );
+
+	function classes_( node ) { return String( node.className ).split(/\s+/) }
+
+	const group = world( { active : 'nino' } );
+
+	group.at( '#themes/nino/section/section-wrap' );
+
+	const select = findAll( group.theme, function( node ) { return node.tagName === 'SELECT' && node.id === 'themes-part-section' } )[0];
+
+	check( 'T8. the choice of the part says where it is used from - Use from, Verwenden aus - and no longer names the group in its label, which the title says',
+		words.en['/_admin/themes/label/part-of'] === 'Use from' && words.de['/_admin/themes/label/part-of'] === 'Verwenden aus' && group.text( select.parentNode ).indexOf( 'Use from' ) === 0 && group.text( select.parentNode ).indexOf( 'Section' ) === -1 );
+
+	const script = require('fs').readFileSync( path.join( featureDir, 'assets/admin.js' ), 'utf8' );
+	const sheet = require('fs').readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' );
+
+	check( 'T10. the names of fields are the workbench\'s class for them - nino-admin-field-name, which has the size, the weight and the colour of the other panels - and none is the class that the workbench has no rule for; the one rule of the sheet is for the same class',
+		script.indexOf('nino-admin-field-label') === -1 && sheet.indexOf('nino-admin-field-label') === -1 && ( script.match( /nino-admin-field-name/g ) ?? [] ).length === 4 && /\.nino-admin-accordion-body \.nino-admin-field-name \{/.test( sheet ) === true );
 }
 
 done();

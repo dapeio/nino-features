@@ -89,6 +89,9 @@
 		demo			: '',
 		cssFaults	: [],
 		listing		: true,
+		from			: 'all',
+		find			: '',
+		applyFilter	: null,
 		markedLabel	: '',
 		thumbs		: {},
 		looking		: null,
@@ -951,7 +954,7 @@
 			const choose = function( value ) { setVariant( group, section, value ) };
 
 			if( choices.length <= 4 ) {
-				const name = el( 'div', 'nino-admin-field-label', word('label/variant') );
+				const name = el( 'div', 'nino-admin-field-name', word('label/variant') );
 				name.id = id;
 				name.appendChild( el( 'span', 'nino-admin-hint themes-value', word('hint/variant') ) );
 				body.appendChild( name );
@@ -964,7 +967,7 @@
 		section.knobs.forEach( function( knob ) {
 
 			const id = 'themes-'+ group+ '-'+ knob.key.replace( '.', '-' );
-			const name = el( 'div', 'nino-admin-field-label', localized( knob.label ) );
+			const name = el( 'div', 'nino-admin-field-name', localized( knob.label ) );
 			const hint = el( 'span', 'nino-admin-hint themes-value', hintOf( knob, stepOf( S.mix, group, knob.key ) ) );
 
 			S.hints.push( { knob : knob, group : group, hint : hint } );
@@ -1006,7 +1009,7 @@
 		if( options.some( function( option ) { return option.value === current } ) === false )
 			options.push( { value : current, label : sourceOf( group ), disabled : false } );
 
-		const field = Nino.adminUi.selectField( { key : 'part-'+ group, label : word( 'label/part-of', groupLabel( group ) ), options : options, value : current, onChange : function( value ) { changePart( group, value ) } } );
+		const field = Nino.adminUi.selectField( { key : 'part-'+ group, label : word('label/part-of'), options : options, value : current, onChange : function( value ) { changePart( group, value ) } } );
 		const select = field.querySelector('select');
 
 		select.id = 'themes-part-'+ group;
@@ -1075,10 +1078,6 @@
 		return Nino.adminUi.notice( word( 'msg/rests', sourceOf( group ), reasonText( entry.why ) ) );
 	};
 
-	const lead = function( group ) {
-		return group === 'page' ? word('hint/page') : word('hint/group');
-	};
-
 	/**
 	 *	The settings of a group - level two: the way back, the part it comes from, and a section for each component
 	 *
@@ -1092,10 +1091,7 @@
 		const root		= el( 'div', 'themes-settings' );
 		const sections = sectionsOf( group );
 
-		const heading = el( 'h3', 'themes-title', groupLabel( group ) );
-
-		root.appendChild( subhead( backLink( group ), heading ) );
-		Nino.adminUi.sectionHelp( heading, root, lead( group ) );
+		root.appendChild( subhead( backLink( group ), el( 'h3', 'themes-title', groupLabel( group ) ) ) );
 		root.appendChild( partChoice( group ) );
 
 		const note = restNote( group );
@@ -1310,6 +1306,7 @@
 		const field = el( 'label', 'nino-admin-field' );
 		const text = el( 'textarea', 'nino-admin-input themes-code' );
 		const hint = Nino.adminUi.hint( word( 'hint/css', Math.round( S.list.limits.css / 1024 ) ) );
+		const help = Nino.adminUi.fieldHelp( word('hint/css-help'), { name : word('label/css') } );
 
 		hint.id = 'themes-css-hint';
 		text.id = 'themes-css';
@@ -1321,7 +1318,7 @@
 		text.setAttribute( 'autocomplete', 'off' );
 		text.setAttribute( 'autocapitalize', 'off' );
 		text.setAttribute( 'aria-describedby', 'themes-css-hint' );
-		field.appendChild( el( 'span', '', word('label/css') ) );
+		hint.appendChild( help );
 		field.appendChild( text );
 
 		// The sentence at the field where the css cannot be taken, and none where it can
@@ -1474,7 +1471,7 @@
 
 		body.appendChild( field );
 		body.appendChild( hint );
-		body.appendChild( el( 'div', 'nino-admin-field-label themes-fieldname', word('label/mix') ) );
+		body.appendChild( el( 'div', 'nino-admin-field-name themes-fieldname', word('label/mix') ) );
 		body.appendChild( Nino.adminUi.hint( mixSummary()+ '.' ) );
 		actions.appendChild( saveNew );
 		actions.appendChild( copyButton );
@@ -1725,7 +1722,7 @@
 	const choiceField = function( key, values ) {
 
 		const id = 'themes-brand-'+ key;
-		const head = el( 'div', 'nino-admin-field-label themes-fieldname', word( 'label/'+ key ) );
+		const head = el( 'div', 'nino-admin-field-name themes-fieldname', word( 'label/'+ key ) );
 		const strip = Nino.adminUi.steps( { labelledby : id, wide : true, steps : values.map( function( value ) { return { value : value, label : valueName( key, value ) } } ), value : brandValue( key ), onChange : function( value ) { setBrand( key, value ) } } );
 
 		head.id = id;
@@ -3886,6 +3883,43 @@
 		} );
 	};
 
+	// An own theme is deleted from the list: asked as a thing that cannot be taken back, and it changes nothing the website shows; the stamp is the one the list was read with
+	const deleteOwn = function( theme, opener ) {
+
+		const name = localized( theme.name );
+
+		Nino.adminUi.confirm( 'destructive', {
+			title		: word( 'confirm/delete-title', name ),
+			message	: word('confirm/delete')+ ' '+ replacesLast(),
+			yes			: word('label/delete'),
+			no			: Nino.content.getText('/_admin/common/label/cancel'),
+			kind		: 'danger',
+			visitors	: false,
+			opener	: opener,
+			onChoose	: function( ok ) {
+
+				if( ok !== true )
+					return;
+
+				Nino.admin.themes.call( 'delete', { theme : theme.key, base : theme.stamp ?? '' }, function( status, response ) {
+
+					if( status !== 200 ) {
+						Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ) );
+						return;
+					}
+
+					settle( response );
+					refreshList( function() {
+						Nino.admin.themes.say( word( 'msg/deleted', name ) );
+
+						// The card is gone, and so is the button that was pressed: the focus is on the button that chooses a package
+						land( dc.getElementById('themes-upload'), null );
+					} );
+				} );
+			},
+		} );
+	};
+
 	const cardOf = function( theme ) {
 
 		const card = el( 'article', 'nino-admin-card themes-card' );
@@ -3994,20 +4028,12 @@
 			card.appendChild( reads );
 		}
 
-		const actions = el( 'div', 'nino-admin-actions' );
-		const copy = Nino.adminUi.button( word('label/duplicate'), function() {
-			duplicate( { key : theme.key, name : localized( theme.name ), stamp : function() { return theme.stamp ?? '' } }, copy, function( response ) {
-				refreshList( function() {
-					Nino.admin.themes.say( word( 'msg/duplicated', themeName( response.theme ) ) );
+		// Edit and Apply are buttons with their words; duplicating and deleting or removing are icons, each named by the theme it is about - the order is the one of the bar
+		const actions = el( 'div', 'nino-admin-actions themes-card-actions' );
+		const edit = Nino.adminUi.button( word('card/edit'), function() { Nino.admin.themes.go( [ theme.key ], {} ) }, { className : 'nino-admin-btn--small' } );
 
-					// The list was drawn again: the card of the copy is a new one, and its Edit is where the focus goes
-					land( dc.getElementById('themes-list').querySelector( '[data-edit="'+ response.theme+ '"]' ), null );
-				} );
-			} );
-		}, { className : 'nino-admin-btn--small' } );
-
-		copy.dataset.duplicate = theme.key;
-		actions.appendChild( copy );
+		edit.dataset.editbutton = theme.key;
+		actions.appendChild( edit );
 
 		if( theme.active !== true ) {
 			const use = Nino.adminUi.button( word('card/apply'), function() {
@@ -4017,7 +4043,7 @@
 
 					Nino.admin.themes.say( word( 'msg/applied', localized( theme.name ) ) );
 
-					// The list was drawn again: the card of the theme that was applied is a new one, and its Edit is where the focus goes
+					// The list was drawn again: the card of the theme that was applied is a new one, and the link of the card is where the focus goes
 					land( dc.getElementById('themes-list').querySelector( '[data-edit="'+ theme.key+ '"]' ), null );
 				}, theme.stamp );
 			}, { className : 'nino-admin-btn--small' } );
@@ -4025,17 +4051,72 @@
 			actions.appendChild( use );
 		}
 
-		if( theme.kind === 'theme' && theme.origin === 'uploaded' ) {
+		const icons = el( 'span', 'themes-card-icons' );
+		const copy = Nino.adminUi.iconButton( 'copy', word( 'card/duplicate-of', localized( theme.name ) ), function() {
+			duplicate( { key : theme.key, name : localized( theme.name ), stamp : function() { return theme.stamp ?? '' } }, copy, function( response ) {
+				refreshList( function() {
+					Nino.admin.themes.say( word( 'msg/duplicated', themeName( response.theme ) ) );
 
-			const away = Nino.adminUi.button( word('label/remove'), function() { removeUploaded( theme, away ) }, { className : 'nino-admin-btn--small' } );
+					// The list was drawn again: the card of the copy is a new one, and its link is where the focus goes
+					land( dc.getElementById('themes-list').querySelector( '[data-edit="'+ response.theme+ '"]' ), null );
+				} );
+			} );
+		}, { small : true } );
 
-			away.dataset.remove = theme.key;
-			actions.appendChild( away );
+		copy.dataset.duplicate = theme.key;
+		icons.appendChild( copy );
+
+		// An own theme is deleted - the theme of the website is not, and has no button for it; a theme that was uploaded here is removed
+		if( theme.kind === 'own' && theme.active !== true ) {
+
+			const gone = Nino.adminUi.iconButton( 'trash-2', word( 'card/delete-of', localized( theme.name ) ), function() { deleteOwn( theme, gone ) }, { small : true, danger : true } );
+
+			gone.dataset.delete = theme.key;
+			icons.appendChild( gone );
 		}
 
+		if( theme.kind === 'theme' && theme.origin === 'uploaded' ) {
+
+			const away = Nino.adminUi.iconButton( 'trash-2', word( 'card/remove-of', localized( theme.name ) ), function() { removeUploaded( theme, away ) }, { small : true, danger : true } );
+
+			away.dataset.remove = theme.key;
+			icons.appendChild( away );
+		}
+
+		actions.appendChild( icons );
 		card.appendChild( actions );
 
 		return card;
+	};
+
+	// Where a theme comes from, as the filter tells it: the own ones, and the origin of a package
+	const originOf = function( theme ) {
+		return theme.kind === 'own' ? 'own' : ( typeof theme.origin === 'string' ? theme.origin : '' );
+	};
+
+	// The choice of the origin is kept in the browser - a convenience of the viewer: where the storage is not there or refuses, it is kept for as long as the page lives
+	const KEPT = 'nino-themes-from';
+	const keptFrom = function( value ) {
+
+		try {
+			if( value === undefined ) {
+				const stored = wn.localStorage.getItem( KEPT );
+
+				return typeof stored === 'string' && /^[a-z0-9_-]{1,64}$/i.test( stored ) === true ? stored : 'all';
+			}
+
+			wn.localStorage.setItem( KEPT, value );
+		}
+		catch( error ) {
+			return value === undefined ? S.from : value;
+		}
+
+		return value;
+	};
+
+	// The address of the list: the choice of the origin when it is not the first one - '@own' - and nothing for all themes
+	const listParts = function() {
+		return S.from === 'all' ? [] : [ '@'+ S.from ];
 	};
 
 	// The list: the themes that come with a package, then the own ones, and what the website shows
@@ -4077,15 +4158,35 @@
 		say.id = 'themes-say';
 		mount.appendChild( say );
 
-		// The theme package that is chosen: the only thing the list has beside its cards
-		const bar = el( 'div', 'nino-admin-actions themes-list-actions' );
-		const upload = Nino.adminUi.button( word('label/upload'), function() { askUpload( upload ) }, { kind : 'secondary', id : 'themes-upload' } );
+		// What narrows the list stands over it: the origin of the themes - only the origins this site has themes of - at the left of the search, and the (?) with what the list is
+		const origins = [ 'all', 'own', 'uploaded', 'catalogue', 'shipped', 'project' ].filter( function( origin ) {
+			return origin === 'all' || data.themes.some( function( theme ) { return originOf( theme ) === origin } );
+		} );
 
-		bar.appendChild( upload );
+		if( origins.indexOf( S.from ) === -1 )
+			S.from = 'all';
 
-		// What explains the list stands behind the (?) beside the one thing the list has to do
-		bar.appendChild( Nino.adminUi.fieldHelp( data.active === null ? word('hint/list-none') : word('hint/list'), { name : word('help/list-name') } ) );
-		mount.appendChild( bar );
+		if( data.themes.length > 0 ) {
+
+			const choice = Nino.adminUi.selectField( { key : 'themes-from', label : word('list/filter'), options : origins.map( function( origin ) { return { value : origin, label : word( 'list/from/'+ origin ) } } ), value : S.from, onChange : function( value ) {
+				S.from = value;
+				keptFrom( value );
+				Nino.admin.router.set( 'themes', listParts() );
+				S.applyFilter();
+			} } );
+
+			// The name of the choice is for a screen reader: the choice stands at the left of the search with no caption over it
+			choice.classList.add('themes-from');
+			choice.querySelectorAll( ':scope > span' ).forEach( function( caption ) { caption.classList.add('nino-admin-sr-only') } );
+
+			const filters = Nino.adminUi.filterBar( { search : { value : S.find, label : word('list/search'), placeholder : word('list/search'), id : 'themes-search', onInput : function( value ) {
+				S.find = value;
+				S.applyFilter();
+			} }, items : [ Nino.adminUi.fieldHelp( data.active === null ? word('hint/list-none') : word('hint/list'), { name : word('help/list-name') } ) ] } );
+
+			filters.el.insertBefore( choice, filters.el.firstChild );
+			mount.appendChild( filters.el );
+		}
 
 		if( data.foreign === true )
 			mount.appendChild( Nino.adminUi.notice( word( data.unreadable === true ? 'msg/unreadable' : 'msg/foreign' ) ) );
@@ -4098,16 +4199,48 @@
 			return list.slice().sort( function( a, b ) { return ( b.active === true ? 1 : 0 ) - ( a.active === true ? 1 : 0 ) } );
 		};
 
-		first( sorted( packaged ).concat( sorted( own ) ) ).forEach( function( theme ) { wrap.appendChild( cardOf( theme ) ) } );
+		const listed = first( sorted( packaged ).concat( sorted( own ) ) );
+
+		listed.forEach( function( theme ) { wrap.appendChild( cardOf( theme ) ) } );
 
 		if( data.themes.length === 0 )
 			mount.appendChild( Nino.adminUi.emptyState( word('msg/none') ) );
 
 		mount.appendChild( wrap );
 
+		// The cards are drawn once and shown or hidden by the choice and the search, so that the pictures stay; no card that fits is a quiet sentence
+		const nothing = Nino.adminUi.emptyState( word('list/none') );
+
+		nothing.classList.add('themes-nothing');
+		mount.appendChild( nothing );
+
+		S.applyFilter = function() {
+
+			const needle = S.find.trim().toLowerCase();
+			let shown = 0;
+
+			Array.from( wrap.children ).forEach( function( card, at ) {
+
+				const theme = listed[at];
+				const fits = ( S.from === 'all' || originOf( theme ) === S.from ) && ( needle === '' || localized( theme.name ).toLowerCase().indexOf( needle ) !== -1 );
+
+				card.hidden = fits === false;
+				shown += fits === true ? 1 : 0;
+			} );
+
+			nothing.hidden = shown > 0 || data.themes.length === 0;
+		};
+
+		S.applyFilter();
+
 		data.rejected.forEach( function( rejected ) {
 			mount.appendChild( Nino.adminUi.hint( word( 'msg/rejected', rejected.folder, reasonText( rejected.why ) ), 'error' ) );
 		} );
+
+		// What the list has to do - the theme package that is chosen - stands in the bar at the foot, as the lists of the other panels have theirs
+		const upload = Nino.adminUi.button( word('label/upload'), function() { askUpload( upload ) }, { kind : 'primary', id : 'themes-upload' } );
+
+		mount.appendChild( Nino.adminUi.actionBar( { list : true, primary : upload } ).el );
 
 	};
 
@@ -4168,11 +4301,29 @@
 		follow : function( options ) {
 
 			const parts = here().panel === 'themes' ? here().parts : [];
-			if( parts.length === 0 ) {
+
+			// The list, with the choice of the origin the address names - or the one that was kept
+			if( parts.length === 0 || parts[0].charAt(0) === '@' ) {
 				S.ready = false;
 				S.view = null;
+				S.from = parts.length === 0 ? keptFrom() : parts[0].slice( 1 );
+
+				if( S.list !== null && S.list.themes.some( function( theme ) { return originOf( theme ) === S.from } ) === false )
+					S.from = 'all';
+
 				dc.getElementById('themes-theme').innerHTML = '';
-				Nino.admin.router.set( 'themes', [] );
+				Nino.admin.router.set( 'themes', listParts() );
+
+				// The choice of an address that was followed is the choice on screen
+				if( S.applyFilter !== null ) {
+					const select = dc.getElementById('themes-list').querySelector('.themes-from select');
+
+					if( select !== null )
+						select.value = S.from;
+
+					S.applyFilter();
+				}
+
 				Nino.adminUi.showLevel( 'themes-list', { focus : options !== undefined && options.focus === false ? false : true } );
 				thumbsBack();
 				return;

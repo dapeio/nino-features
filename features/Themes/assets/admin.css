@@ -38,6 +38,30 @@
 	background: color-mix(in srgb, var(--editor-blue) 8%, var(--editor-bg-grouped));
 }
 
+/* What is hidden is not drawn, whatever display the rule of its class gives it: the cards the choice and the search leave out, and the sentence that says that none is left */
+#themes-app .themes-card[hidden],
+#themes-app .themes-nothing[hidden] {
+	display: none;
+}
+
+/* The choice of the origin, at the left of the search: the select takes the room of its words and the search the rest */
+#themes-app .themes-from {
+	flex: 0 0 auto;
+	min-width: 11rem;
+	margin: 0;
+}
+
+/* The buttons of a card: Edit and Apply with their words at the left, the icons at the right */
+#themes-app .themes-card-actions {
+	align-items: center;
+}
+
+#themes-app .themes-card-icons {
+	display: inline-flex;
+	gap: .25rem;
+	margin-left: auto;
+}
+
 /* The whole card is one link: the area of the link of the name is stretched over the card, and what has to be pressed on its own - the buttons, the
    texts a frame reads - stands over it */
 #themes-app .themes-card-link::after {
@@ -233,7 +257,7 @@
 	white-space: nowrap;
 }
 
-#themes-app .nino-admin-accordion-body .nino-admin-field-label {
+#themes-app .nino-admin-accordion-body .nino-admin-field-name {
 	margin: .75rem 0 .3rem;
 }
 
@@ -441,11 +465,6 @@
 	#themes-app .themes-tools {
 		justify-content: flex-start;
 	}
-}
-
-/* The bar over the cards: the one button that chooses a theme package */
-#themes-app .themes-list-actions {
-	margin-block-end: .75rem;
 }
 
 /* The dialogs of a theme package stand in the shell, in the workbench's root and not in the panel: what a package says of itself is the words of whoever made it, and a name

@@ -51,8 +51,13 @@ namespace Nino\Modules\Themes {
 			];
 		}
 
+		// The panel is called Theme, in the rail and over the pane - a person edits the theme of the site - and the first tab of the pane, the list, keeps the word Themes
 		public static function nav(): array {
 			return [ 'themes', '/_admin/themes/nav', 60 ];
+		}
+
+		public static function tab(): string {
+			return '/_admin/themes/tab/list/name';
 		}
 
 		// The tabs the panel brings: the fonts of the project (see Typefaces) and its own css (see ProjectCss), which has a right of its own. The tab of the settings, which the registry attaches to a
