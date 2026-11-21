@@ -9432,12 +9432,23 @@
 		} );
 	};
 
+	// What the advanced part holds: the id of a section of a page - the anchor #id of it, which is read nowhere else - the HTML of an html component for the one who develops, and the way from
+	// a page to the editor of the blocks. The id of any other component only names the texts below it, which the content shows: it has no row, and a component with nothing else has no part
+	const advancedWants = function( rel ) {
+
+		const node = relNode( rel );
+
+		return ( rel === 'root' && S.sheet === 'page' && Object.keys( S.schemas[node.n].attributes ).some( function( name ) { return S.schemas[node.n].attributes[name].type === 'id' } ) )
+			|| ( node.n === 'html' && S.level >= DEVELOP )
+			|| ( rel === 'root' && S.sheet === 'page' && S.bridge === true );
+	};
+
 	const advancedRows = function( rel, box ) {
 
 		const node = relNode( rel );
 		const schema = S.schemas[node.n];
 		const rows = [];
-		const id = Object.keys( schema.attributes ).find( function( name ) { return schema.attributes[name].type === 'id' } );
+		const id = rel === 'root' && S.sheet === 'page' ? Object.keys( schema.attributes ).find( function( name ) { return schema.attributes[name].type === 'id' } ) : undefined;
 
 		if( id !== undefined ) {
 
@@ -9854,10 +9865,10 @@
 			if( only === undefined && S.level >= 2 && lookRows( rel ).length > 0 )
 				sections.push( { key : 'look', label : word('box/look'), summary : variantSummary( now ), content : function() { return body( lookRows( rel ), 'look' ) } } );
 
-			if( only === undefined && S.level >= 2 )
+			if( only === undefined && S.level >= 2 && advancedWants( rel ) === true )
 				sections.push( { key : 'advanced', label : word('box/advanced'), content : function() { return body( advancedRows( rel, box ) ) } } );
 
-			if( sections.some( function( section ) { return section.key === box.open } ) === false )
+			if( sections.length > 0 && sections.some( function( section ) { return section.key === box.open } ) === false )
 				box.open = sections[0].key;
 
 			S.strips = {};
@@ -9867,6 +9878,12 @@
 
 			if( finding !== undefined )
 				holder.appendChild( Nino.adminUi.notice( finding.text ) );
+
+			// A component with nothing to set - no source, no content, no look, no advanced part - says so, in one line: no empty section
+			if( sections.length === 0 ) {
+				holder.appendChild( el( 'p', 'builder-props-none', word('box/none') ) );
+				return;
+			}
 
 			if( inPanel === true ) {
 
@@ -9963,7 +9980,7 @@
 			return true;
 		}
 
-		const first = accordion.body( box.open ).querySelector('input, textarea, select, button');
+		const first = accordion === null || accordion === undefined ? null : accordion.body( box.open ).querySelector('input, textarea, select, button');
 
 		Nino.adminUi.choiceDialog( {
 			title			: word( 'label/edit-component', name ),

@@ -53,12 +53,34 @@
 	};
 
 	// What the panel holds beyond the sheet: the tab that is shown, the answer of the list and the control that opened a form
+	// The choice of the source of the blocks is kept in the browser - a convenience of the viewer: where the storage is not there or refuses, it is kept for as long as the page lives
+	const KEPT = 'nino-themelab-from';
+	const kept = function( value ) {
+
+		try {
+			if( value === undefined ) {
+				const stored = wn.localStorage.getItem( KEPT );
+
+				return typeof stored === 'string' && /^[a-z0-9_-]{1,64}$/i.test( stored ) === true ? stored : 'own';
+			}
+
+			wn.localStorage.setItem( KEPT, value );
+		}
+		catch( error ) {
+			return value === undefined ? 'own' : value;
+		}
+
+		return value;
+	};
+
 	const N = {
 		fresh		: '',
 		frames	: null,
 		ownKeys	: null,
-		tab			: 'project',
-		source	: 'project',
+		tab			: 'blocks',
+		from		: kept(),
+		drawn		: '',
+		query		: '',
 		open		: null,
 		button	: null,
 		data		: null,
@@ -68,7 +90,7 @@
 	// The address of the list of a tab, and of a block in it: the first tab is the blocks - 'project' for the own ones, 'theme' for those of the theme in use, a switch inside the
 	// tab -, the second the frames, the third 'info' - the theme itself, which has an address of its own and no block in it
 	const tabParts = function( tab ) {
-		return tab === 'theme' ? [ '@theme-blocks' ] : ( tab === 'frames' ? [ '@frames' ] : ( tab === 'info' ? [ '@theme' ] : [] ) );
+		return tab === 'blocks' ? ( N.from === 'own' ? [] : [ '@blocks', N.from ] ) : ( tab === 'theme' ? [ '@theme-blocks' ] : ( tab === 'frames' ? [ '@frames' ] : ( tab === 'info' ? [ '@theme' ] : [] ) ) );
 	};
 
 	const partsOf = function( tab, key ) {
@@ -85,15 +107,23 @@
 
 		// The fixed addresses have the @ that no key of a block has: #themelab/@frames, #themelab/@theme, #themelab/@theme-blocks. The addresses of before, without it, name what they most
 		// likely mean: with a key behind them they are the tab; alone they are the block of that key where the project has one, else the tab
-		const FIXED = { '@theme-blocks' : 'theme', '@frames' : 'frames', '@theme' : 'info' };
+		const FIXED = { '@theme-blocks' : 'theme', '@frames' : 'frames', '@theme' : 'info', '@blocks' : 'blocks' };
 		const OLD = { 'theme-blocks' : 'theme', 'frames' : 'frames', 'theme' : 'info' };
 		const first = parts[0] ?? '';
 		const fixed = FIXED[first] ?? ( OLD[first] !== undefined && ( parts.length > 1 || ( N.ownKeys ?? [] ).indexOf( first ) === -1 ) ? OLD[first] : undefined );
 		const tab = fixed ?? 'project';
 		const rest = tab === 'project' ? parts : parts.slice( 1 );
 
+		// The list of the blocks has the choice of where they come from in its address: #themelab/@blocks/<source>; the own blocks are the address of the list without more, and the choice the
+		// person made last is the one it shows. The address of before, #themelab/@theme-blocks, is the list of the theme's blocks
+		if( tab === 'blocks' )
+			return rest.length <= 1 && /^[a-z0-9_-]{0,64}$/i.test( rest[0] ?? '' ) === true ? { tab : 'blocks', key : '', from : rest[0] ?? N.from } : null;
+
+		if( tab === 'theme' && rest.length === 0 )
+			return { tab : 'blocks', key : '', from : 'theme' };
+
 		if( rest.length === 0 )
-			return { tab : tab, key : '' };
+			return { tab : tab === 'project' ? 'blocks' : tab, key : '', from : N.from };
 
 		// The theme has one page and no block in it
 		if( tab === 'info' )
@@ -226,13 +256,17 @@
 		cell.appendChild( el( 'strong', '', value ) );
 		cell.appendChild( el( 'span', 'builder-cell-file', row.key ) );
 
+		// Where the list holds the blocks of more than one source - all of them - each row says whose it is
+		if( N.from === 'all' && typeof row.origin === 'string' && row.origin !== '' )
+			cell.appendChild( el( 'span', 'builder-cell-origin', row.origin ) );
+
 		return cell;
 	};
 
 	// Which buttons a row has: a block of the project is duplicated, renamed and taken away; one of the theme is copied as a block of the project and nothing else
 	const rowButtons = function( row ) {
 
-		if( N.tab === 'theme' )
+		if( row.own !== true )
 			return [ Nino.adminUi.iconButton( 'copy', word( 'row/copy', row.name ), function( event ) { askName( 'duplicate', row, event.currentTarget ) }, { small : true } ) ];
 
 		const copy = Nino.adminUi.iconButton( 'copy', word( 'row/duplicate', row.name ), function( event ) { askName( 'duplicate', row, event.currentTarget ) }, { small : true } );
@@ -566,6 +600,19 @@
 		N.frames = Array.isArray( data.frames ) === true ? data.frames : N.frames;
 		N.tab = data.tab;
 
+		// The choice of where the blocks come from: 'theme' - the address of before - is the theme in use, and a source the site no longer has is the own blocks
+		if( data.tab === 'blocks' ) {
+
+			if( N.from === 'theme' ) {
+
+				N.from = data.theme === null ? 'own' : data.theme.key;
+				Nino.admin.router.set( 'themelab', tabParts( 'blocks' ) );
+			}
+
+			if( [ 'own', 'all' ].indexOf( N.from ) === -1 && data.sources.some( function( source ) { return source.key === N.from } ) === false )
+				N.from = 'own';
+		}
+
 		const mount = dc.getElementById('themelab-list');
 		const holder = el( 'div', '' );
 
@@ -573,16 +620,13 @@
 
 		// The tabs: the blocks - the project's own, and the theme's beside them by a switch of their own -, the frames of the site and the theme in use
 		const items = [ { key : 'blocks', label : word('tab/blocks') }, { key : 'frames', label : word('tab/frames') }, { key : 'info', label : word('tab/info') } ];
-		const shown = data.tab === 'project' || data.tab === 'theme' ? 'blocks' : data.tab;
+		const shown = data.tab;
 
 		const strip = Nino.adminUi.tabs( items, { active : shown, label : word('tab/label'), id : 'themelab-tabs', onSelect : function( key ) {
 
 			if( key !== shown )
-				Nino.admin.themelab.go( tabParts( key === 'blocks' ? ( N.source === 'theme' && data.theme !== null ? 'theme' : 'project' ) : key ) );
+				Nino.admin.themelab.go( tabParts( key ) );
 		} } );
-
-		if( data.tab === 'project' || data.tab === 'theme' )
-			N.source = data.tab;
 
 		// The tabs are the head of the pane's: beside its name, where the workbench keeps the tabs of a panel - and where there is no head, over the list
 		const head = Nino.adminUi.panelHead( mount );
@@ -591,20 +635,6 @@
 			head.tabs( strip.el );
 		else
 			mount.appendChild( strip.el );
-
-		// The blocks of the project and those of the theme in use: one switch over the list, the own ones first
-		if( ( data.tab === 'project' || data.tab === 'theme' ) && data.theme !== null ) {
-
-			const caption = el( 'span', 'nino-admin-sr-only', word('source/label') );
-
-			caption.id = 'themelab-source-label';
-			mount.appendChild( caption );
-			mount.appendChild( Nino.adminUi.steps( { labelledby : caption.id, steps : [ { value : 'project', label : word('tab/project') }, { value : 'theme', label : word( 'tab/theme', localized( data.theme.name ) ) } ], value : data.tab, onChange : function( value ) {
-
-				if( value !== data.tab )
-					Nino.admin.themelab.go( tabParts( value ) );
-			} } ).el );
-		}
 
 		mount.appendChild( holder );
 
@@ -645,10 +675,26 @@
 			return;
 		}
 
-		if( data.blocks.length === 0 )
-			holder.appendChild( Nino.adminUi.emptyState( word( data.tab === 'theme' ? 'msg/none-theme' : 'msg/none-project' ) ) );
-		else
-			Nino.adminUi.table( {
+		drawBlocks( data, holder, mount );
+	};
+
+	// The list of the blocks: the ones of the source that is chosen beside the search - the own blocks, all, or one source - and what the search finds in them. The choice filters at once, with
+	// no request; it is in the address, and the last one is the one the list shows when it is come back to
+	const drawBlocks = function( data, holder, mount ) {
+
+		N.drawn = N.from;
+
+		const own = N.from === 'own';
+		const rows = data.blocks.filter( function( block ) { return N.from === 'all' || ( own === true ? block.own === true : block.origin === N.from ) } );
+
+		if( rows.length === 0 ) {
+
+			holder.appendChild( chooser( data, null ) );
+			holder.appendChild( Nino.adminUi.emptyState( word( own === true || N.from === 'all' ? 'msg/none-project' : 'msg/none-theme' ) ) );
+		}
+		else {
+
+			const table = Nino.adminUi.table( {
 				mount			: holder,
 				rowKey		: 'key',
 				columns		: [
@@ -657,28 +703,70 @@
 					{ key : 'category', label : word('list/category'), type : 'string', render : function( value ) { return categoryWord( value ) } },
 					{ key : 'variants', label : word('list/variants'), type : 'integer', render : variantCell },
 				],
-				rows			: data.blocks.map( function( block ) { return { key : block.key, pick : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, frame : block.frame === true, template : block.template ?? '', names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ) } } ),
+				rows			: rows.map( function( block ) { return { key : block.key, pick : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, frame : block.frame === true, template : block.template ?? '', names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ), own : block.own === true, openable : block.openable === true, origin : originLabel( data, block.origin ) } } ),
 				actions		: rowButtons,
-				// The own blocks are chosen in the list and handed out or taken away together; the theme's blocks are only looked at and copied
-				select		: N.tab === 'project' ? { label : word('list/pick-head'), rowLabel : function( row ) { return word( 'list/pick', row.name ) }, actions : [
+				// The own blocks are chosen in the list and handed out or taken away together; the blocks of a source are only looked at and copied
+				select		: own === true ? { label : word('list/pick-head'), rowLabel : function( row ) { return word( 'list/pick', row.name ) }, actions : [
 					{ key : 'export', label : word('export/button'), run : function( keys ) { askExport( keys, dc.activeElement ) } },
 					{ key : 'delete', label : word('delete/many'), danger : true, run : function( keys ) { askDeleteMany( keys, dc.activeElement ) } },
 				] } : undefined,
 				labels		: { search : word('list/search'), empty : word('msg/none-project'), noMatch : word('list/no-match') },
 				search		: true,
-				searchText	: function( row ) { return row.key },
-				onRowClick	: function( row ) { Nino.admin.themelab.go( partsOf( N.tab, row.key ) ) },
+				query			: N.query,
+				onQuery		: function( query ) { N.query = query },
+				searchText	: function( row ) { return row.key+ ' '+ row.origin },
+				onRowClick	: function( row ) {
+
+					if( row.own === true )
+						Nino.admin.themelab.go( partsOf( 'project', row.key ) );
+					else if( row.openable === true )
+						Nino.admin.themelab.go( partsOf( 'theme', row.key ) );
+				},
 			} );
 
-		N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'themelab-new' } );
+			holder.querySelector('.nino-admin-table-toolbar').insertBefore( chooser( data, table ), holder.querySelector('.nino-admin-table-search') );
+		}
 
-		// The own blocks are taken in beside the button of a new block: a package comes in
-		const beside = [];
+		N.button = null;
 
-		if( N.tab === 'project' )
-			beside.push( Nino.adminUi.button( word('import/button'), function( event ) { askImport( event.currentTarget ) }, { kind : 'secondary', id : 'themelab-import' } ) );
+		// A new block and a package come in as own blocks: they are of the own blocks' list
+		if( own === true ) {
 
-		mount.appendChild( Nino.adminUi.actionBar( { list : true, secondary : beside, primary : N.button } ).el );
+			N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'themelab-new' } );
+			mount.appendChild( Nino.adminUi.actionBar( { list : true, secondary : [ Nino.adminUi.button( word('import/button'), function( event ) { askImport( event.currentTarget ) }, { kind : 'secondary', id : 'themelab-import' } ) ], primary : N.button } ).el );
+		}
+	};
+
+	// Where a source is called: the name of the source in the language of the person, the own blocks by the word of the panel
+	const originLabel = function( data, origin ) {
+
+		if( origin === 'project' )
+			return word('tab/project');
+
+		const source = data.sources.find( function( entry ) { return entry.key === origin } );
+
+		return source === undefined ? origin : localized( source.label );
+	};
+
+	// The choice of the blocks to show, beside the search: all, the own ones, and one entry for each source the site has blocks of - by its name. It filters at once
+	const chooser = function( data, table ) {
+
+		const options = [ { value : 'all', label : word('source/all') }, { value : 'own', label : word('tab/project') } ].concat( data.sources.map( function( source ) { return { value : source.key, label : source.theme === true ? word( 'tab/theme', localized( source.label ) ) : localized( source.label ) } } ) );
+		const field = Nino.adminUi.selectField( { key : 'themelab-from', label : word('source/label'), options : options, value : N.from, onChange : function( value ) {
+
+			if( value !== N.from ) {
+
+				N.from = kept( value );
+				Nino.admin.themelab.go( tabParts( 'blocks' ) );
+			}
+		} } );
+
+		field.classList.add('themelab-from');
+
+		// The name of the choice is for a screen reader - the choice stands at the left of the search with no caption over it
+		field.querySelectorAll( ':scope > span' ).forEach( function( caption ) { caption.classList.add('nino-admin-sr-only') } );
+
+		return field;
 	};
 
 	// --- the forms and the questions ----------------------------------------------------------------------------------------
@@ -830,7 +918,7 @@
 
 		clearFail();
 
-		const own = N.tab === 'project';
+		const own = row.own === true;
 		const was = ( N.data.blocks.find( function( block ) { return block.key === row.key } ) ?? {} ).name ?? {};
 		const values = copyNames( was, true );
 
@@ -853,8 +941,11 @@
 					Nino.adminUi.say( word( 'msg/duplicated', nameIn( given.name, Nino.admin.workLocale.current ) ) );
 
 					// A copy of a block of the theme is a block of the project: the list goes to the project
-					if( action === 'duplicate' && own === false )
+					if( action === 'duplicate' && own === false ) {
+
+						N.from = 'own';
 						Nino.admin.themelab.go( [] );
+					}
 					else
 						Nino.admin.themelab.reload();
 				} );
@@ -1681,37 +1772,55 @@
 		button.dataset.variant = s.extra.edited ?? '';
 	};
 
-	const askNewVariant = function( theme, opener ) {
+	// The name of a variant in each language, in one dialog: for a new variant - it begins as a copy of the one that is edited - and for one that is there, which keeps its place and its set
+	const askNewVariant = function( theme, opener, variant, back ) {
 
 		const x = stateOf().extra;
+		const again = function() { if( typeof back === 'function' ) back() };
 
-		if( ( x.vars ?? [] ).length >= MAX_VARIANTS ) {
+		if( variant === undefined && ( x.vars ?? [] ).length >= MAX_VARIANTS ) {
 			Nino.adminUi.say( word( 'variants/many', MAX_VARIANTS ) );
+			again();
 			return;
 		}
 
-		const now = ( x.vars ?? [] ).find( function( variant ) { return variant.name === x.edited } ) ?? { label : {} };
+		const now = variant ?? ( x.vars ?? [] ).find( function( one ) { return one.name === x.edited } ) ?? { label : {} };
 		const locales = ( stateOf().locales ?? [] ).map( function( entry ) { return entry.locale } );
+		const work = Nino.admin.workLocale.current;
 
 		Nino.adminUi.formDialog( {
-			title			: word('variants/new-title'),
-			message		: word( 'variants/new-note', labelOf( now ) ),
-			fields		: [ { key : 'name', type : 'locales', label : word('variants/name'), locales : locales, work : Nino.admin.workLocale.current, values : {}, required : false, maxLength : 80,
-				validate : function( value ) { return String( ( value ?? {} )[Nino.admin.workLocale.current] ?? '' ).trim() === '' ? word('variants/name-missing') : '' } } ],
-			submit		: word('variants/new-submit'),
+			title			: word( variant === undefined ? 'variants/new-title' : 'variants/edit-title' ),
+			message		: variant === undefined ? word( 'variants/new-note', labelOf( now ) ) : undefined,
+			fields		: [ { key : 'name', type : 'locales', label : word('variants/name'), locales : locales, work : work, values : variant === undefined ? {} : Object.assign( {}, variant.label ), required : false, maxLength : 80,
+				validate : function( value ) { return String( ( value ?? {} )[work] ?? '' ).trim() === '' ? word('variants/name-missing') : '' } } ],
+			submit		: word( variant === undefined ? 'variants/new-submit' : 'variants/edit-submit' ),
 			cancel		: Nino.adminUi.text('/_admin/common/label/cancel'),
 			opener		: opener,
+			onCancel	: again,
 			onSubmit	: function( values, ctl ) {
 
 				const label = {};
 
-				locales.forEach( function( locale ) { label[locale] = String( values.name[locale] ?? '' ).trim() === '' ? String( values.name[Nino.admin.workLocale.current] ).trim() : String( values.name[locale] ).trim() } );
+				locales.forEach( function( locale ) { label[locale] = String( values.name[locale] ?? '' ).trim() === '' ? String( values.name[work] ).trim() : String( values.name[locale] ).trim() } );
 
-				let name = slugOf( label[Nino.admin.workLocale.current] );
+				// A variant that is there is called anew: its name, its place and its set stay
+				if( variant !== undefined ) {
+
+					editor().change( function() { variant.label = label } );
+					ctl.close();
+					paintVariant();
+
+					// The overview opens again when the dialog of the name is closed: a dialog opens only where none is
+					wn.setTimeout( again, 0 );
+
+					return;
+				}
+
+				let name = slugOf( label[work] );
 				let count = 2;
 
-				while( ( x.vars ?? [] ).some( function( variant ) { return variant.name === name } ) === true )
-					name = slugOf( label[Nino.admin.workLocale.current] )+ '-'+ ( count++ );
+				while( ( x.vars ?? [] ).some( function( one ) { return one.name === name } ) === true )
+					name = slugOf( label[work] )+ '-'+ ( count++ );
 
 				const from = x.edited;
 
@@ -1739,66 +1848,67 @@
 		} );
 	};
 
-	// Move, rename and delete: the first is the template, stays the first and is never taken away
-	const askManage = function( opener ) {
+	// The variants of the block, in one overview: a row for each - its name, which is what is chosen to edit it - with, for a block of the project, the name of it in each language, up, down and
+	// delete as buttons that stay in view; the first is the standard: it can be called anew, and stays the first and is never taken away. The way to a new variant is the button of the dialog
+	const askVariant = function( theme, opener ) {
 
 		const x = stateOf().extra;
-		const box = el( 'div', 'builder-var-manage' );
-		const work = Nino.admin.workLocale.current;
+		const box = el( 'ul', 'builder-var-list' );
+		let shown = null;
+		let pending = null;
+
+		// What a row does that leaves the overview is done when the overview is closed: a dialog opens only where none is
+		const leave = function( next ) {
+			pending = next;
+			shown.close( 'cancel' );
+		};
 
 		const draw = function() {
 
 			box.innerHTML = '';
 
-			x.vars.forEach( function( variant, at ) {
+			( x.vars ?? [] ).forEach( function( variant, at ) {
 
-				const row = el( 'div', 'builder-var-row' );
-				const field = Nino.adminUi.textField( { key : 'var-'+ variant.name, label : at === 0 ? word('variants/standard-of') : word( 'variants/name-of', at ), maxLength : 80, value : String( variant.label[work] ?? labelOf( variant ) ) } );
-				const input = field.querySelector('input');
+				const row = el( 'li', 'builder-var-row' );
+				const name = labelOf( variant );
+				const pick = Nino.adminUi.button( '', function() { leave( function() { switchTo( variant.name ) } ) }, { className : 'builder-var-pick' } );
 
-				input.addEventListener( 'change', function() {
+				row.dataset.variant = variant.name;
+				pick.setAttribute( 'aria-current', variant.name === x.edited ? 'true' : 'false' );
+				pick.appendChild( el( 'strong', '', name ) );
 
-					const text = input.value.trim();
+				if( at === 0 )
+					pick.appendChild( el( 'span', 'nino-admin-hint', word('variants/standard-note') ) );
 
-					if( text === '' )
-						return;
+				row.appendChild( pick );
 
-					editor().change( function() {
+				if( theme !== true ) {
 
-						const was = String( variant.label[work] ?? '' );
+					const actions = el( 'span', 'builder-var-actions' );
 
-						Object.keys( variant.label ).forEach( function( locale ) {
-							if( locale === work || variant.label[locale] === was )
-								variant.label[locale] = text;
-						} );
-					} );
-					paintVariant();
-				} );
-
-				row.appendChild( field );
-
-				if( at > 0 ) {
+					actions.appendChild( Nino.adminUi.iconButton( 'pencil', word( 'variants/edit', name ), function() {
+						leave( function() { askNewVariant( theme, opener, variant, function() { askVariant( theme, opener ) } ) } );
+					}, { small : true } ) );
 
 					[ [ 'arrow-up', 'variants/up', -1 ], [ 'arrow-down', 'variants/down', 1 ] ].forEach( function( move ) {
 
 						const to = at + move[2];
-						const button = Nino.adminUi.iconButton( move[0], word( move[1], labelOf( variant ) ), function() {
+
+						actions.appendChild( Nino.adminUi.iconButton( move[0], word( move[1], name ), function() {
 
 							if( to < 1 || to >= x.vars.length )
 								return;
 
 							editor().change( function() { x.vars.splice( to, 0, x.vars.splice( at, 1 )[0] ) } );
 							draw();
-						}, { small : true, disabled : to < 1 || to >= x.vars.length } );
-
-						row.appendChild( button );
+						}, { small : true, disabled : at === 0 || to < 1 || to >= x.vars.length } ) );
 					} );
 
-					row.appendChild( Nino.adminUi.iconButton( 'trash-2', word( 'variants/delete', labelOf( variant ) ), function( event ) {
+					actions.appendChild( Nino.adminUi.iconButton( 'trash-2', word( 'variants/delete', name ), function( event ) {
 
 						Nino.adminUi.confirm( 'destructive', {
 							title		: word('variants/delete-title'),
-							message	: word( 'variants/delete-message', labelOf( variant ) ),
+							message	: word( 'variants/delete-message', name ),
 							yes			: word('variants/delete-yes'),
 							no			: Nino.adminUi.text('/_admin/common/label/cancel'),
 							kind		: 'danger',
@@ -1835,7 +1945,9 @@
 								paintVariant();
 							},
 						} );
-					}, { small : true, danger : true } ) );
+					}, { small : true, danger : true, disabled : at === 0 } ) );
+
+					row.appendChild( actions );
 				}
 
 				box.appendChild( row );
@@ -1845,43 +1957,24 @@
 		draw();
 
 		Nino.adminUi.choiceDialog( {
-			title			: word('variants/manage-title'),
+			title			: word( theme === true ? 'variants/menu-title-view' : 'variants/menu-title' ),
 			content		: box,
 			size			: 'form',
 			className	: 'builder-lightbox',
 			opener		: opener,
-			choices		: [ { value : 'close', label : Nino.adminUi.text('/_admin/common/label/close'), kind : 'secondary' } ],
-			onChoose	: function() { paintVariant() },
-		} );
-	};
-
-	// The variants of the block in a menu, with the way to a new one and to the management of them
-	const askVariant = function( theme, opener ) {
-
-		const x = stateOf().extra;
-		const items = ( x.vars ?? [] ).map( function( variant, at ) { return { value : variant.name, label : labelOf( variant ), description : at === 0 ? word('variants/standard-note') : '' } } );
-
-		if( theme !== true ) {
-			items.push( { value : '@new', label : word('variants/new') } );
-
-			if( varied() === true )
-				items.push( { value : '@manage', label : word('variants/manage') } );
-		}
-
-		Nino.adminUi.pickDialog( {
-			title		: word( theme === true ? 'variants/menu-title-view' : 'variants/menu-title' ),
-			items		: items,
-			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
-			size		: 'narrow',
-			opener	: opener,
+			choices		: [ { value : 'close', label : Nino.adminUi.text('/_admin/common/label/close'), kind : 'secondary' } ].concat( theme === true ? [] : [ { value : 'new', label : word('variants/new'), kind : 'primary' } ] ),
+			onOpen		: function( handle ) { shown = handle },
 			onChoose	: function( value ) {
 
-				if( value === '@new' )
+				const next = pending;
+
+				pending = null;
+				paintVariant();
+
+				if( next !== null )
+					next();
+				else if( value === 'new' )
 					askNewVariant( theme, opener );
-				else if( value === '@manage' )
-					askManage( opener );
-				else
-					switchTo( value );
 			},
 		} );
 	};
@@ -2409,9 +2502,24 @@
 
 			if( target.key === '' ) {
 
+				const redraw = target.tab === 'blocks' && N.tab === 'blocks' && N.data !== null && N.data.tab === 'blocks' && N.open === null && sheetOpen() === false && N.drawn !== target.from;
+
 				editor().close();
 				N.open = null;
+
+				if( target.tab === 'blocks' )
+					N.from = target.from;
+
 				Nino.admin.router.set( 'themelab', tabParts( target.tab ) );
+
+				// The choice of where the blocks come from filters the list that is there: nothing is asked of the server for it
+				if( redraw === true ) {
+
+					render( N.data );
+					Nino.adminUi.showLevel( 'themelab-list', { focus : dc.getElementById('themelab-list').querySelector('.themelab-from select') ?? false } );
+
+					return;
+				}
 
 				// The list of the tab that the address names: asked again where it is another tab or the blocks changed
 				N.tab = target.tab;

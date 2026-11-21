@@ -236,10 +236,10 @@ check( 'every action is reached through the workbench, whose token check comes f
 echo "\nC. The list\n";
 
 [ $status, $empty ] = themelabCall( $site, 'themelab/list' );
-$ownBefore = array_column( $empty['blocks'] ?? [], 'key' );
+$ownBefore = array_column( array_filter( $empty['blocks'] ?? [], static fn( array $block ): bool => $block['own'] === true ), 'key' );
 
-check( 'the list of the project has no block where there is none, and says that the site has a page a block can be drawn on; the theme tab is not there without a theme in use, and is the project where it is asked for',
-	$status === 200 && $ownBefore === [] && $empty['tab'] === 'project' && $empty['theme'] === null && $empty['shell'] === true && themelabCall( $site, 'themelab/list', [ 'tab' => 'theme' ] )[1]['tab'] === 'project' );
+check( 'the list has no block of the project where there is none - and every row says where it comes from and whether it is the project\'s -, and says that the site has a page a block can be drawn on; there is no theme in use, and a tab it does not know - the old "theme" - is the blocks',
+	$status === 200 && $ownBefore === [] && $empty['tab'] === 'blocks' && $empty['theme'] === null && $empty['shell'] === true && themelabCall( $site, 'themelab/list', [ 'tab' => 'theme' ] )[1]['tab'] === 'blocks' && array_filter( $empty['blocks'], static fn( array $block ): bool => is_string( $block['origin'] ?? null ) === false || is_bool( $block['own'] ?? null ) === false ) === [] && $empty['blocks'] !== [] );
 
 check( 'what a new block may begin with is every block of a page that the library has, from every source, each with the name of its source - and the categories are those of the kernel but the frames',
 	count( array_filter( $empty['library'], static fn( array $entry ): bool => $entry['key'] === 'hero-full' && $entry['own'] === false ) ) === 1 && $empty['categories'] === [ 'intro', 'content', 'trust', 'offer', 'action', 'contact' ]
@@ -523,14 +523,16 @@ check( 'a block of the project is taken away with its files, and the blocks of t
 // the keys the panel lists are the ones of the blocks of the project, and only of those
 [ , $listed ] = themelabCall( $site, 'themelab/list' );
 
-check( 'the list shows the blocks of the project that there are now, with their number of variants, and no block of another source', array_column( $listed['blocks'], 'key' ) !== [] && array_diff( array_column( $listed['blocks'], 'key' ), [ 'mein-block', 'mein-anderer-block', 'held-von-mir' ] ) === [] && array_column( $listed['blocks'], 'variants', 'key' )['held-von-mir'] === count( $mine['alternatives'] ) );
+$listedOwn = array_values( array_filter( $listed['blocks'], static fn( array $block ): bool => $block['own'] === true ) );
+
+check( 'the list shows the blocks of the project that there are now, with their number of variants, as the rows of the project - and the blocks of the other sources as rows that are not, each with its source: the choice beside the search takes them apart', array_column( $listedOwn, 'key' ) !== [] && array_diff( array_column( $listedOwn, 'key' ), [ 'mein-block', 'mein-anderer-block', 'held-von-mir' ] ) === [] && count( $listedOwn ) < count( $listed['blocks'] ) && array_column( $listed['blocks'], 'variants', 'key' )['held-von-mir'] === count( $mine['alternatives'] ) );
 
 // the third tab only reads: what the project holds of its own is counted, no block is listed, and the answer has nothing that writes
 $beforeInfo = themelabSnapshot( $site );
 [ $infoStatus, $info ] = themelabCall( $site, 'themelab/list', [ 'tab' => 'info' ] );
 
 check( 'the tab of the theme is answered with the counts of the own blocks and frames and no block of a list, and asking for it writes nothing',
-	$infoStatus === 200 && $info['tab'] === 'info' && $info['blocks'] === [] && $info['counts']['blocks'] === count( $listed['blocks'] ) && $info['counts']['frames'] === count( $listed['frames'] ) && themelabSnapshot( $site ) === $beforeInfo );
+	$infoStatus === 200 && $info['tab'] === 'info' && $info['blocks'] === [] && $info['counts']['blocks'] === count( $listedOwn ) && $info['counts']['frames'] === count( $listed['frames'] ) && themelabSnapshot( $site ) === $beforeInfo );
 
 // the tile of the list is the small picture of a block of any source
 [ $tiled, $tile ] = themelabCall( $site, 'themelab/tile', [ 'key' => 'hero-full' ] );
@@ -694,7 +696,7 @@ check( 'a block whose template has a loop - the list and the table over elements
 	( $groups['list-over-elements'] ?? '' ) === 'dynamic' && ( $groups['table-over-elements'] ?? '' ) === 'dynamic' && ( $groups['hero-full'] ?? '' ) === \Nino\Blocks::get( $site, 'hero-full' )['category'] && ( $groups['three-columns'] ?? '' ) === \Nino\Blocks::get( $site, 'three-columns' )['category']
 	&& \Nino\Blocks::get( $site, 'list-over-elements' )['category'] !== 'dynamic' && in_array( 'dynamic', \Nino\Blocks::CATEGORIES, true ) === false );
 
-check( 'the list of Themelab says the same group of each block as the dialog does - the column of the category is the word of the group',																																																																																																																																																		count( array_filter( $listed, static fn( string $group ): bool => $group === 'dynamic' ) ) === 2 && count( array_filter( $listed, static fn( string $group ): bool => $group !== 'dynamic' ) ) > 0 );
+check( 'the list of Themelab says the same group of each block as the dialog does - the column of the category is the word of the group',																																																																																																																																																		array_diff_assoc( array_intersect_key( $listed, $groups ), $groups ) === [] && ( $listed['list-over-elements'] ?? '' ) === 'dynamic' && ( $listed['table-over-elements'] ?? '' ) === 'dynamic' && count( array_filter( $listed, static fn( string $group ): bool => $group !== 'dynamic' ) ) > 0 );
 
 // the empty column of the draft is a quiet place with a sentence - in the preview alone: what is saved has none, and what is sent is made plain text
 [ $hinted, $held ] = themelabCall( $site, 'themelab/preview', [ 'key' => 'nach-dem-abbruch', 'tree' => themelabCall( $site, 'themelab/open', [ 'key' => 'nach-dem-abbruch' ] )[1]['tree'], 'texts' => [], 'hint' => 'Komponente <b>einfügen</b> [[x]]' ] );

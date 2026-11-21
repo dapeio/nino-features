@@ -126,8 +126,8 @@ check( 'D2. the width that is chosen in the lightbox is the width of the preview
 	has( /const showWidth = function\( device \)/ ) === true && has( /S\.view\.preview\.width\( device\.width \)/ ) === true && has( /S\.tools\.setWidth\( device\.width \)/ ) === true && has( /showWidth\( DEVICES\.find\( function\( device \) \{ return device\.width === value \} \) \)/ ) === true );
 check( 'D6. the wide column of the settings beside the preview is the workbench\'s: split() is given settingsWidth \'wide\' for a sheet that opens its properties in the column - the Blocks editors - and for no other, and the stylesheet of the feature has no rule of its own for the width of the column of a split',
 	has( /settingsWidth\s*: S\.adapter\.props === 'panel' \? 'wide' : undefined/ ) === true && /nino-admin-split--fill > \.nino-admin-split-grid \{\s*grid-template-columns/.test( sheet ) === false && /480px/.test( sheet ) === false );
-check( 'D7. a column too narrow for a label beside its field stacks them - the label over the field -, so that a choice is never cut: the label goes to the left of the field only where the column is 30 rem wide - and the strip of the preview over the column of a narrow window is the one rule for it, in a container query of the split, for #themelab-app',
-	/@container builder-props \(min-width: 30rem\) \{\s*\.builder-props \.nino-admin-dialog-fields > \.nino-admin-field \{\s*display: grid;/.test( sheet ) === true && /@container nino-split \(max-width: 44rem\) \{[\s\S]*?#themelab-app \.nino-admin-split--fill\.builder-props-live\[data-view="settings"\] > \.nino-admin-split-grid \{\s*grid-template-rows: 9rem minmax\(0, 1fr\);/.test( sheet ) === true );
+check( 'D7. a column too narrow for a label beside its field stacks them - the label over the field -, so that a choice is never cut: the label goes to the left of the field only where the column is 22 rem wide - the column is the one of the workbench, and the preview gives way - and the strip of the preview over the column of a narrow window is the one rule for it, in a container query of the split, for #themelab-app',
+	/@container builder-props \(min-width: 22rem\) \{\s*\.builder-props \.nino-admin-field \{\s*display: grid;/.test( sheet ) === true && /@container nino-split \(max-width: 44rem\) \{[\s\S]*?#themelab-app \.nino-admin-split--fill\.builder-props-live\[data-view="settings"\] > \.nino-admin-split-grid \{\s*grid-template-rows: 9rem minmax\(0, 1fr\);/.test( sheet ) === true );
 check( 'D3. the row of the devices has no caption on the screen and keeps its name for a screen reader, the devices stand at its right; the inputs that the width switches share one quiet surface with it - and so does a setting that has one value for each width',
 	has( /el\( 'span', 'nino-admin-sr-only', word\('rows\/width'\) \)/ ) === true && has( /'builder-widths-group builder-widths-box'/ ) === true && has( /'nino-admin-field builder-widths-set builder-widths-box'/ ) === true
 	&& /\.builder-lightbox \.builder-widths-box \{[^}]*background: var\(--editor-bg\);/.test( sheet ) === true && /\.builder-lightbox \.builder-width-pick \{[^}]*justify-content: flex-end/.test( sheet ) === true );
@@ -135,5 +135,20 @@ check( 'D4. the notation of a component is no part of a page: the button behind 
 	has( /S\.level >= 2 && only === undefined && S\.sheet === 'block'/ ) === true );
 check( 'D5. the notices of the third party name no strokes of the Builder: it draws no icon of its own',
 	/The catalogue's own code/.test( notices ) === false || /GLYPHS/.test( notices ) === false );
+
+console.log( '\nF294. The panel after the owner\'s look at it' );
+
+check( 'F294 T2. a double click on a row of the tree of the extended view, of the outline or of the list marks no text: user-select is off for the two places of the tree - the feature names no class of the workbench tree - and for the rows of the list, and stays on for a field in them',
+	/\.builder-adv-tree,\s*#builder-outline,\s*\.builder-list-row,\s*#builder-list \.nino-admin-table tbody tr\[data-row\] \{\s*-webkit-user-select: none;\s*user-select: none;\s*\}/.test( sheet ) === true
+	&& /:is\(\.builder-adv-tree, #builder-outline, #builder-list \.nino-admin-table tbody tr\[data-row\]\) :is\(input, textarea, select\) \{\s*-webkit-user-select: text;\s*user-select: text;/.test( sheet ) === true && sheet.indexOf( 'nino-admin-tree' ) === -1 );
+check( 'F294 T4. the label of a property stands at the left of its field in every field of the column, not only in a field that is the direct child of the form - the fields stand in the group of a place or of an own text -, from 22 rem of the column on; narrower the field stands under it, which is the rule of the workbench for a narrow form',
+	/@container builder-props \(min-width: 22rem\) \{\s*\.builder-props \.nino-admin-field \{\s*display: grid;\s*grid-template-columns: minmax\(6rem, 9rem\) minmax\(0, 1fr\);/.test( sheet ) === true && /30rem/.test( sheet.slice( sheet.indexOf( '@container builder-props' ), sheet.indexOf( '@container builder-props' ) + 400 ) ) === false
+	&& sheet.indexOf( '.nino-admin-dialog-fields > .nino-admin-field {' ) === -1 );
+check( 'F294 T5. the advanced part has no id row for a component below a section and is not there where nothing else is in it: it is asked by advancedWants() - the id of a section of a page, the html of the one who develops, the way to the editor of the blocks -, and a component with no part at all says so in one line',
+	has( /const advancedWants = function\( rel \)/ ) === true && has( /S\.level >= 2 && advancedWants\( rel \) === true \)\s*sections\.push\( \{ key : 'advanced'/ ) === true
+	&& has( /const id = rel === 'root' && S\.sheet === 'page' \? Object\.keys/ ) === true && has( /if\( sections\.length === 0 \) \{\s*holder\.appendChild\( el\( 'p', 'builder-props-none', word\('box\/none'\) \) \);/ ) === true
+	&& word( de, 'box/none' ) !== '' && word( en, 'box/none' ) !== '' );
+check( 'F294 T6. the heading of the tab of the frames says "Standard-Auswahl der Seite" and "Default choice of the site" - the word "Rahmen" in the other words of the panel is not part of it',
+	word( de, 'frame/title' ) === 'Standard-Auswahl der Seite' && word( en, 'frame/title' ) === 'Default choice of the site' );
 
 done();

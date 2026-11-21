@@ -86,21 +86,51 @@
 	grid-column: 1 / -1;
 }
 
-/* The management of the variants: a name, up, down, delete in a row */
-.builder-var-manage {
+/* The variants of the block: one row each - the name, which is chosen to edit that variant, and its buttons, which stay in view whatever their number */
+.builder-var-list {
 	display: grid;
-	gap: var(--nino-admin-space-3);
+	gap: var(--nino-admin-space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
 .builder-var-row {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto auto auto;
-	align-items: end;
+	display: flex;
+	align-items: center;
 	gap: var(--nino-admin-space-2);
+	border: 1px solid var(--editor-separator);
+	border-radius: var(--editor-radius-sm);
+	padding: var(--nino-admin-space-1) var(--nino-admin-space-2);
 }
 
-.builder-var-row > :first-child {
-	grid-column: 1;
+.builder-var-row:has( .builder-var-pick[aria-current="true"] ) {
+	border-color: var(--editor-blue);
+	background: var(--editor-blue-soft);
+}
+
+.builder-var-pick {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--nino-admin-space-2);
+	min-height: 2rem;
+	padding: 0 var(--nino-admin-space-1);
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.builder-var-actions {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: var(--nino-admin-space-1);
 }
 
 /* The pictures of the block: one group each, quiet */
@@ -255,4 +285,15 @@
 	gap: var(--nino-admin-space-2);
 	margin: 0;
 	padding-left: 1.2em;
+}
+
+/* A double click on a row of the list of the blocks marks no text: the row opens the block - a field in it stays as it is */
+#themelab-list .nino-admin-table tbody tr[data-row] {
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+#themelab-list .nino-admin-table tbody tr[data-row] :is(input, textarea, select) {
+	-webkit-user-select: text;
+	user-select: text;
 }

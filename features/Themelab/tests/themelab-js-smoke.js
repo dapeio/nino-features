@@ -334,15 +334,23 @@ const opened = function( options ) {
 const LIST = function( extra ) {
 
 	return Object.assign( {
-		tab : 'project', theme : { name : 'Nino', version : '1.2.0', origin : 'package' }, counts : { blocks : 2, frames : 2 },
+		tab : 'blocks', theme : { key : 'nino', name : 'Nino', version : '1.2.0', origin : 'package' }, sources : [ { key : 'nino', label : { en_US : 'Nino', de_DE : 'Nino' }, theme : true } ], counts : { blocks : 2, frames : 2 },
 		blocks : [
-			{ key : 'karten', name : { de_DE : 'Karten', en_US : 'Cards' }, description : { de_DE : 'Vier Karten', en_US : 'Four cards' }, category : 'content', group : 'content', variants : 2, variantNames : [ { de_DE : 'Standard', en_US : 'Standard' }, { de_DE : 'Dunkel', en_US : 'Dark' } ], rank : 900 },
-			{ key : 'held', name : 'Held', category : 'intro', group : 'intro', variants : 0, rank : 900 },
+			{ key : 'karten', name : { de_DE : 'Karten', en_US : 'Cards' }, description : { de_DE : 'Vier Karten', en_US : 'Four cards' }, category : 'content', group : 'content', variants : 2, variantNames : [ { de_DE : 'Standard', en_US : 'Standard' }, { de_DE : 'Dunkel', en_US : 'Dark' } ], rank : 900, origin : 'project', own : true, openable : true },
+			{ key : 'held', name : 'Held', category : 'intro', group : 'intro', variants : 0, rank : 900, origin : 'project', own : true, openable : true },
 		],
 		library : [ { key : 'hero-full', name : { en_US : 'Hero' }, origin : { en_US : 'Basis' }, own : false }, { key : 'karten', name : { en_US : 'Cards' }, origin : { en_US : 'Project' }, own : true } ],
 		categories : [ 'intro', 'content', 'trust', 'offer', 'action', 'contact' ],
 		contentLocale : 'de_DE', native : 'de_DE', locales : LOCALES, dir : '', shell : true, site : 'example.test', package : { bytes : 2097152, version : '1.0.0', name : { de_DE : 'Blocks von %s', en_US : 'Blocks of %s' } }, copy : { de_DE : ' Kopie', en_US : ' copy', fr_FR : ' copie' }, fresh : { de_DE : 'Neuer Block', en_US : 'New block', fr_FR : 'Nouveau bloc' },
 	}, extra ?? {} );
+};
+
+/** The list as the server answers it where the blocks are the theme's: the same rows, as those of the theme in use - the choice of the source is what shows them */
+const THEME = function( extra ) {
+
+	const own = LIST();
+
+	return LIST( Object.assign( { blocks : own.blocks.map( function( block ) { return Object.assign( {}, block, { origin : 'nino', own : false, openable : true } ) } ) }, extra ?? {} ) );
 };
 
 /** The panel shown at an address, the list asked for and answered */
@@ -380,15 +388,16 @@ const typed = function( dialog, values ) {
 	const rows = rowsOfList( w );
 
 	check( 'A. the panel asks for the list of the tab the address names, in the language of the workbench, and draws a row for each block: its preview, its name with its key quietly under it, its category in words, its number of variants',
-		asked.action === 'themelab/list' && asked.payload.tab === 'project' && asked.payload.locale === 'de_DE' && rows.length === 2 && textOf( rows[0] ).indexOf('Cards') !== -1 && textOf( rows[0] ).indexOf('karten') !== -1 && textOf( rows[0] ).indexOf( W('cat/content') ) !== -1 && textOf( rows[0] ).indexOf('2') !== -1
+		asked.action === 'themelab/list' && asked.payload.tab === 'blocks' && asked.payload.locale === 'de_DE' && rows.length === 2 && textOf( rows[0] ).indexOf('Cards') !== -1 && textOf( rows[0] ).indexOf('karten') !== -1 && textOf( rows[0] ).indexOf( W('cat/content') ) !== -1 && textOf( rows[0] ).indexOf('2') !== -1
 		&& rows[0].querySelector('.themelab-tile') !== null );
-	const stepsOf = function( x ) { return findAll( x.page, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-steps-step') !== -1 } ) };
+	const choiceOf = function( x ) { return findAll( x.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0] };
+	const optionsOf = function( select ) { return findAll( select, function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value+ '='+ textOf( el ) } ).join() };
 
-	check( 'A. the tabs are the blocks, the frames and the theme; the own blocks and those of the theme in use are one switch in the first tab - the own ones first - and the switch is not there without a theme in use', ( function() {
-		const none = shown( '#themelab', LIST( { theme : null } ) ).w;
+	check( 'A. the tabs are the blocks, the frames and the theme; where the blocks come from is a choice beside the search - all, the own ones, and each source by its name - and the choice is the one of the own blocks to begin with', ( function() {
+		const none = shown( '#themelab', LIST( { theme : null, sources : [] } ) ).w;
 
 		return tabsOf( w ).join() === W('tab/blocks')+ ','+ W('tab/frames')+ ','+ W('tab/info') && tabsOf( none ).join() === tabsOf( w ).join()
-			&& stepsOf( w ).map( textOf ).join() === W('tab/project')+ ','+ W( 'tab/theme', 'Nino' ) && stepsOf( none ).length === 0;
+			&& optionsOf( choiceOf( w ) ) === 'all='+ W('source/all')+ ',own='+ W('tab/project')+ ',nino='+ W( 'tab/theme', 'Nino' ) && choiceOf( w ).value === 'own' && optionsOf( choiceOf( none ) ) === 'all='+ W('source/all')+ ',own='+ W('tab/project');
 	} )() );
 	check( 'A. the third tab is the theme in use and only reads: its name, version and origin, how many blocks and frames the project has, and what a theme package will hold - with a (?) that says export and import follow, and no button, no field, no bar of actions', ( function() {
 		const x = shown( '#themelab/@theme', LIST( { tab : 'info' } ) );
@@ -399,19 +408,41 @@ const typed = function( dialog, values ) {
 		return request( x.w, 'themelab/list' ).payload.tab === 'info' && page.indexOf('1.2.0') !== -1 && page.indexOf( W('info/origin-package') ) !== -1 && page.indexOf( W('info/package-design') ) !== -1 && writing.length === 0 && page.indexOf( W('new/button') ) === -1;
 	} )() );
 	check( 'A. a block of the project has three things to do in its row - duplicate, rename, delete - and each is named for the block; one of the theme has one: copy it as a block of the project', ( function() {
-		const theme = shown( '#themelab/@theme-blocks', LIST( { tab : 'theme' } ) ).w;
+		const theme = shown( '#themelab/@blocks/nino', THEME() ).w;
 		const mine = labelsOf( rowsOfList( w )[0] );
 		const theirs = labelsOf( rowsOfList( theme )[0] );
 
 		return mine.length === 3 && mine[0].indexOf('Cards') !== -1 && mine[2].indexOf('Cards') !== -1 && theirs.length === 1 && theirs[0] === W( 'row/copy', 'Cards' );
 	} )() );
+	check( 'F294 T1. the choice of the source stands at the left of the search - before it in the toolbar - and filters at once with the search: all shows the own rows with their actions and those of the theme with the way to open and copy and the source named in the row, one source only its own rows; the choice is in the address and is kept - none of the tools of the own blocks is there for the rows of a theme', ( function() {
+		const mixed = function() { return LIST( { blocks : LIST().blocks.concat( THEME().blocks.map( function( block ) { return Object.assign( {}, block, { key : 't-'+ block.key } ) } ) ) } ) };
+		const all = shown( '#themelab/@blocks/all', mixed() ).w;
+		const bar = findAll( all.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' || el.tagName === 'INPUT' && /nino-admin-(table-)?search|search/.test( String( el.className )+ String( el.attributes['aria-label'] ?? '' )+ String( el.attributes.placeholder ?? '' ) ) } );
+		const rowsAll = rowsOfList( all );
+		const ownTools = rowsAll.filter( function( row ) { return labelsOf( row ).length === 3 } ).length;
+		const themeTools = rowsAll.filter( function( row ) { return labelsOf( row ).length === 1 } ).length;
+		const origin = rowsAll.filter( function( row ) { return findAll( row, function( el ) { return String( el.className ).indexOf('builder-cell-origin') !== -1 } ).length === 1 } ).length;
+		const own = shown( '#themelab', mixed() ).w;
+		const ownBar = findAll( own.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('new/button') ) !== -1 } ).length;
+		const select = choiceOf( own );
+
+		select.value = 'nino';
+		fire( select, 'change' );
+
+		const redrawn = own.state.hash === '#themelab/@blocks/nino';
+		const theme = shown( '#themelab/@blocks/nino', mixed() ).w;
+		const selects = findAll( theme.page, function( el ) { return el.tagName === 'INPUT' && el.attributes.type === 'checkbox' } ).length;
+		const toolbar = findAll( theme.page, function( el ) { return el.tagName === 'BUTTON' && ( textOf( el ).indexOf( W('new/button') ) !== -1 || textOf( el ).indexOf( W('export/button') ) !== -1 ) } ).length;
+
+		return bar.length === 2 && bar[0].tagName === 'SELECT' && rowsAll.length === 4 && ownTools === 2 && themeTools === 2 && origin === 4 && ownBar > 0 && redrawn === true && selects === 0 && toolbar === 0 && choiceOf( shown( '#themelab', mixed() ).w ) !== undefined;
+	} )() );
 	check( 'A. a list with no block says so - the project and the theme each in its words - and has the button of a new block', ( function() {
 		const empty = shown( '#themelab', LIST( { blocks : [] } ) ).w;
-		const none = shown( '#themelab/@theme-blocks', LIST( { blocks : [], tab : 'theme' } ) ).w;
+		const none = shown( '#themelab/@blocks/nino', THEME( { blocks : [] } ) ).w;
 
 		return textOf( empty.page ).indexOf( W('msg/none-project') ) !== -1 && textOf( none.page ).indexOf( W('msg/none-theme') ) !== -1 && findAll( empty.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ) === W('new/button') } ).length === 1;
 	} )() );
-	check( 'A. a click on a row opens the block on the tab it is on, and a click on the other tab goes to the list of that tab', ( function() {
+	check( 'A. a click on a row opens the block, and the choice of another source is the address of the list of that source', ( function() {
 		const x = shown('#themelab');
 
 		fire( rowsOfList( x.w )[0], 'click' );
@@ -419,9 +450,12 @@ const typed = function( dialog, values ) {
 		const opened = x.w.state.hash === '#themelab/karten' && request( x.w, 'themelab/open' ) !== undefined && request( x.w, 'themelab/open' ).payload.key === 'karten';
 		const theme = shown('#themelab');
 
-		fire( stepsOf( theme.w )[1], 'click' );
+		const select = findAll( theme.w.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0];
 
-		return opened === true && theme.w.state.hash === '#themelab/@theme-blocks';
+		select.value = 'nino';
+		fire( select, 'change' );
+
+		return opened === true && theme.w.state.hash === '#themelab/@blocks/nino';
 	} )() );
 }
 
@@ -496,7 +530,7 @@ const typed = function( dialog, values ) {
 		return said.indexOf( W( 'delete/message', 'Cards' ) ) !== -1 && removal !== undefined && removal.payload.key === 'karten';
 	} )() );
 
-	const theme = shown( '#themelab/@theme-blocks', LIST( { tab : 'theme' } ) ).w;
+	const theme = shown( '#themelab/@blocks/nino', THEME() ).w;
 
 	fire( findAll( rowsOfList( theme )[0], function( el ) { return el.tagName === 'BUTTON' } )[0], 'click' );
 	typed( dialogOf( theme ), [ 'Eigen', 'Own' ] );
@@ -1308,31 +1342,45 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 		sheet.extra = keep.extra;
 	} )();
 
-	chooseVariant( W('variants/manage') );
+	// the variants are one overview: a row each, chosen to edit, with the buttons of the row; the first is the standard and has no way to move or to go - and "Manage variants" is no more
+	fire( sheet.view.bar.buttons.variant, 'click' );
 
 	const manage = dialogOf( w );
-	const names = findAll( manage, function( el ) { return el.tagName === 'INPUT' } ).map( function( input ) { return input.value } );
+	const rowsOfOverview = findAll( manage, function( el ) { return el.tagName === 'LI' && String( el.className ).indexOf('builder-var-row') !== -1 } );
+	const buttonsOf = function( row ) { return findAll( row, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-var-pick') === -1 } ).map( function( el ) { return String( el.attributes['aria-label'] ?? '' )+ ( el.disabled === true ? '!' : '' ) } ) };
 
-	check( 'E. the variants are managed in a dialog of their own: each has its name, the first is the template and has no way to move or to go, the others have up, down and delete',
-		names.join('|') === 'Standard|Rechts|Gross' );
+	check( 'E. the variants are one overview of rows - the standard first, then the others by their names - each chosen by a press on it, and each of the project\'s with a button to rename, up, down and delete, named for the variant; there is no "Manage variants" - the first has no way to move or to go: its up, down and delete are off',
+		rowsOfOverview.map( function( row ) { return row.dataset.variant } ).join('|') === 'standard|right|gross' && buttonsOf( rowsOfOverview[0] ).length === 4 && buttonsOf( rowsOfOverview[0] ).slice( 1 ).every( function( name ) { return name.slice( -1 ) === '!' } ) === true
+		&& buttonsOf( rowsOfOverview[2] ).every( function( name ) { return name.slice( -1 ) !== '!' || name.indexOf( 'down' ) !== -1 || name.indexOf( 'Down' ) !== -1 || name.indexOf( 'unten' ) !== -1 } ) === true && textOf( manage ).indexOf( 'Manage' ) === -1 && textOf( manage ).indexOf( 'verwalten' ) === -1 );
 
-	// the first variant is the template and keeps its place, and it has a name that can be changed like any other
-	const firstField = findAll( manage, function( el ) { return el.tagName === 'INPUT' } )[0];
+	// the first variant is the standard and keeps its place, and it has a name that can be changed like any other: in the dialog of the name of a new variant
 	const before = model.snap();
 	const undoWas = sheet.undo.slice();
 
-	firstField.value = 'Normal';
-	fire( firstField, 'change' );
+	fire( findAll( rowsOfOverview[0], function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Rename' ) !== -1 } )[0], 'click' );
+	fire( manage, 'close' );
 
-	check( 'E. the standard variant is named in the same dialog as the others - the name is for the language of the work and for the languages that had the same word - and it stays the first and the template',
-		sheet.extra.vars[0].name === 'standard' && sheet.extra.vars[0].label.en_US === 'Normal' && sheet.extra.vars[0].label.de_DE === 'Normal' && sheet.extra.vars.length === 3 && sheet.extra.edited !== undefined );
+	const renaming = dialogOf( w );
 
-	// the name goes back in place - the dialog holds the sheet's own list - and the step of the undo goes with it
+	typed( renaming, [ 'Normal', 'Normal' ] );
+	pressed( renaming, W('variants/edit-submit') );
+	fire( renaming, 'close' );
+
+	while( w.timers.length > 0 )
+		w.timers.shift()();
+
+	check( 'E. the standard variant is named in the dialog of the name - the same as a new variant has -, in each language, and it stays the first and keeps its set; the overview is open again after it',
+		sheet.extra.vars[0].name === 'standard' && sheet.extra.vars[0].label.en_US === 'Normal' && sheet.extra.vars[0].label.de_DE === 'Normal' && sheet.extra.vars.length === 3 && sheet.extra.edited !== undefined && textOf( dialogOf( w ) ).indexOf( W('variants/menu-title') ) !== -1 );
+
+	// the name goes back in place - and the step of the undo goes with it
 	Object.assign( sheet.extra.vars[0].label, before.extra.vars[0].label );
 	sheet.undo.length = undoWas.length;
 	sheet.redo.length = 0;
 
-	const trash = findAll( manage, function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Gross' ) !== -1 && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Delete' ) !== -1 } )[0];
+	const manage2 = dialogOf( w );
+	const trashed = findAll( manage2, function( el ) { return el.tagName === 'LI' && el.dataset.variant === 'gross' } )[0];
+
+	const trash = findAll( trashed, function( el ) { return el.tagName === 'BUTTON' && String( el.attributes['aria-label'] ?? '' ).indexOf( 'Delete' ) !== -1 } )[0];
 
 	fire( trash, 'click' );
 	pressed( dialogOf( w ), W('variants/delete-yes') );
@@ -1343,7 +1391,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 	// every row of the lightbox says where it writes: a look the set of this variant, the rest every variant - and what it says is where the change goes
 	// the management of the variants is still open under the question that was answered: it is closed, as a person does with Close
-	fire( w.dialogs.filter( function( one ) { return textOf( one ).indexOf( W('variants/manage-title') ) === 0 } ).pop(), 'close' );
+	fire( w.dialogs.filter( function( one ) { return textOf( one ).indexOf( W('variants/menu-title') ) === 0 } ).pop(), 'close' );
 
 	chooseVariant( 'Rechts' );
 
@@ -1505,7 +1553,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 	const boxes = rowBoxes( w.page );
 	const button = function( id ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && el.id === id } )[0] };
 	const importBar = button('themelab-import');
-	const on = shown( '#themelab', LIST( { tab : 'theme' } ) ).w;
+	const on = shown( '#themelab/@blocks/nino', THEME() ).w;
 	const barButton = function( label ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === label } ).filter( function( el ) { return String( el.className ).indexOf('nino-admin-btn') !== -1 && el.id === '' } )[0] };
 
 	check( 'F. the list of the own blocks is chosen by the workbench\'s table: a box at each row, named for its block, and a quiet button of the import beside "New block" - no button of the export of its own; the theme\'s list has no box and no import',
@@ -1713,7 +1761,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 // The block of a frame stands in the list of the own blocks as the block of a frame: its category is the frame's, its picture is the tile of its frame - asked the way
 // of the frames, naming the template - and a press on the row opens the editor, as for any own block; the details, which the pencil opens, do not ask for a category
 {
-	const list = LIST( { counts : { blocks : 2, frames : 2, frameBlocks : 1 }, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'frame', group : 'frame', variants : 0, rank : 0, frame : true, template : 'frame-header' } ] ) } );
+	const list = LIST( { counts : { blocks : 2, frames : 2, frameBlocks : 1 }, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'frame', group : 'frame', variants : 0, rank : 0, frame : true, template : 'frame-header', origin : 'project', own : true, openable : true } ] ) } );
 	const { w } = shown( '#themelab', list );
 	const head = rowsOfList( w ).find( function( row ) { return row.dataset.row === 'mein-kopf' } );
 	const tiles = asked( w, 'themelab/frame-tile' ).concat( asked( w, 'themelab/tile' ) ).map( function( entry ) { return entry.action+ ':'+ entry.payload.key+ ':'+ ( entry.payload.template ?? '' ) } );
@@ -2041,16 +2089,16 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 		check( 'K. the block "'+ key+ '" of the project opens its editor by #themelab/'+ key, opened !== undefined && opened.payload.key === key && own.state.hash === '#themelab/'+ key );
 	} );
 
-	const tabs = [ [ '@frames', 'frames' ], [ '@theme', 'info' ], [ '@theme-blocks', 'theme' ] ].map( function( pair ) {
+	const tabs = [ [ '@frames', 'frames', '@frames' ], [ '@theme', 'info', '@theme' ], [ '@theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( pair ) {
 
 		const w = shown( '#themelab/'+ pair[0], LIST( { tab : pair[1], frames : [], ownKeys : [ 'karten', 'frames', 'theme', 'theme-blocks' ] } ) ).w;
 
-		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab/'+ pair[0];
+		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab/'+ pair[2];
 	} );
 
-	check( 'K. the tabs are at #themelab/@frames, #themelab/@theme and #themelab/@theme-blocks, whatever blocks the project has: no editor opens', tabs.join() === 'true,true,true' );
+	check( 'K. the tabs are at #themelab/@frames and #themelab/@theme, the theme\'s blocks at #themelab/@blocks/nino - the address #themelab/@theme-blocks of before is written so -, whatever blocks the project has: no editor opens', tabs.join() === 'true,true,true' );
 
-	const old = [ [ 'frames', 'frames', '@frames' ], [ 'theme', 'info', '@theme' ], [ 'theme-blocks', 'theme', '@theme-blocks' ] ].map( function( triple ) {
+	const old = [ [ 'frames', 'frames', '@frames' ], [ 'theme', 'info', '@theme' ], [ 'theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( triple ) {
 
 		const w = shown( '#themelab/'+ triple[0], LIST( { tab : triple[1], frames : [], ownKeys : [ 'karten' ] } ) ).w;
 
@@ -2125,6 +2173,16 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	fire( sheet.view.bar.buttons.details, 'click' );
 
 	check( 'M. a block whose calls read no text of the website says so', textOf( dialogOf( w ) ).indexOf( W('details/reads') ) !== -1 && ( function() { const again = dialogOf( w ); findAll( again, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/reads') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } ); return textOf( again ).indexOf( W('details/reads-none') ) !== -1; } )() );
+}
+
+{
+	const css = fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' );
+	const script = fs.readFileSync( scriptPath, 'utf8' );
+	const variantWords = function( code ) { return [ ...fs.readFileSync( path.join( featureDir, 'text/'+ code+ '.php' ), 'utf8' ).matchAll( /\[\[\/_admin\/themelab\/(variants\/[a-z-]+)\]\]'\s*=> '([^']*)'/g ) ] };
+
+	check( 'F294 T3. the overview of the variants is a list of rows - not a table, which folds from four actions - with the buttons always in view, a row with the name to choose it and the buttons to rename, move and delete; the word "Vorlage" / "template" is in no word of the variants, and "Manage variants" and the dialog of it are no more',
+		/\.builder-var-row \{\s*display: flex;/.test( css ) === true && /\.builder-var-actions \{\s*flex: 0 0 auto;\s*display: flex;/.test( css ) === true && /\.builder-var-pick \{[^}]*min-height: 2rem;/.test( css ) === true
+		&& script.indexOf('askManage') === -1 && script.indexOf('variants/manage') === -1 && [ 'de_DE', 'en_US' ].every( function( code ) { return variantWords( code ).length > 20 && variantWords( code ).every( function( pair ) { return /Vorlage|template|Manage|verwalten/i.test( pair[2] ) === false && /manage/.test( pair[1] ) === false } ) } ) );
 }
 
 done();

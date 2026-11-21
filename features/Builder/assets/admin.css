@@ -31,7 +31,7 @@
 	color: var(--editor-orange-ink);
 }
 
-:is( #builder-app, #themelab-app ) .builder-cell-file {
+:is( #builder-app, #themelab-app ) :is( .builder-cell-file, .builder-cell-origin ) {
 	color: var(--editor-text-secondary);
 	font-size: var(--nino-admin-text-xs);
 	overflow-wrap: anywhere;
@@ -798,22 +798,24 @@
 	overflow-wrap: anywhere;
 }
 
-/* A label at the left and the field at the right where the column is wide enough for both - the grid of the workbench's dialog of a form, which is no dialog here; narrower, one under the other */
-@container builder-props (min-width: 30rem) {
+/* A label at the left and the field at the right where the column is wide enough for both - the grid of the workbench's dialog of a form, which is no dialog here. 22 rem of column is what a
+   label of 6 to 9 rem and a field of 12 rem need; the column that holds the properties is given that much - the preview gives way, down to 46 rem of view, where the column is the whole
+   view and the rule of the workbench for a narrow form is the one that stands: one under the other */
+@container builder-props (min-width: 22rem) {
 
-	.builder-props .nino-admin-dialog-fields > .nino-admin-field {
+	.builder-props .nino-admin-field {
 		display: grid;
-		grid-template-columns: minmax(6.5rem, 9.5rem) minmax(0, 1fr);
+		grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr);
 		align-items: center;
 		gap: var(--nino-admin-space-4);
 	}
 
-	.builder-props .nino-admin-dialog-fields > .nino-admin-field > span {
+	.builder-props .nino-admin-field > span:first-child {
 		margin: 0;
 	}
 
-	.builder-props .nino-admin-dialog-fields > .nino-admin-field-error {
-		margin-left: calc(9.5rem + var(--nino-admin-space-4));
+	.builder-props .nino-admin-field-error {
+		margin-left: calc(9rem + var(--nino-admin-space-4));
 	}
 }
 
@@ -912,4 +914,19 @@
 .builder-framechoice-word {
 	display: block;
 	overflow-wrap: anywhere;
+}
+
+/* A double click on a row of a tree, of the outline or of a list opens what the row is for and marks no text: the words of a row are not there to be chosen - a field in it stays as it is.
+   The tree is the workbench's and no class of it is named here: its two places in this feature are, and the rows are in them */
+.builder-adv-tree,
+#builder-outline,
+.builder-list-row,
+#builder-list .nino-admin-table tbody tr[data-row] {
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+:is(.builder-adv-tree, #builder-outline, #builder-list .nino-admin-table tbody tr[data-row]) :is(input, textarea, select) {
+	-webkit-user-select: text;
+	user-select: text;
 }

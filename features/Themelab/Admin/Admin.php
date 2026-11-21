@@ -408,11 +408,32 @@ namespace Nino\Modules\Themelab {
 
 			$theme = Sheet::theme( $appData );
 			$asked = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'tab' );
-			$tab = in_array( $asked, [ 'frames', 'info' ], true ) === true ? $asked : ( $asked === 'theme' && $theme !== null ? 'theme' : 'project' );
+			$tab = in_array( $asked, [ 'frames', 'info' ], true ) === true ? $asked : 'blocks';
 			$blocks = [];
+			$origins = [];
 
-			foreach( $tab === 'frames' || $tab === 'info' ? [] : Sheet::listed( $appData, $tab === 'theme' ? $theme['key'] : 'project', $tab !== 'theme' ) as $key => $block )
-				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'description' => $block['description'], 'category' => (string) $block['category'], 'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'variantNames' => array_values( array_map( static fn( array $variant ): array => array_map( 'strval', (array) $variant['label'] ), (array) ( $block['alternatives'] ?? [] ) ) ), 'rank' => (int) $block['rank'], 'frame' => ( $block['wrap'] ?? Library::PAGE ) !== Library::PAGE, 'template' => ( $block['wrap'] ?? '' ) === 'header-wrap' ? \Nino\Modules\Builder\Store::FRAMES['header'] : ( ( $block['wrap'] ?? '' ) === 'footer-wrap' ? \Nino\Modules\Builder\Store::FRAMES['footer'] : '' ) ];
+			// Every block the list can show - the project's own, those of the theme in use, those of any other source - each with where it comes from: the list is filtered in the browser by the
+			// choice beside the search. The block of a frame is listed only where it is the project's; the editor opens the project's and the theme's
+			foreach( $tab === 'blocks' ? Sheet::listed( $appData, '', true ) : [] as $key => $block ) {
+
+				$own = (string) $block['origin'] === 'project';
+				$page = ( $block['wrap'] ?? Library::PAGE ) === Library::PAGE;
+
+				if( $page === false && $own === false )
+					continue;
+
+				if( $own === false && isset( $origins[(string) $block['origin']] ) === false )
+					$origins[(string) $block['origin']] = $theme !== null && (string) $block['origin'] === $theme['key'] ? $theme['name'] : ( is_array( $block['label'] ?? null ) === true ? $block['label'] : (string) ( $block['label'] ?? $block['origin'] ) );
+
+				$blocks[] = [ 'key' => $key, 'name' => $block['name'], 'description' => $block['description'], 'category' => (string) $block['category'], 'group' => Library::group( $appData, (string) $key, $block ), 'variants' => count( (array) ( $block['alternatives'] ?? [] ) ), 'variantNames' => array_values( array_map( static fn( array $variant ): array => array_map( 'strval', (array) $variant['label'] ), (array) ( $block['alternatives'] ?? [] ) ) ), 'rank' => (int) $block['rank'], 'frame' => $page === false, 'template' => ( $block['wrap'] ?? '' ) === 'header-wrap' ? \Nino\Modules\Builder\Store::FRAMES['header'] : ( ( $block['wrap'] ?? '' ) === 'footer-wrap' ? \Nino\Modules\Builder\Store::FRAMES['footer'] : '' ), 'origin' => (string) $block['origin'], 'own' => $own, 'openable' => $own === true || ( $theme !== null && (string) $block['origin'] === $theme['key'] ) ];
+			}
+
+			$sources = [];
+
+			foreach( $origins as $origin => $label )
+				$sources[] = [ 'key' => (string) $origin, 'label' => $label, 'theme' => $theme !== null && (string) $origin === $theme['key'] ];
+
+			usort( $sources, static fn( array $one, array $other ): int => [ $other['theme'], is_array( $one['label'] ) === true ? (string) reset( $one['label'] ) : (string) $one['label'] ] <=> [ $one['theme'], is_array( $other['label'] ) === true ? (string) reset( $other['label'] ) : (string) $other['label'] ] );
 
 			usort( $blocks, static fn( array $one, array $other ): int => $one['rank'] <=> $other['rank'] ?: strcmp( $one['key'], $other['key'] ) );
 
@@ -423,11 +444,12 @@ namespace Nino\Modules\Themelab {
 
 			\Nino\Http::ok( $request, [
 				'tab'				=> $tab,
-				'theme'			=> $theme === null ? null : [ 'name' => $theme['name'], 'version' => $theme['version'], 'origin' => $theme['origin'] ],
+				'sources'		=> $sources,
+				'theme'			=> $theme === null ? null : [ 'key' => $theme['key'], 'name' => $theme['name'], 'version' => $theme['version'], 'origin' => $theme['origin'] ],
 				// What the project holds of its own, for the page of the theme: the blocks and the frames
 				'counts'		=> [ 'blocks' => count( Sheet::listed( $appData, 'project' ) ), 'frames' => count( Frames::listed( $appData ) ), 'frameBlocks' => count( Sheet::listed( $appData, 'project', true ) ) - count( Sheet::listed( $appData, 'project' ) ) ],
 				'blocks'		=> $blocks,
-				'ownKeys'		=> array_map( 'strval', array_keys( Sheet::listed( $appData, 'project' ) ) ),
+				'ownKeys'		=> array_map( 'strval', array_keys( array_filter( Sheet::listed( $appData, '', true ), static fn( array $block ): bool => (string) $block['origin'] === 'project' || ( $theme !== null && (string) $block['origin'] === $theme['key'] ) ) ) ),
 				'frames'		=> Frames::listed( $appData, $locale ),
 				'library'		=> $library,
 				'categories'	=> array_values( array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ) ),

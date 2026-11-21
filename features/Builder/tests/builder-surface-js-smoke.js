@@ -544,7 +544,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return { dialog : x.w.dialogs[x.w.dialogs.length - 1], back : back, opener : opener, close : function() { const dialog = x.w.dialogs[x.w.dialogs.length - 1]; fire( dialog, 'close' ) } };
 	};
 
-	check( 'E. the lightbox is one dialog of the workbench in the size of a form with the title "<kind> edit", and its sections stand in the fixed order - the source first, and open, where the content comes from one, then the content, how it looks, the advanced part - each only where it has something to show (the title of its own has no source, the column has neither source nor content)', ( function() {
+	check( 'E. the lightbox is one dialog of the workbench in the size of a form with the title "<kind> edit", and its sections stand in the fixed order - the source first, and open, where the content comes from one, then the content, how it looks, the advanced part - each only where it has something to show (the title of its own has no source, the column has neither source nor content, and none of them has an advanced part: the id of a component below the section is no row)', ( function() {
 		const x = world2( 3 );
 		const field = open( x, '3.1' );
 		const fieldHeads = names( field.dialog );
@@ -560,10 +560,48 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		column.close();
 
-		return fieldHeads.length === 4 && [ 'source', 'content', 'look', 'advanced' ].every( function( key, at ) { return fieldHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } ) && fieldOpen === 'true,false,false,false'
-			&& ownHeads.length === 3 && [ 'content', 'look', 'advanced' ].every( function( key, at ) { return ownHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } )
-			&& columnHeads.length === 2 && columnHeads[0].indexOf( W('box/look') ) === 0 && columnHeads[1].indexOf( W('box/advanced') ) === 0 && form === true && title === W( 'label/edit-component', 'Column' );
+		return fieldHeads.length === 3 && [ 'source', 'content', 'look' ].every( function( key, at ) { return fieldHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } ) && fieldOpen === 'true,false,false'
+			&& ownHeads.length === 2 && [ 'content', 'look' ].every( function( key, at ) { return ownHeads[at].indexOf( W( 'box/'+ key ) ) === 0 } )
+			&& columnHeads.length === 1 && columnHeads[0].indexOf( W('box/look') ) === 0 && form === true && title === W( 'label/edit-component', 'Column' );
 	} )() );
+
+	check( 'F294 T5. the advanced part is where an anchor is read - the id of a section of the page - and nowhere else: a component below it has no "Id" row and no part, the section has both, the id is read and not written, and a section with no id and nothing else says there is nothing to set',
+		( function() {
+			const w = opened( { page : pageAnswer( { tree : tree, level : 3, schemas : Object.assign( {}, pageAnswer().schemas, attributes, { 'section-wrap' : schema( 'Section', 'rows', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' } } } ) } ) } ) } );
+			const x = { w : w, S : w.panel.model.state, model : w.panel.model };
+
+			x.S.hot = '';
+
+			const below = open( x, '3.1' );
+			const belowText = textOf( below.dialog );
+			const belowHeads = names( below.dialog ).join('|');
+			const belowId = findAll( below.dialog, function( el ) { return el.tagName === 'CODE' } ).length;
+			below.close();
+
+			const column = open( x, '5' );
+			const columnHeads = names( column.dialog ).join('|');
+			column.close();
+
+			const section = open( x, 'root' );
+			const sectionHeads = names( section.dialog );
+			const last = heads( section.dialog ).filter( function( head ) { return textOf( head ).indexOf( W('box/advanced') ) === 0 } )[0];
+
+			if( last !== undefined )
+				fire( last, 'click' );
+
+			const rows = findAll( section.dialog, function( el ) { return el.tagName === 'CODE' && String( el.className ).indexOf('builder-field-value') !== -1 } );
+			const inputs = findAll( section.dialog, function( el ) { return el.tagName === 'INPUT' && el.dataset.key !== undefined && /:id$/.test( el.dataset.key ) } ).length;
+
+			section.close();
+
+			const poor = open( world2( 3 ), 'root' );
+			const none = textOf( poor.dialog ).indexOf( W('box/none') ) !== -1 && heads( poor.dialog ).length === 0;
+
+			poor.close();
+
+			return belowHeads.indexOf( W('box/advanced') ) === -1 && belowText.indexOf( W('field/read-id') ) === -1 && belowId === 0 && columnHeads.indexOf( W('box/advanced') ) === -1
+				&& sectionHeads.length === 1 && sectionHeads[0].indexOf( W('box/advanced') ) === 0 && rows.length === 1 && inputs === 0 && none === true;
+		} )() );
 
 	check( 'E. a value that is changed in the lightbox is in the draft at once and is one step of the undo, the lightbox has nothing to apply - Close is its only button - and the undo takes the changes back one by one', ( function() {
 		const x = world2( 3 );
