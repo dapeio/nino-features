@@ -151,4 +151,30 @@ check( 'F294 T5. the advanced part has no id row for a component below a section
 check( 'F294 T6. the heading of the tab of the frames says "Standard-Auswahl der Seite" and "Default choice of the site" - the word "Rahmen" in the other words of the panel is not part of it',
 	word( de, 'frame/title' ) === 'Standard-Auswahl der Seite' && word( en, 'frame/title' ) === 'Default choice of the site' );
 
+{
+	// The word for the head and the foot of a page: in German "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich", in English "header" and "footer" and "header/footer" - the old words are in no text of the
+	// panel and in no line of its manual - a technical name, as frame-header or [frame ...], is no word of it. The exceptions are named by their text, each with its reason
+	const readWords = function( file, locale ) {
+
+		const text = fs.readFileSync( path.join( featureDir, file ), 'utf8' );
+		const pairs = [ ...text.matchAll( /^\t'\[\[([^\]]+)\]\]'\s*=> '((?:[^'\\]|\\.)*)',\s*$/gm ) ].map( function( found ) { return [ found[1], found[2] ] } );
+
+		return pairs;
+	};
+	const manual = function( locale ) {
+
+		return [ ...fs.readFileSync( path.join( featureDir, 'feature.php' ), 'utf8' ).matchAll( new RegExp( "'"+ locale+ "' => '((?:[^'\\\\]|\\\\.)*)'", 'g' ) ) ].map( function( found ) { return [ 'feature.php', found[1] ] } );
+	};
+	const OLD = { de_DE : /Rahmen|\bHeader|\bFooter|Kopfzeile|Fußzeile/, en_US : /\b[Ff]rames?\b/ };
+	const EXCEPTIONS = ['Rahmen um den Block','Frame round the block'];
+	const offending = function( locale ) {
+
+		return readWords( 'text/'+ locale+ '.php', locale ).concat( manual( locale ) ).filter( function( pair ) { return OLD[locale].test( pair[1].replace( /\b(?:frame|header|footer)-[a-z.-]+|\[frame\b[^\]]*\]/g, '' ) ) === true && EXCEPTIONS.indexOf( pair[1] ) === -1 } ).map( function( pair ) { return pair[0] } );
+	};
+	const keysOf = function( locale ) { return readWords( 'text/'+ locale+ '.php', locale ).map( function( pair ) { return pair[0] } ).sort().join() };
+
+	check( 'F296. the words of the Builder say "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich" in German and "header", "footer" and "header/footer" in English: no text of the panel and no line of its manual has "Rahmen", "Header" or "Footer" in German or "frame" in English for the head and the foot of a page, but the exceptions that are named here - and both languages have the same keys',
+		offending('de_DE').length === 0 && offending('en_US').length === 0 && keysOf('de_DE') === keysOf('en_US') && /Kopf-\/Fußbereich/.test( fs.readFileSync( path.join( featureDir, 'text/de_DE.php' ), 'utf8' ) ) === true );
+}
+
 done();

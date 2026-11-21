@@ -13,7 +13,7 @@ return [
 		'markup' => [
 			'themes/nino/' => [
 				'en_US' => 'Nino is the theme that comes with the feature: every knob in the middle, a bar for the header, a dark surface for the footer, a band for sections, a rule below large titles, a hero.',
-				'de_DE' => 'Nino ist das Theme des Features: jeder Regler in der Mitte, ein Balken für den Header, eine dunkle Fläche für den Footer, ein Band für Abschnitte, eine Linie unter großen Titeln, ein Hero.',
+				'de_DE' => 'Nino ist das Theme des Features: jeder Regler in der Mitte, ein Balken für den Kopfbereich, eine dunkle Fläche für den Fußbereich, ein Band für Abschnitte, eine Linie unter großen Titeln, ein Hero.',
 			],
 			'themes/<key>/theme.json' => [
 				'en_US' => 'A theme is a folder with its key, version, name, description and suggestions for the brand; nothing in it is code and the feature reads no file but theme.json, theme.css, part.json and part.css.',

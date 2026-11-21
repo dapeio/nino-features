@@ -335,7 +335,7 @@ ninoUser( $site, 'frame-blocks@example.com', [ '/_admin/themelab/manage' ] );
 ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
 
 check( 'the sentence of a template that cannot be read names the page by the name it has in the language of the view - and a frame, opened in the editor of the blocks, by its own word - and never by the file',
-	$homeNames !== [] && ( $named['params'][0] ?? '' ) === ( $homeNames[0][\Nino\Admin\Admin::contentLocale( $site )] ?? '' ) && ( $named['params'][0] ?? '' ) !== 'page-home' && ( $frameBroken['params'][0] ?? '' ) === 'Header' );
+	$homeNames !== [] && ( $named['params'][0] ?? '' ) === ( $homeNames[0][\Nino\Admin\Admin::contentLocale( $site )] ?? '' ) && ( $named['params'][0] ?? '' ) !== 'page-home' && in_array( $frameBroken['params'][0] ?? '', array_map( static fn( string $locale ): string => (string) ( ( include NINO_FEATURES_DIR. '/Builder/text/'. $locale. '.php' )['[[/_admin/builder/kind/header-wrap]]'] ?? '' ), [ 'de_DE', 'en_US' ] ), true ) === true );
 
 
 // ---------------------------------------------------------------------------------------------------------------------------------

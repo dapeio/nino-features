@@ -16,8 +16,8 @@ return [
 				'de_DE' => 'Die Vorlage einer Seite wird als Folge von Blocks gelesen, je ein Aufruf auf oberster Ebene; freies HTML und Aufrufe ohne Schema stehen als gesperrte Blocks da.',
 			],
 			'frame-header.tpl' => [
-				'en_US' => 'The header and the footer stand in every page as two quiet rows and are written in Themelab, under Frames; their texts and pictures are written in the page.',
-				'de_DE' => 'Header und Footer stehen in jeder Seite als zwei leise Zeilen und werden in Themelab unter Rahmen geschrieben; ihre Texte und Bilder schreibt man in der Seite.',
+				'en_US' => 'The header and the footer stand in every page as two quiet rows and are written in Themelab, under Header/footer; their texts and pictures are written in the page.',
+				'de_DE' => 'Kopfbereich und Fußbereich stehen in jeder Seite als zwei leise Zeilen und werden in Themelab unter Kopf-/Fußbereich geschrieben; ihre Texte und Bilder schreibt man in der Seite.',
 			],
 		],
 		'routes' => [
@@ -44,8 +44,8 @@ return [
 				'de_DE' => 'Der Stift an einer Komponente und eine Zeile des Baums öffnen ihre Eigenschaften in einer Lightbox: Quelle, Inhalt, Aussehen und Erweitert (die Kennung), die letzten beiden für alle, die gestalten.',
 			],
 			'/_admin/builder/*' => [
-				'en_US' => 'Every role needs the door /_admin/builder/manage; content/* allows texts and pictures of the blocks on a page, design/* also putting a page together and designing; frames and html belong to Blocks.',
-				'de_DE' => 'Jede Rolle braucht die Tür /_admin/builder/manage; content/* erlaubt Texte und Bilder der Blocks einer Seite, design/* auch das Zusammensetzen und Gestalten; Rahmen und html gehören zu Blocks.',
+				'en_US' => 'Every role needs the door /_admin/builder/manage; content/* allows texts and pictures of the blocks on a page, design/* also putting together and designing; header/footer and html belong to Blocks.',
+				'de_DE' => 'Jede Rolle braucht die Tür /_admin/builder/manage; content/* erlaubt Texte und Bilder der Blocks einer Seite, design/* auch Zusammensetzen und Gestalten; Kopf-/Fußbereich und html gehören zu Blocks.',
 			],
 			'Variant' => [
 				'en_US' => 'A block of the catalogue with variants has a choice of them in its bar and in its look, for whoever designs; a variant sets looks and keeps the texts and pictures.',
