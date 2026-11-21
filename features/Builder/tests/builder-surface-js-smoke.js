@@ -341,7 +341,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const names = function( node ) { return findAll( node, function( el ) { return el.tagName === 'BUTTON' && ( el.id === 'builder-frames' || el.dataset.key === 'advanced' ) } ).length };
 		const poor = opened( { page : pageAnswer( { level : 1, schemas : undefined } ) } );
 
-		return names( bar ) === 0 && names( poor.view ) === 0 && /openExtended|openFrames|builder-frames/.test( script ) === false && /Nino\.admin\.builder\.go\( *\[[^\]]*@header/.test( script ) === false;
+		return names( bar ) === 0 && names( poor.view ) === 0 && /openExtended|openFrames|(?<!#)builder-frames(?!-list|')/.test( script ) === false && /Nino\.admin\.builder\.go\( *\[[^\]]*@header/.test( script ) === false;
 	} )() );
 }
 

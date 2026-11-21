@@ -187,8 +187,6 @@
 	 */
 	const N = {
 		open		: false,
-		tab			: 'pages',
-		tabFocus	: false,
 		bar			: null,
 		button	: null,
 		taken		: '',
@@ -5406,16 +5404,17 @@
 		paint();
 	};
 
-	// The address of the tab of the frames: #builder/@frames - the @ is what no key of a page has, so that a page called "frames" is a page; like #builder/@new and the @header of a frame
+	// The address of the header and the footer of the site is the tab of the pane, #builder-frames; the address of the tab before, #builder/@frames - the @ is what no key of a page has, so that a page
+	// called "frames" is a page, like #builder/@new and the @header of a frame - leads there
 	const FRAMES_TAB = '@frames';
 
 	const isFramesTab = function( parts ) {
-		return parts.length === 1 && parts[0] === FRAMES_TAB && S.list !== null && S.list.frames.length > 0;
+		return parts.length === 1 && parts[0] === FRAMES_TAB;
 	};
 
-	// The address of the list in the tab that is shown
+	// The address of the list: the pages
 	const tabParts = function() {
-		return N.tab === 'frames' ? [ FRAMES_TAB ] : [];
+		return [];
 	};
 
 	const templateOf = function( part ) {
@@ -11008,6 +11007,22 @@
 		return [ copy, Nino.adminUi.fieldHelp( reason, { name : row.name } ), drop ];
 	};
 
+	// The tab "Header/footer" of the pane: the default choice of the site - drawn from the answer of the list, with the list of the pages. Whoever may not design has no frames in the answer, and a sentence
+	const drawFrames = function( data ) {
+
+		const mount = dc.getElementById('builder-frames-list');
+
+		if( mount === null )
+			return;
+
+		mount.innerHTML = '';
+
+		if( data.frames.length === 0 )
+			mount.appendChild( Nino.adminUi.emptyState( word('frame/empty') ) );
+		else
+			mount.appendChild( framesList( data ) );
+	};
+
 	const render = function( data ) {
 
 		closeSheet();
@@ -11030,34 +11045,12 @@
 				S.frameNames[frame.side][frame.key.slice( frame.side.length + 1 )] = frame.name;
 		} );
 
-		// The two tabs of the list, for the one who designs: the pages, and the frames of the site. A list without frames has no tabs, and the address of the frames is the list of the pages
-		const tabbed = data.frames.length > 0;
-		const tab = tabbed === true && N.tab === 'frames' ? 'frames' : 'pages';
-
 		N.button = null;
-
-		if( tabbed === true ) {
-
-			const strip = Nino.adminUi.tabs( [ { key : 'pages', label : word('tab/pages') }, { key : 'frames', label : word('tab/frames') } ], { active : tab, label : word('tab/label'), id : 'builder-tabs', onSelect : function( key ) {
-
-				if( key !== tab ) {
-					N.tabFocus = true;
-					Nino.admin.builder.go( key === 'frames' ? [ FRAMES_TAB ] : [] );
-				}
-			} } );
-
-			// The strip is part of the list: it goes with the list where a page is opened
-			mount.appendChild( strip.el );
-		}
 
 		mount.appendChild( holder );
 
-		if( tab === 'frames' ) {
-
-			holder.appendChild( framesList( data ) );
-
-			return;
-		}
+		// The header and the footer of the site are the tab beside this one: it is drawn from the same answer
+		drawFrames( data );
 
 		// A page is made by the one who may design and may write routes: the list says so, and the action asks again
 		if( data.pages.length === 0 )
@@ -11193,26 +11186,21 @@
 			N.open = false;
 			N.source = '';
 
-			if( parts.length === 0 || isFramesTab( parts ) === true ) {
+			// The address of the tab of before leads to the tab of the pane
+			if( isFramesTab( parts ) === true ) {
+				// Another panel is shown by the address alone: it replaces the entry of the address of before, so that Back does not lead into it again
+				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( 'builder-frames', [] ) ) }, 0 );
+				return;
+			}
+
+			if( parts.length === 0 ) {
 
 				leaveView();
 
-				const was = N.tab;
-
-				N.tab = parts.length === 0 ? 'pages' : 'frames';
 				S.ready = false;
 				Nino.admin.router.set( 'builder', parts );
 
-				// The tab the address names is drawn where another was
-				if( was !== N.tab && S.list !== null )
-					render( S.list );
-
-				// The tab that was pressed keeps the focus where the list is drawn again: the keys go on from it
-				const pressed = N.tabFocus === true ? dc.getElementById( 'builder-tabs-'+ N.tab ) : null;
-
-				N.tabFocus = false;
-
-				Nino.adminUi.showLevel( 'builder-list', { focus : pressed !== null ? pressed : ( from === true && N.button !== null && N.button.isConnected === true ? N.button : nameOfPanel() ) } );
+				Nino.adminUi.showLevel( 'builder-list', { focus : from === true && N.button !== null && N.button.isConnected === true ? N.button : nameOfPanel() } );
 
 				return;
 			}
@@ -11242,6 +11230,13 @@
 
 			if( Nino.admin.builder.ready === true && at.panel !== 'builder' )
 				return;
+
+			// The address of the tab of before is the address of the tab of the pane
+			// - after the workbench has settled the address it was given: it writes its own over it where it is asked inside the move
+			if( at.panel === 'builder' && isFramesTab( at.parts ) === true ) {
+				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( 'builder-frames', [] ) ) }, 0 );
+				return;
+			}
 
 
 			const proceed = function() { Nino.admin.builder.follow() };

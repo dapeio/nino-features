@@ -88,7 +88,7 @@ return [
 	'[[/_admin/themelab/adopt/button-of]]'	=> 'Save %s as a block of your own',
 	'[[/_admin/themelab/adopt/row]]'	=> 'Save %s as a block',
 	'[[/_admin/themelab/adopt/title]]'	=> 'Save %s as a block',
-	'[[/_admin/themelab/adopt/message]]'	=> 'The header/footer as it is saved is kept as an own block of the category Header/footer. The header/footer of the website stays as it is; the block can replace it again, here and in the Builder in the tab “Header/footer” with “Choose”.',
+	'[[/_admin/themelab/adopt/message]]'	=> 'The header/footer as it is saved is kept as an own block of the category Header/footer. The header/footer of the website stays as it is; the block can replace it again, here and in the Pages panel in the tab “Header/footer” with “Choose”.',
 	'[[/_admin/themelab/adopt/key]]'	=> 'Key',
 	'[[/_admin/themelab/adopt/key-help]]'	=> 'Lower case letters, digits and hyphens; it is the name of the folder of the block and must be free among all blocks.',
 	'[[/_admin/themelab/adopt/description]]'	=> 'Description',

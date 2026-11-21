@@ -19,8 +19,8 @@ return [
 				'de_DE' => 'Der Name, den ein Screenreader der Navigation gibt; ohne ihn das Wort der Website für die Hauptnavigation, im Fußbereich das für die Fußnavigation.',
 			],
 			'header-wrap, footer-col' => [
-				'en_US' => 'The two places the component is offered in: where the header of Basis has its menu, and a column of the footer; in the header, swap header-nav for it in the Builder.',
-				'de_DE' => 'Die zwei Plätze, an denen die Komponente angeboten wird: im Kopfbereich von Basis, wo dessen Menü steht, und in einer Spalte des Fußbereichs; dort tauschst Du header-nav im Builder gegen sie.',
+				'en_US' => 'The two places the component is offered in: where the header of Basis has its menu, and a column of the footer; in the header, swap header-nav for it in Pages.',
+				'de_DE' => 'Die zwei Plätze, an denen die Komponente angeboten wird: im Kopfbereich von Basis, wo dessen Menü steht, und in einer Spalte des Fußbereichs; dort tauschst Du header-nav in Seiten gegen sie.',
 			],
 		],
 		'markup' => [

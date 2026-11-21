@@ -126,6 +126,8 @@ const words = {
 	// The id of a section in its bar: what is wrong with a new one
 	[ 'form', 'long', 'taken', 'why-frame', 'why-block', 'why-content', 'why-locked' ].forEach( function( key ) { asked.add( 'ident/'+ key ) } );
 	asked.add('field/read-id');
+	// What the panel says of itself in PHP: the pane's tabs (the pages, the header and the footer) and the name of the feature at the right
+	[ 'tab/pages', 'tab/frames', 'scope/name' ].forEach( function( key ) { asked.add( key ) } );
 	[ 'pick', 'new', 'fixed', 'page', 'address' ].forEach( function( key ) { asked.add( 'source/tab-'+ key ) } );
 	// Where a text is from, the technical fields of an element and the menus of the starter site
 	[ 'company', 'website', 'mail', 'project', 'common', 'page', 'feature', 'other' ].forEach( function( key ) { asked.add( 'source/area-'+ key ) } );

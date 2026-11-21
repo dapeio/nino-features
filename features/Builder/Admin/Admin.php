@@ -82,7 +82,7 @@ namespace Nino\Modules\Builder {
 					'actions'		=> [ [ 'id' => 'edit', 'label' => '/_admin/builder/scope/'. $area. '-edit', 'perm' => $perm ] ],
 				];
 
-			return [ [ 'scope' => \Nino\Modules\Builder::SCOPE, 'door' => self::perm(), 'label' => '/_admin/builder/nav', 'areas' => $areas ] ];
+			return [ [ 'scope' => \Nino\Modules\Builder::SCOPE, 'door' => self::perm(), 'label' => '/_admin/builder/scope/name', 'areas' => $areas ] ];
 		}
 
 		/**
@@ -103,8 +103,19 @@ namespace Nino\Modules\Builder {
 			return (string) ( $words['[[/_admin/builder/'. $key. ']]'] ?? $key );
 		}
 
+		// The panel is called Pages, in the rail and over the pane - a person who edits the content works on the pages of the site -; the feature, its right and its address keep the name Builder.
+		// The first tab of the pane is the pages, the header and the footer of the site is the tab that follows it
 		public static function nav(): array {
 			return [ 'builder', '/_admin/builder/nav', 61 ];
+		}
+
+		public static function tab(): string {
+			return '/_admin/builder/tab/pages';
+		}
+
+		// The tabs the panel brings: the header and the footer of the site (see FramesTab). The tab of the settings, which the registry attaches to a feature that declares some, comes after it
+		public static function tabs(): array {
+			return [ FramesTab::class ];
 		}
 
 		public static function template(): string {

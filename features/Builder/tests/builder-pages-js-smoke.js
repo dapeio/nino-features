@@ -97,6 +97,7 @@ function world( options ) {
 	const wrap = element('div');
 	const app = element('div');
 	const list = element('div');
+	const frames = element('div');
 	const form = element('div');
 	const view = element('div');
 	const requests = [];
@@ -112,6 +113,7 @@ function world( options ) {
 	wrap.id = 'admin-page-wrap';
 	app.id = 'builder-app';
 	list.id = 'builder-list';
+	frames.id = 'builder-frames-list';
 	form.id = 'builder-new';
 	form.className = 'admin-hidden';
 	view.id = 'builder-page';
@@ -120,6 +122,7 @@ function world( options ) {
 	app.appendChild( form );
 	app.appendChild( view );
 	page.appendChild( app );
+	page.appendChild( frames );
 	page.appendChild( wrap );
 
 	// The pane the panel stands in, with the name of the panel that its heading is
@@ -221,7 +224,7 @@ function world( options ) {
 
 	sandbox.window = {
 		Nino : Nino,
-		location : { hash : '', href : 'http://workbench.test/_admin/' },
+		location : { hash : '', href : 'http://workbench.test/_admin/', replace : function( hash ) { state.hash = hash } },
 		setTimeout : function( fn ) { timers.push( fn ); return timers.length },
 		clearTimeout : function() {},
 	};
@@ -239,7 +242,7 @@ function world( options ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, touched : touched, questions : questions, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, frames : frames, form : form, requests : requests, dialogs : dialogs, said : said, touched : touched, questions : questions, answers : answers, state : state, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -844,16 +847,16 @@ function world( options ) {
 	}
 }
 
-// --- the frames in the list: a header and a footer that are given a block of their kind, without the editor of Themelab -----------------------------------------
+// --- the tab of the frames: a header and a footer that are given a block of their kind, without the editor of Themelab -----------------------------------------
 
 {
 	const frames = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 2, stamp : 'aa', last : 0, undo : false }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 0, stamp : 'bb', last : 1763356920, undo : true } ];
 	const w = world( { list : answer( { frames : frames, bridge : false } ) } );
 
-	w.open('#builder/@frames');
+	w.open('#builder');
 
 	const buttons = function( node ) { return findAll( node, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-btn') !== -1 && el.className.indexOf('nino-admin-btn-icon') === -1 } ).map( textOf ) };
-	const rows = findAll( w.list, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'footer' ) } );
+	const rows = findAll( w.frames, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'footer' ) } );
 
 	check( 'G. the list of the pages has the two frames for the one who designs - a row each, "applies to all pages", with the choice of a block, the way back only where there is a last state, and nothing that names Themelab where Themelab is off',
 		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '2' ) ) ) !== -1 && textOf( rows[1] ).indexOf( W( 'frame/standard', W('frame/uses-none') ) ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 );
@@ -864,10 +867,10 @@ function world( options ) {
 
 	const bridged = world( { list : answer( { frames : frames, bridge : true } ) } );
 
-	bridged.open('#builder/@frames');
+	bridged.open('#builder');
 
 	check( 'G. the account that only writes the content gets no frames from the server and so no row of them; where Themelab is on and the account holds its right each row has "Edit in Themelab" as well',
-		findAll( content.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header' } ).length === 0 && buttons( bridged.list ).filter( function( text ) { return text === W('frame/themelab') } ).length === 2 );
+		findAll( content.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header' } ).length === 0 && buttons( bridged.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 2 );
 
 	// the choice: the blocks of the frame are asked by its template, the dialog names each with where it comes from, the question is asked before anything is written - and the answer yes writes that block
 	fire( findAll( rows[0], function( el ) { return el.tagName === 'BUTTON' && textOf( el ) === W('frame/choose') } )[0], 'click' );
@@ -933,7 +936,7 @@ function world( options ) {
 	}
 }
 
-// --- the two tabs of the list: the pages and the frames of the site ---------------------------------------------------------------------------------------------------
+// --- the pane has the tab of the frames beside the pages: no strip of tabs inside the list, the tab is drawn from the same answer, and the old address leads to it ----------------------------------
 
 {
 	const named = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 3, stamp : 'aa', last : 0, undo : false },
@@ -944,41 +947,36 @@ function world( options ) {
 
 	w.open('#builder');
 
-	check( 'T. the list has two tabs, "Pages" and "Frames", for the one who designs - the pages are shown, and the table of the frames is not', tabs( w.list.parentNode ?? w.list ).map( textOf ).join() === W('tab/pages')+ ','+ W('tab/frames') && w.table() !== null && findAll( w.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } ).length === 0 );
+	const rows = findAll( w.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } );
 
-	const frames = tabs( w.list.parentNode ?? w.list ).filter( function( tab ) { return textOf( tab ) === W('tab/frames') } )[0];
-
-	fire( frames, 'click' );
-
-	const rows = findAll( w.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } );
-
-	check( 'T. the tab "Frames" is the address #builder/@frames: the frames are listed - the named one by its name with its word and the number of pages beside it, the standard ones marked with theirs - and the pages are not',
-		w.state.hash === '#builder/@frames' && rows.length === 1 && textOf( rows[0] ).indexOf('Landing') !== -1 && textOf( rows[0] ).indexOf( W( 'frame/word', 'landing', W('frame/uses-one') ) ) !== -1 && textOf( w.list ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '3' ) ) ) !== -1 && textOf( w.list ).indexOf( W('frame/title') ) !== -1 && w.table() === null );
+	check( 'T. the list of the pages has no tabs of its own - the frames are the tab of the pane, drawn from the same answer into its own mount: the pages are in the list and the frames are not, the named frame is a row with its name, its word and the number of pages, the standard ones are marked with theirs',
+		tabs( w.list.parentNode ?? w.list ).length === 0 && w.table() !== null && findAll( w.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } ).length === 0
+		&& rows.length === 1 && textOf( rows[0] ).indexOf('Landing') !== -1 && textOf( rows[0] ).indexOf( W( 'frame/word', 'landing', W('frame/uses-one') ) ) !== -1 && textOf( w.frames ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '3' ) ) ) !== -1
+		&& textOf( w.frames ).indexOf( W('frame/title') ) !== -1 );
 
 	const again = world( { list : answer( { frames : named, bridge : true } ) } );
 
 	again.open('#builder/@frames');
 
-	check( 'T. the address #builder/@frames opens the tab of the frames by itself and the tab is marked as the one that is shown', findAll( again.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'footer' } ).length === 1 && tabs( again.list.parentNode ?? again.list ).filter( function( tab ) { return tab.attributes['aria-selected'] === 'true' } ).map( textOf ).join() === W('tab/frames') );
+	while( again.timers.length > 0 )
+		again.timers.shift()();
 
-	again.panel.go( [] );
+	check( 'T. the address #builder/@frames of before leads to the tab: it goes to #builder-frames and the entry of the address of before is replaced', again.state.hash === '#builder-frames' );
 
-	check( 'T. the tab "Pages" is the address #builder again, and the pages are shown', again.state.hash === '#builder' && again.table() !== null );
-
-	// the tab has an address that no page has: a page called "frames" is a page, for the one who designs too
+	// a page called "frames" is a page, for the one who designs too: the @ is what no key of a page has
 	const framesPage = world( { list : answer( { frames : named, bridge : true } ) } );
 
 	framesPage.open('#builder/frames');
 	framesPage.panel.follow();
 
-	check( 'T. a page whose address is "frames" is opened by #builder/frames, as any page - the tab of the frames is #builder/@frames - and the list of the pages is not replaced by the frames',
+	check( 'T. a page whose address is "frames" is opened by #builder/frames, as any page - the address of the tab of before is #builder/@frames - and the list of the pages is not replaced by the frames',
 		framesPage.requests.some( function( entry ) { return entry.action === 'builder/open' && entry.payload.template === 'page-frames' } ) === true && findAll( framesPage.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'footer' } ).length === 0 );
 
-	const plain = world( { list : answer( { frames : [] } ) } );
+	const none = world( { list : answer( { frames : [] } ) } );
 
-	plain.open('#builder');
+	none.open('#builder');
 
-	check( 'T. an account that does not design has no tabs - the list of the pages is all it has', tabs( plain.list.parentNode ?? plain.list ).length === 0 && plain.table() !== null );
+	check( 'T. where the answer has no frames - for the account that only writes the content - the tab says so in one sentence and has no row', textOf( none.frames ).indexOf( W('frame/empty') ) !== -1 && findAll( none.frames, function( el ) { return el.dataset !== undefined && el.dataset.row !== undefined } ).length === 0 );
 }
 
 // --- the lightbox "Frames of this page": the block of the workbench for tiles, and the same tiles where the workbench has none ---------------------------------------

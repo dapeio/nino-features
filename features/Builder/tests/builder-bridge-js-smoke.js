@@ -41,7 +41,7 @@ const word = function( text, key ) {
 console.log( '\nA. The page' );
 
 check( 'A1. the page has no extended view and no frame view: no button "Advanced", no way into one, no choice of the two frames, no frame in an address of the panel',
-	has( /openExtended|openFrames|advancedParts|builder-frames|label\/advanced|label\/frames|ACTION_ICONS\.advanced/ ) === false && has( /actions\.push\( \{ key : 'advanced'/ ) === false );
+	has( /openExtended|openFrames|advancedParts|(?<!#)builder-frames(?!-list|')|label\/advanced|label\/frames|ACTION_ICONS\.advanced/ ) === false && has( /actions\.push\( \{ key : 'advanced'/ ) === false );
 check( 'A2. the old address #builder/<page>/<block> opens the page with the block marked - and tells where the block is gone - and a frame is no address of the panel',
 	/block : \/\^\(\?:@\(\?:header\|footer\)\|\[a-z\]\[a-z0-9-\]\*\)\$\/\.test\( parts\[1\]/.test( script ) === true && has( /if\( atOf\( target\.block \) !== -1 \)\s*selectBlock\( target\.block, true \)/ ) === true && has( /msg\/no-block/ ) === true
 	&& has( /if\( part === '@header' \)\s*return 'frame-header'/ ) === false );
@@ -143,6 +143,24 @@ check( 'F299 T1. the button of a row of the tab of the header/footer says "Ausw�
 	word( de, 'frame/choose' ) === 'Auswählen' && word( en, 'frame/choose' ) === 'Choose' && word( de, 'frame/choose-of' ) === '%s auswählen' && word( en, 'frame/choose-of' ) === 'Choose %s'
 	&& word( de, 'frame/choose-title' ) === 'Kopf-/Fußbereich wählen' && word( en, 'frame/choose-title' ) === 'Choose header/footer'
 	&& has( /title\s*: word\('frame\/choose-title'\)/ ) === true && has( /Nino\.adminUi\.button\( word\('frame\/choose'\)/ ) === true );
+
+console.log( '\nF312. The pane of the pages' );
+
+const tabPhp = fs.readFileSync( path.join( featureDir, 'FramesTab/FramesTab.php' ), 'utf8' );
+const tabScript = fs.readFileSync( path.join( featureDir, 'assets/admin-frames.js' ), 'utf8' );
+
+check( 'F312 a. the panel is called "Seiten" / "Pages" in the rail and over the pane - and only there: the feature, its right and the roles tab keep the name "Builder" (scope/name), and the first tab of the pane is the pages',
+	word( de, 'nav' ) === 'Seiten' && word( en, 'nav' ) === 'Pages' && word( de, 'scope/name' ) === 'Builder' && word( en, 'scope/name' ) === 'Builder' && word( de, 'tab/pages' ) === 'Seiten' && word( en, 'tab/pages' ) === 'Pages'
+	&& /'label' => '\/_admin\/builder\/scope\/name'/.test( panelPhp ) === true && /public static function tab\(\): string \{\s*return '\/_admin\/builder\/tab\/pages';/.test( panelPhp ) === true
+	&& /\[ 'builder', '\/_admin\/builder\/nav', 61 \]/.test( panelPhp ) === true );
+check( 'F312 b. "Kopf-/Fußbereich" / "Header/footer" is a tab of the pane, a tab of the kernel\'s own kind with the right of the panel and no right of its own: the panel brings it by tabs(), it has the uri builder-frames, its word, its file, the words of the panel and no action',
+	/public static function tabs\(\): array \{\s*return \[ FramesTab::class \];/.test( panelPhp ) === true && /return \[ 'builder-frames', '\/_admin\/builder\/tab\/frames', \d+ \];/.test( tabPhp ) === true && /public static function perm\(\): string \{\s*return Admin::perm\(\);/.test( tabPhp ) === true
+	&& /admin-frames\.js/.test( tabPhp ) === true && /public static function actions\(\): array \{\s*return \[\];/.test( tabPhp ) === true && /public static function text\(\): string \{\s*return Admin::text\(\);/.test( tabPhp ) === true
+	&& word( de, 'tab/frames' ) === 'Kopf-/Fußbereich' && word( en, 'tab/frames' ) === 'Header/footer' && /wn\.Nino\.admin\['builder-frames'\] = \{\s*showCurrent/.test( tabScript ) === true );
+check( 'F312 c. the list of the pages has no strip of tabs of its own - none is made, none has a style, no word - and the frames are drawn into the mount of the tab from the same answer; the address of before, #builder/@frames, leads to #builder-frames',
+	has( /Nino\.adminUi\.tabs\(/ ) === false && has( /builder-tabs/ ) === false && sheet.indexOf( 'builder-tabs' ) === -1 && word( de, 'tab/label' ) === '' && word( en, 'tab/label' ) === ''
+	&& has( /const drawFrames = function\( data \)[\s\S]*?dc\.getElementById\('builder-frames-list'\)/ ) === true && has( /drawFrames\( data \);/ ) === true
+	&& has( /wn\.location\.replace\( Nino\.admin\.router\.href\( 'builder-frames', \[\] \) \)/ ) === true && has( /const isFramesTab = function\( parts \) \{\s*return parts\.length === 1 && parts\[0\] === FRAMES_TAB;/ ) === true );
 
 console.log( '\nF304. The dialog Source' );
 

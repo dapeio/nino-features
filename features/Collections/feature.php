@@ -66,8 +66,8 @@ return [
 				'de_DE' => 'Drei Blocks für den Builder, eine Liste, eine Tabelle und eine Reihe von Logos über Elemente, die die Beispielelemente zeigen, bis Du wählst, was sie zeigen.',
 			],
 			'blocks/logo-row/' => [
-				'en_US' => 'The row of logos draws an image for each element; for its type create the fields image, name and optionally url under Elements, then choose it in the Builder and the fields for the call.',
-				'de_DE' => 'Die Reihe von Logos zeichnet ein Bild je Element; lege für den Typ unter Elemente die Felder Bild, Name und optional Adresse an, wähle ihn im Builder und die Felder für den Aufruf.',
+				'en_US' => 'The row of logos draws an image for each element; for its type create the fields image, name and optionally url under Elements, then choose it in Pages and the fields for the call.',
+				'de_DE' => 'Die Reihe von Logos zeichnet ein Bild je Element; lege für den Typ unter Elemente die Felder Bild, Name und optional Adresse an, wähle ihn in Seiten und die Felder für den Aufruf.',
 			],
 			'text/<locale>.php' => [
 				'en_US' => 'Puts the four words of the filter and the table - All, Filter, Showing, Table - into the Text panel, for the buttons and the names a screen reader reads.',
