@@ -648,15 +648,15 @@ function world( options ) {
 	w.serve();
 
 	const cards = w.byTag( w.list, 'article' );
-	const names = cards.map( function( card ) { return w.text( w.byTag( card, 'h3' )[0] ) } );
+	const names = cards.map( function( card ) { return w.text( w.byClass( card, 'themes-card-name' )[0] ) } );
 
-	check( 'B. a card for each theme: the ones of a package by name, then the own ones', names.join() === '<b>Rest</b>,Craft,Nino,Lindner', names.join() );
+	check( 'B. a card for each theme: the one the website shows first, then the ones of a package by name, then the own ones', names.join() === 'Nino,<b>Rest</b>,Craft,Lindner', names.join() );
 	check( 'B. a name is text and never markup: a theme called <b>Rest</b> draws no element of its own', w.byTag( w.list, 'b' ).length === 0 && names.indexOf('<b>Rest</b>') !== -1 );
 
 	const card = function( key ) { return cards.find( function( one ) { return one.dataset.theme === key } ) };
 
 	check( 'B. the active theme says so, and has no button to apply it', w.text( card('nino') ).indexOf( words.en['/_admin/themes/chip/active'] ) !== -1 && w.byClass( card('nino'), 'nino-admin-btn--small' ).filter( function( b ) { return b.dataset.apply !== undefined } ).length === 0 );
-	check( 'B. the others have a button to apply them and one to edit', [ 'craft', 'rest', 'own:lindner' ].every( function( key ) { return findAll( card( key ), function( b ) { return b.dataset.apply === key } ).length === 1 && findAll( card( key ), function( b ) { return b.dataset.edit === key } ).length === 1 } ) );
+	check( 'B. the others have a button to apply them, and every card has the link that edits it', [ 'craft', 'rest', 'own:lindner' ].every( function( key ) { return findAll( card( key ), function( b ) { return b.dataset.apply === key } ).length === 1 && findAll( card( key ), function( b ) { return b.dataset.edit === key } ).length === 1 } ) );
 	check( 'B. a theme with a part that rests says how many, and why', w.text( card('rest') ).indexOf( Wp( 'why/css' ) ) !== -1 && w.text( card('rest') ).indexOf( 'English detail' ) === -1 && w.text( card('rest') ).indexOf( 'Resting parts: 1' ) !== -1 && w.text( card('craft') ).indexOf('Resting') === -1 );
 	check( 'B. an own theme says what it is made of, by the theme each group comes from', w.text( card('own:lindner') ).indexOf( 'Section from Craft' ) !== -1 && w.text( card('own:lindner') ).indexOf( 'Header from Standard' ) !== -1, w.text( card('own:lindner') ) );
 
@@ -679,7 +679,7 @@ function world( options ) {
 
 	const craft = cards.find( function( card ) { return card.dataset.theme === 'craft' } );
 
-	check( 'B. in German the words are the German ones, and so is the name that has a German one', w.text( craft ).indexOf( words.de['/_admin/themes/label/edit'] ) !== -1 && w.text( w.byTag( cards.find( function( card ) { return card.dataset.theme === 'rest' } ), 'h3' )[0] ) === '<b>Ruhe</b>' );
+	check( 'B. in German the words are the German ones, and so is the name that has a German one', w.text( craft ).indexOf( words.de['/_admin/themes/card/apply'] ) !== -1 && w.text( w.byClass( cards.find( function( card ) { return card.dataset.theme === 'rest' } ), 'themes-card-name' )[0] ) === '<b>Ruhe</b>' );
 }
 
 // --- B2. a theme that was uploaded -----------------------------------------------------------------------------------
@@ -1783,7 +1783,7 @@ function previewDialog( w, preview ) {
 		return input;
 	};
 
-	check( 'L. the dialog says what is saved - the theme it comes from and what it is made of - in one sentence', w.text( first ).indexOf('The draft of "Nino" is saved as an own theme under a name: Whole page from Nino, Section from Craft, otherwise Standard.') !== -1, w.text( first ).slice( 0, 260 ) );
+	check( 'L. the dialog says what is saved - the theme it comes from and what it is made of - in one sentence', w.text( first ).indexOf('The draft of "Nino" is saved as an own theme under a name: Page base from Nino, Section from Craft, otherwise Standard.') !== -1, w.text( first ).slice( 0, 260 ) );
 
 	typed( first, '   ' );
 	fire( goOn( first ), 'click' );
@@ -1978,14 +1978,14 @@ function previewDialog( w, preview ) {
 	w.panel.showCurrent();
 	w.serve();
 
-	check( 'M. brand has a level of its own: the brand of the project, no group of the list - four sections, the one the address names open', w.byClass( w.theme, 'themes-groups' ).length === 0 && w.theme.querySelectorAll('[aria-expanded]').length === 4 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 1 && w.state.hash === '#themes/nino/brand/colours', w.state.hash );
+	check( 'M. brand has a level of its own: the brand of the project, no group of the list - four sections, the one the address names open', w.byClass( w.theme, 'themes-groups' ).length === 0 && w.byClass( w.theme, 'nino-admin-accordion-button' ).length === 4 && w.byClass( w.theme, 'nino-admin-accordion-button' ).filter( function( head ) { return head.attributes['aria-expanded'] === 'true' } ).length === 1 && w.state.hash === '#themes/nino/brand/colours', w.state.hash );
 
 	// a step of the history to an address that names no section: every section is closed, and the address stays what it is
 	w.state.hash = '#themes/nino/brand';
 	w.panel.showCurrent();
 	w.serve();
 
-	check( 'M. an address that names no section is a level with every section closed - what a click on the open head leaves behind - and stays the address', w.theme.querySelectorAll('[aria-expanded]').length === 4 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 0 && w.state.hash === '#themes/nino/brand', w.state.hash );
+	check( 'M. an address that names no section is a level with every section closed - what a click on the open head leaves behind - and stays the address', w.byClass( w.theme, 'nino-admin-accordion-button' ).length === 4 && w.byClass( w.theme, 'nino-admin-accordion-button' ).filter( function( head ) { return head.attributes['aria-expanded'] === 'true' } ).length === 0 && w.state.hash === '#themes/nino/brand', w.state.hash );
 
 	w.state.hash = '#themes/nino/groups';
 	w.panel.showCurrent();
@@ -2022,7 +2022,7 @@ function type( node, value ) {
 	fire( row, 'click' );
 
 	check( 'O. a click on the row goes to the level of the brand: the address names the first section, the way back is there, the name of the level says that it belongs to the project, and the focus is on the way back', w.state.hash === '#themes/nino/brand/colours' && w.byClass( w.theme, 'nino-admin-back-link' ).length === 2 && w.text( w.byClass( w.theme, 'themes-title' )[0] ).indexOf('Project') !== -1 && w.byClass( w.theme, 'nino-admin-back-link' )[1].focused === true, w.state.hash );
-	check( 'O. the level has four sections - colours, type, mode, logo - one is open, each head says what is in it: from the theme, where the project has set nothing', w.theme.querySelectorAll('[aria-expanded]').length === 4 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 1 && w.byClass( w.theme, 'nino-admin-accordion-summary' ).map( function( node ) { return node.textContent } ).join() === 'from the theme,from the theme,from the theme,/logo · /logo/dark' );
+	check( 'O. the level has four sections - colours, type, mode, logo - one is open, each head says what is in it: from the theme, where the project has set nothing', w.byClass( w.theme, 'nino-admin-accordion-button' ).length === 4 && w.byClass( w.theme, 'nino-admin-accordion-button' ).filter( function( head ) { return head.attributes['aria-expanded'] === 'true' } ).length === 1 && w.byClass( w.theme, 'nino-admin-accordion-summary' ).map( function( node ) { return node.textContent } ).join() === 'from the theme,from the theme,from the theme,/logo · /logo/dark' );
 	check( 'O. the switch of the split view says Settings: it is a level of settings', w.byClass( w.theme, 'nino-admin-split-switch' )[0].children[0].textContent === W('label/settings') );
 
 	const color1 = byId( w.theme, 'themes-brand-color-1' );
@@ -3812,11 +3812,11 @@ function nameField( w ) {
 	] } } );
 
 	const card = w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === 'long' } );
-	const title = w.byTag( card, 'h3' )[0];
+	const title = w.byClass( card, 'themes-card-name' )[0];
 	const clamped = w.byClass( card, 'themes-clamp' );
 
 	check( 'Z. the name of a card is a heading whose title is the whole name, and the text of it is whole too - the cut is the stylesheet\'s, so that a screen reader has all of it', title.title === long && title.textContent === long );
-	check( 'Z. the description and what rests are laid on lines of a fixed number - a class of the stylesheet - with the whole text in the title; a theme with two parts that rest says the first and puts both in the title, and the chip counts them', clamped.length === 2 && clamped.every( function( node ) { return node.title !== '' && node.title.indexOf( node.textContent ) !== -1 } ) && w.byClass( card, 'themes-rests' ).length === 1 && w.byClass( card, 'themes-rests' )[0].title.split('\n').length === 2 );
+	check( 'Z. what rests is laid on lines of a fixed number - a class of the stylesheet - with the whole text in the title, and the card has no description; a theme with two parts that rest says the first and puts both in the title, and the chip counts them', clamped.length === 1 && clamped.every( function( node ) { return node.title !== '' && node.title.indexOf( node.textContent ) !== -1 } ) && w.byClass( card, 'themes-rests' ).length === 1 && w.byClass( card, 'themes-rests' )[0].title.split('\n').length === 2 );
 	check( 'Z. the buttons are the last thing in a card, in a block of their own, whatever the card says', card.children[card.children.length - 1].className.indexOf('nino-admin-actions') !== -1 );
 }
 
@@ -3997,6 +3997,178 @@ function nameField( w ) {
 	} );
 
 	check( 'Y. a box has one frame, however many answers come for it', asked.length === 2 && w.byTag( box, 'iframe' ).length === 1 );
+}
+
+// --- AA. the overview and the screen of a theme after the feedback of the owner ------------------------------------------------------
+
+{
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const cards = w.byTag( w.list, 'article' );
+	const card = function( key ) { return cards.find( function( one ) { return one.dataset.theme === key } ) };
+	const head = function( key ) { return w.byClass( card( key ), 'themes-card-head' )[0] };
+
+	check( 'U1. a card has no description: the text a theme of a package brings is nowhere in the list, and a card of a package has no line of text of its own',
+		cards.every( function( one ) { return w.text( one ).indexOf( 'Calm and clear.' ) === -1 && w.text( one ).indexOf( 'Breaks.' ) === -1 } ) && w.byClass( card('nino'), 'themes-clamp' ).length === 0 && w.byClass( card('craft'), 'themes-clamp' ).length === 0
+		&& w.text( w.list ).indexOf( 'Calm and clear.' ) === -1 );
+
+	const version = w.byClass( card('nino'), 'themes-card-version' )[0];
+
+	check( 'U2. the version is a number behind the name in the title - quieter than the name, in the same heading - and no badge says it; an own theme has none',
+		version !== undefined && version.textContent === '1.0.0' && version.parentNode === w.byTag( card('nino'), 'h3' )[0] && w.byClass( card('nino'), 'nino-admin-badge' ).every( function( badge ) { return w.text( badge ).indexOf('1.0.0') === -1 && w.text( badge ).indexOf('Version') === -1 } )
+		&& w.byClass( card('own:lindner'), 'themes-card-version' ).length === 0 && w.byTag( card('nino'), 'h3' )[0].children[0].tagName === 'A' );
+
+	const badges = w.byClass( head('nino'), 'themes-card-badges' )[0];
+
+	check( 'U3. the badges stand in the head of the card at the right, in a block of their own beside the title and not in it; the name is cut by the stylesheet - its whole text is the title of the name - and all the badges of a card are in that block',
+		badges !== undefined && head('nino').children[0].className.indexOf('themes-card-title') !== -1 && head('nino').children[head('nino').children.length - 1] === badges && w.byClass( card('nino'), 'nino-admin-badge' ).length === w.byClass( badges, 'nino-admin-badge' ).length && w.byClass( badges, 'nino-admin-badge' ).length >= 2
+		&& w.byClass( w.byTag( card('nino'), 'h3' )[0], 'nino-admin-badge' ).length === 0 && w.byClass( card('craft'), 'themes-card-name' )[0].title === 'Craft'
+		&& w.byClass( card('own:lindner'), 'themes-card-badges' )[0].children.length >= 1 );
+
+	const apply = findAll( card('craft'), function( node ) { return node.dataset.apply === 'craft' } )[0];
+
+	fire( apply, 'click' );
+
+	check( 'U4. the button on the card says Apply and nothing more, and the question that follows has the whole sentence for its answer',
+		w.text( apply ) === words.en['/_admin/themes/card/apply'] && words.en['/_admin/themes/card/apply'] !== words.en['/_admin/themes/label/apply'] && findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'BUTTON' && node.textContent === words.en['/_admin/themes/label/apply'] } ).length === 1 );
+
+	const link = w.byClass( card('craft'), 'themes-card-link' )[0];
+	const nested = findAll( card('craft'), function( node ) { return node.tagName === 'A' } );
+	const buttons = findAll( card('craft'), function( node ) { return node.tagName === 'BUTTON' } );
+
+	check( 'U5. the whole card is one link named by the theme: one link in the card, the name inside it, no link or button inside another, the buttons of the card stand after it in the order of the document - so the Tab key takes the link first - and a press on the link opens the editor',
+		nested.length === 1 && nested[0] === link && w.text( link ) === 'Craft' && link.href === '#themes/craft' && findAll( link, function( node ) { return node.tagName === 'A' || node.tagName === 'BUTTON' } ).length === 0 && buttons.length >= 2
+		&& buttons.every( function( button ) { return findAll( card('craft'), function( node ) { return node === link || node === button } )[0] === link } ) && w.byClass( card('craft'), 'nino-admin-btn-primary' ).length === 0 && ( fire( link, 'click' ), w.state.hash === '#themes/craft' ) );
+
+	const css = require('fs').readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' );
+
+	check( 'U5. the area of the link is the card: the stylesheet stretches it over the card, and what is pressed on its own - the buttons, the texts a frame reads - stands over it',
+		/\.themes-card-link::after\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0/.test( css ) === true && /\.themes-card\s*\{[^}]*position:\s*relative/.test( css ) === true && /\.themes-card \.nino-admin-actions[\s\S]{0,160}z-index:\s*1/.test( css ) === true );
+
+	check( 'U6. the theme the website shows is the card that says so - a mark on the card itself - and it is the first of the list; the others have none',
+		card('nino').dataset.active === 'true' && cards[0] === card('nino') && cards.filter( function( one ) { return one.dataset.active === 'true' } ).length === 1
+		&& /\.themes-card\[data-active="true"\]\s*\{[^}]*border:\s*2px solid var\(--editor-blue\)[^}]*background:/.test( css ) === true );
+}
+
+{
+	// the theme of a package, and an own one: the name stands in the context bar
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino' );
+
+	const bar = w.byClass( w.theme, 'nino-admin-contextbar' )[0];
+
+	check( 'B1. the head of the theme is gone: the name stands in the context bar, after the way back, with its version quietly beside it - and the badge Active where the website shows the theme',
+		w.byClass( w.theme, 'themes-head' ).length === 0 && bar !== undefined && bar.children[0].className.indexOf('nino-admin-back-link') !== -1 && w.byClass( bar, 'themes-name' ).length === 1 && w.byClass( bar, 'themes-name' )[0].className.indexOf('nino-admin-contextbar-title') !== -1
+		&& w.text( w.byClass( bar, 'themes-name' )[0] ) === 'Nino' && w.byClass( bar, 'nino-admin-contextbar-code' )[0].textContent === '1.0.0' && w.byClass( bar, 'nino-admin-badge' ).map( w.text ).join() === words.en['/_admin/themes/chip/active'] );
+
+	const own = world( { active : 'nino' } );
+
+	own.at( '#themes/own.lindner' );
+
+	const ownBar = own.byClass( own.theme, 'nino-admin-contextbar' )[0];
+
+	check( 'B1. an own theme says so with a badge in the bar, has no version, and does not have the badge Active where another theme is on the website',
+		own.byClass( own.theme, 'themes-head' ).length === 0 && own.byClass( ownBar, 'nino-admin-contextbar-code' ).length === 0 && own.byClass( ownBar, 'nino-admin-badge' ).map( own.text ).join() === words.en['/_admin/themes/chip/own'] );
+}
+
+{
+	const en = world( { active : 'nino' } );
+	const de = world( { lang : 'de-DE', active : 'nino' } );
+
+	en.at( '#themes/nino/groups' );
+	de.at( '#themes/nino/groups' );
+
+	const rowOf = function( w ) { return w.byClass( w.theme, 'themes-groups' )[0].children.map( function( item ) { return item.children[0] } ).find( function( row ) { return row.dataset.group === 'page' } ) };
+
+	check( 'B2. the part for the page is the page base in every place that names it: the row of the groups, the title of the group, the sentence of the dialog of the name - in German Seitenbasis, in English Page base',
+		words.de['/_admin/themes/word/page'] === 'Seitenbasis' && words.en['/_admin/themes/word/page'] === 'Page base' && en.text( rowOf( en ) ).indexOf('Page base') !== -1 && de.text( rowOf( de ) ).indexOf('Seitenbasis') !== -1
+		&& en.text( rowOf( en ) ).indexOf('Whole page') === -1 && Object.keys( words.de ).concat( Object.keys( words.en ) ).every( function( key ) { return String( words.de[key] ?? '' ).indexOf('Gesamte Seite') === -1 && String( words.en[key] ?? '' ).indexOf('Whole page') === -1 } ) );
+}
+
+{
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/nino/section/section-wrap' );
+
+	const back = w.byClass( w.theme, 'nino-admin-back-link' ).find( function( link ) { return link.id === 'themes-back-groups' } );
+	const title = w.byClass( w.theme, 'themes-title' )[0];
+
+	check( 'B3. the title of a group stands behind the way back in one row: the link and then the title, the two the children of one block',
+		back !== undefined && title !== undefined && back.parentNode === title.parentNode && back.parentNode.className.indexOf('themes-subhead') !== -1 && back.parentNode.children[0] === back && back.parentNode.children[1] === title );
+
+	w.state.hash = '#themes/nino/brand';
+	w.panel.showCurrent();
+
+	const brandBack = w.byClass( w.theme, 'nino-admin-back-link' ).find( function( link ) { return link.id === 'themes-back-groups' } );
+
+	check( 'B3. and so does the title of the brand', brandBack !== undefined && brandBack.parentNode.className.indexOf('themes-subhead') !== -1 && brandBack.parentNode.children[1].className.indexOf('themes-title') !== -1 );
+}
+
+{
+	const en = world( { active : 'nino' } );
+	const heads = ( function( w ) { w.at( '#themes/nino/section/section-wrap' ); return w.byClass( w.theme, 'nino-admin-accordion-button' ) } )( en );
+
+	fire( heads[2], 'click' );
+
+	check( 'B4. a component that has no knobs in the theme says so in a few words - "Has no knobs in this theme", in German "Hat in diesem Theme keine Regler" - and not the sentence about the brand and the page',
+		words.en['/_admin/themes/hint/follows'] === 'Has no knobs in this theme' && words.de['/_admin/themes/hint/follows'] === 'Hat in diesem Theme keine Regler' && en.text( en.theme ).indexOf('Has no knobs in this theme') !== -1 && en.text( en.theme ).indexOf('follows Brand') === -1 );
+}
+
+// --- AB. the second round on the overview: the height of the cards, the words of the badges, the lines of help ------------------------------
+
+{
+	const css = require('fs').readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' );
+	const grid = /#themes-app \.themes-cards \{([^}]*)\}/.exec( css )[1];
+
+	check( 'N1. the cards are as high as what they say: the rows of the grid are as high as their cards - no fixed height of a row - the cards of a row fill it, and the buttons stand at the foot',
+		/grid-auto-rows/.test( grid ) === false && /grid-template-rows/.test( grid ) === false && /align-items:\s*stretch/.test( grid ) === true && /\.themes-card \.nino-admin-actions \{[^}]*margin:\s*auto 0 0/.test( css ) === true && /grid-auto-rows:\s*1fr/.test( css ) === false );
+
+	const en = world( { active : 'nino' } );
+	const de = world( { lang : 'de-DE', active : 'nino' } );
+
+	en.at( '#themes' );
+	de.at( '#themes' );
+
+	const badgesOf = function( w, key ) { return w.byClass( w.byTag( w.list, 'article' ).find( function( card ) { return card.dataset.theme === key } ), 'nino-admin-badge' ) };
+	const shortWords = function( w, key ) { return badgesOf( w, key ).map( function( badge ) { return badge.textContent } ).join() };
+
+	check( 'N2. the badges say their word short: Shipped, Catalogue, Uploaded, Own - Mitgeliefert, Katalog, Hochgeladen, Eigenes - and each has the whole of it as its title, so that the name has the room',
+		shortWords( en, 'nino' ) === 'Active,Shipped' && shortWords( en, 'rest' ).indexOf('Catalogue') !== -1 && shortWords( en, 'craft' ) === 'Uploaded' && shortWords( en, 'own:lindner' ) === 'Own'
+		&& shortWords( de, 'nino' ) === 'Aktiv,Mitgeliefert' && shortWords( de, 'rest' ).indexOf('Katalog') !== -1 && shortWords( de, 'craft' ) === 'Hochgeladen' && shortWords( de, 'own:lindner' ) === 'Eigenes'
+		&& [ 'nino', 'rest', 'craft', 'own:lindner' ].every( function( key ) { return badgesOf( en, key ).every( function( badge ) { return typeof badge.title === 'string' && badge.title !== '' } ) } )
+		&& badgesOf( en, 'nino' )[1].title === words.en['/_admin/themes/chip/title/shipped'] && badgesOf( en, 'nino' )[1].title !== badgesOf( en, 'nino' )[1].textContent && badgesOf( de, 'nino' )[1].title === 'Mit Themes geliefert' );
+
+	const helps = function( w ) { return w.byClass( w.list, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ) };
+
+	check( 'N3. the sentence under the list stands behind a (?) beside the button that chooses a package, and nowhere as an open line: with a theme on the website the sentence of the list, with none the other',
+		helps( en ).indexOf( words.en['/_admin/themes/hint/list'] ) !== -1 && helps( en ).indexOf( words.en['/_admin/themes/hint/list-none'] ) === -1 && en.byClass( en.byClass( en.list, 'themes-list-actions' )[0], 'nino-admin-help-button' ).length === 1 && en.byClass( en.list, 'nino-admin-hint' ).every( function( node ) { return node.textContent !== words.en['/_admin/themes/hint/list'] } ) );
+
+	const none = world( { active : '' } );
+
+	none.at( '#themes' );
+	check( 'N3. ...and with no theme on the website it is the other sentence', helps( none ).indexOf( words.en['/_admin/themes/hint/list-none'] ) !== -1 && helps( none ).indexOf( words.en['/_admin/themes/hint/list'] ) === -1 );
+
+	const group = world( { active : 'nino' } );
+
+	group.at( '#themes/nino/section/section-wrap' );
+	const heading = group.byClass( group.theme, 'themes-title' )[0];
+
+	check( 'N3. what explains a group stands behind a (?) at its title, and is no open line under the sections',
+		group.byClass( heading, 'nino-admin-help-button' ).length === 1 && group.byClass( group.theme, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ).join() === words.en['/_admin/themes/hint/group']
+		&& group.byClass( group.theme, 'nino-admin-hint' ).every( function( node ) { return node.textContent !== words.en['/_admin/themes/hint/group'] } ) );
+
+	group.state.hash = '#themes/nino/page/type';
+	group.panel.showCurrent();
+	check( 'N3. the page base says its own sentence the same way', group.byClass( group.theme, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ).join() === words.en['/_admin/themes/hint/page'] );
+
+	group.state.hash = '#themes/nino/brand';
+	group.panel.showCurrent();
+	check( 'N3. and so does the brand: its sentence behind the (?) at its title, none as an open line',
+		group.byClass( group.byClass( group.theme, 'themes-title' )[0], 'nino-admin-help-button' ).length === 1 && group.byClass( group.theme, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ).join() === words.en['/_admin/themes/hint/brand']
+		&& group.byClass( group.theme, 'nino-admin-hint' ).every( function( node ) { return node.textContent !== words.en['/_admin/themes/hint/brand'] } ) );
 }
 
 done();

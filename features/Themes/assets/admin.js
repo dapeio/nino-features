@@ -1092,8 +1092,10 @@
 		const root		= el( 'div', 'themes-settings' );
 		const sections = sectionsOf( group );
 
-		root.appendChild( backLink( group ) );
-		root.appendChild( el( 'h3', 'themes-title', groupLabel( group ) ) );
+		const heading = el( 'h3', 'themes-title', groupLabel( group ) );
+
+		root.appendChild( subhead( backLink( group ), heading ) );
+		Nino.adminUi.sectionHelp( heading, root, lead( group ) );
 		root.appendChild( partChoice( group ) );
 
 		const note = restNote( group );
@@ -1123,9 +1125,7 @@
 			marked( group, sections, accordion.get()[0], true );
 		}
 		else
-			root.appendChild( Nino.adminUi.hint( word('hint/page-none') ) );
-
-		root.appendChild( Nino.adminUi.hint( lead( group ) ) );
+			root.appendChild( Nino.adminUi.emptyState( word('hint/page-none') ) );
 
 		return root;
 	};
@@ -1965,6 +1965,17 @@
 	};
 
 	// The way back to the groups, from the screen of a group or of the brand. It keeps the draft: the shell asks nothing of a back link that says so
+	// The way back and the name of the level it is the way back from, in one row: the link, then the title
+	const subhead = function( back, title ) {
+
+		const row = el( 'div', 'themes-subhead' );
+
+		row.appendChild( back );
+		row.appendChild( title );
+
+		return row;
+	};
+
 	const backLink = function( group ) {
 
 		const back = el( 'a', 'nino-admin-back-link', word('label/back-groups') );
@@ -1994,9 +2005,8 @@
 		const keys = BRAND_SECTIONS.map( function( set ) { return set[0] } );
 
 		title.appendChild( el( 'span', 'nino-admin-badge themes-project', word('word/project') ) );
-		root.appendChild( backLink( 'brand' ) );
-		root.appendChild( title );
-		root.appendChild( Nino.adminUi.hint( word('hint/brand') ) );
+		root.appendChild( subhead( backLink( 'brand' ), title ) );
+		Nino.adminUi.sectionHelp( title, root, word('hint/brand') );
 
 		// Where no theme is on the website the brand has nothing to hold in: it is saved, and says so, and what to do
 		if( nothingShown() === true )
@@ -2489,7 +2499,7 @@
 		view.rebuild.hidden = isActive() === false || S.active.stale !== true;
 		view.rebuild.disabled = dirty === true;
 		view.rebuild.title = dirty === true ? word('hint/apply-saved') : '';
-		fill( view.head, view.title, chipsOf() );
+		fill( view.head, view.title, ...chipsOf() );
 		paintSettings();
 	};
 
@@ -3198,23 +3208,27 @@
 		Nino.admin.themes.fail( said, status, spoken( response ) );
 	};
 
-	// The chips under the name of the theme: whether the website shows it, where it comes from, what rests in it
+	// What stands beside the name of the theme in the bar over the screen: its version, quietly, where a package brings one; whether the website shows it; and that it is an own theme
 	const chipsOf = function() {
 
-		const row = el( 'div', 'themes-chips' );
+		const pieces = [];
 		const chip = function( text, state ) {
 			const badge = el( 'span', 'nino-admin-badge', text );
-			if( state !== undefined )
-				badge.dataset.state = state;
-			row.appendChild( badge );
+			badge.dataset.state = state;
+			pieces.push( badge );
 		};
+		const version = S.theme.kind === 'own' ? '' : String( S.list.themes.find( function( theme ) { return theme.key === S.key } )?.version ?? '' );
+
+		if( version !== '' )
+			pieces.push( el( 'span', 'nino-admin-contextbar-code', version ) );
 
 		if( isActive() === true )
 			chip( word('chip/active'), 'ok' );
 
-		chip( S.theme.kind === 'own' ? word('chip/own') : word( 'chip/package', S.list.themes.find( function( theme ) { return theme.key === S.key } )?.version ?? '' ), 'muted' );
+		if( S.theme.kind === 'own' )
+			chip( word('chip/own'), 'muted' );
 
-		return row;
+		return pieces;
 	};
 
 	/**
@@ -3238,8 +3252,11 @@
 			Nino.admin.themes.go( [], {} );
 		} );
 
-		const head = el( 'div', 'themes-head' );
-		const title = el( 'h3', 'themes-name', S.theme.name );
+		// The name of the theme and what stands beside it are the context bar's: one row with the way back
+		const head = el( 'div', 'nino-admin-contextbar-name' );
+		const title = el( 'h3', 'nino-admin-contextbar-title themes-name', S.theme.name );
+
+		title.title = S.theme.name;
 
 		// The first address of the frame is the one the screen will have: the demo of the group the address names, and nothing outlined
 		S.mark = '';
@@ -3275,10 +3292,8 @@
 		S.view.frame = split.frame;
 		loop.width( S.width );
 
-		head.appendChild( title );
-		head.appendChild( chipsOf() );
-		level.appendChild( Nino.adminUi.contextBar( back ) );
-		level.appendChild( head );
+		fill( head, title, ...chipsOf() );
+		level.appendChild( Nino.adminUi.contextBar( back, head ) );
 		level.appendChild( split.el );
 		level.appendChild( bar.el );
 
@@ -3878,38 +3893,68 @@
 		const resting = theme.kind === 'theme' ? Object.keys( theme.parts ).filter( function( group ) { return theme.parts[group].ok === false } ) : [];
 
 		card.dataset.theme = theme.key;
-		card.appendChild( thumbOf( theme ) );
-		const title = el( 'h3', '', localized( theme.name ) );
 
-		// A name that is longer than the card is cut; the whole of it is the title of the heading, and the text of it is whole for a screen reader
-		title.title = localized( theme.name );
+		// The theme that the website shows is the card that says so, not only a badge
+		if( theme.active === true )
+			card.dataset.active = 'true';
+
+		card.appendChild( thumbOf( theme ) );
+
+		// The whole card is the way to the editor: ONE link, named by the theme, whose area is stretched over the card by the stylesheet; the buttons of the card stand over it
+		const title = el( 'h3', 'themes-card-title' );
+		const link = el( 'a', 'themes-card-link' );
+		const name = el( 'span', 'themes-card-name', localized( theme.name ) );
+
+		link.href = Nino.admin.router.href( 'themes', [ theme.key ] );
+		link.dataset.edit = theme.key;
+		link.addEventListener( 'click', function( event ) {
+			event.preventDefault();
+			Nino.admin.themes.go( [ theme.key ], {} );
+		} );
+
+		// A name that is longer than the room it has is cut with an ellipsis; the whole of it is the title of the name, and the text of it is whole for a screen reader
+		name.title = localized( theme.name );
+		link.appendChild( name );
+		title.appendChild( link );
+
+		// The version is a number behind the name, quieter than it; an own theme has none
+		if( theme.kind === 'theme' && typeof theme.version === 'string' && theme.version !== '' )
+			title.appendChild( el( 'span', 'themes-card-version', theme.version ) );
+
 		head.appendChild( title );
 
-		const chip = function( text, state ) {
+		// What the card is - shown on the website, where it comes from, what rests in it - on the height of the title, at the right
+		const badges = el( 'span', 'themes-card-badges' );
+		// A badge says its word short and has the whole of it as its title
+		const chip = function( text, state, whole ) {
 			const badge = el( 'span', 'nino-admin-badge', text );
 			badge.dataset.state = state;
-			head.appendChild( badge );
+			badge.title = whole;
+			badges.appendChild( badge );
 		};
 
 		if( theme.active === true )
-			chip( word('chip/active'), 'ok' );
+			chip( word('chip/active'), 'ok', word('chip/title/active') );
 
-		chip( theme.kind === 'own' ? word('chip/own') : word( 'chip/package', theme.version ), 'muted' );
-
-		if( theme.kind === 'theme' && theme.origin !== undefined && theme.origin !== '' )
-			chip( word( 'chip/'+ theme.origin ), 'muted' );
+		if( theme.kind === 'own' )
+			chip( word('chip/own'), 'muted', word('chip/title/own') );
+		else if( theme.origin !== undefined && theme.origin !== '' )
+			chip( word( 'chip/'+ theme.origin ), 'muted', word( 'chip/title/'+ theme.origin ) );
 
 		if( resting.length > 0 )
-			chip( word( 'chip/rests', resting.length ), 'warn' );
+			chip( word( 'chip/rests', resting.length ), 'warn', word( 'chip/rests', resting.length ) );
 
+		head.appendChild( badges );
 		card.appendChild( head );
 
-		// What the card says is laid on a fixed number of lines, so that the cards of a list are as high as one another: the text that is cut is whole in
-		// the title of its line and for a screen reader
-		const about = el( 'p', 'nino-admin-hint themes-clamp', theme.kind === 'theme' ? localized( theme.description ) : madeOf( theme ) );
+		// What an own theme is made of is the one line the card has of its own; a theme of a package has no description on the card
+		if( theme.kind === 'own' ) {
 
-		about.title = about.textContent;
-		card.appendChild( about );
+			const about = el( 'p', 'nino-admin-hint themes-clamp', madeOf( theme ) );
+
+			about.title = about.textContent;
+			card.appendChild( about );
+		}
 
 		// A part that rests is told once, the first, and the chip counts the others: all of them are in the title
 		if( resting.length > 0 ) {
@@ -3950,11 +3995,6 @@
 		}
 
 		const actions = el( 'div', 'nino-admin-actions' );
-		const edit = Nino.adminUi.button( word('label/edit'), function() { Nino.admin.themes.go( [ theme.key ], {} ) }, { className : 'nino-admin-btn-primary nino-admin-btn--small' } );
-
-		edit.dataset.edit = theme.key;
-		actions.appendChild( edit );
-
 		const copy = Nino.adminUi.button( word('label/duplicate'), function() {
 			duplicate( { key : theme.key, name : localized( theme.name ), stamp : function() { return theme.stamp ?? '' } }, copy, function( response ) {
 				refreshList( function() {
@@ -3970,7 +4010,7 @@
 		actions.appendChild( copy );
 
 		if( theme.active !== true ) {
-			const use = Nino.adminUi.button( word('label/apply'), function() {
+			const use = Nino.adminUi.button( word('card/apply'), function() {
 				applyKey( theme.key, localized( theme.name ), use, function( ok ) {
 					if( ok !== true )
 						return;
@@ -4042,6 +4082,9 @@
 		const upload = Nino.adminUi.button( word('label/upload'), function() { askUpload( upload ) }, { kind : 'secondary', id : 'themes-upload' } );
 
 		bar.appendChild( upload );
+
+		// What explains the list stands behind the (?) beside the one thing the list has to do
+		bar.appendChild( Nino.adminUi.fieldHelp( data.active === null ? word('hint/list-none') : word('hint/list'), { name : word('help/list-name') } ) );
 		mount.appendChild( bar );
 
 		if( data.foreign === true )
@@ -4050,7 +4093,12 @@
 		if( data.active !== null && data.active.stale === true )
 			mount.appendChild( Nino.adminUi.notice( data.active.fonts === true ? word('msg/stale-fonts') : word('msg/stale') ) );
 
-		sorted( packaged ).concat( sorted( own ) ).forEach( function( theme ) { wrap.appendChild( cardOf( theme ) ) } );
+		// The theme the website shows is the first card
+		const first = function( list ) {
+			return list.slice().sort( function( a, b ) { return ( b.active === true ? 1 : 0 ) - ( a.active === true ? 1 : 0 ) } );
+		};
+
+		first( sorted( packaged ).concat( sorted( own ) ) ).forEach( function( theme ) { wrap.appendChild( cardOf( theme ) ) } );
 
 		if( data.themes.length === 0 )
 			mount.appendChild( Nino.adminUi.emptyState( word('msg/none') ) );
@@ -4061,7 +4109,6 @@
 			mount.appendChild( Nino.adminUi.hint( word( 'msg/rejected', rejected.folder, reasonText( rejected.why ) ), 'error' ) );
 		} );
 
-		mount.appendChild( Nino.adminUi.hint( ( data.active === null ? word('hint/list-none') : word('hint/list') ) ) );
 	};
 
 	// --- the panel --------------------------------------------------------------------------------------------

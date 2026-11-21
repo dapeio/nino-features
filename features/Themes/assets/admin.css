@@ -19,17 +19,38 @@
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
 	gap: .75rem;
-	grid-auto-rows: 1fr;
 	align-items: stretch;
 }
 
-/* Every card of the list is as high as the highest: the rows of the grid are one height, the card fills its row, and what the card says is laid on a
-   fixed number of lines (below), with the buttons at the foot */
+/* The cards of a row are as high as the highest of the row and no higher: the rows of the grid are as high as their cards, the card fills its row, and the
+   buttons stand at the foot */
 #themes-app .themes-card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: .5rem;
 	margin: 0;
+}
+
+/* The theme the website shows: the card itself says so - a strong edge in the accent of the workbench and a ground tinted quietly with it */
+#themes-app .themes-card[data-active="true"] {
+	border: 2px solid var(--editor-blue);
+	background: color-mix(in srgb, var(--editor-blue) 8%, var(--editor-bg-grouped));
+}
+
+/* The whole card is one link: the area of the link of the name is stretched over the card, and what has to be pressed on its own - the buttons, the
+   texts a frame reads - stands over it */
+#themes-app .themes-card-link::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+}
+
+#themes-app .themes-card .nino-admin-actions,
+#themes-app .themes-card .themes-card-reads,
+#themes-app .themes-card > .nino-admin-btn {
+	position: relative;
+	z-index: 1;
 }
 
 #themes-app .themes-clamp {
@@ -91,20 +112,56 @@
 	transform-origin: 0 0;
 }
 
-#themes-app .themes-card-head,
-#themes-app .themes-chips {
+/* The head of a card: the title - the name and the version behind it - and the badges at the right, on the height of the title; the name is cut with an ellipsis
+   before it goes under the badges, the badges never wrap */
+#themes-app .themes-card-head {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
 	gap: .35rem .5rem;
+	min-width: 0;
 }
 
-#themes-app .themes-card-head h3 {
-	flex: 1 1 100%;
+#themes-app .themes-card-title {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: baseline;
+	gap: .4rem;
 	min-width: 0;
 	margin: 0;
+}
+
+#themes-app .themes-card-link {
+	display: flex;
+	min-width: 0;
+	color: inherit;
+	text-decoration: none;
+}
+
+#themes-app .themes-card-link:focus-visible {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: 2px;
+}
+
+#themes-app .themes-card-name {
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#themes-app .themes-card-version {
+	flex: none;
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
+	font-weight: 400;
+}
+
+#themes-app .themes-card-badges {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: .35rem;
+	margin-left: auto;
 	white-space: nowrap;
 }
 
@@ -116,18 +173,22 @@
 	display: none;
 }
 
-/* A theme: its name and what it is, over the split view */
-#themes-app .themes-head {
+/* The name of an open theme stands in the context bar of the workbench; this is its title */
+#themes-app .themes-name {
+	overflow-wrap: anywhere;
+}
+
+/* The way back and the title of the level, in one row */
+#themes-app .themes-subhead {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: .35rem .75rem;
-	margin: 0 0 .75rem;
+	gap: .25rem .75rem;
+	margin: 0 0 .5rem;
 }
 
-#themes-app .themes-name {
+#themes-app .themes-subhead .themes-title {
 	margin: 0;
-	overflow-wrap: anywhere;
 }
 
 #themes-app .themes-column {
