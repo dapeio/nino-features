@@ -5412,6 +5412,11 @@
 		return parts.length === 1 && parts[0] === FRAMES_TAB;
 	};
 
+	// Where the address of the tab of before leads: to the tab of the pane for the account that has frames in the answer - the one that designs -, quietly to the pages for the others, who have no tab
+	const framesTabFor = function( list ) {
+		return list !== null && list.frames.length > 0 ? 'builder-frames' : 'builder';
+	};
+
 	// The address of the list: the pages
 	const tabParts = function() {
 		return [];
@@ -11007,7 +11012,7 @@
 		return [ copy, Nino.adminUi.fieldHelp( reason, { name : row.name } ), drop ];
 	};
 
-	// The tab "Header/footer" of the pane: the default choice of the site - drawn from the answer of the list, with the list of the pages. Whoever may not design has no frames in the answer, and a sentence
+	// The tab "Header/footer" of the pane: the default choice of the site - drawn from the answer of the list, with the list of the pages. Whoever may not design has no tab, and no frames in the answer
 	const drawFrames = function( data ) {
 
 		const mount = dc.getElementById('builder-frames-list');
@@ -11017,9 +11022,7 @@
 
 		mount.innerHTML = '';
 
-		if( data.frames.length === 0 )
-			mount.appendChild( Nino.adminUi.emptyState( word('frame/empty') ) );
-		else
+		if( data.frames.length > 0 )
 			mount.appendChild( framesList( data ) );
 	};
 
@@ -11189,7 +11192,7 @@
 			// The address of the tab of before leads to the tab of the pane
 			if( isFramesTab( parts ) === true ) {
 				// Another panel is shown by the address alone: it replaces the entry of the address of before, so that Back does not lead into it again
-				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( 'builder-frames', [] ) ) }, 0 );
+				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( framesTabFor( S.list ), [] ) ) }, 0 );
 				return;
 			}
 
@@ -11233,8 +11236,8 @@
 
 			// The address of the tab of before is the address of the tab of the pane
 			// - after the workbench has settled the address it was given: it writes its own over it where it is asked inside the move
-			if( at.panel === 'builder' && isFramesTab( at.parts ) === true ) {
-				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( 'builder-frames', [] ) ) }, 0 );
+			if( at.panel === 'builder' && isFramesTab( at.parts ) === true && S.list !== null ) {
+				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( framesTabFor( S.list ), [] ) ) }, 0 );
 				return;
 			}
 

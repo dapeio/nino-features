@@ -976,7 +976,22 @@ function world( options ) {
 
 	none.open('#builder');
 
-	check( 'T. where the answer has no frames - for the account that only writes the content - the tab says so in one sentence and has no row', textOf( none.frames ).indexOf( W('frame/empty') ) !== -1 && findAll( none.frames, function( el ) { return el.dataset !== undefined && el.dataset.row !== undefined } ).length === 0 );
+	check( 'T. where the answer has no frames - the account that only writes the content has no tab - nothing is drawn for it: no row, no sentence', none.frames.children.length === 0 && textOf( none.frames ) === '' );
+
+	// the address of the tab of before: the account that designs is led to the tab, the one that has no frames - and no tab - is led quietly to the pages
+	const designer = world( { list : answer( { frames : named, bridge : true } ) } );
+	const writer = world( { list : answer( { frames : [] } ) } );
+
+	designer.open('#builder/@frames');
+	writer.open('#builder/@frames');
+
+	while( designer.timers.length > 0 )
+		designer.timers.shift()();
+
+	while( writer.timers.length > 0 )
+		writer.timers.shift()();
+
+	check( 'T. #builder/@frames leads the account that designs to #builder-frames and the one that only writes the content to #builder - the pages -, quietly', designer.state.hash === '#builder-frames' && writer.state.hash === '#builder' );
 }
 
 // --- the lightbox "Frames of this page": the block of the workbench for tiles, and the same tiles where the workbench has none ---------------------------------------

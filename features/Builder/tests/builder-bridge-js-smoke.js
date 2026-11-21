@@ -154,13 +154,13 @@ check( 'F312 a. the panel is called "Seiten" / "Pages" in the rail and over the 
 	&& /'label' => '\/_admin\/builder\/scope\/name'/.test( panelPhp ) === true && /public static function tab\(\): string \{\s*return '\/_admin\/builder\/tab\/pages';/.test( panelPhp ) === true
 	&& /\[ 'builder', '\/_admin\/builder\/nav', 61 \]/.test( panelPhp ) === true );
 check( 'F312 b. "Kopf-/Fußbereich" / "Header/footer" is a tab of the pane, a tab of the kernel\'s own kind with the right of the panel and no right of its own: the panel brings it by tabs(), it has the uri builder-frames, its word, its file, the words of the panel and no action',
-	/public static function tabs\(\): array \{\s*return \[ FramesTab::class \];/.test( panelPhp ) === true && /return \[ 'builder-frames', '\/_admin\/builder\/tab\/frames', \d+ \];/.test( tabPhp ) === true && /public static function perm\(\): string \{\s*return Admin::perm\(\);/.test( tabPhp ) === true
+	/public static function tabs\(\): array \{\s*return \[ FramesTab::class \];/.test( panelPhp ) === true && /return \[ 'builder-frames', '\/_admin\/builder\/tab\/frames', \d+ \];/.test( tabPhp ) === true && /public static function perm\(\): string \{[\s\S]*?\\Nino\\Modules\\Builder::DESIGN : Admin::perm\(\);/.test( tabPhp ) === true && /public static function scope\(\): string \{\s*return \\Nino\\Modules\\Builder::SCOPE;/.test( tabPhp ) === true
 	&& /admin-frames\.js/.test( tabPhp ) === true && /public static function actions\(\): array \{\s*return \[\];/.test( tabPhp ) === true && /public static function text\(\): string \{\s*return Admin::text\(\);/.test( tabPhp ) === true
 	&& word( de, 'tab/frames' ) === 'Kopf-/Fußbereich' && word( en, 'tab/frames' ) === 'Header/footer' && /wn\.Nino\.admin\['builder-frames'\] = \{\s*showCurrent/.test( tabScript ) === true );
 check( 'F312 c. the list of the pages has no strip of tabs of its own - none is made, none has a style, no word - and the frames are drawn into the mount of the tab from the same answer; the address of before, #builder/@frames, leads to #builder-frames',
 	has( /Nino\.adminUi\.tabs\(/ ) === false && has( /builder-tabs/ ) === false && sheet.indexOf( 'builder-tabs' ) === -1 && word( de, 'tab/label' ) === '' && word( en, 'tab/label' ) === ''
 	&& has( /const drawFrames = function\( data \)[\s\S]*?dc\.getElementById\('builder-frames-list'\)/ ) === true && has( /drawFrames\( data \);/ ) === true
-	&& has( /wn\.location\.replace\( Nino\.admin\.router\.href\( 'builder-frames', \[\] \) \)/ ) === true && has( /const isFramesTab = function\( parts \) \{\s*return parts\.length === 1 && parts\[0\] === FRAMES_TAB;/ ) === true );
+	&& has( /wn\.location\.replace\( Nino\.admin\.router\.href\( framesTabFor\( S\.list \), \[\] \) \)/ ) === true && has( /return list !== null && list\.frames\.length > 0 \? 'builder-frames' : 'builder';/ ) === true && word( de, 'frame/empty' ) === '' && word( en, 'frame/empty' ) === '' && has( /const isFramesTab = function\( parts \) \{\s*return parts\.length === 1 && parts\[0\] === FRAMES_TAB;/ ) === true );
 
 console.log( '\nF304. The dialog Source' );
 

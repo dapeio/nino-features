@@ -1470,6 +1470,38 @@ check( 'the address of a draft that nobody holds - dropped, never given, or run 
 check( 'a draft that another feature holds is no stray, and a token of a wrong form is never one - it does not go to the files',
 	$foreign === [ 'themelab-tile' => false, 'themes-pictures' => false ] && array_filter( $wrong ) === [] );
 
+// the tab "Header/footer" of the pane is for the accounts that design: with the area of the panel - the door alone is every right of it - and not for an account that is described to write the content;
+// a kernel that knows no scope() of a tab keeps the tab as it was, for everybody who has the panel
+if( method_exists( \Nino\Admin\Admin::class, 'mayUse' ) === false )
+	echo "  skip - the tab for the design is checked with a kernel that has scope() of a tab\n";
+else {
+
+	$tabsOf = static function( array &$appData ): array { return array_keys( \Nino\Admin\Admin::visiblePanels( $appData )['builder']['tabs'] ?? [] ); };
+
+	ninoUser( $site, 'door-only@example.com', [ '/_admin/builder/manage' ] );
+	$doorTabs = $tabsOf( $site );
+	[ , $doorList ] = builderCall( $site, 'builder/list' );
+	ninoUser( $site, 'designer-tab@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
+	$designTabs = $tabsOf( $site );
+	ninoUser( $site, 'content-only@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+	$contentTabs = $tabsOf( $site );
+	[ $contentStatus, $contentList ] = builderCall( $site, 'builder/list' );
+	ninoUser( $site, 'no-door@example.com', [ '/_admin/text/manage' ] );
+	$noDoorPanel = \Nino\Admin\Admin::visiblePanels( $site )['builder'] ?? null;
+	[ $noDoorStatus, $noDoorList ] = builderCall( $site, 'builder/list' );
+	ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
+
+	check( 'the tab "Header/footer" is registered with the right of the design and the area of the panel: an account that holds the door alone has it, and so has one that holds the design',
+		method_exists( \Nino\Modules\Builder\FramesTab::class, 'scope' ) === true && \Nino\Modules\Builder\FramesTab::perm() === \Nino\Modules\Builder::DESIGN && \Nino\Modules\Builder\FramesTab::scope() === \Nino\Modules\Builder::SCOPE
+		&& in_array( 'builder-frames', $doorTabs, true ) === true && in_array( 'builder-frames', $designTabs, true ) === true && ( $doorList['frames'] ?? [] ) !== [] );
+
+	check( 'an account without the door of the Builder - a right of another panel only - has neither the panel nor its tab, and the list answers it with no frames and no pages',
+		$noDoorPanel === null && in_array( $noDoorStatus, [ 401, 403 ], true ) === true && ( $noDoorList['frames'] ?? null ) === null );
+
+	check( 'an account that is described to write the content has no tab "Header/footer" and gets no frames in the answer of the list',
+		in_array( 'builder-frames', $contentTabs, true ) === false && $contentStatus === 200 && ( $contentList['frames'] ?? null ) === [] );
+}
+
 check( 'the tile of one session is the page as it is for another', str_contains( $others, $narrow['texts']['de_DE']['title'] ) === false );
 
 // what the tile draws is what a save takes: the root of the block is the block of the kernel - laid out, with the pictures of the kernel in the place of the slots

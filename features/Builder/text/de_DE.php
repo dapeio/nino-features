@@ -356,7 +356,6 @@ return [
 	'[[/_admin/builder/frame/uses-many]]'	=> '%s Seiten',
 	'[[/_admin/builder/tab/pages]]'	=> 'Seiten',
 	'[[/_admin/builder/tab/frames]]'	=> 'Kopf-/Fußbereich',
-	'[[/_admin/builder/frame/empty]]'	=> 'Den Kopf-/Fußbereich der Website wählen die, die gestalten dürfen.',
 	'[[/_admin/builder/frame/choose]]'	=> 'Auswählen',
 	'[[/_admin/builder/frame/choose-title]]'	=> 'Kopf-/Fußbereich wählen',
 	'[[/_admin/builder/frame/choose-of]]'	=> '%s auswählen',

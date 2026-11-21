@@ -356,7 +356,6 @@ return [
 	'[[/_admin/builder/frame/uses-many]]'	=> '%s pages',
 	'[[/_admin/builder/tab/pages]]'	=> 'Pages',
 	'[[/_admin/builder/tab/frames]]'	=> 'Header/footer',
-	'[[/_admin/builder/frame/empty]]'	=> 'Whoever may design chooses the header/footer of the site.',
 	'[[/_admin/builder/frame/choose]]'	=> 'Choose',
 	'[[/_admin/builder/frame/choose-title]]'	=> 'Choose header/footer',
 	'[[/_admin/builder/frame/choose-of]]'	=> 'Choose %s',
