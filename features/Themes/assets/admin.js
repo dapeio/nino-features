@@ -373,6 +373,10 @@
 
 		const entry = described( group );
 
+		// The part of an own theme that no installed theme has the same of: it is the theme's own, changed from what it was or made by hand
+		if( entry.origin === 'own' )
+			return word('word/changed');
+
 		if( entry.theme === '' )
 			return word('word/standard');
 
@@ -2458,7 +2462,7 @@
 
 		Nino.adminUi.confirm( 'destructive', {
 			title    : word( 'confirm/delete-title', name ),
-			message    : word('confirm/delete')+ ' '+ replacesLast(),
+			message    : word('confirm/delete'),
 			yes      : word('label/delete'),
 			no      : Nino.content.getText('/_admin/common/label/cancel'),
 			kind    : 'danger',
@@ -2573,9 +2577,11 @@
 
 		const sources = Object.keys( by ).sort( function( a, b ) { return by[b].length - by[a].length } );
 		const main = sources[0];
-		const rest = sources.slice( 1 ).map( function( source ) { return word( 'msg/made-of', by[source].map( groupLabel ).join(', '), source ) } );
+		const rest = sources.slice( 1 ).map( function( source ) { return madeBy( by[source].map( groupLabel ).join(', '), source ) } );
 
-		return rest.length === 0 ? word( 'msg/mix-all', main ) : rest.join(', ')+ ', '+ word( 'msg/mix-rest', main );
+		const changed = main === word('word/changed');
+
+		return rest.length === 0 ? ( changed === true ? word('msg/mix-all-changed') : word( 'msg/mix-all', main ) ) : rest.join(', ')+ ', '+ ( changed === true ? word('msg/mix-rest-changed') : word( 'msg/mix-rest', main ) );
 	};
 
 	// What the website shows, as a phrase: the theme by its name, or the standard parts where no theme is on
@@ -2585,8 +2591,9 @@
 
 	/**
 	 *	The name of an own theme, asked in the form dialog of the workbench: Enter in the field sends. What was wrong with the last name is said at the field
-	 *	and the dialog is drawn once more, so that it stays where it was. The dialog says what is done and - where there is a last state that is kept -
-	 *	that it is replaced, as every question of the panel that writes does. The dialog is closed before the name is handed on: what is done with it
+	 *	and the dialog is drawn once more, so that it stays where it was. The dialog says what is done and - where the brand is saved with the theme, which makes a state of
+	 *	the website, and there is a last state that is kept - that it is replaced, as every question of the panel that writes does. A theme that is saved
+	 *	or copied alone is a folder and replaces nothing. The dialog is closed before the name is handed on: what is done with it
 	 *	may ask a question of its own
 	 *
 	 *	@param		{string}		suggestion
@@ -2613,7 +2620,7 @@
 
 		Nino.adminUi.formDialog( {
 			title		: about.title,
-			message	: about.message+ ( replacesLast() === '' ? '' : ' '+ replacesLast() ),
+			message	: about.message+ ( brandDirty() === false || replacesLast() === '' ? '' : ' '+ replacesLast() ),
 			body		: body,
 			submit	: about.title,
 			cancel	: Nino.content.getText('/_admin/common/label/cancel'),
@@ -3459,12 +3466,21 @@
 		Object.keys( theme.from ?? {} ).sort().forEach( function( group ) {
 
 			const from = theme.from[group];
-			const source = from === 'standard' ? word('word/standard') : themeName( from.split('@')[0] );
+			const source = from === 'standard' ? word('word/standard') : ( from === 'rests' ? word('word/rests') : ( from.indexOf('own:') === 0 ? word('word/changed') : themeName( from.split('@')[0] ) ) );
 
 			by[source] = ( by[source] ?? [] ).concat( [ groupLabelOf( group ) ] );
 		} );
 
-		return Object.keys( by ).map( function( source ) { return word( 'msg/made-of', by[source].join(', '), source ) } ).join(' · ');
+		return Object.keys( by ).map( function( source ) { return madeBy( by[source].join(', '), source ) } ).join(' · ');
+	};
+
+	// What the groups of a source are, in a few words: "Section from Craft"; the parts that no installed theme has the same of are "changed", whatever they were made from, and a part that rests rests
+	const madeBy = function( groups, source ) {
+
+		if( source === word('word/rests') )
+			return word( 'msg/made-rests', groups );
+
+		return source === word('word/changed') ? word( 'msg/made-changed', groups ) : word( 'msg/made-of', groups, source );
 	};
 
 	// The name of a group as the list has it, before any theme is open
@@ -3906,7 +3922,7 @@
 
 		Nino.adminUi.confirm( 'destructive', {
 			title		: word( 'confirm/delete-title', name ),
-			message	: word('confirm/delete')+ ' '+ replacesLast(),
+			message	: word('confirm/delete'),
 			yes			: word('label/delete'),
 			no			: Nino.content.getText('/_admin/common/label/cancel'),
 			kind		: 'danger',

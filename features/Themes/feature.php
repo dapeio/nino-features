@@ -112,8 +112,12 @@ return [
 				'de_DE' => 'Das Stylesheet der Lage nino.theme, vom Compiler geschrieben mit Marke, Reglerstufen, Teilen und eigenem CSS; eine Datei, die jemand anderes schrieb, wird nur auf Anweisung ersetzt.',
 			],
 			'data/theme/' => [
-				'en_US' => 'The state, the last state, the own themes, the brand, the copies of the parts in use and the keys of uploaded themes, which the backup carries and an update does not change.',
-				'de_DE' => 'Der Stand, der letzte Stand, die eigenen Themes, die Marke, die Kopien der verwendeten Teile und die Schlüssel hochgeladener Themes, die das Backup mitnimmt und ein Update nicht ändert.',
+				'en_US' => 'The state, the last state, the brand, the copies of the parts in use and the keys of uploaded themes, which the backup carries and an update does not change.',
+				'de_DE' => 'Der Stand, der letzte Stand, die Marke, die Kopien der verwendeten Teile und die Schlüssel hochgeladener Themes, die das Backup mitnimmt und ein Update nicht ändert.',
+			],
+			'private/themes/<key>/' => [
+				'en_US' => 'An own theme: a folder in the form of a theme package that the panel writes whole; a package folder copied in by hand is one as well.',
+				'de_DE' => 'Ein eigenes Theme: ein Ordner in der Form eines Theme-Pakets, den das Panel ganz schreibt; ein von Hand hineinkopierter Paketordner ist ebenfalls eines.',
 			],
 			'public/fonts/<slug>/' => [
 				'en_US' => 'A family installed from the repository: .woff2 files, LICENSE.txt and font.json, checked against the signed list and moved into place whole; a folder put there by hand is not replaced.',

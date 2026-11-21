@@ -255,7 +255,9 @@ function describe( mix, rest, brand ) {
 	const section = part.section ?? { from : 'standard' };
 	const header = part.header ?? { from : 'standard' };
 	const from = section.from ?? 'standard';
-	const theme = from === 'standard' ? '' : from.split('@')[0];
+	// A part of an own theme that no installed theme has the same of: the server tells it from the theme itself
+	const own = from.indexOf('own:') === 0;
+	const theme = from === 'standard' || own === true ? '' : from.split('@')[0];
 	const standard = ( section.standard ?? {} )['section-wrap'] ?? ( theme === 'craft' ? 'soft' : 'regular' );
 	const variants = [ { name : 'regular', label : null, source : 'schema' }, { name : theme === 'craft' ? 'soft' : 'band', label : { de_DE : theme === 'craft' ? 'Weiche Fläche' : 'Band', en_US : theme === 'craft' ? 'Soft surface' : 'Band' }, source : 'part' } ];
 	const offers = [ { theme : 'nino', version : '1.0.0', ok : true, problem : '', why : null }, { theme : 'craft', version : '1.0.0', ok : true, problem : '', why : null, values : { 'section-wrap.space' : -1 } }, { theme : 'rest', version : '1.0.0', ok : false, problem : 'English detail of the css', why : CSS_WHY } ];
@@ -265,7 +267,7 @@ function describe( mix, rest, brand ) {
 			page : { label : '', from : ( part.page ?? {} ).from ?? 'standard', theme : 'nino', version : '1.0.0', origin : 'installed', package : 'installed', problem : '', why : null, missing : false, components : [], offers : offers,
 				knobs : [ { key : 'size', label : { de_DE : 'Grundgröße', en_US : 'Base size' }, extra : false, small : false, step : ( ( part.page ?? {} ).values ?? {} ).size ?? 0, default : { '--page-size' : '100%' }, ladder : [ { '--page-size' : '90%' }, { '--page-size' : '95%' }, { '--page-size' : '100%' }, { '--page-size' : '105%' }, { '--page-size' : '110%' } ] },
 					{ key : 'motion', label : { de_DE : 'Bewegung', en_US : 'Motion' }, extra : false, small : false, step : 0, default : { '--page-motion' : '.15s' }, ladder : [ { '--page-motion' : '0s' }, { '--page-motion' : '.1s' }, { '--page-motion' : '.15s' }, { '--page-motion' : '.25s' }, { '--page-motion' : '.4s' } ] } ] },
-			section : { label : GROUP_LABEL.section, from : from, theme : theme, version : theme === '' ? '' : '1.0.0', origin : theme === '' ? 'standard' : 'installed', package : theme === '' ? '' : 'installed', problem : rest === true ? 'English detail of the version' : '', why : rest === true ? VERSION_WHY : null, missing : false, offers : offers,
+			section : { label : GROUP_LABEL.section, from : from, theme : theme, version : theme === '' ? '' : '1.0.0', origin : own === true ? 'own' : ( theme === '' ? 'standard' : 'installed' ), package : theme === '' ? '' : 'installed', problem : rest === true ? 'English detail of the version' : '', why : rest === true ? VERSION_WHY : null, missing : false, offers : offers,
 				knobs : knobs( from, section.values ?? {} ),
 				components : [
 					{ name : 'section-title', label : COMPONENT_LABEL['section-title'], variants : [ { name : 'regular', label : null, source : 'schema' } ], standard : 'regular' },
@@ -306,7 +308,7 @@ function listAnswer( active, extra, pages, demos, copies ) {
 			{ key : 'nino', kind : 'theme', origin : 'shipped', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'nino' },
 			{ key : 'craft', kind : 'theme', origin : 'uploaded', frames : [ { key : 'craft-foot', name : { de_DE : 'Fuß <b>x</b>', en_US : 'Foot <b>x</b>' }, reads : [ { key : '/project/company/general/name', text : 'Nino <b>GmbH</b>', logo : false }, { key : '/logo', text : null, logo : true } ] } ], css : { lines : 4, why : null }, version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
 			{ key : 'rest', kind : 'theme', origin : 'catalogue', css : { lines : 0, why : { code : 'theme-css', params : [ 'line 3 has an element selector' ] } }, version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
-			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : 'craft@1.0.0', header : 'standard' }, active : active === 'own:lindner' },
+			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : OWN_SECTION, header : 'standard' }, active : active === 'own:lindner' },
 		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
 		groups : [ 'brand', 'footer', 'section', 'settings', 'css', 'groups', 'header' ].map( function( key ) { return { key : key, label : GROUP_LABEL[key], feature : 'basis', components : [], demo : ( demos ?? [] ).indexOf( key ) !== -1 } } ),
@@ -315,10 +317,13 @@ function listAnswer( active, extra, pages, demos, copies ) {
 	}, extra ?? {} );
 }
 
+// What the own theme Lindner takes its section from: the part of Craft, or - the folder of the theme holds a part that no installed theme has - its own
+let OWN_SECTION = 'craft@1.0.0';
+
 function mixOf( key ) {
 
 	if( key === 'own:lindner' )
-		return { name : 'Lindner', css : '', parts : { page : { from : 'nino@1.0.0' }, section : { from : 'craft@1.0.0', values : { 'section-wrap.space' : 2, 'section-title.size' : 0 } }, header : { from : 'standard' } } };
+		return { name : 'Lindner', css : '', parts : { page : { from : 'nino@1.0.0' }, section : { from : OWN_SECTION, values : { 'section-wrap.space' : 2, 'section-title.size' : 0 } }, header : { from : 'standard' } } };
 
 	return { parts : { page : { from : 'nino@1.0.0' }, section : { from : 'nino@1.0.0' }, header : { from : 'standard' } } };
 }
@@ -2896,7 +2901,7 @@ function said( w, node ) {
 	pressed( w, CANCEL );
 	fire( byId( w.theme, 'themes-delete' ), 'click' );
 
-	check( 'S. a delete says in its question that it replaces the last state that is kept, and so does an apply, and a save of the theme of the website', said( w, w.dialogs[1] ).indexOf( W('msg/replaces-last').split('%s')[0] ) !== -1 );
+	check( 'S. a delete says nothing of replacing the last state that is kept: an own theme is a folder, and its removal makes no state of the website - it says that it takes the folder away - while an apply does say it, and so does a save of the theme of the website', said( w, w.dialogs[1] ).indexOf( W('msg/replaces-last').split('%s')[0] ) === -1 && said( w, w.dialogs[1] ).indexOf( W('confirm/delete') ) !== -1 );
 
 	pressed( w, CANCEL );
 	fire( w.button( w.bar(), W('label/apply') ), 'click' );
@@ -2907,14 +2912,25 @@ function said( w, node ) {
 
 	plain.canRestore = true;
 	plain.at( '#themes/own.lindner/settings' );
-	fire( byId( plain.theme, 'themes-delete' ), 'click' );
+	fire( plain.button( plain.bar(), W('label/apply') ), 'click' );
 
 	check( 'S. a last state that was saved before its time was kept is replaced all the same, and the sentence says it without the time', said( plain, plain.dialogs[0] ).indexOf( W('msg/replaces-last-plain') ) !== -1 );
+
+	// the same in the list: the delete of a card says what it takes away, and nothing of the last state
+	const listed = world( { active : 'nino' } );
+
+	listed.canRestore = true;
+	listed.at( '#themes' );
+	listed.panel.reload();
+	listed.serve();
+	fire( findAll( listed.list, function( node ) { return node.dataset.delete === 'own:lindner' } )[0], 'click' );
+
+	check( 'S. a delete in the list says nothing of the last state either, though there is one: it makes no state', listed.dialogs.length === 1 && said( listed, listed.dialogs[0] ).indexOf( W('confirm/delete') ) !== -1 && said( listed, listed.dialogs[0] ).indexOf( W('msg/replaces-last-plain') ) === -1 );
 
 	const none = world( { active : 'nino' } );
 
 	none.at( '#themes/own.lindner/settings' );
-	fire( byId( none.theme, 'themes-delete' ), 'click' );
+	fire( none.button( none.bar(), W('label/apply') ), 'click' );
 
 	check( 'S. where there is no last state kept nothing is said of replacing it', said( none, none.dialogs[0] ).indexOf( W('msg/replaces-last').split('%s')[0] ) === -1 );
 }
@@ -3121,7 +3137,7 @@ function nameField( w ) {
 	const dialog = w.dialogs[w.dialogs.length - 1];
 
 	check( 'U. the button asks for a name in the dialog of the name, with the name of the theme and "(copy)" as the suggestion; nothing is sent yet', dialog.open === true && nameField( w ).value === Wp( 'msg/copy-name', 'Craft' ) && w.requests.length === 0 );
-	check( 'U. ...the dialog says what is copied and that the brand is not, what the website goes on showing, and - where there is a last state - that it is replaced like every change does', w.text( dialog ).indexOf( Wp( 'msg/duplicate', 'Craft', Wp( 'msg/shown-theme', 'Nino' ) ) ) !== -1 && w.text( dialog ).indexOf( W('msg/replaces-last-plain') ) !== -1 );
+	check( 'U. ...the dialog says what is copied and that the brand is not, what the website goes on showing, and - and nothing of the last state, though there is one: a copy is a folder and makes no state to replace it', w.text( dialog ).indexOf( Wp( 'msg/duplicate', 'Craft', Wp( 'msg/shown-theme', 'Nino' ) ) ) !== -1 && w.text( dialog ).indexOf( W('msg/replaces-last-plain') ) === -1 );
 
 	pressed( w, CANCEL );
 
@@ -3690,7 +3706,26 @@ function nameField( w ) {
 	kept.at( '#themes/craft/settings' );
 	fire( byId( kept.theme, 'themes-save-as' ), 'click' );
 
-	check( 'X. where there is one the dialog says that the state as it is now replaces it - the same sentence as the questions of Save, Apply and Delete', kept.text( kept.dialogs[kept.dialogs.length - 1] ).indexOf( W('msg/replaces-last-plain') ) !== -1 );
+	check( 'X. nor has the dialog of "Save as own theme" where there is one, as long as the brand is not changed with it: the theme is a folder and makes no state - the same sentence as the questions of Save and Apply is for a change that does', kept.text( kept.dialogs[kept.dialogs.length - 1] ).indexOf( W('msg/replaces-last-plain') ) === -1 );
+
+	// the brand is changed with it: the state is made, and the last one is replaced
+	const branded = world( { active : 'nino' } );
+
+	branded.canRestore = true;
+	branded.at( '#themes/craft/section/section-wrap' );
+	fire( branded.step( 'themes-section-section-wrap-space', 4 ), 'click' );
+	branded.tick();
+	branded.serve();
+	branded.state.hash = '#themes/craft/brand/colours';
+	branded.panel.showCurrent();
+	branded.serve();
+	type( byId( branded.theme, 'themes-brand-color-1' ), '#9a4b1d' );
+	branded.tick();
+	branded.serve();
+	fire( branded.button( branded.bar(), W('label/save-as') ), 'click' );
+	pressedOn( branded );
+
+	check( 'X. where the brand is saved with the theme the state of the website is made of it: the dialog of the name says that the last one is replaced', branded.text( branded.dialogs[branded.dialogs.length - 1] ).indexOf( W('msg/replaces-last-plain') ) !== -1 );
 }
 
 {
@@ -4357,6 +4392,47 @@ function nameField( w ) {
 	w.serve();
 
 	check( 'R1. a draft typed that breaks the rule is said at the field as the answer says it, and keeps Save off - the rule is the server\'s: the panel only says what the draft was answered', w.text( byId( w.theme, 'themes-css-problem' ) ) === Nino_format( words.en['/_admin/error/themes_css_rule'], 'uses url()' ) && w.button( w.bar(), W('label/save') ).disabled === true );
+}
+
+// --- AE. an own theme is a folder: where its parts come from is what the server finds in the files ---------------------------------------
+
+{
+	OWN_SECTION = 'own:lindner';
+
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+	w.panel.reload();
+	w.serve();
+
+	OWN_SECTION = 'rests';
+	const rests = world( { active : 'nino' } );
+
+	rests.at( '#themes' );
+	rests.panel.reload();
+	rests.serve();
+
+	check( 'S1. the card of an own theme says of a part that rests that it rests, and not that it is changed', rests.text( rests.list ).indexOf( Wp( 'msg/made-rests', 'Section' ) ) !== -1 && rests.text( rests.list ).indexOf( Wp( 'msg/made-changed', 'Section' ) ) === -1 );
+	OWN_SECTION = 'own:lindner';
+
+	check( 'S1. the card of an own theme says which of its parts no installed theme has the same of: they are "changed" - the folder of the theme holds them, and nothing says where they were made from - beside the groups that are the part of an installed theme',
+		w.text( w.list ).indexOf( Wp( 'msg/made-changed', 'Section' ) ) !== -1 && w.text( w.list ).indexOf( Wp( 'msg/made-of', W('word/page'), 'Nino' ) ) !== -1 );
+
+	fire( findAll( w.list, function( b ) { return b.dataset.edit === 'own:lindner' } )[0], 'click' );
+	w.answer( 200, Object.assign( { theme : { key : 'own:lindner', kind : 'own', name : 'Lindner' }, mix : mixOf( 'own:lindner' ), stamp : 'stamp-5', active : null }, describe( mixOf( 'own:lindner' ) ) ) );
+	w.serve();
+
+	const source = w.byClass( w.theme, 'themes-source' ).map( function( node ) { return node.textContent } );
+
+	check( 'S1. and on the screen of the theme the group says it too: the source of the part of the section is "changed", and the part of the page is Nino\'s', source.indexOf( W('word/changed') ) !== -1 && source.indexOf( 'Nino' ) !== -1 );
+
+	w.at( '#themes/own.lindner/section' );
+
+	const options = Array.from( w.byTag( w.theme, 'select' ).filter( function( one ) { return one.id === 'themes-part-section' } )[0].children ).map( function( option ) { return option.value+ '=' + w.text( option ) } );
+
+	check( 'S1. the choice of the part of a group offers the part the folder holds - with the word "changed" - beside the standard part and the themes that have one, and has it chosen', options.indexOf( 'own:lindner='+ W('word/changed') ) !== -1 && w.byTag( w.theme, 'select' ).filter( function( one ) { return one.id === 'themes-part-section' } )[0].value === 'own:lindner' && options.some( function( one ) { return one.indexOf( 'craft@1.0.0' ) === 0 } ) );
+
+	OWN_SECTION = 'craft@1.0.0';
 }
 
 function Nino_format( text, ...params ) { return String( text ).replace( /%s/g, function() { return String( params.shift() ) } ) }

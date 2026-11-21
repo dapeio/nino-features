@@ -180,7 +180,7 @@ namespace Nino\Modules\Themes {
 					$knobs[$knob['token']] = $knob['ladder'][$knob['step'] + 2];
 
 				if( $entry['part'] !== null && trim( $entry['part']['css'] ) !== '' )
-					$css[] = '/* '. $group. ': the part of '. $entry['theme']. ' '. $entry['version']. ' */'. "\n". trim( $entry['part']['css'] );
+					$css[] = '/* '. $group. ': the part of '. ( $entry['origin'] === 'own' ? 'the theme itself' : $entry['theme']. ' '. $entry['version'] ). ' */'. "\n". trim( $entry['part']['css'] );
 
 				foreach( $entry['variants'] as $component => [ $added, $standard, $labels ] )
 					if( $added !== [] || $standard !== 'regular' )
@@ -192,8 +192,8 @@ namespace Nino\Modules\Themes {
 
 			$blocks = array_merge( $blocks, $css );
 
-			// The own css goes in as it was written. Where it does not close - a comment, a string, a url(, a block - it is closed here, at its end and
-			// as the bundle would close it: the bundle says so in the log at every build, and unfinished css is what a person who types has for a while
+			// The own css goes in as it was written, once it keeps the rule, which refuses braces that do not balance. What the rule lets through and is still
+			// open - a comment, a string, a url( - is closed here, at its end and as the bundle would close it: the bundle says so in the log at every build
 			$faults = [];
 			$rule = Mix::cssRule( (string) ( $mix['css'] ?? '' ) );
 
@@ -363,7 +363,7 @@ namespace Nino\Modules\Themes {
 		/**
 		 *	The part a mix names for the page or a group, resolved
 		 *
-		 *	@return 	array											'from', 'theme', 'version', 'origin' (standard, copy, installed), 'dir', 'brand' (what the theme suggests), 'part', 'problem', 'missing' (the theme has no part for it), 'values'
+		 *	@return 	array											'from', 'theme', 'version', 'origin' (standard, copy, installed, own), 'dir', 'brand' (what the theme suggests), 'part', 'problem', 'missing' (the theme has no part for it), 'values'
 		 */
 		private static function _part( array &$appData, string $group, array $entry ): array {
 

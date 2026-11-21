@@ -425,59 +425,38 @@ namespace Nino\Modules\Themes {
 		// --- what keeps a theme in place ---------------------------------------------------------------------------------------
 
 		/**
-		 *	What keeps a theme of the panel in place: a state of the website shows it or takes parts from it - the state as it is, an own theme, the last state and the own
-		 *	themes of that
+		 *	What keeps a theme of the panel in place: the state of the website shows it, or the last state does. An own theme holds no theme in place: it keeps every part it
+		 *	has in its own folder
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		string		$key
 		 *
-		 *	@return 	array|null								null where nothing does; else [ 'active' ], [ 'own', the name of an own theme ], [ 'last' ] or [ 'last-own', the name of an own theme of the last state ]
+		 *	@return 	array|null								null where nothing does; else [ 'active' ] or [ 'last' ]
 		 */
 		public static function heldBy( array &$appData, string $key ): ?array {
 
 			$state = Store::read( $appData );
-			$takes = static function( array $mix ) use ( $key ): bool {
-
-				foreach( (array) ( $mix['parts'] ?? [] ) as $entry )
-					if( strtok( (string) ( is_array( $entry ) === true ? ( $entry['from'] ?? '' ) : '' ), '@' ) === $key )
-						return true;
-
-				return false;
-			};
 
 			if( ( $state['active']['theme'] ?? '' ) === $key )
 				return [ 'active' ];
 
-			foreach( $state['own'] as $own => $mix )
-				if( $takes( (array) $mix ) === true )
-					return [ 'own', (string) ( $mix['name'] ?? $own ) ];
-
 			if( $state['previous'] === true ) {
 
-				$dir = \Nino\Modules\Themes::DIR. '/previous';
-				$saved = \Nino\Filesystem::getFileContent( $appData, $dir. '/active.json', [] );
+				$saved = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Themes::DIR. '/previous/active.json', [] );
 
 				if( is_array( $saved ) === true && ( $saved['theme'] ?? '' ) === $key )
 					return [ 'last' ];
-
-				foreach( (array) glob( \Nino\Filesystem::path( $appData, $dir. '/own' ). '/*.json' ) as $file ) {
-
-					$mix = \Nino\Filesystem::getFileContent( $appData, $dir. '/own/'. basename( (string) $file ), [] );
-
-					if( is_array( $mix ) === true && $takes( $mix ) === true )
-						return [ 'last-own', (string) ( $mix['name'] ?? basename( (string) $file, '.json' ) ) ];
-				}
 			}
 
 			return null;
 		}
 
 		/**
-		 *	The refusal that a hold is, as a failure: the website shows the theme, an own theme takes parts from it, the last state does
+		 *	The refusal that a hold is, as a failure: the website shows the theme, the last state does
 		 */
 		private static function _held( array $by, string $key, string $name, string $verb ): array {
 
-			$what = [ 'active' => 'active', 'own' => 'own', 'last' => 'last', 'last-own' => 'last_own' ][$by[0]];
+			$what = [ 'active' => 'active', 'last' => 'last' ][$by[0]];
 
 			return self::_fail( 409, $verb. '_'. $what, isset( $by[1] ) === true ? [ self::_shown( $by[1] ), $name ] : [ $name ], 'theme', 'the theme is held: '. $by[0] );
 		}

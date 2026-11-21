@@ -31,9 +31,16 @@ namespace Nino\Modules\Themes {
 	 *										for the knobs, validStep() for each step, partProblems() for the css, the rule of mixing
 	 *										and nothing more - what a part may do beyond it is the theme author's.
 	 *
-	 *										What is read is kept in private/data/cache/themes/read.php with a stamp - the size and the
-	 *										modification time of each file, the register's groups and the versions - and read anew
-	 *										where the stamp is not the one of the files.
+	 *										What is read is kept in private/data/theme/.cache/read.php with a stamp - the size, the
+	 *										modification time and the inode of each file, the bytes of one that was written in the last
+	 *										seconds, the register's groups and the versions - and read anew where the stamp is not the one
+	 *										of the files.
+	 *
+	 *										The own themes are the same folders in private/themes/ (own()), with what a folder of the
+	 *										project needs on top: its name is the key of its theme, a link is no folder, and at most
+	 *										Store::MAX_OWN are read. A folder that is copied in by hand is one of them. What is kept of them
+	 *										is in .cache/own.php. The blocks/ of a folder, its picture and every file nobody named are
+	 *										never opened.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -80,6 +87,8 @@ namespace Nino\Modules\Themes {
 			'brand'							=> 'the brand of a theme may suggest %s and nothing else - "%s" is none of them or has no value that fits',
 			'parts-many'				=> 'there are more than %s parts',
 			'themes-many'				=> 'there are more than %s themes',
+			'own-many'					=> 'there is no room for more than %s own themes',
+			'own-missing'				=> 'the own theme %s is not there',
 			'key-taken'					=> 'the key "%s" is the theme %s\'s',
 			'part-key'					=> '"%s" is no key of a part - there are %s',
 			'part-values'				=> '"values" is a map of knobs of the part to a step from -2 to 2 - "%s" is none of them or has no step',
@@ -237,6 +246,131 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	The folder the own themes are in, as a path: it is there or it is not
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	string
+		 */
+		public static function ownDir( array &$appData ): string {
+			return \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::OWN );
+		}
+
+		/**
+		 *	The own themes there are: the folders of private/themes/, each a theme in the form of a package, read as the themes of the packages are and
+		 *	with the same checks - and with what a folder of the project's own needs on top: the name of the folder is the key of the theme, a link is no
+		 *	folder, and there are at most Store::MAX_OWN of them, the rest is refused with the reason. A theme whose theme.json is not what it should be is
+		 *	refused as a whole; a part that is not rests, its group has the standard part; a theme.css that breaks the rule is not used and says where.
+		 *	Nothing else of the folder is opened - not a block of it, not a picture, not a file nobody named - and no file is ever run
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		bool			$fresh				Whether what is held for the request and what is kept in the cache are not looked at: the read of a request that is about to decide something with the lock held
+		 *
+		 *	@return 	array											'themes' => key => [ as read() has them, 'label' (the name as a text), 'stamp' (what the files of the theme say, as one hash) ], 'rejected' => folder => the reason
+		 */
+		public static function own( array &$appData, bool $fresh = false ): array {
+
+			if( $fresh === false && is_array( $appData['./nino/themes/own'] ?? null ) === true )
+				return $appData['./nino/themes/own'];
+
+			$base = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::OWN );
+			$real = is_dir( $base ) === true && is_link( $base ) === false ? realpath( $base ) : false;
+			$roots = $real === false ? [] : [ $real ];
+			$stamp = self::_stamp( $appData, $roots );
+
+			if( $fresh === false ) {
+
+				$kept = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Themes::CACHE. '/own.php', [] );
+
+				if( is_array( $kept ) === true && ( $kept['stamp'] ?? '' ) === $stamp && is_array( $kept['read'] ?? null ) === true )
+					return $appData['./nino/themes/own'] = $kept['read'];
+			}
+
+			$read = [ 'themes' => [], 'rejected' => [] ];
+			$count = 0;
+
+			$entries = $real === false ? [] : (array) glob( $real. '/*', GLOB_NOSORT );
+
+			// By name, whatever order the system lists them in: the same folders are the first 50 on every request, and the ones that are left over are always the same
+			sort( $entries, SORT_STRING );
+
+			foreach( $entries as $entry ) {
+
+				// A link - to a folder or to anything - is no folder of the project's own; a file that lies there is none of the themes and is left alone
+				if( is_link( (string) $entry ) === false && is_dir( (string) $entry ) === false )
+					continue;
+
+				if( ++$count > Store::MAX_OWN ) {
+					$read['rejected'][$entry] = self::why( 'own-many', Store::MAX_OWN );
+					continue;
+				}
+
+				$theme = self::theme( (string) $entry, basename( (string) $entry ) );
+
+				if( is_string( $theme ) === true ) {
+					$read['rejected'][$entry] = $theme;
+					continue;
+				}
+
+				$theme['label'] = self::_label( $appData, $theme['name'], $theme['key'] );
+				$theme['stamp'] = self::_digest( $theme['dir'] );
+
+				foreach( $theme['raw'] as $group => $raw )
+					$theme['parts'][$group] = self::check( $appData, $group, $raw );
+
+				unset( $theme['raw'] );
+				$read['themes'][$theme['key']] = $theme;
+			}
+
+			ksort( $read['themes'] );
+
+			$appData['./nino/themes/own'] = $read;
+
+			if( $fresh === false )
+				\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Themes::CACHE. '/own.php', [ 'stamp' => $stamp, 'read' => $read ] );
+
+			return $read;
+		}
+
+		/**
+		 *	The name of a theme as one line of text: a string as it is, a locale => text map in the native locale of the site, else English, else the first
+		 */
+		private static function _label( array &$appData, mixed $name, string $key ): string {
+
+			if( is_array( $name ) === true )
+				$name = $name[\Nino\Locales::getNativeLocale( $appData )] ?? $name['en_US'] ?? reset( $name );
+
+			return is_string( $name ) === true && trim( $name ) !== '' ? $name : $key;
+		}
+
+		/**
+		 *	What the files of a theme say, as one hash: theme.json, theme.css and the part.json and part.css of each part, each by its bytes where it is a file
+		 *	of the folder itself - what a saved theme is told from a theme that somebody changed. Nothing else of the folder is looked at
+		 *
+		 *	@param		string		$real					The real path of the theme
+		 *
+		 *	@return 	string										A sha256
+		 */
+		private static function _digest( string $real ): string {
+
+			$files = [ 'theme.json', 'theme.css' ];
+
+			foreach( (array) glob( $real. '/parts/*', GLOB_ONLYDIR ) as $part )
+				foreach( [ 'part.json', 'part.css' ] as $name )
+					$files[] = 'parts/'. basename( (string) $part ). '/'. $name;
+
+			$hashes = [];
+
+			foreach( $files as $file ) {
+
+				$path = $real. '/'. $file;
+				$hashes[] = $file. ':'. ( is_file( $path ) === true && is_link( $path ) === false && Store::readable( $path ) === true ? sha1_file( $path ) : '-' );
+			}
+
+			return hash( 'sha256', implode( "\n", $hashes ) );
+		}
+
+		/**
 		 *	One folder as a theme, its parts read and not yet checked. Only theme.json, part.json and part.css are opened, and
 		 *	only where they are files of the folder itself
 		 *
@@ -280,6 +414,7 @@ namespace Nino\Modules\Themes {
 
 			// The css of the theme as a whole: read as the kernel reads it, and left out - the theme is used without it - where it breaks the rule; the reason is said
 			$css = '';
+			$cssRaw = '';
 			$cssProblem = '';
 
 			if( file_exists( $real. '/theme.css' ) === true ) {
@@ -288,8 +423,12 @@ namespace Nino\Modules\Themes {
 
 				if( $text === null )
 					$cssProblem = self::why( 'unreadable', 'theme.css', self::MAX_CSS );
-				else if( ( $problems = \Nino\Components::themeProblems( $text ) ) !== [] )
+				else if( ( $problems = \Nino\Components::themeProblems( $text ) ) !== [] ) {
 					$cssProblem = preg_match( '/\(line (\d+)\)/', implode( '; ', $problems ), $line ) === 1 ? self::why( 'theme-css', (int) $line[1] ) : self::why( 'theme-css-any' );
+
+					// What it says is kept for the one who is to correct it: it is not used, and it is not lost where the theme is saved
+					$cssRaw = trim( str_replace( [ "\r\n", "\r" ], "\n", $text ) );
+				}
 				else
 					$css = trim( str_replace( [ "\r\n", "\r" ], "\n", $text ) );
 			}
@@ -315,7 +454,7 @@ namespace Nino\Modules\Themes {
 				}
 			}
 
-			return [ 'key' => $key, 'version' => $json['version'], 'name' => $json['name'], 'description' => $json['description'], 'brand' => $brand, 'dir' => $real, 'css' => $css, 'cssProblem' => $cssProblem, 'raw' => $raw, 'parts' => [] ];
+			return [ 'key' => $key, 'version' => $json['version'], 'name' => $json['name'], 'description' => $json['description'], 'brand' => $brand, 'dir' => $real, 'css' => $css, 'cssRaw' => $cssRaw, 'cssProblem' => $cssProblem, 'raw' => $raw, 'parts' => [] ];
 		}
 
 		/**
@@ -360,9 +499,52 @@ namespace Nino\Modules\Themes {
 			$problem = $raw['problem'] !== '' ? $raw['problem'] : self::_problem( $appData, $group, $raw );
 
 			if( is_string( $problem ) === true )
-				return [ 'ok' => false, 'problem' => $problem, 'part' => null ];
+				return [ 'ok' => false, 'problem' => $problem, 'part' => null, 'code' => '', 'bare' => false ];
 
-			return [ 'ok' => true, 'problem' => '', 'part' => $problem ];
+			return [ 'ok' => true, 'problem' => '', 'part' => $problem, 'code' => self::_partCode( $raw ), 'bare' => trim( $raw['css'] ) === '' && array_diff( array_keys( (array) $raw['json'] ), [ 'contract', 'values', 'standard' ] ) === [] ];
+		}
+
+		/**
+		 *	What a part is, apart from the steps it is delivered at and the variants it stands at: its part.json without "values" and "standard", and its part.css, as one hash. Two parts
+		 *	of one code are the same part, whichever theme holds them - which is how a part of an own theme is told from the part of an installed one
+		 *
+		 *	@param		array			$raw					As part() answers it
+		 *
+		 *	@return 	string										A sha1
+		 */
+		private static function _partCode( array $raw ): string {
+
+			$sort = static function( mixed $value ) use ( &$sort ): mixed {
+
+				if( is_array( $value ) === false )
+					return $value;
+
+				if( array_is_list( $value ) === false )
+					ksort( $value );
+
+				return array_map( $sort, $value );
+			};
+
+			$json = array_diff_key( (array) $raw['json'], [ 'values' => 1, 'standard' => 1 ] );
+
+			return sha1( json_encode( $sort( $json ) ). "\0". trim( str_replace( [ "\r\n", "\r" ], "\n", (string) $raw['css'] ) ) );
+		}
+
+		/**
+		 *	The text of part.json and part.css of a part, as they are in the folder of the theme - where they are files of the theme itself, and that is the same check
+		 *	as the read has made. A file that is not there is ''
+		 *
+		 *	@param		string		$base					The real path of the theme
+		 *	@param		string		$group
+		 *
+		 *	@return 	array											[ the text of part.json or null where it cannot be read, the text of part.css ]
+		 */
+		public static function partFiles( string $base, string $group ): array {
+
+			$dir = $base. '/parts/'. $group;
+			$css = file_exists( $dir. '/part.css' ) === true ? self::_file( $base, $dir. '/part.css', self::MAX_CSS ) : '';
+
+			return [ self::_file( $base, $dir. '/part.json', self::MAX_JSON ), $css ?? '' ];
 		}
 
 		/**
@@ -379,8 +561,11 @@ namespace Nino\Modules\Themes {
 		 */
 		public static function resolve( array &$appData, string $from, string $group ): array {
 
+			if( str_starts_with( $from, 'own:' ) === true )
+				return self::_resolveOwn( $appData, substr( $from, 4 ), $group );
+
 			[ $key, $version ] = explode( '@', $from, 2 ) + [ 1 => '' ];
-			$none = [ 'theme' => $key, 'version' => $version, 'origin' => '', 'dir' => '', 'brand' => [], 'part' => null, 'problem' => '' ];
+			$none = [ 'theme' => $key, 'version' => $version, 'origin' => '', 'dir' => '', 'brand' => [], 'part' => null, 'problem' => '', 'code' => '' ];
 
 			$copied = null;
 
@@ -414,10 +599,28 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	The part of a group of an own theme: the folder of the theme itself, which holds the part in full
+		 *
+		 *	@return 	array											As resolve() answers it, 'origin' => 'own' and no theme: the part is the project's own
+		 */
+		private static function _resolveOwn( array &$appData, string $key, string $group ): array {
+
+			$none = [ 'theme' => '', 'version' => '', 'origin' => '', 'dir' => '', 'brand' => [], 'part' => null, 'problem' => '', 'code' => '' ];
+			$theme = self::own( $appData )['themes'][$key] ?? null;
+
+			if( $theme === null )
+				return [ 'problem' => self::why( 'own-missing', self::_shown( $key ) ) ] + $none;
+
+			$found = [ 'version' => $theme['version'], 'origin' => 'own', 'dir' => $theme['dir'], 'brand' => $theme['brand'] ] + $none;
+
+			return isset( $theme['parts'][$group] ) === true ? array_merge( $found, self::_answer( $theme['parts'][$group] ) ) : $found;
+		}
+
+		/**
 		 *	The part and the reason of a check()
 		 */
 		private static function _answer( array $checked ): array {
-			return [ 'part' => $checked['part'], 'problem' => $checked['problem'] ];
+			return [ 'part' => $checked['part'], 'problem' => $checked['problem'], 'code' => $checked['code'] ];
 		}
 
 		/**
@@ -655,6 +858,10 @@ namespace Nino\Modules\Themes {
 
 			foreach( $roots as $root ) {
 
+				// The folders there are, and what each is: a folder that is made, taken away or turned into a link is another read
+				foreach( (array) glob( $root. '/*' ) as $entry )
+					$files[] = $entry. '|'. ( is_link( (string) $entry ) === true ? 'link' : ( is_dir( (string) $entry ) === true ? 'dir' : 'file' ) );
+
 				foreach( (array) glob( $root. '/*/theme.json' ) as $file )
 					$files[] = $file;
 
@@ -673,7 +880,9 @@ namespace Nino\Modules\Themes {
 			foreach( $files as $file ) {
 
 				$stat = @stat( (string) $file );
-				$state[] = $file. '|'. ( $stat === false ? '' : $stat['size']. '|'. $stat['mtime'] );
+				// A file that was changed in the last seconds - its time, or the time of its inode, which a hand that sets the modification time back cannot set back - is stamped by what it says as well: a change that has its size and its second is a change all the same
+				$recent = $stat !== false && time() - max( $stat['mtime'], $stat['ctime'] ) <= 2 && is_file( (string) $file ) === true && is_link( (string) $file ) === false ? '|'. (string) @sha1_file( (string) $file ) : '';
+				$state[] = $file. '|'. ( $stat === false ? '' : $stat['size']. '|'. $stat['mtime']. '|'. $stat['ctime']. '|'. $stat['ino'] ). $recent;
 			}
 
 			return sha1( implode( "\n", $state ). "\n". json_encode( \Nino\Components::groups( $appData ) ). "\n". \Nino\Components::version( $appData ). "\n". self::_code(). "\n". \Nino\VERSION. "\n". (string) ( \Nino\Features::get( $appData, 'themes' )['version'] ?? '' ) );

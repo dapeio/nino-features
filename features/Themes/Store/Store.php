@@ -18,11 +18,14 @@ namespace Nino\Modules\Themes {
 	 *										private/data/theme/
 	 *											state/brand.json          the brand (M5), per value the project's own or the theme's
 	 *											state/active.json         which theme the site shows and what the stylesheet was built from
-	 *											state/own/<key>.json      an own theme: a name, the mix and the css of the developer
 	 *											state/variants.php        what the register is told of the active mix
 	 *											state/theme.css           the stylesheet, the source of private/assets/theme.css
 	 *											previous/                 the last state, in the same shape: one generation
 	 *											copies/<key>@<version>/   theme.json and the parts of every theme in use, only ever added to
+	 *
+	 *										The own themes are no part of a state: each is a folder in the form of a theme package, private/themes/<key>/ (see Mix::write()), which the
+	 *										reader reads as it is. Changing one takes the lock of the state, so that a save of the active theme builds the stylesheet from the folder that
+	 *										holds when the build is done - and a build that fails puts the folder back as it was
 	 *
 	 *										A change is made in a copy of state/ (next/), the stylesheet is built in it from what it says,
 	 *										and then state/ becomes previous/ and next/ becomes state/ - so a state is always whole, the one
@@ -64,13 +67,10 @@ namespace Nino\Modules\Themes {
 			$active = self::_load( $appData, $dir. '/state/active.json' );
 			$own = [];
 
-			foreach( self::_own( $appData, $dir. '/state' ) as $key ) {
-
-				$mix = self::_load( $appData, $dir. '/state/own/'. $key. '.json' );
-
-				if( is_array( $mix ) === true )
-					$own[$key] = $mix;
-			}
+			// The own themes are folders of the project, read as they are: what a person sees of one is what its parts are told from
+			foreach( array_keys( Reader::own( $appData )['themes'] ) as $key )
+				if( is_array( $mix = Mix::ofOwn( $appData, (string) $key, true ) ) === true )
+					$own[(string) $key] = $mix;
 
 			return [
 				'brand'		=> $brand,
@@ -115,7 +115,7 @@ namespace Nino\Modules\Themes {
 			$name = '';
 
 			if( str_starts_with( $key, 'own:' ) === true && preg_match( \Nino\Components::NAME, substr( $key, 4 ) ) === 1 )
-				$name = (string) ( self::_load( $appData, $dir. '/own/'. substr( $key, 4 ). '.json' )['name'] ?? substr( $key, 4 ) );
+				$name = (string) ( Reader::own( $appData )['themes'][substr( $key, 4 )]['label'] ?? substr( $key, 4 ) );
 			else if( $key !== '' )
 				$name = Reader::read( $appData )['themes'][$key]['name'] ?? $key;
 
@@ -214,7 +214,7 @@ namespace Nino\Modules\Themes {
 		 */
 		private static function _forget( array &$appData ): void {
 
-			unset( $appData['./nino/themes/variants'], $appData['./nino/themes/read'] );
+			unset( $appData['./nino/themes/variants'], $appData['./nino/themes/read'], $appData['./nino/themes/own'] );
 
 			foreach( [ 'state', 'previous' ] as $folder ) {
 
@@ -223,25 +223,6 @@ namespace Nino\Modules\Themes {
 				if( function_exists( 'opcache_invalidate' ) === true && is_file( $file ) === true )
 					opcache_invalidate( $file, true );
 			}
-		}
-
-		/**
-		 *	The keys of the own themes a state directory holds
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$state				The virtual path of the directory
-		 *
-		 *	@return 	array
-		 */
-		private static function _own( array &$appData, string $state ): array {
-
-			$keys = [];
-
-			foreach( (array) glob( \Nino\Filesystem::path( $appData, $state. '/own' ). '/*.json' ) as $file )
-				if( preg_match( \Nino\Components::NAME, $key = basename( (string) $file, '.json' ) ) === 1 && strlen( $key ) <= \Nino\Components::NAME_LENGTH )
-					$keys[] = $key;
-
-			return $keys;
 		}
 
 		/**
@@ -260,8 +241,14 @@ namespace Nino\Modules\Themes {
 
 			try {
 				self::_heal( $appData );
+				Mix::heal( $appData );
 
-				return self::_commit( $appData, $change, $force );
+				$failure = self::_commit( $appData, $change, $force );
+
+				// What the change did to the folder of an own theme is settled here, with the lock held: no request that is made whole in between sees the folder half way
+				Mix::settle( $appData, $failure === null );
+
+				return $failure;
 			}
 			finally {
 				self::_forget( $appData );
@@ -290,12 +277,19 @@ namespace Nino\Modules\Themes {
 				if( $base !== null && hash_equals( self::stamp( $appData ), $base ) === false )
 					return [ 409, 'the themes were changed since they were opened', 'themes_state', [], '' ];
 
+				$dir = \Nino\Modules\Themes::DIR;
 				$state = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/state' );
 				$previous = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/previous' );
 				$swap = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/swap' );
 
 				if( is_dir( $previous ) === false )
 					return [ 409, 'there is no last state', 'themes_nothing', [], '' ];
+
+				// The own themes are not part of a state: a last state that shows an own theme which is gone since cannot be put back
+				$shown = (string) ( self::_load( $appData, $dir. '/previous/active.json' )['theme'] ?? '' );
+
+				if( str_starts_with( $shown, 'own:' ) === true && isset( Reader::own( $appData, true )['themes'][substr( $shown, 4 )] ) === false )
+					return [ 409, 'the own theme of the last state is gone', 'themes_gone', [ substr( $shown, 4 ) ], '' ];
 
 				$foreign = self::_foreign( $appData, $state. '/theme.css', $force );
 
@@ -402,14 +396,15 @@ namespace Nino\Modules\Themes {
 		 */
 		public static function heal( array &$appData ): bool {
 
+			$mended = self::_healOwn( $appData );
 			$base = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR );
 
 			if( is_dir( $base ) === false || ( is_dir( $base. '/state' ) === true && is_dir( $base. '/gone' ) === false && is_dir( $base. '/swap' ) === false )
 				|| \Nino\Filesystem::lockFile( $appData, \Nino\Modules\Themes::DIR. '/state.lock', false ) === false )
-				return false;
+				return $mended;
 
 			try {
-				$mended = self::_heal( $appData );
+				$mended = self::_heal( $appData ) || $mended;
 				self::_forget( $appData );
 
 				return $mended;
@@ -417,6 +412,30 @@ namespace Nino\Modules\Themes {
 			finally {
 				\Nino\Filesystem::unlockFile( $appData, \Nino\Modules\Themes::DIR. '/state.lock' );
 			}
+		}
+
+		/**
+		 *	The own themes: where a change that was broken off left a folder that was being written, a folder that was put aside or a folder that was being taken away, it is made whole - not
+		 *	waiting for the lock, which whoever makes the change holds
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool											Whether there was something to mend
+		 */
+		private static function _healOwn( array &$appData ): bool {
+
+
+			if( Mix::leftovers( $appData ) === [] || \Nino\Filesystem::lockFile( $appData, \Nino\Modules\Themes::DIR. '/state.lock', false ) === false )
+				return false;
+
+			try {
+				Mix::heal( $appData );
+			}
+			finally {
+				\Nino\Filesystem::unlockFile( $appData, \Nino\Modules\Themes::DIR. '/state.lock' );
+			}
+
+			return true;
 		}
 
 		/**
@@ -490,6 +509,10 @@ namespace Nino\Modules\Themes {
 			if( rename( $state, $previous ) === false )
 				return [ 500, 'the state could not be saved', '', [], '' ];
 
+			// The state is gone from its place and the new one is whole under its name: from here on a request that is broken off is made whole to the new state (_heal() takes it) - the change
+			// holds, and the folder of an own theme that went with it is settled to that
+			Mix::decide( $appData );
+
 			// The stylesheet before the new state has its name, so that a break after it leaves a state and a stylesheet that belong together
 			$failure = self::_sync( $appData, $next, $previous, $foreign );
 
@@ -525,13 +548,20 @@ namespace Nino\Modules\Themes {
 			if( str_starts_with( $active['theme'], 'own:' ) === true ) {
 
 				$key = substr( $active['theme'], 4 );
-				$mix = preg_match( \Nino\Components::NAME, $key ) === 1 ? self::_load( $appData, $next. '/own/'. $key. '.json' ) : null;
+				$mix = preg_match( \Nino\Components::NAME, $key ) === 1 ? Mix::ofOwn( $appData, $key ) : null;
 			}
 			else
 				$mix = is_array( $active['mix'] ?? null ) === true ? $active['mix'] : Mix::of( $appData, $active['theme'] );
 
-			if( is_array( $mix ) === false )
+			if( is_array( $mix ) === false ) {
+
+				// An own theme that is gone - its folder was taken away by hand, or it is one of the days before the themes were folders - leaves the stylesheet as it is for a change that
+				// does not touch the brand: a copy, a theme that is saved, a theme that is deleted are not stopped by it. A theme that is applied is one that is there
+				if( str_starts_with( $active['theme'], 'own:' ) === true && self::_kept( $appData, $next, [ 'brand.json' ] ) === true )
+					return null;
+
 				return [ 404, 'the theme is not there: '. $active['theme'], 'themes_unknown', [ $active['theme'] ], '' ];
+			}
 
 			// A state is files, and what is in files is checked as what is posted is
 			$mix = Mix::clean( $appData, $mix, false );
@@ -555,6 +585,29 @@ namespace Nino\Modules\Themes {
 				return [ 500, 'the stylesheet could not be written', '', [], '' ];
 
 			return null;
+		}
+
+		/**
+		 *	Whether files of the state that is being made are the files of the state as it stands
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$next					The virtual path of the state being made
+		 *	@param		array			$names				The names of the files
+		 *
+		 *	@return 	bool
+		 */
+		private static function _kept( array &$appData, string $next, array $names ): bool {
+
+			foreach( $names as $name ) {
+
+				$then = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/state/'. $name );
+				$now = \Nino\Filesystem::path( $appData, $next. '/'. $name );
+
+				if( ( is_file( $then ) === true ? (string) @sha1_file( $then ) : '' ) !== ( is_file( $now ) === true ? (string) @sha1_file( $now ) : '' ) )
+					return false;
+			}
+
+			return true;
 		}
 
 		/**

@@ -486,17 +486,11 @@ upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
 [ $applied ] = upCall( $site, 'themes/apply', [ 'theme' => 'second-look' ] );
 [ $refusedActive, $bodyActive ] = upCall( $site, 'themes/remove', [ 'theme' => 'second-look' ] );
 $stays = is_file( $dir. '/second-look/theme.json' ) === true;
-[ $own ] = upCall( $site, 'themes/save-as', [ 'mix' => [ 'name' => 'Mine', 'parts' => [ 'button' => [ 'from' => 'second-look' ] ], 'css' => '' ] ] );
+
 [ $other ] = upCall( $site, 'themes/apply', [ 'theme' => 'nino' ] );
-[ $refusedOwn, $bodyOwn ] = upCall( $site, 'themes/remove', [ 'theme' => 'second-look' ] );
+check( 'a theme is not taken away while the website shows it - 409, and the folder is there',
+	$applied === 200 && $refusedActive === 409 && ( $bodyActive['code'] ?? '' ) === 'themes_upload_in_use_active' && $stays === true && $other === 200 );
 
-check( 'a theme is not taken away while the website shows it - 409, and the folder is there - nor while an own theme takes a part from it: the answer names the own theme',
-	$applied === 200 && $refusedActive === 409 && ( $bodyActive['code'] ?? '' ) === 'themes_upload_in_use_active' && $stays === true && $own === 200 && $other === 200 && $refusedOwn === 409 && ( $bodyOwn['code'] ?? '' ) === 'themes_upload_in_use_own' && in_array( 'Mine', $bodyOwn['params'] ?? [], true ) === true
-	&& is_file( $dir. '/second-look/theme.json' ) === true );
-
-[ , $listed ] = upCall( $site, 'themes/list' );
-$ownKey = (string) ( array_values( array_filter( $listed['themes'], static fn( array $one ): bool => $one['kind'] === 'own' ) )[0]['key'] ?? '' );
-upCall( $site, 'themes/delete', [ 'theme' => $ownKey, 'base' => (string) ( upCall( $site, 'themes/open', [ 'theme' => $ownKey ] )[1]['stamp'] ?? '' ) ] );
 upSpare( $site );
 upCall( $site, 'themes/apply', [ 'theme' => 'spare' ] );
 [ $removed, $gone ] = upCall( $site, 'themes/remove', [ 'theme' => 'second-look' ] );
@@ -536,22 +530,22 @@ upCall( $site, 'themes/apply', [ 'theme' => 'spare' ] );
 check( 'the last state that is kept - what Restore brings back - holds a theme too: it is not taken away and not replaced while that state shows it, the answers say so and the preview has no button; once another state has taken its place, the theme is taken away',
 	$heldLast === 409 && ( $bodyLast['code'] ?? '' ) === 'themes_upload_in_use_last' && $replaceLast === 409 && ( $bodyReplaceLast['code'] ?? '' ) === 'themes_upload_replace_held_last' && ( $shownLast['theme']['canInstall'] ?? true ) === false && $removedLast === 200 );
 
-// the own theme of the last state holds the theme as well, and so does an own theme of the state as it is - each by its name
+// an own theme that is made of a part of the theme does not hold it: it has the part in its own folder
 $site = upSite();
 $_SESSION = [];
 upChoose( $site, upPack( upLight( 'light-one', '1.0.0' ) ) );
 upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
 upSpare( $site );
 upCall( $site, 'themes/save-as', [ 'mix' => [ 'name' => 'Mine', 'parts' => [ 'button' => [ 'from' => 'light-one' ] ], 'css' => '' ] ] );
-[ $heldNow, $bodyNow ] = upCall( $site, 'themes/remove', [ 'theme' => 'light-one' ] );
-upCall( $site, 'themes/apply', [ 'theme' => 'nino' ] );
-upCall( $site, 'themes/delete', [ 'theme' => 'own:mine', 'base' => (string) ( upCall( $site, 'themes/open', [ 'theme' => 'own:mine' ] )[1]['stamp'] ?? '' ) ] );
-[ $heldBefore, $bodyBefore ] = upCall( $site, 'themes/remove', [ 'theme' => 'light-one' ] );
-upCall( $site, 'themes/apply', [ 'theme' => 'spare' ] );
-[ $freed ] = upCall( $site, 'themes/remove', [ 'theme' => 'light-one' ] );
+$partBefore = (string) file_get_contents( ninoSandboxDir( $site ). '/private/themes/mine/parts/button/part.json' );
+[ , $openedBefore ] = upCall( $site, 'themes/open', [ 'theme' => 'own:mine' ] );
+[ $heldNow ] = upCall( $site, 'themes/remove', [ 'theme' => 'light-one' ] );
+[ $openedStatus, $opened ] = upCall( $site, 'themes/open', [ 'theme' => 'own:mine' ] );
+[ $appliedStatus ] = upCall( $site, 'themes/apply', [ 'theme' => 'own:mine', 'base' => (string) ( $opened['stamp'] ?? '' ) ] );
 
-check( 'an own theme that takes a part from a theme holds it - in the state as it is and in the last state - and each answer names the own theme; once neither has it, the theme is taken away',
-	$heldNow === 409 && ( $bodyNow['code'] ?? '' ) === 'themes_upload_in_use_own' && ( $bodyNow['params'][0] ?? '' ) === 'Mine' && $heldBefore === 409 && ( $bodyBefore['code'] ?? '' ) === 'themes_upload_in_use_last_own' && ( $bodyBefore['params'][0] ?? '' ) === 'Mine' && $freed === 200 );
+check( 'an own theme that is made of a part of an uploaded theme holds that theme in place no more than a copy does: the part is in its folder, so the theme is taken away - and the own theme stands on it: its part is told from the theme while it is there, and from another installed theme that has the same part when it is gone - the comparison is of what is in the files -, and it is applied',
+	$openedBefore['groups']['button']['from'] === 'light-one@1.0.0' && $heldNow === 200 && is_dir( ninoSandboxDir( $site ). '/private/packages/themes/light-one' ) === false && $openedStatus === 200 && $opened['groups']['button']['from'] === 'spare@1.0.0' && $opened['groups']['button']['problem'] === ''
+	&& $appliedStatus === 200 && (string) file_get_contents( ninoSandboxDir( $site ). '/private/themes/mine/parts/button/part.json' ) === $partBefore );
 
 echo "\nF. Replacing\n";
 
@@ -985,7 +979,7 @@ $sayings = [ 'de_DE' => require dirname( __DIR__ ). '/text/de_DE.php', 'en_US' =
 $codes = array_merge(
 	array_map( static fn( string $code ): string => 'themes_upload_archive_'. str_replace( '-', '_', $code ), [ 'gzip', 'bomb', 'trailing', 'truncated', 'header', 'type', 'pax', 'path', 'depth', 'folder', 'duplicate', 'name', 'count', 'file-size', 'total-size', 'unsupported', 'refused' ] ),
 	array_map( static fn( string $code ): string => 'themes_upload_package_'. str_replace( '-', '_', $code ), [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-markup', 'file-map', 'parts-many', 'part', 'part_values', 'css', 'theme_css', 'theme_css_any', 'block', 'preview', 'brand', 'words', 'block_loop', 'block_place', 'block_text', 'block_source', 'busy', 'unlockable', 'stage', 'swap', 'refused' ] ),
-	array_map( static fn( string $code ): string => 'themes_upload_'. $code, [ 'large', 'nofile', 'unknown', 'exists', 'taken_shipped', 'taken_catalogue', 'taken_project', 'not_uploaded', 'in_use_active', 'in_use_own', 'in_use_last', 'in_use_last_own', 'busy', 'key_reserved', 'key_like', 'not_newer_same', 'not_newer_older', 'replace_held_active', 'replace_held_own', 'replace_held_last', 'replace_held_last_own', 'too_many', 'block_displaces' ] )
+	array_map( static fn( string $code ): string => 'themes_upload_'. $code, [ 'large', 'nofile', 'unknown', 'exists', 'taken_shipped', 'taken_catalogue', 'taken_project', 'not_uploaded', 'in_use_active', 'in_use_last', 'busy', 'key_reserved', 'key_like', 'not_newer_same', 'not_newer_older', 'replace_held_active', 'replace_held_last', 'too_many', 'block_displaces' ] )
 );
 $unsaid = array_filter( $codes, static fn( string $code ): bool => isset( $sayings['de_DE']['[[/_admin/error/'. $code. ']]'], $sayings['en_US']['[[/_admin/error/'. $code. ']]'] ) === false );
 

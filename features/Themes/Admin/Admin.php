@@ -10,17 +10,17 @@ namespace Nino\Modules\Themes {
 	//	themes/open			one theme, its mix, the brand and what they come to: the part of each group, the knobs and their steps, the variants
 	//	themes/thumb		a small picture of a theme: its start page in a draft of its own, one that does not count among the five of the previews
 	//	themes/preview	a draft - a mix, a brand - built for one request in the session that asks, answered as a token, the query that names it, when it runs out and for how many seconds it holds
-	//	themes/save			the mix of an own theme, and the brand where it is posted
+	//	themes/save			the mix of an own theme - written as the folder of the theme, private/themes/<key>/ - and the brand where it is posted
 	//	themes/brand		the brand alone: the project's, whichever theme is open
-	//	themes/save-as	a new own theme from a draft
-	//	themes/duplicate	a new own theme from a theme as it is saved, its mix and its own css; the brand is the project's and is not copied
+	//	themes/save-as	a new own theme - a new folder - from a draft
+	//	themes/duplicate	a new own theme from a theme as it is saved: a copy of its folder; the brand is the project's and is not copied
 	//	themes/apply		the website shows a theme
 	//	themes/restore	the last state in place of this one, and this one in place of the last - asked with the state it was seen in
-	//	themes/delete		an own theme
+	//	themes/delete		an own theme: its folder is taken away
 	//	themes/upload-check	a theme package that was chosen, read and checked, and what is in it - nothing is written; the bytes are held for this session and this account
 	//	themes/upload		the package that was shown, read and checked again from the held bytes and put in place, a theme of the panel replaced only where asked
 	//	themes/upload-drop	the bytes that are held for a preview that was left: let go of
-	//	themes/remove		a theme that was uploaded here, taken away - not the one of the website, not one an own theme takes parts from
+	//	themes/remove		a theme that was uploaded here, taken away - not the one of the website, not the one the last state shows
 	class Admin {
 
 		// How many pages of the site a list names for the preview
@@ -126,9 +126,27 @@ namespace Nino\Modules\Themes {
 				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'origin' => $origin, 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'css' => $css, 'frames' => Upload::framesOf( $appData, (string) $key ), 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
 			}
 
-			// An own theme says where each of its parts comes from, so that a card can say what it is made of
-			foreach( $state['own'] as $key => $mix )
-				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'from' => array_map( static fn( array $entry ): string => (string) ( $entry['from'] ?? 'standard' ), (array) ( $mix['parts'] ?? [] ) ), 'stamp' => self::_stamp( $mix ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key ];
+			// An own theme says where each of its parts comes from - the installed theme whose part it is the same as, which is all that is told of it - so that a card can say what it is
+			// made of, which of its parts rest and why, and what is the matter with its css
+			$own = Reader::own( $appData );
+
+			foreach( $state['own'] as $key => $mix ) {
+
+				$parts = [];
+
+				foreach( $own['themes'][$key]['parts'] as $group => $part )
+					$parts[$group] = [ 'ok' => $part['ok'], 'problem' => $part['problem'], 'why' => Reader::explain( $part['problem'] ) ];
+
+				$css = [ 'lines' => trim( (string) ( $mix['css'] ?? '' ) ) === '' ? 0 : substr_count( trim( (string) $mix['css'] ), "\n" ) + 1, 'why' => Reader::explain( (string) $own['themes'][$key]['cssProblem'] ) ];
+				// A part that rests is said to rest, as the editor says it, and not to be changed
+				$from = array_map( static fn( array $entry ): string => (string) ( $entry['from'] ?? 'standard' ), (array) ( $mix['parts'] ?? [] ) );
+
+				foreach( $parts as $group => $part )
+					if( $part['ok'] === false && isset( $from[$group] ) === true )
+						$from[$group] = 'rests';
+
+				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'from' => $from, 'parts' => $parts, 'css' => $css, 'stamp' => self::_ownStamp( $appData, $key ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key ];
+			}
 
 			$groups = [];
 
@@ -138,7 +156,10 @@ namespace Nino\Modules\Themes {
 			$rejected = [];
 
 			foreach( $read['rejected'] as $folder => $reason )
-				$rejected[] = [ 'folder' => basename( (string) $folder ), 'reason' => $reason, 'why' => Reader::explain( $reason ) ];
+				$rejected[] = [ 'folder' => basename( (string) $folder ), 'reason' => $reason, 'why' => Reader::explain( $reason ), 'own' => false ];
+
+			foreach( $own['rejected'] as $folder => $reason )
+				$rejected[] = [ 'folder' => basename( (string) $folder ), 'reason' => $reason, 'why' => Reader::explain( $reason ), 'own' => true ];
 
 			$fonts = [];
 
@@ -185,7 +206,7 @@ namespace Nino\Modules\Themes {
 
 			$plan = Compiler::plan( $appData, $theme['mix'], $state['brand'] );
 
-			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => self::_wired( $theme['mix'] ), 'cssRule' => Mix::cssRule( (string) ( $theme['mix']['css'] ?? '' ) ), 'stamp' => $theme['kind'] === 'own' ? self::_stamp( $theme['mix'] ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => self::_wired( $theme['mix'] ), 'cssRule' => Mix::cssRule( (string) ( $theme['mix']['css'] ?? '' ) ), 'stamp' => $theme['kind'] === 'own' ? self::_ownStamp( $appData, substr( $theme['key'], 4 ) ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {
@@ -284,26 +305,27 @@ namespace Nino\Modules\Themes {
 				return;
 			}
 
-			// The stamp of the theme and of the brand and the name are looked at with the lock held, on the state that is being copied: a request that read
-			// the state before another one wrote it is told so as well. The stamps and the stylesheet that is not the feature's are separate answers, and
-			// force is only for the last
-			self::_finish( $appData, $request, $theme, Store::commit( $appData, static function( array &$appData, string $next ) use ( $key, $prepared, $data ): ?array {
+			// The stamp of the theme and of the brand and the name are looked at with the lock held, on the folder as it is then: a request that read the theme before another one
+			// wrote it is told so as well. The stamps and the stylesheet that is not the feature's are separate answers, and force is only for the last
+			$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( $key, $prepared, $data ): ?array {
 
-				$current = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. $key. '.json', [] );
+				$current = Reader::own( $appData, true )['themes'][$key] ?? null;
 
-				if( is_array( $current ) === false || self::_changed( $current, $data ) === true )
-					return self::_changedFailure( is_array( $current ) === true ? $current : [], $key );
+				if( $current === null || self::_changed( $current['stamp'], $data ) === true )
+					return self::_changedFailure( (string) ( $current['label'] ?? $key ) );
 
 				if( isset( $prepared['brand'] ) === true && ( $failure = self::_brandFailure( $appData, $next, $data ) ) !== null )
 					return $failure;
 
 				// A name that another own theme has - or whose key it is - is no rename: two cards would carry one name
-				foreach( self::_ownNames( $appData, $next ) as $other => $name )
+				foreach( self::_ownNames( $appData ) as $other => $name )
 					if( (string) $other !== $key && self::_sameName( (string) $prepared['mix']['name'], $name ) === true )
 						return [ 409, 'an own theme of that name is there', 'themes_name_taken', [ $name ], 'name' ];
 
-				return self::_write( $appData, $next, $key, $prepared );
-			}, ( $data['force'] ?? false ) === true ) );
+				return self::_write( $appData, $next, $key, $prepared, $current, true );
+			}, ( $data['force'] ?? false ) === true );
+
+			self::_finish( $appData, $request, $theme, $failure );
 		}
 
 		public static function apiSaveAs( array &$appData, array &$request ): void {
@@ -328,7 +350,7 @@ namespace Nino\Modules\Themes {
 				if( isset( $prepared['brand'] ) === true && ( $failure = self::_brandFailure( $appData, $next, $data ) ) !== null )
 					return $failure;
 
-				return self::_create( $appData, $next, $prepared, $made );
+				return self::_create( $appData, $next, $prepared, null, $made );
 			}, ( $data['force'] ?? false ) === true );
 
 			self::_finish( $appData, $request, 'own:'. $made, $failure );
@@ -348,23 +370,24 @@ namespace Nino\Modules\Themes {
 				return;
 			}
 
-			// The mix to copy is the one the state has with the lock held: for an own theme the stamp says it is the one the person saw, a theme of a
-			// package is the mix it is at that time. The name is the new one; the brand is the project's, so it is not part of it
+			// What is copied is what the folder of an own theme is with the lock held - the stamp says it is the one the person saw - or a theme of a package as it is at that
+			// time. The name is the new one; the brand is the project's, so it is not part of it
 			$made = '';
 			$key = $theme['key'];
 			$name = \Nino\Admin\Admin::postString( $data, 'name' );
 			$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( &$made, $key, $theme, $name, $data ): ?array {
 
 				$mix = $theme['mix'];
+				$base = Reader::read( $appData )['themes'][$key] ?? null;
 
 				if( $theme['kind'] === 'own' ) {
 
-					$current = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. substr( $key, 4 ). '.json', [] );
+					$base = Reader::own( $appData, true )['themes'][substr( $key, 4 )] ?? null;
 
-					if( is_array( $current ) === false || self::_changed( $current, $data ) === true )
-						return self::_changedFailure( is_array( $current ) === true ? $current : [], substr( $key, 4 ) );
+					if( $base === null || self::_changed( $base['stamp'], $data ) === true )
+						return self::_changedFailure( (string) ( $base['label'] ?? substr( $key, 4 ) ) );
 
-					$mix = $current;
+					$mix = (array) Mix::ofOwn( $appData, substr( $key, 4 ) );
 				}
 
 				$mix['name'] = $name;
@@ -373,7 +396,7 @@ namespace Nino\Modules\Themes {
 				if( isset( $prepared['failure'] ) === true )
 					return $prepared['failure'];
 
-				return self::_create( $appData, $next, $prepared, $made );
+				return self::_create( $appData, $next, $prepared, $base, $made );
 			}, ( $data['force'] ?? false ) === true );
 
 			self::_finish( $appData, $request, 'own:'. $made, $failure );
@@ -422,10 +445,10 @@ namespace Nino\Modules\Themes {
 
 				if( $theme['kind'] === 'own' ) {
 
-					$current = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. substr( $key, 4 ). '.json', [] );
+					$current = Reader::own( $appData, true )['themes'][substr( $key, 4 )] ?? null;
 
-					if( is_array( $current ) === false || self::_changed( $current, $data ) === true )
-						return self::_changedFailure( is_array( $current ) === true ? $current : [], substr( $key, 4 ) );
+					if( $current === null || self::_changed( $current['stamp'], $data ) === true )
+						return self::_changedFailure( (string) ( $current['label'] ?? substr( $key, 4 ) ) );
 				}
 
 				$active = [ 'theme' => $key ] + ( $theme['kind'] === 'theme' ? [ 'mix' => $theme['mix'] ] : [] );
@@ -603,17 +626,19 @@ namespace Nino\Modules\Themes {
 				self::_fail( $request, [ 409, 'the theme of the website is not deleted', 'themes_active', [ $state['own'][$key]['name'] ?? $key ], 'theme' ] );
 			else {
 
+				// The folder is put aside under the lock and taken away when the change holds: the lock is the one of every change, and the store settles the folder with it held, so that a theme that is saved is not deleted under its save
 				$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( $key, $data ): ?array {
 
-					$current = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. $key. '.json', [] );
+					$current = Reader::own( $appData, true )['themes'][$key] ?? null;
 
-					if( is_array( $current ) === false || self::_changed( $current, $data ) === true )
-						return self::_changedFailure( is_array( $current ) === true ? $current : [], $key );
+					if( $current === null || self::_changed( $current['stamp'], $data ) === true )
+						return self::_changedFailure( (string) ( $current['label'] ?? $key ) );
 
-					@unlink( \Nino\Filesystem::path( $appData, $next. '/own/'. $key. '.json' ) );
+					$done = Mix::drop( $appData, $key );
 
-					return null;
+					return is_string( $done ) === true ? [ 500, 'the theme could not be deleted: '. $done, 'themes_write', [ $done ], '' ] : null;
 				}, ( $data['force'] ?? false ) === true );
+
 
 				if( $failure !== null )
 					self::_fail( $request, $failure );
@@ -779,26 +804,28 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	Write an own theme, and the brand where there is one, into a state being made
+		 *	Write an own theme - its folder - and the brand where there is one, into a state being made. The folder is settled by the store when the change is done
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$next					The virtual path of the state
 		 *	@param		string		$key					The key of the own theme
 		 *	@param		array			$prepared			As _prepare() answers it
+		 *	@param		array|null								$base					The theme the folder is made of or made over, as the reader has read it
+		 *	@param		bool			$over					Whether the folder of the theme is replaced
 		 *
 		 *	@return 	array|null
 		 */
-		private static function _write( array &$appData, string $next, string $key, array $prepared ): ?array {
+		private static function _write( array &$appData, string $next, string $key, array $prepared, ?array $base, bool $over ): ?array {
 
-			$wrote = \Nino\Filesystem::putFileContent( $appData, $next. '/own/'. $key. '.json', $prepared['mix'] );
+			$done = Mix::write( $appData, $key, $prepared['mix'], $base, $over );
 
-			if( $wrote === true && isset( $prepared['brand'] ) === true )
-				$wrote = \Nino\Filesystem::putFileContent( $appData, $next. '/brand.json', $prepared['brand'] );
+			if( is_string( $done ) === true )
+				return [ 500, 'the theme could not be written: '. $done, 'themes_write', [ self::_shown( $done ) ], '' ];
 
-			// The parts an own theme takes are the project's from the day it names them
-			Store::keep( $appData, Compiler::plan( $appData, $prepared['mix'], [] ) );
+			if( isset( $prepared['brand'] ) === true && \Nino\Filesystem::putFileContent( $appData, $next. '/brand.json', $prepared['brand'] ) === false )
+				return [ 500, 'the state could not be written', '', [], '' ];
 
-			return $wrote === true ? null : [ 500, 'the state could not be written', '', [], '' ];
+			return null;
 		}
 
 		/**
@@ -807,32 +834,45 @@ namespace Nino\Modules\Themes {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$next					The virtual path of the state
 		 *	@param		array			$prepared			As _prepare() answers it
+		 *	@param		array|null								$base					The theme it is made of, as the reader has read it
 		 *	@param		string		&$made				(reference) The key it was made under
 		 *
 		 *	@return 	array|null								The failure, or null
 		 */
-		private static function _create( array &$appData, string $next, array $prepared, string &$made ): ?array {
+		private static function _create( array &$appData, string $next, array $prepared, ?array $base, string &$made ): ?array {
 
-			$names = self::_ownNames( $appData, $next );
+			$names = self::_ownNames( $appData );
 
 			foreach( $names as $name )
 				if( self::_sameName( (string) $prepared['mix']['name'], $name ) === true )
 					return [ 409, 'an own theme of that name is there', 'themes_name_taken', [ $name ], 'name' ];
 
-			if( count( $names ) >= Store::MAX_OWN )
+			// A folder that the reader refuses is a folder all the same: there is no room for a theme where the folders are as many as there may be
+			$own = Reader::own( $appData, true );
+
+			if( count( $own['themes'] ) + count( $own['rejected'] ) >= Store::MAX_OWN )
 				return [ 409, 'there are as many own themes as there may be', 'themes_limit', [ Store::MAX_OWN ], '' ];
 
-			$base = \Nino\Feature::slug( (string) $prepared['mix']['name'], \Nino\Components::NAME_LENGTH );
+			$base_key = \Nino\Feature::slug( (string) $prepared['mix']['name'], \Nino\Components::NAME_LENGTH );
 
-			if( $base === '' )
+			if( $base_key === '' )
 				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
 
-			$made = $base;
+			// A key begins with a letter: a name that begins with a digit - a year, a number - has the key of its slug behind a letter
+			if( preg_match( \Nino\Components::NAME, $base_key ) !== 1 )
+				$base_key = rtrim( substr( 't-'. $base_key, 0, \Nino\Components::NAME_LENGTH ), '-' );
 
-			for( $count = 2; isset( $names[$made] ) === true; $count++ )
-				$made = substr( $base, 0, \Nino\Components::NAME_LENGTH - strlen( '-'. $count ) ). '-'. $count;
+			if( preg_match( \Nino\Components::NAME, $base_key ) !== 1 )
+				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
 
-			return self::_write( $appData, $next, $made, $prepared );
+			// A key is taken by any entry of the folder, whatever it is: a folder the reader refuses, a link, a file
+			$dir = Reader::ownDir( $appData );
+			$made = $base_key;
+
+			for( $count = 2; isset( $names[$made] ) === true || file_exists( $dir. '/'. $made ) === true || is_link( $dir. '/'. $made ) === true; $count++ )
+				$made = substr( $base_key, 0, \Nino\Components::NAME_LENGTH - strlen( '-'. $count ) ). '-'. $count;
+
+			return self::_write( $appData, $next, $made, $prepared, $base, false );
 		}
 
 		/**
@@ -855,7 +895,7 @@ namespace Nino\Modules\Themes {
 			$state = Store::read( $appData );
 			\Nino\Preview::tidy( $appData );
 
-			\Nino\Http::ok( $request, [ 'saved' => true, 'theme' => $theme, 'applied' => ( $state['active']['theme'] ?? '' ) === $theme, 'stamp' => str_starts_with( $theme, 'own:' ) === true && isset( $state['own'][substr( $theme, 4 )] ) === true ? self::_stamp( $state['own'][substr( $theme, 4 )] ) : '' ] + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'saved' => true, 'theme' => $theme, 'applied' => ( $state['active']['theme'] ?? '' ) === $theme, 'stamp' => str_starts_with( $theme, 'own:' ) === true && isset( $state['own'][substr( $theme, 4 )] ) === true ? self::_ownStamp( $appData, substr( $theme, 4 ) ) : '' ] + self::_state( $appData, $state ) );
 		}
 
 		/**
@@ -872,10 +912,10 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	The stamp of a saved mix: what a change of it - by this tab or by another - is told from. The name and the own css are part of it
-		 *	and the order of the keys is not
+		 *	The stamp of a map of the project - its brand: what a change of it, by this tab or by another, is told from. The order of the keys is not part of
+		 *	it. The stamp of an own theme is the one of its folder (_ownStamp())
 		 *
-		 *	@param		array			$mix					An own theme as the state holds it
+		 *	@param		array			$mix					The map
 		 *
 		 *	@return 	string										A sha256
 		 */
@@ -895,28 +935,40 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	What is answered where the stamp is not the one of the theme
+		 *	The stamp of the folder of an own theme: what its files say, as the reader has them - a theme that was saved here and one that somebody changed by hand are told from the one that was
+		 *	opened by it
 		 *
-		 *	@param		array			$mix					The own theme as the state holds it, [] where it is gone
-		 *	@param		string		$key
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The key of the own theme
 		 *
-		 *	@return 	array											As Store::commit() answers a failure
+		 *	@return 	string										A sha256, '' for a theme that is not there
 		 */
-		private static function _changedFailure( array $mix, string $key ): array {
-			return [ 409, 'the theme was changed since it was opened', 'themes_changed', [ (string) ( $mix['name'] ?? $key ) ], 'theme' ];
+		private static function _ownStamp( array &$appData, string $key ): string {
+			return (string) ( Reader::own( $appData )['themes'][$key]['stamp'] ?? '' );
 		}
 
 		/**
-		 *	Whether the theme a request is about was changed since the one who asks opened it: the stamp it posts as base is not the one
-		 *	the mix has now. A request that posts none has not seen the theme. The one who asks takes the new stamp from open to write over it
+		 *	What is answered where the stamp is not the one of the theme
 		 *
-		 *	@param		array			$mix					The own theme as the state holds it
+		 *	@param		string		$name					The name of the theme, its key where it is gone
+		 *
+		 *	@return 	array											As Store::commit() answers a failure
+		 */
+		private static function _changedFailure( string $name ): array {
+			return [ 409, 'the theme was changed since it was opened', 'themes_changed', [ $name ], 'theme' ];
+		}
+
+		/**
+		 *	Whether the theme a request is about was changed since the one who asks opened it: the stamp it posts as base is not the one the theme has now. A request that posts
+		 *	none has not seen the theme. The one who asks takes the new stamp from open to write over it
+		 *
+		 *	@param		string		$stamp				The stamp of the theme as it is
 		 *	@param		array			$data					The posted data
 		 *
 		 *	@return 	bool
 		 */
-		private static function _changed( array $mix, array $data ): bool {
-			return is_string( $data['base'] ?? null ) === false || hash_equals( self::_stamp( $mix ), $data['base'] ) === false;
+		private static function _changed( string $stamp, array $data ): bool {
+			return is_string( $data['base'] ?? null ) === false || hash_equals( $stamp, $data['base'] ) === false;
 		}
 
 		/**
@@ -936,25 +988,14 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	The own themes of a state that is being made, by key, with their names
+		 *	The own themes there are, by key, with their names, read as they are with the lock held
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$next					The virtual path of the state
 		 *
 		 *	@return 	array											key => name
 		 */
-		private static function _ownNames( array &$appData, string $next ): array {
-
-			$names = [];
-
-			foreach( (array) glob( \Nino\Filesystem::path( $appData, $next. '/own' ). '/*.json' ) as $file ) {
-
-				$key = basename( (string) $file, '.json' );
-				$mix = \Nino\Filesystem::getFileContent( $appData, $next. '/own/'. $key. '.json', [] );
-				$names[$key] = (string) ( is_array( $mix ) === true ? ( $mix['name'] ?? $key ) : $key );
-			}
-
-			return $names;
+		private static function _ownNames( array &$appData ): array {
+			return array_map( static fn( array $theme ): string => (string) $theme['label'], Reader::own( $appData, true )['themes'] );
 		}
 
 		/**

@@ -49,6 +49,9 @@ namespace Nino\Modules {
 		public const string DIR = '/data/theme';
 		public const string CACHE = '/data/theme/.cache';
 
+		// The own themes: a folder in the form of a theme package for each, private/themes/<key>/, which the project owns and nobody installs
+		public const string OWN = '/private/themes';
+
 		// The folder that held the drafts of earlier previews, which Admin::apiList() takes away
 		public const string DRAFTS = '/data/theme/.preview';
 
