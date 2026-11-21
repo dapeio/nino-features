@@ -4,8 +4,8 @@ return [
 	'key'					=> 'themes',
 	'name'				=> [ 'en_US' => 'Themes', 'de_DE' => 'Themes' ],
 	'description'	=> [
-		'en_US' => 'Themes gives the site a look that is chosen and not written: a theme brings a part for the page and for each group of components, and the project mixes them, sets its colours and fonts and keeps the result as one stylesheet. Own css goes to the end of it as it was written. The last state is kept, one step back.',
-		'de_DE' => 'Themes gibt der Website ein Aussehen, das gewählt und nicht geschrieben wird: Ein Theme bringt einen Teil für die Seite und für jede Gruppe von Komponenten, das Projekt mischt sie, setzt Farben und Schriften und behält das Ergebnis als ein Stylesheet. Eigenes CSS steht am Ende, wie es geschrieben wurde. Der letzte Stand bleibt erhalten, einen Schritt zurück.',
+		'en_US' => 'Themes gives the site a look that is chosen and not written: a theme brings a part for the page and for each group of components, and the project mixes them, sets its colours and fonts and keeps the result as one stylesheet. The css of a theme, checked by the rule of a theme package, goes to the end of it. The last state is kept, one step back.',
+		'de_DE' => 'Themes gibt der Website ein Aussehen, das gewählt und nicht geschrieben wird: Ein Theme bringt einen Teil für die Seite und für jede Gruppe von Komponenten, das Projekt mischt sie, setzt Farben und Schriften und behält das Ergebnis als ein Stylesheet. Das CSS eines Themes, nach der Regel eines Theme-Pakets geprüft, steht am Ende. Der letzte Stand bleibt erhalten, einen Schritt zurück.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [

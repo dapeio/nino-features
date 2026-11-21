@@ -25,15 +25,15 @@ namespace Nino\Modules\Themes {
 	 *											4. :root with the page: the step of each knob of the page, the density for small screens as a query
 	 *											5. :root with the knobs of every group: the step of each ladder, the part's or the group's own
 	 *											6. the css of the part of each group
-	 *											7. the own css of the developer, as it was written
+	 *											7. the css of the theme, as it was written where it keeps the rule of a theme
 	 *
 	 *										The parts lie on the standard parts (the layer nino.components) and not in their place, so
 	 *										every fixed attribute is drawn in every theme. A part that does not hold - it rests - is left
 	 *										out and its group has the standard part, with the reason in the plan.
 	 *
-	 *										The own css is not read: a theme author's text goes to the end of the file as it is. What the
-	 *										compiler keeps of it is the shell, which is the bundle's: a source whose braces do not
-	 *										balance is repaired where the bundle is made, and stays in its layer.
+	 *										The css of the theme is held to the rule of a theme (Mix::cssRule(), the rule of \Nino\Components::themeProblems() that a package is held to) and
+	 *										goes in as it was written where it keeps it; where it does not it is left out, and the plan of the answer says what is wrong.
+	 *										What it keeps of the shell is the bundle's: a source whose braces do not balance is repaired where the bundle is made.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -195,15 +195,17 @@ namespace Nino\Modules\Themes {
 			// The own css goes in as it was written. Where it does not close - a comment, a string, a url(, a block - it is closed here, at its end and
 			// as the bundle would close it: the bundle says so in the log at every build, and unfinished css is what a person who types has for a while
 			$faults = [];
+			$rule = Mix::cssRule( (string) ( $mix['css'] ?? '' ) );
 
-			if( trim( (string) ( $mix['css'] ?? '' ) ) !== '' ) {
+			// A css that does not keep the rule of a theme is not put in: the theme is drawn without it, and the panel says which lines break the rule
+			if( trim( (string) ( $mix['css'] ?? '' ) ) !== '' && $rule === [] ) {
 				[ $own, $faults ] = self::balance( trim( (string) $mix['css'] ) );
 				$blocks[] = '/* The css of the theme */'. "\n". $own;
 			}
 
 			$body = implode( "\n\n", $blocks ). "\n";
 
-			return [ 'css' => sprintf( self::HEAD, hash( 'sha256', $body ) ). "\n". $body, 'variants' => $variants, 'plan' => $plan, 'gone' => $gone, 'faults' => $faults ];
+			return [ 'css' => sprintf( self::HEAD, hash( 'sha256', $body ) ). "\n". $body, 'variants' => $variants, 'plan' => $plan, 'gone' => $gone, 'faults' => $faults, 'rule' => $rule ];
 		}
 
 		/**

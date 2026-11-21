@@ -745,6 +745,7 @@ $hostile = [
 \Nino\Filesystem::putFileContent( $site, '/assets/style.css', ".project-marker { color: green; }\n" );
 $project = \Nino\Filesystem::path( $site, '/assets/style.css' );
 $layers = [];
+$refused = [];
 
 foreach( $hostile as $what => $text ) {
 
@@ -759,15 +760,16 @@ foreach( $hostile as $what => $text ) {
 	$projectBlocks = array_filter( $top, static fn( array $item ): bool => $item[0] === '@layer project' && str_contains( $item[1], '.project-marker' ) === true );
 	$inTheme = array_values( $themeBlocks )[0][1] ?? '';
 
+	$refused[$what] = $built['rule'] !== [];
 	$layers[$what] = count( array_filter( $names, static fn( string $name ): bool => $name === '@layer nino.reset, nino.components, nino.theme, project' || preg_match( '/^@layer (nino\.reset|nino\.components|nino\.theme|project)$/D', $name ) === 1 ) ) === count( $names ) && $names[1] === '@layer nino.reset'
-		&& count( $themeBlocks ) === 1 && count( $projectBlocks ) === 1 && preg_match( '/hostile-[a-g]/', $inTheme ) === 1
+		&& count( $themeBlocks ) === 1 && count( $projectBlocks ) === 1 && ( $built['rule'] === [] ) === ( preg_match( '/hostile-[a-g]/', $inTheme ) === 1 )
 		&& preg_match( '/\.escaped-[a-f]/', implode( "\n", array_map( static fn( array $item ): string => $item[0] === '@layer nino.theme' ? '' : $item[0]. $item[1], $top ) ) ) !== 1
 		&& str_contains( $bundle, '.project-marker' ) === true && array_search( '@layer nino.theme', $names, true ) < array_search( '@layer project', $names, true );
 }
 
 $ignored = ninoWarnings();
-check( 'the shell of the bundle holds whatever the own css is: with each of eight hostile texts the bundle is the four layers, the theme stands once and holds all of it, what the text closes or opens is the theme\'s and not the layers\' after it, and the css of the project stays in the layer project',
-	count( array_filter( $layers ) ) === 8 );
+check( 'the shell of the bundle holds whatever the own css is: with each of eight hostile texts the bundle is the four layers, the theme stands once, what the text closes or opens is the theme\'s and not the layers\' after it, and the css of the project stays in the layer project - and a text that does not keep the rule of a theme is not in it at all, one that does is in it closed',
+	count( array_filter( $layers ) ) === 8 && count( array_filter( $refused ) ) >= 6 );
 check( 'the kernel has nothing to repair in the theme: the compiler closes what the own css leaves open, so that the bundle says nothing of it at any build', array_filter( $ignored, static fn( string $warning ): bool => str_contains( $warning, 'Assets' ) === true ) === [] );
 unlink( $project );
 unlink( ninoSandboxDir( $site ). '/private/assets/theme.css' );
@@ -1142,13 +1144,44 @@ unlink( $sheet );
 check( 'a stylesheet that is not there is nobody\'s: it is written', $status === 200 && Compiler::isOwn( (string) file_get_contents( $sheet ) ) === true );
 
 // ---- the own css of the developer
-$free = ".header-wrap { display: none !important; }\n@import url(https://example.invalid/more.css);\n@font-face { font-family: \"Other\"; src: url(https://example.invalid/o.woff2); }\n@property --brand-ink { syntax: \"<color>\"; inherits: false; initial-value: red; }\n.a ~ .b + .c * { content: \"text\"; color: var(--foreign-token); }";
+$unchecked = ".header-wrap { display: none !important; }\n@import url(https://example.invalid/more.css);\n@font-face { font-family: \"Other\"; src: url(https://example.invalid/o.woff2); }\n@property --brand-ink { syntax: \"<color>\"; inherits: false; initial-value: red; }\n.a ~ .b + .c * { content: \"text\"; color: var(--foreign-token); }\nbody { color: red; }\n#id { color: red; }\n.x[data-y] { color: red; }";
+$free = ".a ~ .b + .c { content: \"text\"; color: var(--button-ink); }\n.d:hover > .e::before { color: red; }\n@media (min-width: 40em) { .f { margin: 0; } }";
+$problems = \Nino\Components::themeProblems( $unchecked );
+$ownBefore = glob( $state. '/state/own/*.json' );
+[ $refusedStatus, $refused ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Unchecked', [ 'section' => [ 'from' => 'craft-probe' ] ], $unchecked ) ] );
+
+check( 'the css of an own theme is held to the rule of a theme, the one a package is held to: what the rule refuses - !important, an import, a font, a property, a token that is not a component\'s, an element, an id, "any element", an attribute - is refused at the save, 400 at the field css, every finding in the one sentence, with its line where the rule knows it - and nothing is written',
+	$refusedStatus === 400 && ( $refused['code'] ?? '' ) === 'themes_css_rule' && ( $refused['field'] ?? '' ) === 'css' && count( $problems ) >= 9 && ( $refused['params'] ?? [] ) === [ implode( '; ', $problems ) ] && str_contains( $refused['params'][0] ?? '', '(line 3)' ) === true
+	&& glob( $state. '/state/own/*.json' ) === $ownBefore );
+
 [ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Free', [ 'section' => [ 'from' => 'craft-probe' ] ], $free ) ] );
 themesCall( $site, 'themes/apply', [ 'theme' => 'own:free' ] );
-check( 'the own css is not checked: what the rule of mixing refuses - !important, an import, a font from another host, a property of the brand, a foreign token - is written as it stands, at the end of the stylesheet', $status === 200 && str_ends_with( (string) file_get_contents( $sheet ), "/* The css of the theme */\n". $free. "\n" ) === true
-	&& \Nino\Components::partProblems( $free, \Nino\Components::groups( $site )['section']['components'] ) !== [] );
+check( 'a css that keeps the rule is saved and goes in as it was written, at the end of the stylesheet, in a theme that is on the website', $status === 200 && str_ends_with( (string) file_get_contents( $sheet ), "/* The css of the theme */\n". $free. "\n" ) === true
+	&& \Nino\Components::themeProblems( $free ) === [] );
+
+[ $draftStatus, $draft ] = themesCall( $site, 'themes/preview', [ 'mix' => themesMix( 'Draft', [], $unchecked ) ] );
+check( 'a draft with a css that breaks the rule is a draft all the same - the token, the query - without that css: the answer says what is wrong, with the lines, so that the panel shows them at the field; a css that keeps the rule says none',
+	$draftStatus === 200 && is_string( $draft['token'] ?? null ) === true && ( $draft['cssRule'] ?? [] ) === $problems && themesCall( $site, 'themes/preview', [ 'mix' => themesMix( 'Draft', [], $free ) ] )[1]['cssRule'] === []
+	&& Compiler::compile( $site, Mix::clean( $site, [ 'css' => $unchecked ], false ), Brand::clean( $site, [] ) )['css'] !== '' && str_contains( Compiler::compile( $site, Mix::clean( $site, [ 'css' => $unchecked ], false ), Brand::clean( $site, [] ) )['css'], '!important' ) === false );
+
+// a css that was stored before the rule - or put in by hand - and does not keep it: not put in, and told with its lines when the theme is opened, until it is corrected
+file_put_contents( $state. '/state/own/legacy.json', json_encode( [ 'name' => 'Legacy', 'css' => $unchecked, 'parts' => [ 'section' => [ 'from' => 'craft-probe@1.0.0' ] ] ] ) );
+[ $legacyStatus, $legacy ] = themesCall( $site, 'themes/open', [ 'theme' => 'own:legacy' ] );
+[ $forced ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:legacy' ] );
+$legacySheet = (string) file_get_contents( $sheet );
+[ $mendedStatus ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:legacy', 'mix' => themesMix( 'Legacy', [ 'section' => [ 'from' => 'craft-probe' ] ], $unchecked ) ] );
+[ $fixedStatus ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:legacy', 'mix' => themesMix( 'Legacy', [ 'section' => [ 'from' => 'craft-probe' ] ], $free ) ] );
+$fixedSheet = (string) file_get_contents( $sheet );
+
+check( 'a css of an own theme that was stored before the rule does not go in - the theme is applied without it and the stylesheet has nothing of it - and opening the theme says what is wrong with each line; saving it again as it is is refused, and saving a css that keeps the rule is taken and goes in',
+	$legacyStatus === 200 && $legacy['cssRule'] === $problems && $forced === 200 && str_contains( $legacySheet, '!important' ) === false && str_contains( $legacySheet, '/* The css of the theme */' ) === false
+	&& $mendedStatus === 400 && $fixedStatus === 200 && str_ends_with( $fixedSheet, "/* The css of the theme */\n". $free. "\n" ) === true );
+themesCall( $site, 'themes/apply', [ 'theme' => 'own:free' ] );
+@unlink( $state. '/state/own/legacy.json' );
+unset( $site['./nino/themes/read'] );
+
 [ $status, $body ] = themesCall( $site, 'themes/open', [ 'theme' => 'own:free' ] );
-check( 'open gives the own css back as it was written', $status === 200 && $body['mix']['css'] === $free && $body['mix']['name'] === 'Free' );
+check( 'open gives the own css back as it was written', $status === 200 && $body['mix']['css'] === $free && $body['mix']['name'] === 'Free' && $body['cssRule'] === [] );
 
 // ---- save, delete, names
 [ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'craft-probe', 'mix' => themesMix( 'Craft', [] ) ] );
@@ -1183,7 +1216,7 @@ function themesEmpties( mixed $value, string $path, array &$found ): void {
 }
 
 // The lists an answer of the panel may have empty; every other empty thing in it is a map and is an object
-$lists = '~^(?:themes\.#\.frames|rejected|pages|cssFaults|notes|groups\.[a-z-]+\.(?:knobs|components)|brand\.(?:unavailable|named))$~D';
+$lists = '~^(?:themes\.#\.frames|rejected|pages|cssFaults|cssRule|notes|groups\.[a-z-]+\.(?:knobs|components)|brand\.(?:unavailable|named))$~D';
 $arrays = [];
 
 foreach( [ 'list' => $listed, 'open' => $openedShipped, 'open of an own theme' => $opened, 'preview' => $previewed ] as $name => $answer ) {
@@ -1477,8 +1510,8 @@ $hostile['css'] = ".hostile::before { content: '</style><script>alert(1)</script
 $withBrand = themesCall( $site, 'themes/preview', [ 'mix' => $hostile, 'brand' => [ 'color-1' => [ 'own' => true, 'value' => '#00aa55' ] ], 'token' => $token ] );
 $html = $visit( 'nino-preview='. $withBrand[1]['token'] );
 $repaired = ninoWarnings();
-check( 'a draft asks with its brand and its css: the colour is the draft\'s and not the project\'s, the project\'s brand is not changed, and a closing tag in the css does not end the style element', $withBrand[0] === 200 && str_contains( $html, '--brand-color-1: #00aa55;' ) === true && substr_count( $html, '</style>' ) === 1
-	&& str_contains( $html, "<\\/style><script>" ) === true && is_file( $state. '/state/brand.json' ) === false );
+check( 'a draft asks with its brand and its css: the colour is the draft\'s and not the project\'s, the project\'s brand is not changed, and a css with a closing tag of a style - which breaks the rule of a theme - is not in the style element at all, so it cannot end it', $withBrand[0] === 200 && str_contains( $html, '--brand-color-1: #00aa55;' ) === true && substr_count( $html, '</style>' ) === 1
+	&& str_contains( $html, 'alert(1)' ) === false && is_file( $state. '/state/brand.json' ) === false );
 check( 'a css that is not balanced is closed by the compiler before it is in the bundle of the preview, which says nothing of it', $repaired === [] );
 check( 'a token posted again is the same draft rewritten while it lasts', $withBrand[1]['token'] === $token && glob( $cache. '/*', GLOB_ONLYDIR ) !== [] );
 
@@ -2416,13 +2449,13 @@ themesCall( $site, 'themes/delete', [ 'theme' => 'own:lindner-2' ] );
 // -- the own css: what the field of the panel may send, and what the API takes
 $css = '</style><script>alert(1)</script><style>a { color: red';
 [ $status ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], $css ) ] );
-check( 'L. the own css is text: a closing tag of a style, a script and a brace that is never closed are kept as they were written in the theme, and at the end of the stylesheet that is built for it with what is open closed, and nothing of it is checked',
-	$status === 200 && $open( 'own:lindner' )['mix']['css'] === $css );
+check( 'L. the css of an own theme is not just text: a closing tag of a style, a script and a brace that is never closed break the rule of a theme and are refused - 400, themes_css_rule - and the theme keeps the css it had',
+	$status === 400 && ( themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], $css ) ] )[1]['code'] ?? '' ) === 'themes_css_rule' && $open( 'own:lindner' )['mix']['css'] !== $css );
 themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
 $built = (string) file_get_contents( $sheet );
 $bundle = \Nino\Modules\Assets::stylesheet( themesReboot( $site, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] ), THEMES_BUNDLE );
-check( 'L. ...and the bundle of the website holds it in the layer of the theme, closed: the layers after it are still the layers after it, and the one of the project is the last of them',
-	str_ends_with( $built, "/* The css of the theme */\n". $css. "\n}\n" ) === true && str_contains( $bundle, '@layer nino.theme {' ) === true && substr_count( $bundle, '{' ) === substr_count( $bundle, '}' ) );
+check( 'L. ...and the bundle of the website has nothing of it: the layers are the layers and the braces balance',
+	str_contains( $built, 'alert(1)' ) === false && str_contains( $bundle, '@layer nino.theme {' ) === true && substr_count( $bundle, '{' ) === substr_count( $bundle, '}' ) );
 $state1 = $digestOf( $state );
 $sizes = [];
 
@@ -3119,24 +3152,21 @@ check( 'M. of every state that is passed through while a css is typed - '. $chec
 
 [ $status, $body ] = themesCall( $css, 'themes/preview', [ 'mix' => [ 'parts' => [], 'css' => '.a { color: red' ] ] );
 [ , $closed ] = themesCall( $css, 'themes/preview', [ 'mix' => [ 'parts' => [], 'css' => '.a { color: red }' ] ] );
-check( 'M. a preview of unfinished css says what is open, in codes, and is a draft as any other - the token, the query - and closed css says none', $status === 200 && $body['cssFaults'] === [ 'open-block' ] && preg_match( \Nino\Preview::TOKEN, $body['token'] ) === 1 && $closed['cssFaults'] === [] );
+check( 'M. a preview of unfinished css is a draft as any other - the token, the query - without that css, and says what is wrong with it: the braces do not balance; closed css says none, and nothing open reaches the style sheet, so the compiler has nothing to close',
+	$status === 200 && $body['cssFaults'] === [] && count( $body['cssRule'] ) === 1 && str_contains( $body['cssRule'][0], 'braces do not balance' ) === true && preg_match( \Nino\Preview::TOKEN, $body['token'] ) === 1 && $closed['cssRule'] === [] );
 $site = [ 'css' => $css ];
 $cacheDir = ninoSandboxDir( $css ). '/private/data/.preview/themes/'. $body['token'];
 $draftCss = (string) json_decode( (string) file_get_contents( $cacheDir. '/draft.json' ), true )['css'];
-check( 'M. ...and the draft is closed, so the page of the preview draws and logs nothing', str_ends_with( rtrim( $draftCss ), "}\n}" ) === true || str_contains( $draftCss, ".a { color: red\n}" ) );
+check( 'M. ...and the draft has no part of that css, so the page of the preview draws and logs nothing', str_contains( $draftCss, '.a { color: red' ) === false );
 ninoWarnings();
 ninoVisit( $css, '/?'. $body['query'] );
 $page = \Nino\Html::renderHtml( $css, '[assets '. THEMES_BUNDLE. ']' );
 check( 'M. the page asked with the token of that draft is drawn - the style element of the draft - and the request raised no warning', str_contains( $page, '<style data-nino-theme-preview>' ) === true && ninoWarnings() === [] );
 
-// saved: the own css is written closed, the website draws, and nothing is said at the next build
-themesCall( $css, 'themes/save-as', [ 'mix' => themesMix( 'Open', [], '.saved { color: red' ) ] );
-ninoWarnings();
-[ $applied ] = themesCall( $css, 'themes/apply', [ 'theme' => 'own:open' ] );
-$later = themesReboot( $css, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] );
-$bundle = \Nino\Modules\Assets::stylesheet( $later, THEMES_BUNDLE );
-check( 'M. a saved own css that does not close is applied, and the bundle of the website has it closed and says nothing - a visitor is shown the page', $applied === 200 && str_contains( $bundle, '.saved { color: red' ) === true && ninoWarnings() === [] && str_contains( (string) file_get_contents( ninoSandboxDir( $css ). '/private/assets/theme.css' ), ".saved { color: red\n}" ) === true );
-check( 'M. ...and what was saved is what was written: the own theme keeps the text as it was typed', json_decode( (string) file_get_contents( ninoSandboxDir( $css ). '/private/data/theme/state/own/open.json' ), true )['css'] === '.saved { color: red' );
+// saved: a css that is not closed is refused, and nothing is written
+[ $openStatus, $openBody ] = themesCall( $css, 'themes/save-as', [ 'mix' => themesMix( 'Open', [], '.saved { color: red' ) ] );
+check( 'M. an own css that does not close is refused at the save - 400, themes_css_rule, and the sentence says that the braces do not balance - and no theme is written', $openStatus === 400 && $openBody['code'] === 'themes_css_rule' && str_contains( $openBody['params'][0], 'braces do not balance' ) === true
+	&& is_file( ninoSandboxDir( $css ). '/private/data/theme/state/own/open.json' ) === false );
 
 })();
 

@@ -512,9 +512,9 @@ function world( options ) {
 					w.answer( 200, listed );
 				}
 				else if( request.action === 'themes/open' )
-					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? ( w.copies.find( function( copy ) { return copy.key === payload.theme } )?.name ?? 'Lindner' ) : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
+					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? ( w.copies.find( function( copy ) { return copy.key === payload.theme } )?.name ?? 'Lindner' ) : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), cssRule : w.cssRule, stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
 				else if( request.action === 'themes/preview' )
-					w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900 }, describe( payload.mix, w.rest, payload.brand ) ) );
+					w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900 }, describe( payload.mix, w.rest, payload.brand ), { cssRule : w.cssRule } ) );
 				else if( request.action === 'themes/duplicate' && payload.theme.indexOf('own:') === 0 && payload.base !== w.stamp )
 					w.answer( 409, { error : 'the theme was changed since it was opened', code : 'themes_changed', params : [ 'Lindner' ], field : 'theme' } );
 				else if( request.action === 'themes/duplicate' && payload.name === 'Taken' )
@@ -583,6 +583,7 @@ function world( options ) {
 		restored : 0,
 		bump : function() { w.stateStamp = 'state-'+ ( Number( w.stateStamp.slice( 6 ) ) + 1 ); w.canRestore = true },
 		rest : false,
+		cssRule : [],
 		sent : [],
 		activeState : function() { return w.active === '' ? null : { theme : w.active, built : '', stale : false } },
 
@@ -4326,5 +4327,38 @@ function nameField( w ) {
 	check( 'T10. the names of fields are the workbench\'s class for them - nino-admin-field-name, which has the size, the weight and the colour of the other panels - and none is the class that the workbench has no rule for; the one rule of the sheet is for the same class',
 		script.indexOf('nino-admin-field-label') === -1 && sheet.indexOf('nino-admin-field-label') === -1 && ( script.match( /nino-admin-field-name/g ) ?? [] ).length === 4 && /\.nino-admin-accordion-body \.nino-admin-field-name \{/.test( sheet ) === true );
 }
+
+// --- AD. the css of a theme is held to the rule of a theme -----------------------------------------------------------------------
+
+{
+	const w = world( { active : 'nino' } );
+	const findings = [ 'uses !important', 'meets more than classes - an element, an id: body' ];
+
+	w.cssRule = findings;
+	w.at( '#themes/own.lindner/css' );
+
+	const text = byId( w.theme, 'themes-css' );
+	const said = w.text( byId( w.theme, 'themes-css-problem' ) );
+
+	check( 'R1. a css that the rule of a theme refuses - as the server found it when the theme was opened - is said at the field with every finding in one sentence, the field is marked and points at it, and Save cannot be pressed',
+		said === Nino_format( words.en['/_admin/error/themes_css_rule'], findings.join('; ') ) && text.attributes['aria-invalid'] === 'true' && w.button( w.bar(), W('label/save') ).disabled === true && w.text( w.bar() ).indexOf( findings[0] ) !== -1 );
+
+	w.cssRule = [];
+	type( text, '.a { color: red }' );
+	w.tick();
+	w.serve();
+
+	check( 'R1. ...and the answer for the draft that is typed says none, and the sentence goes: the field is not marked and Save can be pressed',
+		byId( w.theme, 'themes-css-problem' ) === undefined && text.attributes['aria-invalid'] === undefined && w.button( w.bar(), W('label/save') ).disabled === false );
+
+	w.cssRule = [ 'uses url()' ];
+	type( text, '.a { background: url(x) }' );
+	w.tick();
+	w.serve();
+
+	check( 'R1. a draft typed that breaks the rule is said at the field as the answer says it, and keeps Save off - the rule is the server\'s: the panel only says what the draft was answered', w.text( byId( w.theme, 'themes-css-problem' ) ) === Nino_format( words.en['/_admin/error/themes_css_rule'], 'uses url()' ) && w.button( w.bar(), W('label/save') ).disabled === true );
+}
+
+function Nino_format( text, ...params ) { return String( text ).replace( /%s/g, function() { return String( params.shift() ) } ) }
 
 done();

@@ -227,6 +227,19 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	What the css of a theme does against the rule of a theme - the rule of \Nino\Components::themeProblems(), which a package is held to: every part of a selector is a
+		 *	class, no element, id, universal or attribute selector, no url(), @import, @font-face, @property or !important, no token of the brand or the page set. The same rule
+		 *	for the css a person writes in the panel as for the css a package brings
+		 *
+		 *	@param		string		$css					The css as it is stored
+		 *
+		 *	@return 	array											One sentence for each thing that is wrong, with its line; [] where it keeps the rule or there is none
+		 */
+		public static function cssRule( string $css ): array {
+			return trim( $css ) === '' ? [] : \Nino\Components::themeProblems( $css );
+		}
+
+		/**
 		 *	The css of the developer as it is stored: text, one line ending, a null byte is none, a length is the limit
 		 *
 		 *	@param		mixed			$css

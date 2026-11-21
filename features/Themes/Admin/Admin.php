@@ -185,7 +185,7 @@ namespace Nino\Modules\Themes {
 
 			$plan = Compiler::plan( $appData, $theme['mix'], $state['brand'] );
 
-			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => self::_wired( $theme['mix'] ), 'stamp' => $theme['kind'] === 'own' ? self::_stamp( $theme['mix'] ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => self::_wired( $theme['mix'] ), 'cssRule' => Mix::cssRule( (string) ( $theme['mix']['css'] ?? '' ) ), 'stamp' => $theme['kind'] === 'own' ? self::_stamp( $theme['mix'] ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {
@@ -217,7 +217,7 @@ namespace Nino\Modules\Themes {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'cssFaults' => $built['faults'] ] + self::_describe( $appData, $built['plan'], $brand ) );
+			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'cssFaults' => $built['faults'], 'cssRule' => $built['rule'] ] + self::_describe( $appData, $built['plan'], $brand ) );
 		}
 
 		public static function apiThumb( array &$appData, array &$request ): void {
@@ -765,6 +765,10 @@ namespace Nino\Modules\Themes {
 
 			if( is_string( $mix ) === true )
 				return [ 'failure' => [ 400, 'the mix is refused: '. $mix, 'themes_mix', [ $mix, Mix::where( $mix ) ], in_array( strtok( $mix, ':' ), [ 'name', 'css' ], true ) === true ? (string) strtok( $mix, ':' ) : 'mix' ] ];
+
+			// The css of a theme is held to the rule of a theme, as a package's is: what breaks it is not written, and every line that does is said at the field
+			if( ( $rule = Mix::cssRule( (string) ( $mix['css'] ?? '' ) ) ) !== [] )
+				return [ 'failure' => [ 400, 'the css breaks the rule of a theme: '. implode( '; ', $rule ), 'themes_css_rule', [ implode( '; ', $rule ) ], 'css' ] ];
 
 			if( array_key_exists( 'brand', $data ) === false )
 				return [ 'mix' => $mix ];

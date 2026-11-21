@@ -88,6 +88,7 @@
 		picked		: {},
 		demo			: '',
 		cssFaults	: [],
+		cssRule		: [],
 		listing		: true,
 		from			: 'all',
 		find			: '',
@@ -843,7 +844,10 @@
 
 			S.failure = null;
 			S.cssFaults = Array.isArray( response.cssFaults ) === true ? response.cssFaults : [];
+			S.cssRule = Array.isArray( response.cssRule ) === true ? response.cssRule : [];
 			paintCssFaults();
+			sayCss();
+			paintBar();
 
 			const dropped = take( response );
 
@@ -1269,6 +1273,33 @@
 		return bytesOf( css ) > S.list.limits.css ? word( 'error/css-long', Math.round( S.list.limits.css / 1024 ) ) : '';
 	};
 
+	// What the css of the theme does against the rule of a theme, as the server says it of the draft: every finding in one sentence; '' where it keeps the rule
+	const cssRuleText = function() {
+		return S.cssRule.length === 0 ? '' : Nino.adminUi.format( Nino.content.getText('/_admin/error/themes_css_rule'), S.cssRule.join('; ') );
+	};
+
+	// The sentence at the field of the css: what the browser can tell at once, else what the rule of a theme finds in it - drawn anew where the answer for the draft comes
+	const sayCss = function( area ) {
+
+		const text = area ?? dc.getElementById('themes-css');
+
+		if( text === null )
+			return;
+
+		const field = text.closest('label') ?? text.parentNode;
+		const old = dc.getElementById('themes-css-problem');
+		const problem = cssProblem() !== '' ? cssProblem() : cssRuleText();
+
+		if( old !== null )
+			old.remove();
+
+		text.removeAttribute('aria-invalid');
+		text.setAttribute( 'aria-describedby', 'themes-css-hint' );
+
+		if( problem !== '' )
+			Nino.adminUi.fieldError( field, text, 'themes-css-problem', problem );
+	};
+
 	/**
 	 *  What keeps the draft from being saved, as a sentence; '' where nothing does: a colour that is no colour, or the css that the server would refuse. The
 	 *  bar says it whichever section is open
@@ -1279,7 +1310,7 @@
 
 		const colour = BRAND_KEYS.find( function( key ) { return S.invalid[key] === true } );
 
-		return colour !== undefined ? word( 'error/colour-invalid', word( 'label/'+ colour ) ) : cssProblem();
+		return colour !== undefined ? word( 'error/colour-invalid', word( 'label/'+ colour ) ) : ( cssProblem() !== '' ? cssProblem() : cssRuleText() );
 	};
 
 	// What the closed head of the own css says: that there is none, or how many lines
@@ -1321,25 +1352,10 @@
 		hint.appendChild( help );
 		field.appendChild( text );
 
-		// The sentence at the field where the css cannot be taken, and none where it can
-		const say = function() {
-
-			const old = dc.getElementById('themes-css-problem');
-
-			if( old !== null )
-				old.remove();
-
-			text.removeAttribute('aria-invalid');
-			text.setAttribute( 'aria-describedby', 'themes-css-hint' );
-
-			if( cssProblem() !== '' )
-				Nino.adminUi.fieldError( field, text, 'themes-css-problem', cssProblem() );
-		};
-
 		text.addEventListener( 'input', function() {
 
 			S.mix.css = text.value;
-			say();
+			sayCss( text );
 			changed();
 
 			if( cssProblem() === '' )
@@ -1354,7 +1370,7 @@
 		body.appendChild( field );
 		body.appendChild( faults );
 		body.appendChild( hint );
-		say();
+		sayCss( text );
 		paintCssFaults( faults );
 
 		return body;
