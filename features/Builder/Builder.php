@@ -200,6 +200,18 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The inline script of the texts of a page that is the picture of a block: none - the picture stands in a frame that may run no script, and the browser would say so for each one
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		mixed			$args					What the shortcode answered so far
+		 *
+		 *	@return 	string
+		 */
+		public static function noJstext( array &$appData, mixed $args ): string {
+			return '';
+		}
+
+		/**
 		 *	The first stage of a request: does it ask for the draft of a page, and may it have it. A request without the query is not looked at; one with it that
 		 *	may not have the draft - another session, an account without the right, a token that ran out - is the page as the visitors have it
 		 *
@@ -264,8 +276,13 @@ namespace Nino\Modules {
 
 			if( $trace === true )
 				\Nino\Preview::trace( $appData );
-			else
+			else {
+
 				\Nino\Callbacks::registerCallback( $appData, '/nino/shortcodes/assets/output/js', [ self::class, 'noScript' ] );
+
+				// ...and the inline script of the texts, which is registered before this request and is answered by what comes after it
+				\Nino\Callbacks::registerCallback( $appData, '/nino/html/shortcode/jstext', [ self::class, 'noJstext' ] );
+			}
 
 			\Nino\Modules\Template::swap( $appData, '/templates/'. $draft['template'], $draft['source'] );
 

@@ -1399,6 +1399,13 @@ $asked = builderReboot( $site );
 ninoVisit( $asked, '/?'. ( $status === 200 ? $tile['query'] : '' ) );
 $silenced = in_array( [ \Nino\Modules\Builder::class, 'noScript' ], \Nino\Callbacks::registered( $asked, '/nino/shortcodes/assets/output/js' ), true ) === true;
 
+// the picture stands in a frame that may run no script: no script the page could run is in it - the inline script of the texts is silenced beside the bundle, and what is left is data
+$silencedTexts = in_array( [ \Nino\Modules\Builder::class, 'noJstext' ], \Nino\Callbacks::registered( $asked, '/nino/html/shortcode/jstext' ), true ) === true;
+preg_match_all( '/<script\b[^>]*>/i', $page, $scripts );
+
+check( 'the tile of a block has no script that could run: the inline script of the texts is left out beside the bundle, and every script element that is left is data (application/ld+json)',
+	$silencedTexts === true && str_contains( $page, 'NinoJstext' ) === false && array_filter( $scripts[0], static fn( string $tag ): bool => str_contains( $tag, 'application/ld+json' ) === false ) === [] );
+
 check( 'the tile of a block is drawn by the website with the words of the block and nothing the request carried, without the trace and without the scripts of the site, and nothing is written for it but the draft',
 	$status === 200 && str_contains( $page, $narrow['texts']['de_DE']['title'] ) === true && str_contains( $page, 'alert(' ) === false && str_contains( $page, '<!--nino:' ) === false && $silenced === true && builderSnapshot( $site ) === $before );
 
