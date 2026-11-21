@@ -456,6 +456,8 @@ return [
 	'[[/_admin/builder/source/elsewhere-block]]'	=> 'The block reads this text of the website as it stands there: it is the same on every page. You change it in the panel Texts. A text of the block itself is made under "New". A text marked "Not shown openly otherwise" is one the website does not offer in its lists - the block may read it all the same, and shows it on every page.',
 	'[[/_admin/builder/source/withheld]]'	=> 'Not shown openly otherwise',
 	'[[/_admin/builder/source/field-title]]'	=> 'Field of the element',
+	'[[/_admin/builder/source/group-texts]]'	=> 'Texts',
+	'[[/_admin/builder/source/group-images]]'	=> 'Picture places',
 	'[[/_admin/builder/source/no-loop]]'	=> 'A field of the element exists only in a loop. This component stands in none.',
 	'[[/_admin/builder/source/no-field]]'	=> 'The type has no field that fits here.',
 	'[[/_admin/builder/source/no-scope]]'	=> 'There is no section with an id above this component that a new content could stand under. Choose one that is there, or take a fixed text.',

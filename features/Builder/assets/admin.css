@@ -609,30 +609,59 @@
 
 .builder-source-list {
 	display: grid;
-	gap: .3rem;
-	max-height: 14rem;
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	overflow: auto;
+}
+
+/* The search stays at the top of the one scroll of the dialog; the groups of the list pass under it */
+.builder-source-picker > .nino-admin-field:first-child {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding-bottom: .4rem;
+	background: var(--editor-bg-elevated);
+}
+
+.builder-source-group {
+	display: grid;
+	gap: .3rem;
+	min-width: 0;
+}
+
+/* A row of the list is a quiet line - no box, no shadow -: a fine rule between the rows, the accent surface only under the pointer and at the focus */
+.builder-source-item + .builder-source-item {
+	border-top: 1px solid var(--editor-separator);
 }
 
 .builder-source-pick {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: center;
-	gap: .15rem .6rem;
+	align-items: baseline;
+	gap: .1rem .6rem;
 	width: 100%;
 	min-height: 2rem;
 	margin: 0;
-	padding: .35rem .6rem;
-	border: 1px solid var(--editor-border);
+	padding: .3rem .5rem;
+	border: 0;
 	border-radius: var(--editor-radius-sm);
-	background: var(--editor-bg);
+	background: transparent;
+	box-shadow: none;
 	color: inherit;
 	font: inherit;
 	text-align: left;
 	cursor: pointer;
+}
+
+.builder-source-name {
+	font-weight: 500;
+	overflow-wrap: anywhere;
+}
+
+.builder-source-code {
+	color: var(--editor-text-secondary);
+	font-family: var(--nino-admin-mono);
+	font-size: var(--nino-admin-text-xs);
 }
 
 .builder-source-pick:hover {
@@ -642,11 +671,13 @@
 .builder-source-pick:focus-visible {
 	outline: 2px solid var(--editor-blue);
 	outline-offset: -2px;
+	background: var(--editor-blue-soft);
 }
 
 .builder-source-pick .nino-admin-hint {
 	flex: 1 1 8rem;
 	min-width: 0;
+	font-size: var(--nino-admin-text-xs);
 	overflow-wrap: anywhere;
 }
 

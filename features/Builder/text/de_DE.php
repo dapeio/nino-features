@@ -456,6 +456,8 @@ return [
 	'[[/_admin/builder/source/elsewhere-block]]'	=> 'Der Block liest diesen Text der Website, wie er dort steht: er ist auf jeder Seite derselben. Du änderst ihn im Panel Texte. Ein eigener Text des Blocks entsteht unter „Neu erstellen“. Ein Text mit „Sonst nicht öffentlich gezeigt“ ist einer, den die Website in ihren Listen nicht anbietet - der Block darf ihn trotzdem lesen und zeigt ihn dann auf jeder Seite.',
 	'[[/_admin/builder/source/withheld]]'	=> 'Sonst nicht öffentlich gezeigt',
 	'[[/_admin/builder/source/field-title]]'	=> 'Feld des Elements',
+	'[[/_admin/builder/source/group-texts]]'	=> 'Texte',
+	'[[/_admin/builder/source/group-images]]'	=> 'Bildplätze',
 	'[[/_admin/builder/source/no-loop]]'	=> 'Ein Feld des Elements gibt es nur in einer Schleife. Diese Komponente steht in keiner.',
 	'[[/_admin/builder/source/no-field]]'	=> 'Der Typ hat kein Feld, das hier passt.',
 	'[[/_admin/builder/source/no-scope]]'	=> 'Über dieser Komponente steht kein Abschnitt mit einer Id, unter dem ein neuer Inhalt stehen könnte. Wähle einen, der schon da ist, oder nimm einen festen Text.',

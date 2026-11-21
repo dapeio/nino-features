@@ -144,6 +144,20 @@ check( 'F299 T1. the button of a row of the tab of the header/footer says "Ausw�
 	&& word( de, 'frame/choose-title' ) === 'Kopf-/Fußbereich wählen' && word( en, 'frame/choose-title' ) === 'Choose header/footer'
 	&& has( /title\s*: word\('frame\/choose-title'\)/ ) === true && has( /Nino\.adminUi\.button\( word\('frame\/choose'\)/ ) === true );
 
+console.log( '\nF304. The dialog Source' );
+
+check( 'F304 T1. a row of the list of the dialog Source is a quiet line: no box, no shadow, no bold name - the name has a weight of 500 in a span, the origin small and quiet beside it -, a fine rule between the rows and the accent surface only under the pointer and at the focus, 2 rem high at least',
+	has( /button\.appendChild\( el\( 'span', 'builder-source-name', name \) \);/ ) === true && has( /button\.appendChild\( el\( 'strong', '', name \) \)/ ) === false
+	&& /\.builder-source-pick \{[^}]*border: 0;/.test( sheet ) === true && /\.builder-source-pick \{[^}]*box-shadow: none;/.test( sheet ) === true && /\.builder-source-pick \{[^}]*background: transparent;/.test( sheet ) === true && /\.builder-source-name \{\s*font-weight: 500;/.test( sheet ) === true && /\.builder-source-item \+ \.builder-source-item \{\s*border-top: 1px solid var\(--editor-separator\);/.test( sheet ) === true
+	&& /\.builder-source-pick \{[^}]*min-height: 2rem;/.test( sheet ) === true && /\.builder-source-pick:hover \{\s*background: var\(--editor-blue-soft\);/.test( sheet ) === true );
+check( 'F304 T2. the dialog Source has ONE scroll, the dialog\'s: the lists have no height of their own and no scroll, the search stays at the top, and the groups - the fields of the element, the texts or the picture places - each have a quiet heading with their sentences under it',
+	/\.builder-source-list \{[^}]*\}/.test( sheet ) === true && /\.builder-source-list \{[^}]*(?:overflow|max-height)/.test( sheet ) === false && /\.builder-source-picker > \.nino-admin-field:first-child \{\s*position: sticky;\s*top: 0;/.test( sheet ) === true
+	&& has( /const texts = el\( 'section', 'builder-source-group' \);/ ) === true && has( /word\( spec\.kind === 'image' \? 'source\/group-images' : 'source\/group-texts' \)/ ) === true && has( /box\.insertBefore\( fields, texts \)/ ) === true
+	&& word( de, 'source/group-texts' ) === 'Texte' && word( en, 'source/group-texts' ) === 'Texts' && word( de, 'source/group-images' ) === 'Bildplätze' && word( en, 'source/group-images' ) === 'Picture places' );
+check( 'F304 T3. a field of the element is shown by the words the model gives it with its technical name quietly behind it, in monospace; a field that has no words is its name alone, and the ones every element has stay at the end - none is left out, for each is a text that can be shown',
+	has( /el\( 'code', 'builder-source-code', code \)/ ) === true && has( /plain\.filter\( labelled \)\.concat\( plain\.filter\( function\( name \) \{ return labelled\( name \) === false \} \), names\.filter/ ) === true
+	&& /\.builder-source-code \{[^}]*font-family: var\(--nino-admin-mono\)/.test( sheet ) === true );
+
 console.log( '\nF302. The section dialog' );
 
 check( 'F302 a. the dialog of a section names the variant "Variant" - its title says it is the section - and the long name only where a block variant stands beside it or the sheet says what each variant sets; the two buttons of the picture stand one under the other at the distance of buttons: the field of the file and the empty line of the answer take no row of the grid',

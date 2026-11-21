@@ -6973,13 +6973,17 @@
 			return box;
 		};
 
-		const entryOf = function( name, text, chip, onPick ) {
+		const entryOf = function( name, text, chip, onPick, code ) {
 
 			const item = el( 'li', 'builder-source-item' );
 			const button = el( 'button', 'builder-source-pick' );
 
 			button.type = 'button';
-			button.appendChild( el( 'strong', '', name ) );
+			button.appendChild( el( 'span', 'builder-source-name', name ) );
+
+			// The technical name of a field stands quietly behind the words it is given
+			if( typeof code === 'string' && code !== '' && code !== name )
+				button.appendChild( el( 'code', 'builder-source-code', code ) );
 
 			if( text !== '' )
 				button.appendChild( el( 'span', 'nino-admin-hint', text ) );
@@ -7064,14 +7068,22 @@
 				waiting = wn.setTimeout( ask, 200 );
 			} );
 
-			box.appendChild( search );
-			box.appendChild( list );
-			box.appendChild( note );
+			// ONE scroll, the dialog's: the search stays at the top, and under it the groups - the texts or pictures of the site, then the fields of the element - each with a quiet heading and
+			// the sentences that belong to it
+			const texts = el( 'section', 'builder-source-group' );
+
+			texts.appendChild( el( 'h4', 'builder-offer-group', word( spec.kind === 'image' ? 'source/group-images' : 'source/group-texts' ) ) );
+			texts.appendChild( list );
+			texts.appendChild( note );
 
 			if( spec.kind !== 'image' )
-				box.appendChild( el( 'p', 'nino-admin-hint', word( S.adapter.frameBlock === true ? 'source/elsewhere-block' : 'source/elsewhere-note' ) ) );
+				texts.appendChild( el( 'p', 'nino-admin-hint', word( S.adapter.frameBlock === true ? 'source/elsewhere-block' : 'source/elsewhere-note' ) ) );
+
+			box.appendChild( search );
+			box.appendChild( texts );
 
 			// The field of the element: where there is a loop, the fields of the type of its elements - else the sentence that says why there is none
+			fields.className += ' builder-source-group';
 			fields.appendChild( el( 'h4', 'builder-offer-group', word('source/field-title') ) );
 
 			if( loop === null || loop === '' )
@@ -7092,8 +7104,12 @@
 						return spec.kind === 'image' ? response.fields[name] === 'image' : [ 'string', 'integer', 'double', 'boolean', 'date', 'datetime' ].indexOf( response.fields[name] ) !== -1;
 					} );
 
-					names.filter( function( name ) { return technical.indexOf( name ) === -1 } ).concat( names.filter( function( name ) { return technical.indexOf( name ) !== -1 } ) ).forEach( function( name ) {
-						holder.appendChild( entryOf( technical.indexOf( name ) !== -1 ? word( 'source/field-'+ name ) : ( response.labels[name] ?? name ), '', '', function() { finish( { form : 'field', written : '.'+ name } ) } ) );
+					const labelled = function( name ) { return response.labels[name] !== undefined && response.labels[name] !== '' };
+					const plain = names.filter( function( name ) { return technical.indexOf( name ) === -1 } );
+
+					// By the words the model gives them first, then those that have only their name, the ones every element has at the end - nothing is left out: each is a text that can be shown
+					plain.filter( labelled ).concat( plain.filter( function( name ) { return labelled( name ) === false } ), names.filter( function( name ) { return technical.indexOf( name ) !== -1 } ) ).forEach( function( name ) {
+						holder.appendChild( entryOf( technical.indexOf( name ) !== -1 ? word( 'source/field-'+ name ) : ( labelled( name ) ? response.labels[name] : name ), '', '', function() { finish( { form : 'field', written : '.'+ name } ) }, technical.indexOf( name ) !== -1 ? '' : name ) );
 					} );
 
 					if( holder.children.length === 0 )
@@ -7101,7 +7117,12 @@
 				} );
 			}
 
-			box.appendChild( fields );
+			// The fields of the element are few and what a loop is for: they stand first where there is a loop to take them from, the texts of the site - which may be many - under them
+			if( loop !== null && loop !== '' )
+				box.insertBefore( fields, texts );
+			else
+				box.appendChild( fields );
+
 			ask();
 
 			return box;
