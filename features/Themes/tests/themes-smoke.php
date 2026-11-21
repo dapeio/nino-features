@@ -393,8 +393,8 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( dirnam
 check( 'no file of the feature names a glob flag that only some systems define'. ( $named === [] ? '' : ' - '. implode( ', ', $named ) ), $named === [] );
 
 $panels = \Nino\Admin\Admin::panels( $appData );
-check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its fifteen actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
-	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/thumb', 'themes/save', 'themes/save-as', 'themes/duplicate', 'themes/brand', 'themes/apply', 'themes/restore', 'themes/delete', 'themes/upload-check', 'themes/upload', 'themes/upload-drop', 'themes/remove' ]
+check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its sixteen actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
+	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/thumb', 'themes/save', 'themes/save-as', 'themes/duplicate', 'themes/brand', 'themes/apply', 'themes/keep', 'themes/restore', 'themes/delete', 'themes/upload-check', 'themes/upload', 'themes/upload-drop', 'themes/remove' ]
 	&& array_diff( array_keys( \Nino\Modules\Themes\Admin::actions() ), array_keys( \Nino\Admin\Admin::actions( $appData ) ) ) === [] );
 
 $source = (string) file_get_contents( $featureDir. '/Admin/Admin.php' ). (string) file_get_contents( $featureDir. '/Store/Store.php' );
@@ -1033,12 +1033,14 @@ check( 'R2 preview: the answer holds the groups and the brand of the draft - the
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
 $firstSheet = (string) file_get_contents( $sheet );
 check( 'Nr. 3: apply makes the website show a theme: the stylesheet is written for the layer of the theme, the state says which theme and what it was built from, the variants are kept, a copy of every part is kept', $status === 200 && $body['applied'] === true && $body['active']['theme'] === 'craft-probe' && $body['active']['built'] === Compiler::stamp( $firstSheet ) && $body['active']['stale'] === false
-	&& Compiler::isOwn( $firstSheet ) === true && $firstSheet === (string) file_get_contents( $state. '/state/theme.css' ) && is_file( $state. '/state/variants.php' ) === true && $body['foreign'] === false );
-$active = json_decode( (string) file_get_contents( $state. '/state/active.json' ), true );
-$copy = $state. '/copies/craft-probe@1.0.0';
-check( 'the theme is kept as the mix it was - the site hangs on no package - and a copy of the theme and of each part in use is in the project, the css byte for byte and the json as it decodes', $active['theme'] === 'craft-probe' && $active['mix'] === Mix::of( $site, 'craft-probe' ) && $active['feature'] === '1.0.0'
-	&& array_map( 'basename', glob( $copy. '/parts/*', GLOB_ONLYDIR ) ) === [ 'button', 'footer', 'header', 'image', 'page', 'section', 'text' ] && sha1_file( $copy. '/parts/section/part.css' ) === sha1_file( ninoSandboxDir( $site ). '/themes/craft-probe/parts/section/part.css' )
-	&& json_decode( (string) file_get_contents( $copy. '/theme.json' ), true ) === json_decode( (string) file_get_contents( ninoSandboxDir( $site ). '/themes/craft-probe/theme.json' ), true ) && json_decode( (string) file_get_contents( $copy. '/parts/section/part.json' ), true ) === json_decode( (string) file_get_contents( ninoSandboxDir( $site ). '/themes/craft-probe/parts/section/part.json' ), true ) && is_dir( $state. '/copies/band-probe@1.0.0' ) === false );
+	&& Compiler::isOwn( $firstSheet ) === true && $firstSheet === (string) file_get_contents( $state. '/current/theme.css' ) && is_file( $state. '/current/variants.php' ) === true && $body['foreign'] === false );
+$active = json_decode( (string) file_get_contents( $state. '/current/active.json' ), true );
+$copy = $state. '/current/theme';
+$expected = array_filter( themesFiles( $fixtures. '/craft-probe' ), static fn( string $path ): bool => str_starts_with( $path, 'blocks/' ) === false && $path !== 'preview.webp', ARRAY_FILTER_USE_KEY );
+$origin = json_decode( (string) file_get_contents( $state. '/current/origin.json' ), true );
+check( 'the theme is copied into the state - the site hangs on no package - and the copy is the theme in the form of a package: every file of it as it is in the package, byte for byte, without the blocks and the picture; active.json says which theme it was copied from and what it was built from, and holds no mix; and the state has no copies of parts', $active['theme'] === 'craft-probe' && array_key_exists( 'mix', $active ) === false && $active['feature'] === '1.0.0'
+	&& themesFiles( $copy ) === $expected && is_dir( $state. '/copies' ) === false && is_dir( $state. '/current/copies' ) === false );
+check( 'the note beside the state says where each part of the copy comes from: the theme and its version, for each group the theme has a part for', $origin === array_fill_keys( [ 'button', 'footer', 'header', 'image', 'page', 'section', 'text' ], [ 'theme' => 'craft-probe', 'version' => '1.0.0' ] ) );
 
 // the same page, drawn in each state: the theme changes what it looks like and not what it says
 $draw = static function( array $project ): string {
@@ -1074,7 +1076,7 @@ $before = $firstSheet;
 $file = themesOwnMix( $site, 'lindner' );
 check( 'Nr. 2: save as an own theme: it is stored under a key made of its name - a folder of that name - read back with its name, its parts and its css; and it is not on the website: the stylesheet there is what it was, the state says craft', $status === 200 && $body['theme'] === 'own:lindner' && $body['applied'] === false && $body['active']['theme'] === 'craft-probe'
 	&& (string) file_get_contents( $sheet ) === $before && $file['name'] === 'Lindner' && $file['css'] === '.lindner-own { color: red; }' && $file['parts']['section'] === [ 'from' => 'craft-probe@1.0.0', 'standard' => [ 'section-wrap' => 'soft' ], 'values' => [ 'section-col.x-shadow' => 1, 'section-wrap.space' => 2 ] ]
-	&& $file['parts']['page'] === [ 'from' => 'band-probe@1.0.0', 'values' => [ 'radius' => 1 ] ] && $file['parts']['button'] === [ 'from' => 'standard' ] && is_dir( themesOwn( $site, 'lindner' ) ) === true && is_file( $state. '/state/own/lindner.json' ) === false );
+	&& $file['parts']['page'] === [ 'from' => 'band-probe@1.0.0', 'values' => [ 'radius' => 1 ] ] && $file['parts']['button'] === [ 'from' => 'standard' ] && is_dir( themesOwn( $site, 'lindner' ) ) === true && is_file( $state. '/current/own/lindner.json' ) === false );
 $folder = themesFiles( themesOwn( $site, 'lindner' ) );
 $theme = json_decode( $folder['theme.json'] ?? '', true );
 $sectionJson = json_decode( $folder['parts/section/part.json'] ?? '', true );
@@ -1089,7 +1091,7 @@ check( 'the brand is the project\'s and not a theme\'s: saved with a theme that 
 	&& str_contains( (string) file_get_contents( $sheet ), '--section-wrap-space: 1.75rem;' ) === true );
 check( 'M5: the brand is not in the own theme - not a key, not a value - and not the own theme in the brand: it is a file of its own, in the shape of the seven values',
 	str_contains( json_encode( $file ), 'color-1' ) === false && str_contains( json_encode( $file ), '#9a4b1d' ) === false && str_contains( implode( "\n", themesFiles( themesOwn( $site, 'lindner' ) ) ), '#9a4b1d' ) === false
-	&& json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true ) === Brand::clean( $site, $brandPosted ) && array_keys( json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true ) ) === Brand::KEYS );
+	&& json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true ) === Brand::clean( $site, $brandPosted ) && array_keys( json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true ) ) === Brand::KEYS );
 
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
 $lindnerSheet = (string) file_get_contents( $sheet );
@@ -1121,7 +1123,7 @@ themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
 
 // M3 and M2 through the API
 [ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $lindner, 'brand' => [ 'color-1' => [ 'own' => false ] ] + $brandPosted ] );
-$stored = json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true );
+$stored = json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true );
 check( 'M3: "back to the theme\'s" is a value that is not own any more - stored so, and the next build of an own theme on the website follows the theme', $status === 200 && $stored['color-1'] === [ 'own' => false ] && $stored['font-title'] === [ 'own' => true, 'value' => 'system-serif' ] && $body['applied'] === false );
 themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
 check( 'M3: the first colour is the reset\'s - no colour of the brand is written, band suggests none - and the font and mode of the project are still its own', preg_match( '/^\t--brand-(color-1|ground-base):/m', (string) file_get_contents( $sheet ) ) !== 1 && str_contains( (string) file_get_contents( $sheet ), '--brand-font-title: Georgia' ) === true && str_contains( (string) file_get_contents( $sheet ), '--brand-scheme: dark;' ) === true );
@@ -1138,12 +1140,11 @@ check( 'F10: the part is the theme\'s own part now, and it stands: the origin is
 check( 'F10: while the page of the theme, which is the same part as the one band has, is told from band, which is installed, and what has no part of its own is the standard', $body['groups']['page']['from'] === 'band-probe@1.0.0' && $body['groups']['page']['package'] === 'installed' && $body['groups']['page']['theme'] === 'band-probe' && $body['groups']['button']['package'] === '' && $body['groups']['button']['from'] === 'standard' );
 rename( ninoSandboxDir( $site ). '/craft-probe-away', $themes. '/craft-probe' );
 unset( $site['./nino/themes/read'] );
-\Nino\Filesystem::removeDir( $state. '/copies/craft-probe@1.0.0' );
 themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
 rename( $themes. '/craft-probe', ninoSandboxDir( $site ). '/craft-probe-away' );
 unset( $site['./nino/themes/read'] );
-[ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [ 'section' => [ 'from' => 'craft-probe@1.0.0' ] ] ), 'brand' => [ 'tone' => [ 'own' => true, 'value' => 'cool' ] ] ] );
-check( 'F10: a theme of a package that is on the website is the mix it was when it was applied, and the copy: with the package gone the brand can still be changed and the stylesheet is built again', $status === 200 && $body['active']['theme'] === 'craft-probe' && str_contains( (string) file_get_contents( $sheet ), '--section-wrap-space: 1.75rem;' ) === true && str_contains( (string) file_get_contents( $sheet ), '#fcf2e7' ) === false && str_contains( (string) file_get_contents( $sheet ), '--brand-ground-alt: light-dark( #f1f4f8' ) === false );
+[ $status, $body ] = themesCall( $site, 'themes/brand', [ 'brand' => array_merge( \Nino\Modules\Themes\Store::read( $site )['brand'], [ 'tone' => [ 'own' => true, 'value' => 'cool' ] ] ) ] );
+check( 'F10: a theme of a package that is on the website is a copy in the state: with the package gone the folder of the copy is there, the brand can still be changed and the stylesheet is built again from it', is_file( $state. '/current/theme/parts/section/part.css' ) === true && $status === 200 && $body['active']['theme'] === 'craft-probe' && str_contains( (string) file_get_contents( $sheet ), '--section-wrap-space: 1.75rem;' ) === true && str_contains( (string) file_get_contents( $sheet ), '#fcf2e7' ) === false && str_contains( (string) file_get_contents( $sheet ), '--brand-ground-alt: light-dark( #f1f4f8' ) === false );
 rename( ninoSandboxDir( $site ). '/craft-probe-away', $themes. '/craft-probe' );
 unset( $site['./nino/themes/read'] );
 
@@ -1160,42 +1161,43 @@ $none = static fn(): bool => themesCall( $site, 'themes/restore' )[1]['code'] ==
 check( 'with nothing saved there is nothing to restore: 409, with the code and the sentence, and nothing is made', $status === 409 && $body['code'] === 'themes_nothing' && is_dir( $state ) === false && is_file( $sheet ) === false );
 
 themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
-$one = $stateOf( 'state' );
+$one = $stateOf( 'current' );
 check( 'the first change is the first state, and what was before it - nothing - is the last state: there is something to restore, and it is a site with no theme', $one !== '-' && $stateOf( 'previous' ) === $digest( $state. '/previous' ) && glob( $state. '/previous/*' ) === [] && themesCall( $site, 'themes/list' )[1]['canRestore'] === true );
 
 themesCall( $site, 'themes/save-as', [ 'mix' => $lindner, 'brand' => $brandPosted ] );
-$two = $stateOf( 'state' );
+$two = $stateOf( 'current' );
 themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
-$three = $stateOf( 'state' );
+$three = $stateOf( 'current' );
 $sheetThree = (string) file_get_contents( $sheet );
 check( 'every change moves the state to the last state: the last of the third is the second, the last of the second is the first', $stateOf( 'previous' ) === $two && $two !== $one && $three !== $two );
 
 [ $status, $body ] = themesCall( $site, 'themes/restore' );
-check( 'Nr. 7: restore swaps the state and the last state: the state is the second again - the active theme, the brand, the own theme, the stylesheet - and the third is the last state', $status === 200 && $body['restored'] === true && $stateOf( 'state' ) === $two && $stateOf( 'previous' ) === $three && $body['active']['theme'] === 'craft-probe'
-	&& str_contains( (string) file_get_contents( $sheet ), '--section-wrap-space: 1.75rem;' ) === true && (string) file_get_contents( $sheet ) === (string) file_get_contents( $state. '/state/theme.css' ) );
+check( 'Nr. 7: restore swaps the state and the last state: the state is the second again - the active theme, the brand, the own theme, the stylesheet - and the third is the last state', $status === 200 && $body['restored'] === true && $stateOf( 'current' ) === $two && $stateOf( 'previous' ) === $three && $body['active']['theme'] === 'craft-probe'
+	&& str_contains( (string) file_get_contents( $sheet ), '--section-wrap-space: 1.75rem;' ) === true && (string) file_get_contents( $sheet ) === (string) file_get_contents( $state. '/current/theme.css' ) );
 themesCall( $site, 'themes/restore' );
-check( 'Nr. 7: twice is the state it was - the same files, byte for byte, the stylesheet of the website and the variants the register is told included', $stateOf( 'state' ) === $three && $stateOf( 'previous' ) === $two && (string) file_get_contents( $sheet ) === $sheetThree
-	&& ( include $state. '/state/variants.php' ) === [ 'header-wrap' => [ [ 'bar' ], 'regular', [ 'bar' => $partLabel( 'band-probe', 'header', 'header-wrap', 'bar' ) ] ], 'section-wrap' => [ [ 'soft' ], 'soft', [ 'soft' => $partLabel( 'craft-probe', 'section', 'section-wrap', 'soft' ) ] ] ] );
+check( 'Nr. 7: twice is the state it was - the same files, byte for byte, the stylesheet of the website and the variants the register is told included', $stateOf( 'current' ) === $three && $stateOf( 'previous' ) === $two && (string) file_get_contents( $sheet ) === $sheetThree
+	&& ( include $state. '/current/variants.php' ) === [ 'header-wrap' => [ [ 'bar' ], 'regular', [ 'bar' => $partLabel( 'band-probe', 'header', 'header-wrap', 'bar' ) ] ], 'section-wrap' => [ [ 'soft' ], 'soft', [ 'soft' => $partLabel( 'craft-probe', 'section', 'section-wrap', 'soft' ) ] ] ] );
 
 $changed = $stateOf( 'previous' );
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:lindner' ] );
-check( 'a change that changes nothing is nothing: the same theme again leaves the last state the last state', $status === 200 && $stateOf( 'previous' ) === $changed && $stateOf( 'state' ) === $three );
+check( 'a change that changes nothing is nothing: the same theme again leaves the last state the last state', $status === 200 && $stateOf( 'previous' ) === $changed && $stateOf( 'current' ) === $three );
 
 themesCall( $site, 'themes/apply', [ 'theme' => 'band-probe' ] );
-$four = $stateOf( 'state' );
+$four = $stateOf( 'current' );
 $sixBefore = $stateOf( 'previous' );
 [ $status ] = themesCall( $site, 'themes/delete', [ 'theme' => 'own:lindner' ] );
-$five = $stateOf( 'state' );
+$five = $stateOf( 'current' );
 check( 'an own theme that is deleted is gone - its folder is - and no state of the website changes with it: the state and the last state are the ones they were', $status === 200 && is_dir( themesOwn( $site, 'lindner' ) ) === false && $five === $four && $stateOf( 'previous' ) === $sixBefore );
 [ $status, $body ] = themesCall( $site, 'themes/restore' );
-check( 'Nr. 7: restore does not bring an own theme back, it is no part of a state - and a last state that shows one that is gone is not brought back: 409 with its key, and nothing is changed', $status === 409 && $body['code'] === 'themes_gone' && $body['params'] === [ 'lindner' ] && $stateOf( 'state' ) === $four && $stateOf( 'previous' ) === $sixBefore && is_dir( themesOwn( $site, 'lindner' ) ) === false );
+check( 'Nr. 7: restore brings the last state back though the own theme it showed is gone since: the state holds its own copy of the theme, with the stylesheet and the variants built from it, and the own themes are no part of it - the folder of the theme is still gone', $status === 200 && $body['active']['theme'] === 'own:lindner' && is_dir( themesOwn( $site, 'lindner' ) ) === false
+	&& is_file( $state. '/current/theme/theme.json' ) === true && str_contains( (string) file_get_contents( $sheet ), '--section-wrap-space: 3.5rem;' ) === true && (string) file_get_contents( $sheet ) === (string) file_get_contents( $state. '/current/theme.css' ) && $stateOf( 'previous' ) === $four );
 
 themesCall( $site, 'themes/save-as', [ 'mix' => $lindner, 'brand' => $brandPosted ] );
 [ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => $lindner, 'brand' => [ 'color-1' => [ 'own' => true, 'value' => '#00aa55' ] ] ] );
 $withBrand = (string) file_get_contents( $sheet );
 themesCall( $site, 'themes/restore' );
 check( 'Nr. 7: a brand that was changed is a state that was changed: restore gives the colour it was, in the brand and in the stylesheet', str_contains( $withBrand, '--brand-color-1: #00aa55;' ) === true && str_contains( (string) file_get_contents( $sheet ), '--brand-color-1: #9a4b1d;' ) === true
-	&& json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#9a4b1d' );
+	&& json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#9a4b1d' );
 
 // down to the beginning: a site with no theme, drawn as the standard parts draw it
 \Nino\Filesystem::removeDir( $state );
@@ -1220,7 +1222,7 @@ $mine = ".mine { color: red; }\n/* written by hand */\n";
 [ $status, $body ] = themesCall( $site, 'themes/list' );
 check( 'a stylesheet of the project that the compiler did not write is said in the list', $status === 200 && $body['foreign'] === true && $body['active'] === null );
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
-check( 'the compiler overwrites only what it wrote: a change that would replace the file is refused - 409 - and the file and the state are what they were', $status === 409 && $body['code'] === 'themes_foreign' && (string) file_get_contents( $sheet ) === $mine && is_dir( $state. '/state' ) === false && is_dir( $state. '/next' ) === false && is_dir( $state. '/previous' ) === false );
+check( 'the compiler overwrites only what it wrote: a change that would replace the file is refused - 409 - and the file and the state are what they were', $status === 409 && $body['code'] === 'themes_foreign' && (string) file_get_contents( $sheet ) === $mine && is_dir( $state. '/current' ) === false && is_dir( $state. '/next' ) === false && is_dir( $state. '/previous' ) === false );
 foreach( [ 'themes/save-as' => [ 'mix' => $lindner ], 'themes/restore' => [] ] as $action => $data )
 	themesCall( $site, $action, $data );
 check( 'that holds for the others that would write it: a save of an own theme that is not active writes no stylesheet, a restore with nothing to restore changes nothing', (string) file_get_contents( $sheet ) === $mine );
@@ -1376,18 +1378,18 @@ check( 'and a folder that is put there by hand beyond the fiftieth is not an own
 unset( $site['./nino/themes/own'] );
 
 // ---- a change that fails leaves the state as it was; a change while another one is made is refused
-$digestState = $stateOf( 'state' );
+$digestState = $stateOf( 'current' );
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'own:nothing' ] );
-check( 'a change that fails leaves the state, the last state and the stylesheet as they were, and no copy of a state behind', $status === 404 && $stateOf( 'state' ) === $digestState && is_dir( $state. '/next' ) === false && $stateOf( 'previous' ) !== $digestState );
+check( 'a change that fails leaves the state, the last state and the stylesheet as they were, and no copy of a state behind', $status === 404 && $stateOf( 'current' ) === $digestState && is_dir( $state. '/next' ) === false && $stateOf( 'previous' ) !== $digestState );
 
-$before = $stateOf( 'state' );
+$before = $stateOf( 'current' );
 $lock = fopen( ninoSandboxDir( $site ). '/private/data/.locks/'. sha1( '/data/theme/state.lock' ). '.lock', 'c' );
 flock( $lock, LOCK_EX );
 [ $status, $body ] = themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
 $restoring = themesCall( $site, 'themes/restore' );
 flock( $lock, LOCK_UN );
 fclose( $lock );
-check( 'while another request changes the themes a change is not waited for: 409 busy, and so is a restore - and nothing is changed', $status === 409 && $body['code'] === 'themes_busy' && $restoring[0] === 409 && $restoring[1]['code'] === 'themes_busy' && $stateOf( 'state' ) === $before );
+check( 'while another request changes the themes a change is not waited for: 409 busy, and so is a restore - and nothing is changed', $status === 409 && $body['code'] === 'themes_busy' && $restoring[0] === 409 && $restoring[1]['code'] === 'themes_busy' && $stateOf( 'current' ) === $before );
 check( 'and when it is over the next change is made', themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] )[0] === 200 );
 
 // ---- a change that is broken off, and a theme that has a link in it
@@ -1418,10 +1420,10 @@ foreach( [ 'linked-parts', 'craft-probe', 'linked-parts', 'band-probe', 'linked-
 
 	themesCall( $linked, 'themes/apply', [ 'theme' => $theme ] );
 	$loops[] = str_contains( (string) file_get_contents( ninoSandboxDir( $linked ). '/private/assets/theme.css' ), 'OUTSIDE-MARKER' ) === false
-		&& str_contains( (string) file_get_contents( ninoSandboxDir( $linked ). '/private/data/theme/state/theme.css' ), '#abcdef' ) === false;
+		&& str_contains( (string) file_get_contents( ninoSandboxDir( $linked ). '/private/data/theme/current/theme.css' ), '#abcdef' ) === false;
 }
 
-$copies = ninoSandboxDir( $linked ). '/private/data/theme/copies/linked-parts@1.0.0';
+$copies = ninoSandboxDir( $linked ). '/private/data/theme/current/theme';
 $files = [];
 
 foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( ninoSandboxDir( $linked ). '/private/data', FilesystemIterator::SKIP_DOTS ) ) as $file )
@@ -1430,7 +1432,7 @@ foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( ninoSand
 [ $status, $body ] = themesCall( $linked, 'themes/open', [ 'theme' => 'linked-parts' ] );
 check( 'a link in a theme - part.css, part.json, the folder of a part - brings nothing of what it points at into the project: not on the first build, nor on the second and third that apply the theme again after another one, in no copy and in no file of the data', array_unique( $loops ) === [ true ] && count( $loops ) === 5
 	&& array_filter( $files, static fn( string $text ): bool => str_contains( $text, 'OUTSIDE-MARKER' ) === true || str_contains( $text, '"outside"' ) === true ) === [] );
-check( 'the parts that are links rest, each with its reason, on every build; the part that is a file is kept as text and is used; the copy holds that part and none of the others', $body['groups']['section']['problem'] !== '' && $body['groups']['button']['problem'] !== '' && $body['groups']['section']['origin'] !== 'copy'
+check( 'the parts that are links rest, each with its reason, on every build; the part that is a file is used; the copy of the theme that the state holds has that part and none of the others - a part is copied whole or not at all', $body['groups']['section']['problem'] !== '' && $body['groups']['button']['problem'] !== '' && $body['groups']['section']['origin'] !== 'current'
 	&& is_dir( $copies. '/parts/header' ) === true && is_dir( $copies. '/parts/section' ) === false && is_dir( $copies. '/parts/button' ) === false && is_dir( $copies. '/parts/text' ) === false && is_link( $copies. '/parts/header/part.json' ) === false
 	&& str_contains( (string) file_get_contents( ninoSandboxDir( $linked ). '/private/assets/theme.css' ), '2px' ) === true );
 unlink( $themesDir. '/linked-parts/theme.json' );
@@ -1491,7 +1493,7 @@ foreach( [ 'commit', 'restore' ] as $action )
 		themesCall( $broken, 'themes/save-as', [ 'mix' => $lindner ] );
 		themesCall( $broken, 'themes/apply', [ 'theme' => 'band-probe' ] );
 		$private = ninoSandboxDir( $broken ). '/private';
-		$before = [ $digest( $private. '/data/theme/state' ), $digest( $private. '/data/theme/previous' ) ];
+		$before = [ $digest( $private. '/data/theme/current' ), $digest( $private. '/data/theme/previous' ) ];
 		$configuration = json_encode( [ 'root' => $root, 'features' => NINO_FEATURES_DIR, 'uid' => $broken['./nino/uid'], 'themes' => ninoSandboxDir( $broken ). '/themes', 'kill' => $point, 'action' => $action, 'theme' => 'craft-probe',
 			'keys' => [ './nino/filesystem/path' => $root, './nino/filesystem/configpath' => $broken['./nino/filesystem/configpath'], './nino/filesystem/contentpath' => $broken['./nino/filesystem/contentpath'], './nino/filesystem/publicpath' => $broken['./nino/filesystem/publicpath'],
 			'./nino/locales/current' => 'de_DE', '/nino/locales/native' => 'de_DE', '/nino/locales/available' => [ 'de_DE', 'en_US' ], '/nino/dir' => '', '/nino/install/texts' => \Nino\VERSION ] ] );
@@ -1504,10 +1506,10 @@ foreach( [ 'commit', 'restore' ] as $action )
 
 		$output = [];
 		$breaks[$action]++;
-		$missing = is_dir( $private. '/data/theme/state' ) === false;
+		$missing = is_dir( $private. '/data/theme/current' ) === false;
 		$after = themesReboot( $broken, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] );
 		\Nino\Modules\Themes::variants( $after, [ 'name' => 'section-wrap', 'variants' => [ 'regular' ], 'standard' => 'regular' ] );
-		$state = $private. '/data/theme/state';
+		$state = $private. '/data/theme/current';
 		$digestNow = is_dir( $state ) === true ? $digest( $state ) : '-';
 		$sheet = $private. '/assets/theme.css';
 		$whole = $digestNow !== '-' && ( $digestNow === $before[0] || $digestNow === $before[1] || $action === 'commit' && is_file( $state. '/active.json' ) === true && json_decode( (string) file_get_contents( $state. '/active.json' ), true )['theme'] === 'craft-probe' )
@@ -1565,7 +1567,7 @@ check( 'a preview is a draft of the kernel: its token and the query that asks fo
 $stored = json_decode( (string) file_get_contents( $cache. '/'. $token. '/draft.json' ), true );
 check( 'the draft is the stylesheet and the variants as the compiler made them, with the label each variant has in the part, in the folder of the kernel for its kind - the feature has no folder of drafts of its own - and the state of the themes was not touched: there is none', Compiler::isOwn( (string) $stored['css'] ) === true
 	&& $stored['variants'] === [ 'header-wrap' => [ [ 'bar' ], 'regular', [ 'bar' => $partLabel( 'band-probe', 'header', 'header-wrap', 'bar' ) ] ], 'section-wrap' => [ [ 'band' ], 'regular', [ 'band' => $partLabel( 'band-probe', 'section', 'section-wrap', 'band' ) ] ] ]
-	&& is_dir( $state. '/.preview' ) === false && is_dir( $state. '/state' ) === false && is_dir( $state. '/previous' ) === false && is_dir( $state. '/copies' ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false );
+	&& is_dir( $state. '/.preview' ) === false && is_dir( $state. '/current' ) === false && is_dir( $state. '/previous' ) === false && is_dir( $state. '/copies' ) === false && is_file( ninoSandboxDir( $site ). '/private/assets/theme.css' ) === false );
 
 // The kernel empties data/cache after every successful write of the workbench - which this very request is - and a draft must outlast it
 $workbench = [ '/nino/http/request' => [ 'method' => 'POST', 'uri' => '/_admin' ], '/nino/http/response' => [ 'statusCode' => 200, 'body' => [ 'token' => $token ], 'header' => [] ] ];
@@ -1623,7 +1625,7 @@ $withBrand = themesCall( $site, 'themes/preview', [ 'mix' => $hostile, 'brand' =
 $html = $visit( 'nino-preview='. $withBrand[1]['token'] );
 $repaired = ninoWarnings();
 check( 'a draft asks with its brand and its css: the colour is the draft\'s and not the project\'s, the project\'s brand is not changed, and a css with a closing tag of a style - which breaks the rule of a theme - is not in the style element at all, so it cannot end it', $withBrand[0] === 200 && str_contains( $html, '--brand-color-1: #00aa55;' ) === true && substr_count( $html, '</style>' ) === 1
-	&& str_contains( $html, 'alert(1)' ) === false && is_file( $state. '/state/brand.json' ) === false );
+	&& str_contains( $html, 'alert(1)' ) === false && is_file( $state. '/current/brand.json' ) === false );
 check( 'a css that is not balanced is closed by the compiler before it is in the bundle of the preview, which says nothing of it', $repaired === [] );
 check( 'a token posted again is the same draft rewritten while it lasts', $withBrand[1]['token'] === $token && glob( $cache. '/*', GLOB_ONLYDIR ) !== [] );
 
@@ -1715,7 +1717,7 @@ $site = themesSite();
 ninoUser( $site, 'designer@example.com' );
 ninoUser( $site, 'editor@example.com', [ '/_admin/elements/manage', '/_admin/text/manage' ] );
 $state = ninoSandboxDir( $site ). '/private/data/theme';
-$untouched = static fn(): bool => is_dir( $state. '/state' ) === false && is_dir( $state. '/previous' ) === false && is_dir( $state. '/copies' ) === false && is_dir( $state. '/next' ) === false;
+$untouched = static fn(): bool => is_dir( $state. '/current' ) === false && is_dir( $state. '/previous' ) === false && is_dir( $state. '/copies' ) === false && is_dir( $state. '/next' ) === false;
 $every = [
 	'themes/list'			=> [],
 	'themes/open'			=> [ 'theme' => 'craft-probe' ],
@@ -1881,7 +1883,7 @@ check( 'a token that ran out in the session is not taken again by a preview that
 
 // the schema's variants stay where a theme tells the register its own
 $extra = [ 'de_DE' => 'Extra', 'en_US' => 'Extra' ];
-\Nino\Filesystem::putFileContent( $site, '/data/theme/state/variants.php', [ 'section-col' => [ [ 'extra' ], 'card', [ 'extra' => $extra ] ] ] );
+\Nino\Filesystem::putFileContent( $site, '/data/theme/current/variants.php', [ 'section-col' => [ [ 'extra' ], 'card', [ 'extra' => $extra ] ] ] );
 check( 'what the theme tells the register of a component is added to what the schema says and does not replace it: the card stays, the standard is the theme\'s, and the label of the variant it adds goes with it', \Nino\Modules\Themes::variants( $site, [ 'name' => 'section-col', 'variants' => [ 'regular', 'card' ], 'standard' => 'regular' ] ) === [ 'name' => 'section-col', 'variants' => [ 'regular', 'card', 'extra' ], 'standard' => 'card', 'labels' => [ 'extra' => $extra ] ] );
 
 // what a theme brings is data, and the data of this project is what it writes
@@ -2495,16 +2497,16 @@ check( 'L. the tone alone is a palette too - the grounds take it - and so the so
 $before = $listOf();
 [ $status, $body ] = themesCall( $site, 'themes/brand', [ 'theme' => 'craft-probe', 'brand' => $own( [ 'color-1' => '#1f6f5b' ] ) ] );
 check( 'L. the brand is saved alone through its own action, with the theme that is open named: 200, written in the state, the website unchanged where no theme is on it - and the answer has the new stamps',
-	$status === 200 && $body['saved'] === true && $body['applied'] === false && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1'] === [ 'own' => true, 'value' => '#1f6f5b' ] && is_file( $sheet ) === false
+	$status === 200 && $body['saved'] === true && $body['applied'] === false && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1'] === [ 'own' => true, 'value' => '#1f6f5b' ] && is_file( $sheet ) === false
 	&& $body['brandStamp'] !== $before['brandStamp'] && $body['state'] === \Nino\Modules\Themes\Store::stamp( $site ) && $body['canRestore'] === true && glob( themesOwn( $site ). '/*', GLOB_ONLYDIR ) === [] );
 $stamp = $body['brandStamp'];
 [ $status, $body ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => $before['brandStamp'] ] );
 [ $none1 ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => null ] );
 [ $list1 ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => [ $stamp ] ] );
 check( 'L. a brand that was saved by another tab since the one who asks opened it is 409 themes_brand_changed - so is a request with no stamp and one with a list - and the colour that stands is the one of the other tab',
-	$status === 409 && $body['code'] === 'themes_brand_changed' && $body['field'] === 'brand' && $none1 === 409 && $list1 === 409 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#1f6f5b' );
+	$status === 409 && $body['code'] === 'themes_brand_changed' && $body['field'] === 'brand' && $none1 === 409 && $list1 === 409 && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#1f6f5b' );
 [ $status ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#8b1e3f' ] ), 'brandBase' => $stamp ] );
-check( 'L. ...and with the stamp that stands now it is written, which is how Overwrite goes', $status === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#8b1e3f' );
+check( 'L. ...and with the stamp that stands now it is written, which is how Overwrite goes', $status === 200 && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#8b1e3f' );
 $refused = [];
 
 foreach( [ 'text', $own( [ 'color-1' => 'red' ] ), $own( [ 'color-1' => '#ff0000; } body { x' ] ), $own( [ 'font-title' => '../../etc' ] ), $own( [ 'tone' => 'hot' ] ), $own( [ 'mode' => 'night' ] ), $own( [ 'color-1' => "#9a4b1d\0" ] ), array_merge( $none, [ 'logo' => [ 'own' => true, 'value' => '/x.png' ] ] ), array_merge( $none, [ 'tone' => [ 'own' => true ] ] ) ] as $bad ) {
@@ -2515,7 +2517,7 @@ foreach( [ 'text', $own( [ 'color-1' => 'red' ] ), $own( [ 'color-1' => '#ff0000
 
 [ $nothing ] = themesCall( $site, 'themes/brand', [ 'brandBase' => (string) $listOf()['brandStamp'] ] );
 check( 'L. a brand that is not a brand - a text, a colour that is no #rrggbb or has a rule in it, a font that is a path, an unknown tone or mode, a value the brand has not (a logo: M4), an own value with no value - is 400, and none posted is 400 too',
-	$refused === array_fill( 0, 9, true ) && $nothing === 400 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#8b1e3f' );
+	$refused === array_fill( 0, 9, true ) && $nothing === 400 && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#8b1e3f' );
 
 // the brand of the website is built again for the theme that is on it
 themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
@@ -2523,7 +2525,7 @@ themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'color-1' => '#2459d8' ]
 check( 'L. the brand alone is on the website at once where a theme is on it: the stylesheet is built again with the colour', str_contains( (string) file_get_contents( $sheet ), '--brand-color-1: #2459d8;' ) === true && is_dir( $state. '/next' ) === false );
 $changed = $listOf();
 check( 'L. ...and it is a change of the state like any other: the state before is the last state, and restore gives the colour it was',
-	themesCall( $site, 'themes/restore' )[0] === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#8b1e3f' && str_contains( (string) file_get_contents( $sheet ), '--brand-color-1: #8b1e3f;' ) === true );
+	themesCall( $site, 'themes/restore' )[0] === 200 && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#8b1e3f' && str_contains( (string) file_get_contents( $sheet ), '--brand-color-1: #8b1e3f;' ) === true );
 themesCall( $site, 'themes/restore' );
 
 // -- an own theme with the brand: the stamp of the brand is asked for where the brand is posted, and not where it is not
@@ -2531,15 +2533,15 @@ themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'section
 $stamps = $open( 'own:lindner' );
 check( 'L. open gives the stamp of the brand with the theme, and the state the list and every answer give is the one the store says', $stamps['brandStamp'] === $listOf()['brandStamp'] && $stamps['state'] === \Nino\Modules\Themes\Store::stamp( $site ) && strlen( $stamps['state'] ) === 40 );
 [ $without ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], '.a { }' ) ] );
-check( 'L. a save that posts no brand does not ask for the stamp of one and does not touch the brand', $without === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#2459d8' );
+check( 'L. a save that posts no brand does not ask for the stamp of one and does not touch the brand', $without === 200 && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#2459d8' );
 [ $status, $body ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], '.b { }' ), 'brand' => $own( [ 'color-1' => '#000000' ] ), 'brandBase' => 'stale' ] );
 [ $saveAs, $bodyAs ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Second', [] ), 'brand' => $own( [ 'color-1' => '#000000' ] ), 'brandBase' => 'stale' ] );
 check( 'L. a save and a save as that post the brand of a state that is not the one that stands are 409 themes_brand_changed: nothing of the mix and nothing of the brand is written, and no own theme is made',
 	$status === 409 && $body['code'] === 'themes_brand_changed' && $saveAs === 409 && $bodyAs['code'] === 'themes_brand_changed' && themesOwnMix( $site, 'lindner' )['css'] === '.a { }'
-	&& isset( json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] ) === true && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#2459d8' && is_dir( themesOwn( $site, 'second' ) ) === false );
+	&& isset( json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] ) === true && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#2459d8' && is_dir( themesOwn( $site, 'second' ) ) === false );
 [ $status ] = themesCall( $site, 'themes/save', [ 'theme' => 'own:lindner', 'mix' => themesMix( 'Lindner', [], '.b { }' ), 'brand' => $own( [ 'color-1' => '#000000' ] ) ] );
-check( 'L. M5: with the brand posted and its stamp, both are written - the brand in its file and the own theme in its own, in which the brand is not', $status === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['color-1']['value'] === '#000000'
-	&& strpos( (string) file_get_contents( $state. '/state/own/lindner.json' ), 'color-1' ) === false && strpos( (string) file_get_contents( $state. '/state/own/lindner.json' ), '#000000' ) === false );
+check( 'L. M5: with the brand posted and its stamp, both are written - the brand in its file and the own theme in its own, in which the brand is not', $status === 200 && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['color-1']['value'] === '#000000'
+	&& strpos( (string) file_get_contents( $state. '/current/own/lindner.json' ), 'color-1' ) === false && strpos( (string) file_get_contents( $state. '/current/own/lindner.json' ), '#000000' ) === false );
 
 // -- a rename is a save: the key stays, the name is the new one - and no two own themes carry one name
 themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Second theme', [] ) ] );
@@ -2598,7 +2600,7 @@ check( 'L. a restore that names no state, or one that is not the one that stands
 	&& \Nino\Modules\Themes\Store::stamp( $site ) === $base && is_dir( $state. '/swap' ) === false );
 $previous = $digestOf( $state. '/previous' );
 [ $status, $body ] = themesCall( $site, 'themes/restore', [ 'base' => $base ] );
-check( 'L. ...and with the stamp that stands it is restored, and the answer has the stamp of the state that stands now and says that there is a last state to go back to - the one it was', $status === 200 && $body['restored'] === true && $body['state'] === \Nino\Modules\Themes\Store::stamp( $site ) && $body['state'] !== $base && $body['canRestore'] === true && $digestOf( $state. '/previous' ) !== $previous && $digestOf( $state. '/state' ) === $previous );
+check( 'L. ...and with the stamp that stands it is restored, and the answer has the stamp of the state that stands now and says that there is a last state to go back to - the one it was', $status === 200 && $body['restored'] === true && $body['state'] === \Nino\Modules\Themes\Store::stamp( $site ) && $body['state'] !== $base && $body['canRestore'] === true && $digestOf( $state. '/previous' ) !== $previous && $digestOf( $state. '/current' ) === $previous );
 [ $again ] = themesCall( $site, 'themes/restore', [ 'base' => $base ] );
 check( 'L. the stamp of the state before the restore is not the stamp after it: asking twice with the old one is 409', $again === 409 );
 themesCall( $site, 'themes/restore' );
@@ -2680,7 +2682,7 @@ themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );
 $fontDir = \Nino\Filesystem::path( $site, '/fonts/open-sans' );
 rename( $fontDir, $fontDir. '.gone' );
 unset( $site['./nino/themes/read'] );
-$stored = json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true );
+$stored = json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true );
 $opened = $open( 'craft-probe' );
 check( 'L. a font whose folder is gone stays what the project chose: the brand that is read has every value it had, the answer says which fonts are not there - the one the project chose and the one the theme suggests - and the panel is told where to say it',
 	$status === 200 && $opened['brand']['stored']['font-title'] === [ 'own' => true, 'value' => 'open-sans' ] && $opened['brand']['stored']['color-1']['value'] === '#9a4b1d' && $opened['brand']['stored']['mode']['value'] === 'dark'
@@ -2689,21 +2691,21 @@ themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Other', [] ) ] );
 $sheetNow = (string) file_get_contents( $sheet );
 check( 'L. the next save of anything builds the stylesheet with the colour and the mode of the brand and the stack of the system for the font that is not there, and the brand is as it was',
 	str_contains( $sheetNow, '--brand-color-1: #9a4b1d;' ) === true && str_contains( $sheetNow, '--brand-scheme: dark;' ) === true && str_contains( $sheetNow, '@font-face' ) === false && str_contains( $sheetNow, '--brand-font-title: system-ui' ) === true
-	&& json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true ) === $stored );
+	&& json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true ) === $stored );
 $posted = $own( [ 'color-1' => '#9a4b1d', 'mode' => 'dark', 'font-title' => 'open-sans' ] );
 [ $same ] = themesCall( $site, 'themes/brand', [ 'brand' => $posted ] );
 [ $other, $otherBody ] = themesCall( $site, 'themes/brand', [ 'brand' => $own( [ 'font-text' => 'open-sans' ] ) ] );
 check( 'L. a request that leaves the font alone is no request to change it: the brand with the stored value is taken; one that chooses a font that is not there is not, which stays strict - 400 at the key',
-	$same === 200 && json_decode( (string) file_get_contents( $state. '/state/brand.json' ), true )['font-title']['value'] === 'open-sans' && $other === 400 && $otherBody['code'] === 'themes_brand' );
+	$same === 200 && json_decode( (string) file_get_contents( $state. '/current/brand.json' ), true )['font-title']['value'] === 'open-sans' && $other === 400 && $otherBody['code'] === 'themes_brand' );
 rename( $fontDir. '.gone', $fontDir );
 unset( $site['./nino/themes/read'] );
 themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( 'Another', [] ) ] );
 check( 'L. a font that comes back is the project\'s again: the next build has its @font-face and the stack with its name, and nothing was asked of anybody', str_contains( (string) file_get_contents( $sheet ), '@font-face { font-family: "Open Sans"' ) === true && $open( 'craft-probe' )['brand']['unavailable'] === [] );
 $broken = $stored;
 $broken['color-1'] = [ 'own' => true, 'value' => 'not a colour' ];
-\Nino\Filesystem::putFileContent( $site, '/data/theme/state/brand.json', $broken );
+\Nino\Filesystem::putFileContent( $site, '/data/theme/current/brand.json', $broken );
 check( 'L. a value that is wrong for itself is not own and the others stay: a stored brand is read value by value', \Nino\Modules\Themes\Store::read( $site )['brand']['color-1'] === [ 'own' => false ] && \Nino\Modules\Themes\Store::read( $site )['brand']['mode']['value'] === 'dark' );
-\Nino\Filesystem::putFileContent( $site, '/data/theme/state/brand.json', $stored );
+\Nino\Filesystem::putFileContent( $site, '/data/theme/current/brand.json', $stored );
 
 // -- the stamp of an own theme is asked for when it is applied, under the lock, and force is no answer to it
 $lApply = $open( 'own:lindner' );
@@ -2728,7 +2730,7 @@ themesCall( $site, 'themes/apply', [ 'theme' => 'nino' ] );
 mkdir( $state. '/building' );
 file_put_contents( $state. '/building/stray', 'x' );
 themesCall( $site, 'themes/apply', [ 'theme' => 'band-probe' ] );
-check( 'L. a copy of a state that a change left when it was broken off is removed by the next change that writes, and what was in it is no part of the state that is made', is_dir( $state. '/building' ) === false && file_exists( $state. '/state/stray' ) === false );
+check( 'L. a copy of a state that a change left when it was broken off is removed by the next change that writes, and what was in it is no part of the state that is made', is_dir( $state. '/building' ) === false && file_exists( $state. '/current/stray' ) === false );
 mkdir( $state. '/building' );
 themesCall( $site, 'themes/restore' );
 check( 'L. ...and by a restore', is_dir( $state. '/building' ) === false );
@@ -2908,8 +2910,8 @@ themesCall( $dup, 'themes/apply', [ 'theme' => 'nino' ] );
 $source = themesFiles( themesOwn( $dup, 'lindner' ) );
 $orig = themesOwnMix( $dup, 'lindner' );
 $stateBefore = \Nino\Modules\Themes\Store::stamp( $dup );
-$brandBytes = (string) file_get_contents( $dupState. '/state/brand.json' );
-$activeBytes = (string) file_get_contents( $dupState. '/state/active.json' );
+$brandBytes = (string) file_get_contents( $dupState. '/current/brand.json' );
+$activeBytes = (string) file_get_contents( $dupState. '/current/active.json' );
 $before = themesCall( $dup, 'themes/list' )[1];
 // The stylesheet is dated into the past, so that a write of it shows in its time whatever the clock says
 $dupSheet = ninoSandboxDir( $dup ). '/private/assets/theme.css';
@@ -2929,7 +2931,7 @@ $copiedJson = json_decode( $copied['theme.json'] ?? '', true );
 check( 'M. ...and it is a copy of the folder: every file of a part is the file of the original, byte for byte, and what differs is the theme.json - the key of the folder, the name, and a version that is the first one, as any theme that is made is',
 	array_diff_key( $copied, [ 'theme.json' => 1 ] ) === array_diff_key( $source, [ 'theme.json' => 1 ] ) && array_keys( $copied ) === array_keys( $source ) && $copiedJson['key'] === 'lindner-copy' && $copiedJson['name'] === 'Lindner (copy)' && $copiedJson['version'] === '1.0.0' && $sourceJson['key'] === 'lindner' );
 check( 'M. ...and nothing else is touched: the original is the bytes it was, the brand of the project is not copied - it is the project\'s - and is the bytes it was, the website shows what it showed, and the state before is kept as the last one',
-	themesFiles( themesOwn( $dup, 'lindner' ) ) === $source && (string) file_get_contents( $dupState. '/state/brand.json' ) === $brandBytes && (string) file_get_contents( $dupState. '/state/active.json' ) === $activeBytes
+	themesFiles( themesOwn( $dup, 'lindner' ) ) === $source && (string) file_get_contents( $dupState. '/current/brand.json' ) === $brandBytes && (string) file_get_contents( $dupState. '/current/active.json' ) === $activeBytes
 	&& str_contains( implode( '', $copied ), 'color-1' ) === false && \Nino\Modules\Themes\Store::stamp( $dup ) === $stateBefore );
 $after = themesCall( $dup, 'themes/list' )[1];
 check( 'M. the list shows the copy as an own theme, once, with the stamp of its mix, and what the website shows is the theme it showed', count( $after['themes'] ) === count( $before['themes'] ) + 1 && count( array_filter( $after['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:lindner-copy' && $theme['kind'] === 'own' && $theme['stamp'] === $body['stamp'] ) ) === 1 && $after['active']['theme'] === 'nino' );
@@ -3079,7 +3081,7 @@ check( 'the fonts that are back are a map by the key of the brand - none is an o
 rename( $fontsFolder, $fontsFolder. '.gone' );
 unset( $fonts['./nino/themes/read'] );
 themesCall( $fonts, 'themes/save', [ 'theme' => 'own:typed', 'mix' => themesMix( 'Typed', [] ), 'css' => '' ] );
-$gone = json_decode( (string) file_get_contents( $fontState. '/state/active.json' ), true );
+$gone = json_decode( (string) file_get_contents( $fontState. '/current/active.json' ), true );
 check( 'M. a font whose folder is gone when the stylesheet is built is the stack of the system in it, and the state says which fonts were gone: by the key of the brand and the folder', $gone['gone'] === [ 'font-title' => 'open-sans' ] && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === false && $activeOf()['stale'] === false && (array) $activeOf()['back'] === [] );
 
 rename( $fontsFolder. '.gone', $fontsFolder );
@@ -3089,12 +3091,12 @@ check( 'M. ...and every answer that says the state says it: open, save, apply an
 
 [ $status ] = themesCall( $fonts, 'themes/save', [ 'theme' => 'own:typed', 'mix' => themesMix( 'Typed', [] ) ] );
 check( 'M. a save with nothing changed builds the stylesheet again - the font is in it, the state no longer says it was gone, and the API says that the stylesheet is as it should be', $status === 200 && str_contains( (string) file_get_contents( ninoSandboxDir( $fonts ). '/private/assets/theme.css' ), '@font-face' ) === true && $activeOf()['stale'] === false && (array) $activeOf()['back'] === []
-	&& ( json_decode( (string) file_get_contents( $fontState. '/state/active.json' ), true )['gone'] ?? null ) === [] );
+	&& ( json_decode( (string) file_get_contents( $fontState. '/current/active.json' ), true )['gone'] ?? null ) === [] );
 
 // a stylesheet that is stale for another reason is stale all the same
-$active = json_decode( (string) file_get_contents( $fontState. '/state/active.json' ), true );
+$active = json_decode( (string) file_get_contents( $fontState. '/current/active.json' ), true );
 $active['register'] = 'another register';
-file_put_contents( $fontState. '/state/active.json', json_encode( $active ) );
+file_put_contents( $fontState. '/current/active.json', json_encode( $active ) );
 check( 'M. a stylesheet that was built for another version of the register is stale, whether or not a font is back, and a save with nothing changed builds it again', $activeOf()['stale'] === true && (array) $activeOf()['back'] === [] && themesCall( $fonts, 'themes/save', [ 'theme' => 'own:typed', 'mix' => themesMix( 'Typed', [] ) ] )[0] === 200 && $activeOf()['stale'] === false );
 
 // -- a font that a hand wrote into brand.json: a slug, and not longer than a name of a folder is
@@ -3297,7 +3299,7 @@ check( 'M. the page asked with the token of that draft is drawn - the style elem
 // saved: a css that is not closed is refused, and nothing is written
 [ $openStatus, $openBody ] = themesCall( $css, 'themes/save-as', [ 'mix' => themesMix( 'Open', [], '.saved { color: red' ) ] );
 check( 'M. an own css that does not close is refused at the save - 400, themes_css_rule, and the sentence says that the braces do not balance - and no theme is written', $openStatus === 400 && $openBody['code'] === 'themes_css_rule' && str_contains( $openBody['params'][0], 'braces do not balance' ) === true
-	&& is_file( ninoSandboxDir( $css ). '/private/data/theme/state/own/open.json' ) === false );
+	&& is_file( ninoSandboxDir( $css ). '/private/themes/open/theme.json' ) === false );
 
 })();
 
@@ -3361,7 +3363,7 @@ check( 'O. the blocks of the package are in the register of the blocks the reque
 
 [ $status, $body ] = themesCall( $packages, 'themes/apply', [ 'theme' => 'craft-probe' ] );
 $drawn = $bundle( $packages );
-check( 'O. a theme of a package is applied and the website draws it: its part of the section is in the stylesheet', $status === 200 && $body['active']['theme'] === 'craft-probe' && str_contains( $drawn, '/* section: the part of craft-probe 1.0.0 */' ) === true );
+check( 'O. a theme of a package is applied and the website draws it: its part of the section is in the stylesheet, built from the copy the state holds', $status === 200 && $body['active']['theme'] === 'craft-probe' && str_contains( $drawn, '/* section: the part of the theme itself */' ) === true && str_contains( $drawn, 'craft-probe' ) === false );
 
 // version 1.1.0 at the place of the package: another ladder for the section
 $newer = $craftFiles;
@@ -3370,11 +3372,15 @@ $newer['parts/section/part.json'] = str_replace( '"0.6rem"', '"0.75rem"', $newer
 check( 'O. the kernel replaces the package by a version 1.1.0 with another ladder', $newer['theme.json'] !== $craftFiles['theme.json'] && $newer['parts/section/part.json'] !== $craftFiles['parts/section/part.json']
 	&& \Nino\Packages::place( $packages, \Nino\Packages::THEME, 'craft-probe', $newer ) === true );
 check( 'O. the panel says the version that is installed', $listed( $packages )['craft-probe']['version'] === '1.1.0' );
-check( 'O. after a new version of the package the website draws byte for byte what it drew, from the copy of the version it was applied at', $bundle( $packages ) === $drawn && is_dir( ninoSandboxDir( $packages ). '/private/data/theme/copies/craft-probe@1.0.0' ) === true );
+check( 'O. after a new version of the package the website draws byte for byte what it drew: the state holds the copy of the version it was applied at, and the 1.1.0 ladder is not in it', $bundle( $packages ) === $drawn && json_decode( (string) file_get_contents( ninoSandboxDir( $packages ). '/private/data/theme/current/theme/theme.json' ), true )['version'] === '1.0.0' && str_contains( (string) file_get_contents( ninoSandboxDir( $packages ). '/private/data/theme/current/theme/parts/section/part.json' ), '0.75rem' ) === false );
+
+// a version of the package that is not the installed one is no part to take: nothing holds a copy of it but the state
+[ $statusOld, $bodyOld ] = themesCall( $packages, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'section' => [ 'from' => 'craft-probe@1.0.0' ] ] ) ] );
+check( 'O. a part of a version of a package that is not the one installed is refused, with the reason - there are no copies of parts any more', $statusOld === 400 && $bodyOld['code'] === 'themes_mix' && str_contains( $bodyOld['params'][0], \Nino\Modules\Themes\Reader::why( 'not-installed', 'craft-probe@1.0.0' ) ) === true && is_dir( themesOwn( $packages, 'lindner' ) ) === false );
 
 // an own theme with the part of the section of the package, to see where the part comes from when the package is gone
-[ $status, $body ] = themesCall( $packages, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'section' => [ 'from' => 'craft-probe@1.0.0' ] ] ) ] );
-check( 'O. an own theme takes the part of the section of the package', $status === 200 && $body['theme'] === 'own:lindner' );
+[ $status, $body ] = themesCall( $packages, 'themes/save-as', [ 'mix' => themesMix( 'Lindner', [ 'section' => [ 'from' => 'craft-probe@1.1.0' ] ] ) ] );
+check( 'O. an own theme takes the part of the section of the package that is installed', $status === 200 && $body['theme'] === 'own:lindner' );
 
 // the package is taken away
 \Nino\Modules\Themes\Reader::read( $packages );
@@ -3383,7 +3389,7 @@ check( 'O. the kernel takes the package away: the register of the blocks of the 
 check( 'O. with the package gone the website draws byte for byte what it drew', $bundle( $packages ) === $drawn );
 $next = themesReboot( $packages, $modules );
 [ $status, $body ] = themesCall( $next, 'themes/open', [ 'theme' => 'own:lindner' ] );
-check( 'O. the own theme is the part of the version it was made of - the ladder of 1.0.0 is in its folder, which the package that was installed at the time of the save has, and not the 1.1.0 one - and with the package gone the panel says the part is the theme\'s own: no package is missing', str_contains( (string) file_get_contents( themesOwn( $next, 'lindner' ). '/parts/section/part.json' ), '0.6rem' ) === true && str_contains( (string) file_get_contents( themesOwn( $next, 'lindner' ). '/parts/section/part.json' ), '0.75rem' ) === false
+check( 'O. the own theme is the part of the version it was made of - the ladder of 1.1.0 is in its folder, which the package that was installed at the time of the save has - and with the package gone the panel says the part is the theme\'s own: no package is missing', str_contains( (string) file_get_contents( themesOwn( $next, 'lindner' ). '/parts/section/part.json' ), '0.75rem' ) === true && str_contains( (string) file_get_contents( themesOwn( $next, 'lindner' ). '/parts/section/part.json' ), '0.6rem' ) === false
 	&& $status === 200 && $body['groups']['section']['package'] === '' && $body['groups']['section']['origin'] === 'own' && $body['groups']['section']['problem'] === '' );
 
 // a package that is put in the folder by hand and that the kernel would have refused: a part that loads another file, a block with a file of code
@@ -3828,14 +3834,19 @@ file_put_contents( $killOwn, <<<'PHP'
 namespace Nino\Modules\Themes {
 	function rename( string $from, string $to ): bool {
 		static $count = 0;
-		if( ++$count === (int) $GLOBALS['kill'] )
+		$now = ++$count === (int) $GLOBALS['kill'];
+		if( $now === true && $GLOBALS['when'] === 'before' )
 			posix_kill( getmypid(), SIGKILL );
-		return \rename( $from, $to );
+		$done = \rename( $from, $to );
+		if( $now === true && $GLOBALS['when'] === 'after' )
+			posix_kill( getmypid(), SIGKILL );
+		return $done;
 	}
 }
 namespace {
 	$config = json_decode( $argv[1], true );
 	$GLOBALS['kill'] = $config['kill'];
+	$GLOBALS['when'] = $config['when'];
 	define( 'NINO_FEATURES_DIR', $config['features'] );
 	require $config['root']. '/tests/harness.php';
 	$appData = [ './nino/uid' => $config['uid'] ];
@@ -3856,7 +3867,8 @@ PHP );
 $killed = [];
 $killedPoints = [];
 
-foreach( [ 'a save of the theme that is on the website' => 'save', 'a delete' => 'delete', 'a new theme' => 'save-as' ] as $what => $action ) {
+foreach( [ 'a save of the theme that is on the website' => 'save', 'a delete' => 'delete', 'a new theme' => 'save-as' ] as $what => $action )
+foreach( [ 'before', 'after' ] as $when ) {
 
 	for( $point = 1; $point <= 16; $point++ ) {
 
@@ -3875,7 +3887,7 @@ foreach( [ 'a save of the theme that is on the website' => 'save', 'a delete' =>
 			$mix['name'] = 'Ll';
 
 		$data = $action === 'delete' ? [ 'theme' => 'own:kk', 'base' => $stamp ] : ( $action === 'save' ? [ 'theme' => 'own:kk', 'mix' => $mix, 'base' => $stamp ] : [ 'mix' => $mix ] );
-		$configuration = json_encode( [ 'root' => $root, 'features' => NINO_FEATURES_DIR, 'uid' => $site['./nino/uid'], 'themes' => ninoSandboxDir( $site ). '/themes', 'kill' => $point, 'action' => 'themes/'. $action, 'data' => $data,
+		$configuration = json_encode( [ 'root' => $root, 'features' => NINO_FEATURES_DIR, 'uid' => $site['./nino/uid'], 'themes' => ninoSandboxDir( $site ). '/themes', 'kill' => $point, 'when' => $when, 'action' => 'themes/'. $action, 'data' => $data,
 			'keys' => [ './nino/filesystem/path' => $root, './nino/filesystem/configpath' => $site['./nino/filesystem/configpath'], './nino/filesystem/contentpath' => $site['./nino/filesystem/contentpath'], './nino/filesystem/publicpath' => $site['./nino/filesystem/publicpath'],
 			'./nino/locales/current' => 'de_DE', '/nino/locales/native' => 'de_DE', '/nino/locales/available' => [ 'de_DE', 'en_US' ], '/nino/dir' => '', '/nino/install/texts' => \Nino\VERSION, '/nino/auth/user' => $site['/nino/auth/user'] ?? null, './nino/auth/current' => $site['./nino/auth/current'] ?? null ] ] );
 		$output = [];
@@ -3897,7 +3909,7 @@ foreach( [ 'a save of the theme that is on the website' => 'save', 'a delete' =>
 			$ok = $ok && is_dir( $themes. '/kk' ) === true && $css( $themes. '/kk' ) === '.old-css { color: red; }' && ( is_dir( $themes. '/ll' ) === false || $css( $themes. '/ll' ) === '.new-css { color: blue; }' );
 
 		$killedPoints[$what] = ( $killedPoints[$what] ?? 0 ) + ( $finished === true ? 0 : 1 );
-		$killed[$what. ' '. $point] = $ok;
+		$killed[$what. ' '. $when. ' '. $point] = $ok;
 		$killedPoints[$what. ' finished'] = $finished;
 
 		if( $finished === true )
@@ -3905,7 +3917,7 @@ foreach( [ 'a save of the theme that is on the website' => 'save', 'a delete' =>
 	}
 }
 
-check( 'P. a request that is killed at each of the renames of a change of an own theme - the save of the theme that is on the website, a delete, a new theme: '. $killedPoints['a save of the theme that is on the website']. ', '. $killedPoints['a delete']. ' and '. $killedPoints['a new theme']. ' places - leaves a theme that is whole, no folder of a name the reader does not know and no journal after the next request that lists the themes; and for the theme that is on the website the folder and the stylesheet of the website say the same, the old or the new css',
+check( 'P. a request that is killed before and after each of the renames of a change of an own theme - the save of the theme that is on the website, a delete, a new theme: '. $killedPoints['a save of the theme that is on the website']. ', '. $killedPoints['a delete']. ' and '. $killedPoints['a new theme']. ' places - leaves a theme that is whole, no folder of a name the reader does not know and no journal after the next request that lists the themes; and for the theme that is on the website the folder and the stylesheet of the website say the same, the old or the new css',
 	array_values( array_unique( $killed ) ) === [ true ] && $killedPoints['a save of the theme that is on the website'] >= 5 && $killedPoints['a delete'] >= 1 && $killedPoints['a new theme'] >= 1 );
 
 // what is left over is told by one pattern: a name a theme could have is made whole, and nothing else is looked at or touched
@@ -4031,24 +4043,373 @@ themesCall( $own, 'themes/save', [ 'theme' => 'own:mapped', 'mix' => $mappedMix 
 check( 'P. writing: a theme whose name has a text for each language keeps them when it is saved with the name it has - and is the one text when it is renamed', $kept === [ 'en_US' => 'Mapped', 'de_DE' => 'Abgebildet' ] && json_decode( (string) file_get_contents( $mapped. '/theme.json' ), true )['name'] === 'Renamed' );
 \Nino\Filesystem::removeDir( $mapped );
 unset( $own['./nino/themes/own'] );
+// ---------------------------------------------------------------------------------------------------------------------------------
+echo "\nQ. The state of the website: the copy of its theme, where its parts come from, keeping it as a theme, the last state\n";
+
+$q = themesSite();
+ninoUser( $q, 'designer@example.com' );
+$qState = ninoSandboxDir( $q ). '/private/data/theme';
+$qSheet = ninoSandboxDir( $q ). '/private/assets/theme.css';
+$qList = static fn(): array => themesCall( $q, 'themes/list' )[1];
+themesCall( $q, 'themes/save-as', [ 'mix' => themesMix( 'Alpha', [ 'page' => [ 'from' => 'band-probe' ], 'section' => [ 'from' => 'craft-probe', 'values' => [ 'section-wrap.space' => 2 ] ] ], '.alpha { color: red; }' ) ] );
+[ $status, $body ] = themesCall( $q, 'themes/apply', [ 'theme' => 'own:alpha' ] );
+$origin = json_decode( (string) file_get_contents( $qState. '/current/origin.json' ), true );
+check( 'Q. an own theme is applied as a copy of its folder in the state - its files as they are, byte for byte, the parts it has, theme.json and theme.css - and the note beside the state says where each part comes from: the installed theme it is the same part as, with its version, else the own theme itself',
+	$status === 200 && themesFiles( $qState. '/current/theme' ) === array_diff_key( themesFiles( themesOwn( $q, 'alpha' ) ), [ 'preview.webp' => 1 ] ) && $origin['section'] === [ 'theme' => 'craft-probe', 'version' => '1.0.0' ] && $origin['page'] === [ 'theme' => 'band-probe', 'version' => '1.0.0' ] && isset( $origin['button'] ) === false );
+check( 'Q. the answers say what the state is: the theme, its name and the note - as a map, empty or not', $body['current']['theme'] === 'own:alpha' && $body['current']['name'] === 'Alpha' && ( (array) $body['current']['origin'] )['section'] === [ 'theme' => 'craft-probe', 'version' => '1.0.0' ] );
+
+// the website is built from the copy and from nothing else
+$sheetThen = (string) file_get_contents( $qSheet );
+$alpha = themesOwn( $q, 'alpha' );
+file_put_contents( $alpha. '/parts/section/part.css', (string) file_get_contents( $alpha. '/parts/section/part.css' ). "\n.section-wrap--variant-by-hand { margin: 0; }\n" );
+file_put_contents( $alpha. '/theme.css', ".by-hand { color: blue; }\n" );
+[ $statusBrand ] = themesCall( $q, 'themes/brand', [ 'brand' => array_merge( \Nino\Modules\Themes\Store::read( $q )['brand'], [ 'tone' => [ 'own' => true, 'value' => 'cool' ] ] ) ] );
+$sheetNow = (string) file_get_contents( $qSheet );
+check( 'Q. the website is built from the copy in the state and from nothing else: the folder of the own theme is changed by hand, the brand is saved - the stylesheet is built anew, with the new tone, and has nothing of the folder', $statusBrand === 200 && $sheetNow !== $sheetThen && str_contains( $sheetNow, 'by-hand' ) === false && str_contains( $sheetNow, '.alpha { color: red; }' ) === true );
+[ , $listed ] = themesCall( $q, 'themes/list' );
+$card = array_values( array_filter( $listed['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:alpha' ) )[0];
+check( 'Q. ...and it is the theme of the website still, with its folder changed: the list says so', $card['active'] === true && $listed['active']['theme'] === 'own:alpha' );
+\Nino\Filesystem::removeDir( $alpha. '/parts/section' );
+unset( $q['./nino/themes/own'] );
+[ $statusAgain ] = themesCall( $q, 'themes/brand', [ 'brand' => array_merge( \Nino\Modules\Themes\Store::read( $q )['brand'], [ 'tone' => [ 'own' => true, 'value' => 'warm' ] ] ) ] );
+check( 'Q. ...and with a part of its folder taken away, or the folder, the brand is saved all the same and the website draws what it drew', $statusAgain === 200 && str_contains( (string) file_get_contents( $qSheet ), '--section-wrap-space: 3.5rem;' ) === true );
+\Nino\Filesystem::removeDir( $alpha );
+unset( $q['./nino/themes/own'] );
+[ $statusGone ] = themesCall( $q, 'themes/brand', [ 'brand' => array_merge( \Nino\Modules\Themes\Store::read( $q )['brand'], [ 'tone' => [ 'own' => true, 'value' => 'cool' ] ] ) ] );
+check( 'Q. ...nor does the folder of the theme matter that is gone: the state holds its copy', $statusGone === 200 && is_file( $qState. '/current/theme/parts/section/part.css' ) === true && str_contains( (string) file_get_contents( $qSheet ), '--section-wrap-space: 3.5rem;' ) === true );
+
+// another theme is another copy: nothing of the one before it stays in the folder of the copy
+themesCall( $q, 'themes/apply', [ 'theme' => 'band-probe', 'force' => true ] );
+$bandExpected = array_filter( themesFiles( $fixtures. '/band-probe' ), static fn( string $path ): bool => str_starts_with( $path, 'blocks/' ) === false && $path !== 'preview.webp', ARRAY_FILTER_USE_KEY );
+check( 'Q. another theme applied is another copy: the folder of the copy is the files of that theme and nothing of the theme before it', themesFiles( $qState. '/current/theme' ) === $bandExpected );
+[ $statusCurrent, $bodyCurrent ] = themesCall( $q, 'themes/preview', [ 'mix' => themesMix( 'X', [ 'section' => [ 'from' => 'current' ] ] ) ] );
+check( 'Q. the copy of the theme of the website is named by the store alone, while it builds: a mix that asks for a part of "current" is refused, as the part of a theme that is not there is', $statusCurrent === 400 && $bodyCurrent['code'] === 'themes_mix' && $bodyCurrent['params'][1] === 'section' );
+
+// a save of a theme that is not on the website leaves the state alone; of the one that is on it, makes the copy anew
+themesCall( $q, 'themes/save-as', [ 'mix' => themesMix( 'Beta', [ 'section' => [ 'from' => 'craft-probe' ] ] ) ] );
+$beforeBeta = $digest( $qState. '/current' );
+$betaMix = themesCall( $q, 'themes/open', [ 'theme' => 'own:beta' ] )[1]['mix'];
+$betaMix['css'] = '.beta { color: green; }';
+[ $statusBeta ] = themesCall( $q, 'themes/save', [ 'theme' => 'own:beta', 'mix' => $betaMix ] );
+check( 'Q. a save of an own theme that is not the one of the website leaves the state as it is, byte for byte - the copy and the stylesheet', $statusBeta === 200 && $digest( $qState. '/current' ) === $beforeBeta );
+themesCall( $q, 'themes/apply', [ 'theme' => 'own:beta' ] );
+$betaMix['css'] = '.beta { color: purple; }';
+[ $statusLive ] = themesCall( $q, 'themes/save', [ 'theme' => 'own:beta', 'mix' => $betaMix ] );
+check( 'Q. a save of the one that is on it makes the copy anew and builds the stylesheet from it - what is saved is what the website shows', $statusLive === 200 && str_contains( (string) file_get_contents( $qState. '/current/theme/theme.css' ), 'purple' ) === true && str_ends_with( (string) file_get_contents( $qSheet ), ".beta { color: purple; }\n" ) === true );
+
+// keeping the state as a theme
+$stateSeen = \Nino\Modules\Themes\Store::stamp( $q );
+$originBefore = json_decode( (string) file_get_contents( $qState. '/current/origin.json' ), true );
+$sheetBefore = (string) file_get_contents( $qSheet );
+$copyBefore = themesFiles( $qState. '/current/theme' );
+[ $noName, $noNameBody ] = themesCall( $q, 'themes/keep', [ 'name' => '', 'base' => $stateSeen ] );
+[ $takenStatus, $takenBody ] = themesCall( $q, 'themes/keep', [ 'name' => 'Beta', 'base' => $stateSeen ] );
+[ $staleStatus, $staleBody ] = themesCall( $q, 'themes/keep', [ 'name' => 'Gamma', 'base' => str_repeat( '0', 40 ) ] );
+[ $noBase ] = themesCall( $q, 'themes/keep', [ 'name' => 'Gamma' ] );
+check( 'Q. keeping the state as a theme is refused as a save is: no name is 400 at the name, a name that is taken is 409 at the name, a state that is not the one that was seen is 409 themes_state, none seen at all too - and nothing is made',
+	$noName === 400 && $noNameBody['field'] === 'name' && $takenStatus === 409 && $takenBody['code'] === 'themes_name_taken' && $staleStatus === 409 && $staleBody['code'] === 'themes_state' && $noBase === 409 && is_dir( themesOwn( $q, 'gamma' ) ) === false && \Nino\Modules\Themes\Store::stamp( $q ) === $stateSeen );
+[ $status, $body ] = themesCall( $q, 'themes/keep', [ 'name' => 'Gamma', 'base' => $stateSeen ] );
+$kept = themesFiles( themesOwn( $q, 'gamma' ) );
+$keptJson = json_decode( $kept['theme.json'] ?? '', true );
+check( 'Q. the state of the website kept as a theme: the answer is the theme, its key and its stamp; the folder is the copy the state holds - every part and theme.css byte for byte - with its own theme.json: the key of the folder, the name that was asked, and a first version',
+	$status === 200 && $body['theme'] === 'own:gamma' && $body['saved'] === true && array_diff_key( $kept, [ 'theme.json' => 1 ] ) === array_diff_key( $copyBefore, [ 'theme.json' => 1 ] ) && $keptJson['key'] === 'gamma' && $keptJson['name'] === 'Gamma' && $keptJson['version'] === '1.0.0' );
+check( 'Q. ...and it is a package the kernel takes, and an own theme of the list - the one the website shows now, with the stylesheet it had, byte for byte; and the note of where the parts came from is gone, since the theme holds them', \Nino\Packages::check( $q, \Nino\Packages::THEME, $kept ) === null && $body['active']['theme'] === 'own:gamma' && (string) file_get_contents( $qSheet ) === $sheetBefore
+	&& is_file( $qState. '/current/origin.json' ) === false && array_filter( $qList()['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:gamma' && $theme['active'] === true ) !== [] && is_array( $originBefore ) === true && $originBefore !== [] );
+check( 'Q. it is a change of the state like any other: the state before is the last state, and it shows the theme the website showed', $qList()['canRestore'] === true && $qList()['last']['theme'] === 'own:beta' && is_file( $qState. '/previous/origin.json' ) === true );
+
+// no theme on the website: nothing to keep
+$none = themesSite();
+ninoUser( $none, 'designer@example.com' );
+[ $status, $body ] = themesCall( $none, 'themes/keep', [ 'name' => 'Nothing', 'base' => \Nino\Modules\Themes\Store::stamp( $none ) ] );
+check( 'Q. where the website shows no theme there is nothing to keep: 409 themes_none_held, and nothing is made', $status === 409 && $body['code'] === 'themes_none_held' && is_dir( themesOwn( $none, 'nothing' ) ) === false );
+
+// the last state names the theme as that state held it: the theme may be renamed or gone since
+$name = themesSite();
+ninoUser( $name, 'designer@example.com' );
+themesCall( $name, 'themes/save-as', [ 'mix' => themesMix( 'Old name', [ 'section' => [ 'from' => 'craft-probe' ] ] ) ] );
+themesCall( $name, 'themes/apply', [ 'theme' => 'own:old-name' ] );
+themesCall( $name, 'themes/apply', [ 'theme' => 'nino' ] );
+$renamed = themesCall( $name, 'themes/open', [ 'theme' => 'own:old-name' ] )[1]['mix'];
+$renamed['name'] = 'New name';
+themesCall( $name, 'themes/save', [ 'theme' => 'own:old-name', 'mix' => $renamed ] );
+check( 'Q. the last state names its theme by the name the copy it holds has - the theme has another name since', themesCall( $name, 'themes/list' )[1]['last']['name'] === 'Old name' && themesCall( $name, 'themes/list' )[1]['last']['theme'] === 'own:old-name' );
+
+// the rule and a state: a stylesheet that was made before the rule is not put on the website, by a restore or by the next change
+$rule = themesSite();
+ninoUser( $rule, 'designer@example.com' );
+$ruleState = ninoSandboxDir( $rule ). '/private/data/theme';
+$ruleSheet = ninoSandboxDir( $rule ). '/private/assets/theme.css';
+themesCall( $rule, 'themes/save-as', [ 'mix' => themesMix( 'Ruled', [ 'section' => [ 'from' => 'craft-probe' ] ], '.fine { color: red; }' ) ] );
+themesCall( $rule, 'themes/apply', [ 'theme' => 'own:ruled' ] );
+themesCall( $rule, 'themes/apply', [ 'theme' => 'nino' ] );
+$forbidden = "body { outline: 5px solid red !important; }\n@import url(https://example.invalid/x.css);\n";
+// the state as it was written before the rule: the copy of the theme has the css, and the stylesheet built from it has it as well
+file_put_contents( $ruleState. '/previous/theme/theme.css', $forbidden );
+$old = (string) file_get_contents( $ruleState. '/previous/theme.css' );
+$body = $old. "\n/* The css of the theme */\n". $forbidden;
+file_put_contents( $ruleState. '/previous/theme.css', '/* nino-themes '. hash( 'sha256', $body ). ' - written by the feature Themes at every build; a rule of your own belongs in the own css of the theme */'. "\n". $body );
+[ $status ] = themesCall( $rule, 'themes/restore' );
+check( 'Q. a restore does not put on the website a stylesheet that was made before the rule and holds what the rule refuses: the last state is built anew from the theme it holds - the css that breaks the rule is left out - and then it is the state', $status === 200 && str_contains( (string) file_get_contents( $ruleSheet ), 'outline' ) === false && str_contains( (string) file_get_contents( $ruleSheet ), '@import' ) === false
+	&& str_contains( (string) file_get_contents( $ruleState. '/current/theme.css' ), '!important' ) === false && str_contains( (string) file_get_contents( $ruleSheet ), '--section-wrap-space: 1.75rem;' ) === true );
+$late = $ruleState. '/current/theme.css';
+$lateBody = (string) file_get_contents( $late ). "\n/* The css of the theme */\n". $forbidden;
+$lateText = '/* nino-themes '. hash( 'sha256', $lateBody ). ' - written by the feature Themes at every build; a rule of your own belongs in the own css of the theme */'. "\n". $lateBody;
+file_put_contents( $late, $lateText );
+file_put_contents( $ruleSheet, $lateText );
+[ $statusLate ] = themesCall( $rule, 'themes/brand', [ 'brand' => array_merge( \Nino\Modules\Themes\Store::read( $rule )['brand'], [ 'tone' => [ 'own' => true, 'value' => 'cool' ] ] ) ] );
+check( 'Q. ...and a stylesheet in the state that was made before the rule is built anew at the next change of the themes: the brand is saved, and what the rule refuses is not on the website', $statusLate === 200 && str_contains( (string) file_get_contents( $ruleSheet ), 'outline' ) === false && str_contains( (string) file_get_contents( $late ), '@import' ) === false );
+
+// --- the state is copied as files of the form a state has and nothing else: no link is followed, no file that a state does not have goes with it, and a note that is not whole is not shown
+
+$rs = static function( string $key = 'Alpha' ): array {
+
+	$site = themesSite();
+	ninoUser( $site, 'designer@example.com' );
+	themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( $key, [ 'section' => [ 'from' => 'craft-probe' ] ], '.alpha-own { color: red; }' ) ] );
+	themesCall( $site, 'themes/apply', [ 'theme' => 'own:'. strtolower( $key ) ] );
+	// a second state, so that there is a last state to come back to
+	themesCall( $site, 'themes/brand', [ 'brand' => array_merge( \Nino\Modules\Themes\Store::read( $site )['brand'], [ 'tone' => [ 'own' => true, 'value' => 'cool' ] ] ) ] );
+
+	return $site;
+};
+$tone = static fn( array &$site, string $value ): array => themesCall( $site, 'themes/brand', [ 'brand' => array_merge( \Nino\Modules\Themes\Store::read( $site )['brand'], [ 'tone' => [ 'own' => true, 'value' => $value ] ] ) ] );
+/** Every regular file below a folder but the cache of the reader, as one text: where something of the project that was a link's target went */
+$everything = static function( string $dir ): string {
+
+	$all = '';
+
+	if( is_dir( $dir ) === false )
+		return $all;
+
+	foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ) ) as $file )
+		if( $file->isFile() === true && $file->isLink() === false && str_contains( $file->getPathname(), '/.cache/' ) === false )
+			$all .= $file->getPathname(). "\n". (string) file_get_contents( $file->getPathname() ). "\n";
+
+	return $all;
+};
+$outside = static function( array $site, string $text ): string {
+
+	$file = ninoSandboxDir( $site ). '/outside-'. md5( $text ). '.txt';
+	file_put_contents( $file, $text );
+
+	return $file;
+};
+$link = static function( string $path, string $target ): void {
+
+	if( is_link( $path ) === true || is_file( $path ) === true )
+		unlink( $path );
+	else if( is_dir( $path ) === true )
+		\Nino\Filesystem::removeDir( $path );
+
+	symlink( $target, $path );
+};
+
+// a file of the copy that is a link is not read: what it points at is on no state and on no stylesheet
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+$sheet = ninoSandboxDir( $r ). '/private/assets/theme.css';
+$link( $st. '/current/theme/theme.css', $outside( $r, ".from-outside { color: red; }\n" ) );
+[ $status ] = $tone( $r, 'warm' );
+
+check( 'R. a file of the copy in the state that is a link - theme.css - is not followed when the state is copied for the next one: the brand is saved, 200, and what the link points at is on no stylesheet of the website and in no file of the states',
+	$status === 200 && str_contains( (string) file_get_contents( $sheet ), 'from-outside' ) === false && str_contains( $everything( $st ), 'from-outside' ) === false && is_link( $st. '/current/theme/theme.css' ) === false );
+
+// a file of the state itself that is a link - the note beside it - is not followed either
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+$link( $st. '/current/origin.json', $outside( $r, json_encode( [ 'page' => [ 'own' => 'marker-secret' ] ] ) ) );
+[ $status ] = $tone( $r, 'warm' );
+
+check( 'R. a file of the state that is a link - the note of where the parts come from - is not followed when the state is copied for the next one: 200, and what the link points at is in no file of the states',
+	$status === 200 && str_contains( $everything( $st ), 'marker-secret' ) === false );
+
+// the copy itself a link to the folder of an own theme: the state has no copy that can be read, and the website is not built from the folder
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+$sheet = ninoSandboxDir( $r ). '/private/assets/theme.css';
+file_put_contents( themesOwn( $r, 'alpha' ). '/theme.css', ".folder-only { color: blue; }\n" );
+$sheetBefore = (string) file_get_contents( $sheet );
+$link( $st. '/current/theme', themesOwn( $r, 'alpha' ) );
+[ $status, $body ] = $tone( $r, 'warm' );
+check( 'R. the copy of the theme that is a link to the folder of an own theme is not read: a change that needs the theme is refused, 409 themes_unknown - the state holds no theme that can be read, as where the copy is gone - the stylesheet is as it was, and nothing of the folder is on the website or in the states',
+	$status === 409 && $body['code'] === 'themes_unknown' && (string) file_get_contents( $sheet ) === $sheetBefore && str_contains( $everything( $st ), 'folder-only' ) === false );
+
+[ $status ] = themesCall( $r, 'themes/apply', [ 'theme' => 'own:alpha', 'force' => true ] );
+
+check( 'R. ...and applying a theme makes the copy a copy again: 200, a folder of files in the state and not a link', $status === 200 && is_dir( $st. '/current/theme' ) === true && is_link( $st. '/current/theme' ) === false && is_file( $st. '/current/theme/theme.json' ) === true );
+
+// the last state: a link in it is not followed when it is brought back, and a file a state does not have does not come with it
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+$sheet = ninoSandboxDir( $r ). '/private/assets/theme.css';
+$link( $st. '/previous/theme/theme.css', $outside( $r, ".from-outside-previous { color: red; }\n" ) );
+[ $status ] = themesCall( $r, 'themes/restore', [ 'base' => \Nino\Modules\Themes\Store::stamp( $r ) ] );
+
+check( 'R. a file of the last state that is a link is not followed when the state is brought back: 200, and what the link points at is on no stylesheet of the website and in no file of the states',
+	$status === 200 && str_contains( (string) file_get_contents( $sheet ), 'from-outside' ) === false && str_contains( $everything( $st ), 'from-outside' ) === false );
+
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+$sheet = ninoSandboxDir( $r ). '/private/assets/theme.css';
+file_put_contents( themesOwn( $r, 'alpha' ). '/theme.css', ".folder-only { color: blue; }\n" );
+$link( $st. '/previous/theme', themesOwn( $r, 'alpha' ) );
+$before = [ \Nino\Modules\Themes\Store::stamp( $r ), (string) file_get_contents( $sheet ) ];
+[ $status, $body ] = themesCall( $r, 'themes/restore', [ 'base' => $before[0] ] );
+
+check( 'R. a last state whose copy of the theme is a link to a folder is not brought back as built from that folder: 409 themes_unknown, the state and the stylesheet are as they were - the last state stays the last - and nothing of the folder is in the states',
+	$status === 409 && $body['code'] === 'themes_unknown' && \Nino\Modules\Themes\Store::stamp( $r ) === $before[0] && (string) file_get_contents( $sheet ) === $before[1] && is_link( $st. '/previous/theme' ) === true && str_contains( $everything( $st ), 'folder-only' ) === false );
+
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+file_put_contents( $st. '/previous/theme/evil.php', '<?php echo "evil";' );
+file_put_contents( $st. '/previous/evil.php', '<?php echo "evil";' );
+file_put_contents( $st. '/previous/theme/parts/evil.php', '<?php echo "evil";' );
+file_put_contents( $st. '/current/theme/evil.php', '<?php echo "evil";' );
+file_put_contents( $st. '/current/evil.txt', 'evil' );
+[ $status ] = themesCall( $r, 'themes/restore', [ 'base' => \Nino\Modules\Themes\Store::stamp( $r ) ] );
+$found = array_filter( array_keys( themesFiles( $st ) ), static fn( string $path ): bool => str_contains( $path, 'evil' ) );
+
+check( 'R. what a state does not have does not go into the next one: a file that is not of a package, in the copy or beside it - a script in the last state brought back, a script in the state that is copied for the change - is not in any state afterwards',
+	$status === 200 && array_filter( $found, static fn( string $path ): bool => str_starts_with( $path, 'current/' ) ) === [] );
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+file_put_contents( $st. '/current/theme/evil.php', '<?php echo "evil";' );
+file_put_contents( $st. '/current/evil.txt', 'evil' );
+[ $status ] = $tone( $r, 'warm' );
+
+check( 'R. ...the state that is copied for a change leaves them behind as well: the new state has none, and the last state is the one it was', $status === 200 && array_filter( array_keys( themesFiles( $st ) ), static fn( string $path ): bool => str_starts_with( $path, 'current/' ) && str_contains( $path, 'evil' ) ) === [] );
+
+// a copy by Mix::copy takes no link, whichever file it is
+$from = ninoSandboxDir( $r ). '/copy-from';
+$to = ninoSandboxDir( $r ). '/copy-to';
+@mkdir( $from, 0755, true );
+$linked = [];
+
+foreach( [ 'theme.json', 'theme.css', 'LICENSE.txt', 'README.md' ] as $file ) {
+
+	\Nino\Filesystem::removeDir( $from );
+	\Nino\Filesystem::removeDir( $to );
+	@mkdir( $from, 0755, true );
+
+	foreach( [ 'theme.json', 'theme.css', 'LICENSE.txt', 'README.md' ] as $other )
+		file_put_contents( $from. '/'. $other, 'plain '. $other );
+
+	unlink( $from. '/'. $file );
+	symlink( $outside( $r, 'secret of '. $file ), $from. '/'. $file );
+	\Nino\Modules\Themes\Mix::copy( $from, $to );
+	$linked[$file] = file_exists( $to. '/'. $file ) === false && is_file( $to. '/theme.json' ) === ( $file !== 'theme.json' ) && str_contains( $everything( $to ), 'secret of' ) === false;
+}
+
+check( 'R. a copy of a theme takes no file that is a link, whichever of theme.json, theme.css, LICENSE.txt and README.md it is: the link is not followed, the file is not in the copy, the others are: '. implode( ', ', array_keys( $linked ) ), array_values( array_unique( $linked ) ) === [ true ] );
+
+// a state of the form the states had before they held the theme - a saved.json that says no format - is not a state: there is no last state to come back to, and it is left as it is
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+$saved = json_decode( (string) file_get_contents( $st. '/previous/saved.json' ), true );
+unset( $saved['format'] );
+file_put_contents( $st. '/previous/saved.json', json_encode( $saved ) );
+$list = themesCall( $r, 'themes/list' )[1];
+$stampBefore = \Nino\Modules\Themes\Store::stamp( $r );
+[ $status, $body ] = themesCall( $r, 'themes/restore', [ 'base' => $stampBefore ] );
+
+check( 'R. a last state whose saved.json says no format is none: the list has no state to come back to, a restore is 409 themes_nothing, and the state is as it was', $list['canRestore'] === false && $status === 409 && $body['code'] === 'themes_nothing' && \Nino\Modules\Themes\Store::stamp( $r ) === $stampBefore );
+
+// the note of where the parts come from is shown, and is read from a file: what is not whole is left out
+$r = $rs();
+$st = ninoSandboxDir( $r ). '/private/data/theme';
+file_put_contents( $st. '/current/origin.json', json_encode( [ 'footer' => null, 'header' => 'text', 'section' => [ 'theme' => 'craft-probe' ], 'page' => [ 'own' => 'alpha' ], 'Bad Group' => [ 'own' => 'x' ], 'button' => [ 'theme' => 'craft-probe', 'version' => '1.0.0' ],
+	'list' => [ 'theme' => 'craft-probe', 'version' => '1.0.0', 'extra' => 1 ], 'tab' => [ 'own' => '../x' ], 'form' => [ 'theme' => 'craft-probe', 'version' => '<img src=x>' ], 'logo' => [ 'theme' => 'craft-probe', 'version' => '' ] ] ) );
+$origin = (array) themesCall( $r, 'themes/list' )[1]['current']['origin'];
+
+check( 'R. the note beside the state is shown as far as it is whole: a group with a theme and a version, or an own theme - and a null, a text, a name that is no slug, a theme without its version, one with more than it says, a key that leaves the folder and a version that is no version are left out',
+	$origin === [ 'page' => [ 'own' => 'alpha' ], 'button' => [ 'theme' => 'craft-probe', 'version' => '1.0.0' ], 'logo' => [ 'theme' => 'craft-probe', 'version' => '' ] ] );
+
+file_put_contents( $st. '/current/origin.json', '[1, 2, "x"]' );
+check( 'R. ...and a note that is no map of groups is none', (array) themesCall( $r, 'themes/list' )[1]['current']['origin'] === [] );
+
+// a link in a state - put there by hand - does not stop the states from changing: it is taken away as the link it is, what it points at is not touched, and no folder is left behind
+/** The tone of the brand turned to the other of two, so that a brand that is saved is a brand that is changed */
+$flip = static fn( array &$site ): array => $tone( $site, ( \Nino\Modules\Themes\Store::read( $site )['brand']['tone']['value'] ?? '' ) === 'warm' ? 'cool' : 'warm' );
+$target = static function( array $site, string $name ): string {
+
+	$dir = ninoSandboxDir( $site ). '/outside-'. $name;
+	\Nino\Filesystem::removeDir( $dir );
+	@mkdir( $dir. '/parts/section', 0755, true );
+	file_put_contents( $dir. '/theme.json', json_encode( [ 'key' => 'outside', 'version' => '1.0.0', 'name' => 'Outside', 'description' => 'Outside' ] ) );
+	file_put_contents( $dir. '/theme.css', ".outside { color: red; }\n" );
+	file_put_contents( $dir. '/parts/section/part.css', ".outside-part { color: red; }\n" );
+	file_put_contents( $dir. '/parts/section/part.json', '{}' );
+	file_put_contents( $dir. '/precious.txt', 'do not take away' );
+
+	return $dir;
+};
+$links = static function( string $dir ) use ( &$links ): array {
+
+	$found = [];
+
+	foreach( is_dir( $dir ) === true ? (array) scandir( $dir ) : [] as $entry ) {
+
+		if( $entry === '.' || $entry === '..' )
+			continue;
+
+		if( is_link( $dir. '/'. $entry ) === true )
+			$found[] = $dir. '/'. $entry;
+		else if( is_dir( $dir. '/'. $entry ) === true )
+			$found = array_merge( $found, $links( $dir. '/'. $entry ) );
+	}
+
+	return $found;
+};
+
+foreach( [ 'the copy of the theme in the state' => 'current/theme', 'a part deep in the last state' => 'previous/theme/parts/section' ] as $what => $place ) {
+
+	$r = $rs();
+	$st = ninoSandboxDir( $r ). '/private/data/theme';
+	$outer = $target( $r, 'link' );
+	$outerBefore = themesFiles( $outer );
+	$link( $st. '/'. $place, $outer );
+	$answers = [];
+	$answers['brand'] = $flip( $r )[0];
+	$answers['package'] = themesCall( $r, 'themes/apply', [ 'theme' => 'craft-probe', 'force' => true ] )[0];
+	$answers['own'] = themesCall( $r, 'themes/apply', [ 'theme' => 'own:alpha', 'force' => true ] )[0];
+	// each request is a process of its own: what one holds in memory of the files of the state is not the next one's
+	$r = themesReboot( $r, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] );
+	$answers['brand again'] = $flip( $r )[0];
+	$answers['package again'] = themesCall( $r, 'themes/apply', [ 'theme' => 'craft-probe', 'force' => true ] )[0];
+	$answers['restore'] = themesCall( $r, 'themes/restore', [ 'base' => \Nino\Modules\Themes\Store::stamp( $r ) ] )[0];
+	$r = themesReboot( $r, [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Themes' ] );
+	$answers['brand last'] = $flip( $r )[0];
+
+	check( 'R. a link in the states - '. $what. ' - does not stop them from changing: every change that needs no theme that cannot be read is 200 - a brand, a package, an own theme, a restore: '. json_encode( $answers ). ' - the link goes where it is carried to, and no folder of a change is left',
+		$answers['brand'] === ( $place === 'current/theme' ? 409 : 200 ) && array_values( array_unique( array_diff_key( $answers, [ 'brand' => 1 ] ) ) ) === [ 200 ] && $links( $st ) === [] && is_dir( $st. '/gone' ) === false && is_dir( $st. '/next' ) === false && is_dir( $st. '/building' ) === false && is_dir( $st. '/swap' ) === false );
+
+	check( 'R. ...and what the link pointed at is as it was, whole - nothing in it is taken away: '. $what, themesFiles( $outer ) === $outerBefore && is_file( $outer. '/precious.txt' ) === true && is_file( $outer. '/parts/section/part.css' ) === true );
+}
 
 // --- a project of the days before the themes were folders: its files are left as they are, and nothing of it ends in an error
 $legacy = themesSite();
 ninoUser( $legacy, 'designer@example.com' );
-$legacyState = ninoSandboxDir( $legacy ). '/private/data/theme';
-themesCall( $legacy, 'themes/apply', [ 'theme' => 'craft-probe' ] );
-$oldFile = $legacyState. '/state/own/old.json';
-mkdir( dirname( $oldFile ), 0755, true );
-file_put_contents( $oldFile, json_encode( [ 'name' => 'Old', 'css' => '', 'parts' => [ 'section' => [ 'from' => 'craft-probe@1.0.0' ] ] ] ) );
-\Nino\Filesystem::putFileContent( $legacy, '/data/theme/state/active.json', [ 'theme' => 'own:old' ] );
-$oldBytes = (string) file_get_contents( $oldFile );
+$legacyDir = ninoSandboxDir( $legacy ). '/private/data/theme';
+mkdir( $legacyDir. '/state/own', 0755, true );
+mkdir( $legacyDir. '/previous/own', 0755, true );
+mkdir( $legacyDir. '/copies/craft-probe@1.0.0', 0755, true );
+file_put_contents( $legacyDir. '/state/own/old.json', json_encode( [ 'name' => 'Old', 'css' => '', 'parts' => [ 'section' => [ 'from' => 'craft-probe@1.0.0' ] ] ] ) );
+file_put_contents( $legacyDir. '/state/active.json', json_encode( [ 'theme' => 'own:old' ] ) );
+file_put_contents( $legacyDir. '/state/theme.css', "/* the old stylesheet */\n" );
+file_put_contents( $legacyDir. '/previous/own/x.json', '{}' );
+file_put_contents( $legacyDir. '/previous/active.json', json_encode( [ 'theme' => 'nino' ] ) );
+file_put_contents( $legacyDir. '/previous/saved.json', json_encode( [ 'at' => 1700000000, 'theme' => 'nino' ] ) );
+file_put_contents( $legacyDir. '/copies/craft-probe@1.0.0/theme.json', '{}' );
+$legacyBefore = [ themesFiles( $legacyDir. '/state' ), themesFiles( $legacyDir. '/previous' ), themesFiles( $legacyDir. '/copies' ) ];
 [ $listStatus, $listed ] = themesCall( $legacy, 'themes/list' );
-[ $copyStatus, $copied ] = themesCall( $legacy, 'themes/duplicate', [ 'theme' => 'nino', 'name' => 'Fresh' ] );
-[ $brandStatus, $brandBody ] = themesCall( $legacy, 'themes/brand', [ 'brand' => \Nino\Modules\Themes\Store::read( $legacy )['brand'] ] );
+[ $restoreStatus, $restoreBody ] = themesCall( $legacy, 'themes/restore' );
+[ $copyStatus ] = themesCall( $legacy, 'themes/duplicate', [ 'theme' => 'nino', 'name' => 'Fresh' ] );
 [ $applyStatus ] = themesCall( $legacy, 'themes/apply', [ 'theme' => 'craft-probe' ] );
-check( 'P. a project of the days before the themes were folders - an own theme in the state, the website showing one that has no folder - is left as it is and ends in no error: the list has no card for it, a copy of a theme is made, a change that needs the stylesheet to be built says that the theme is not there, and applying a theme puts it right - and the old file is never read nor changed',
-	$listStatus === 200 && count( array_filter( $listed['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:old' ) ) === 0 && $copyStatus === 200 && is_dir( themesOwn( $legacy, 'fresh' ) ) === true && $brandStatus === 404 && $brandBody['code'] === 'themes_unknown' && $applyStatus === 200
-	&& (string) file_get_contents( $oldFile ) === $oldBytes && Compiler::isOwn( (string) file_get_contents( ninoSandboxDir( $legacy ). '/private/assets/theme.css' ) ) === true );
+check( 'P. a project of the days before the states held their theme - state/, previous/ and copies/ with an own theme in them, the website showing it - is left as it is and ends in no error: the list shows no state, no card of that theme and nothing to restore, a copy of a theme is made, and a theme can be applied',
+	$listStatus === 200 && $listed['active'] === null && $listed['canRestore'] === false && count( array_filter( $listed['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:old' ) ) === 0 && $restoreStatus === 409 && $restoreBody['code'] === 'themes_nothing' && $copyStatus === 200 && is_dir( themesOwn( $legacy, 'fresh' ) ) === true && $applyStatus === 200
+	&& themesFiles( $legacyDir. '/state' ) === $legacyBefore[0] && themesFiles( $legacyDir. '/copies' ) === $legacyBefore[2] && is_dir( $legacyDir. '/current/theme' ) === true );
+check( 'P. ...and the last state of that form is put aside, as it is, when the first state of the new form is made: it is no state - restore does not take it - and nothing in it is read or changed',
+	themesFiles( $legacyDir. '/legacy-previous' ) === $legacyBefore[1] && is_file( $legacyDir. '/previous/own/x.json' ) === false && themesCall( $legacy, 'themes/list' )[1]['canRestore'] === true && is_array( themesCall( $legacy, 'themes/list' )[1]['last'] ) === true );
 
 // the script, run over the stand-in of a page, where node is on the path
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';

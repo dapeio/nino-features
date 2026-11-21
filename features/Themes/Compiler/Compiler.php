@@ -180,7 +180,7 @@ namespace Nino\Modules\Themes {
 					$knobs[$knob['token']] = $knob['ladder'][$knob['step'] + 2];
 
 				if( $entry['part'] !== null && trim( $entry['part']['css'] ) !== '' )
-					$css[] = '/* '. $group. ': the part of '. ( $entry['origin'] === 'own' ? 'the theme itself' : $entry['theme']. ' '. $entry['version'] ). ' */'. "\n". trim( $entry['part']['css'] );
+					$css[] = '/* '. $group. ': the part of '. ( in_array( $entry['origin'], [ 'own', 'current' ], true ) === true ? 'the theme itself' : $entry['theme']. ' '. $entry['version'] ). ' */'. "\n". trim( $entry['part']['css'] );
 
 				foreach( $entry['variants'] as $component => [ $added, $standard, $labels ] )
 					if( $added !== [] || $standard !== 'regular' )
@@ -363,7 +363,7 @@ namespace Nino\Modules\Themes {
 		/**
 		 *	The part a mix names for the page or a group, resolved
 		 *
-		 *	@return 	array											'from', 'theme', 'version', 'origin' (standard, copy, installed, own), 'dir', 'brand' (what the theme suggests), 'part', 'problem', 'missing' (the theme has no part for it), 'values'
+		 *	@return 	array											'from', 'theme', 'version', 'origin' (standard, installed, own, current), 'dir', 'brand' (what the theme suggests), 'part', 'problem', 'missing' (the theme has no part for it), 'values'
 		 */
 		private static function _part( array &$appData, string $group, array $entry ): array {
 

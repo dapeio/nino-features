@@ -22,7 +22,7 @@ namespace Nino\Modules {
 	 *										before the project's own css - and the variants of the active mix are told to the register by
 	 *										its hook. Everything else happens when somebody saves: the reader (Reader) checks the themes,
 	 *										the compiler (Compiler) writes the stylesheet and the variants, the store (Store) keeps the
-	 *										state, the last state and the copy of every part in use under data/theme/, and Admin is the
+	 *										state of the website - the copy of its theme, the brand, the stylesheet - and the one before it under data/theme/, and Admin is the
 	 *										API of the workbench. With the feature off, no file is in the bundle and no variant is told:
 	 *										the site is drawn by the standard parts alone, as it is without a theme.
 	 *
@@ -42,7 +42,7 @@ namespace Nino\Modules {
 	 */
 	class Themes {
 
-		// What the feature keeps under data/ - the state, the last state, the copies of the parts in use - and the cache of what is read of the
+		// What the feature keeps under data/ - the state of the website and the one before it - and the cache of what is read of the
 		// themes, which the page cache of the kernel does not take with it: it empties data/cache after every write of the workbench, which what is
 		// read of the themes had better outlast (measured: 2.2 ms read cold, 0.2 ms kept). The drafts of the previews are the kernel's
 		// (\Nino\Preview), of the kinds KIND and PICTURES
@@ -124,7 +124,7 @@ namespace Nino\Modules {
 		 */
 		public static function variants( array &$appData, array $asked ): array {
 
-			$file = self::DIR. '/state/variants.php';
+			$file = self::DIR. '/current/variants.php';
 
 			// Read once for the request: the register asks a name once for each drawing. The file is php the store wrote - the one read that costs
 			// nothing where php keeps the compiled script, which a cache of the filesystem by name and modification time would not tell from the one

@@ -112,8 +112,8 @@ return [
 				'de_DE' => 'Das Stylesheet der Lage nino.theme, vom Compiler geschrieben mit Marke, Reglerstufen, Teilen und eigenem CSS; eine Datei, die jemand anderes schrieb, wird nur auf Anweisung ersetzt.',
 			],
 			'data/theme/' => [
-				'en_US' => 'The state, the last state, the brand, the copies of the parts in use and the keys of uploaded themes, which the backup carries and an update does not change.',
-				'de_DE' => 'Der Stand, der letzte Stand, die Marke, die Kopien der verwendeten Teile und die Schlüssel hochgeladener Themes, die das Backup mitnimmt und ein Update nicht ändert.',
+				'en_US' => 'The state of the website - the copy of its theme, the brand, the stylesheet - and the one before it, and the keys of uploaded themes; the backup carries them and an update does not change them.',
+				'de_DE' => 'Der Stand der Website - die Kopie ihres Themes, die Marke, das Stylesheet - und der davor sowie die Schlüssel hochgeladener Themes; das Backup nimmt sie mit und ein Update ändert sie nicht.',
 			],
 			'private/themes/<key>/' => [
 				'en_US' => 'An own theme: a folder in the form of a theme package that the panel writes whole; a package folder copied in by hand is one as well.',

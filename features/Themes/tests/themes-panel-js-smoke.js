@@ -514,12 +514,22 @@ function world( options ) {
 					listed.last = w.last;
 					listed.state = w.stateStamp;
 					listed.canRestore = w.canRestore;
+					listed.current = w.current;
 					w.answer( 200, listed );
 				}
 				else if( request.action === 'themes/open' )
-					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? ( w.copies.find( function( copy ) { return copy.key === payload.theme } )?.name ?? 'Lindner' ) : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), cssRule : w.cssRule, stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
+					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? ( w.copies.find( function( copy ) { return copy.key === payload.theme } )?.name ?? 'Lindner' ) : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), cssRule : w.cssRule, stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, current : w.current, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
 				else if( request.action === 'themes/preview' )
 					w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900 }, describe( payload.mix, w.rest, payload.brand ), { cssRule : w.cssRule } ) );
+				else if( request.action === 'themes/keep' && payload.name === 'Taken' )
+					w.answer( 409, { error : 'an own theme of that name is there', code : 'themes_name_taken', params : [ 'Taken Before' ], field : 'name' } );
+				else if( request.action === 'themes/keep' ) {
+					const made = { key : 'own:'+ payload.name.toLowerCase().replace( /[^a-z0-9]+/g, '-' ).replace( /^-|-$/g, '' ), name : payload.name };
+					w.copies.push( made );
+					w.bump();
+					w.current = { theme : made.key, name : payload.name, origin : {} };
+					w.answer( 200, { saved : true, theme : made.key, applied : true, stamp : w.stamp, brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, current : w.current, active : w.activeState() } );
+				}
 				else if( request.action === 'themes/duplicate' && payload.theme.indexOf('own:') === 0 && payload.base !== w.stamp )
 					w.answer( 409, { error : 'the theme was changed since it was opened', code : 'themes_changed', params : [ 'Lindner' ], field : 'theme' } );
 				else if( request.action === 'themes/duplicate' && payload.name === 'Taken' )
@@ -581,6 +591,7 @@ function world( options ) {
 		brandStamp : 'brand-1',
 		stateStamp : 'state-1',
 		canRestore : false,
+		current : null,
 		last : null,
 		brandStored : brandNone(),
 		deleted : [],
@@ -4433,6 +4444,69 @@ function nameField( w ) {
 	check( 'S1. the choice of the part of a group offers the part the folder holds - with the word "changed" - beside the standard part and the themes that have one, and has it chosen', options.indexOf( 'own:lindner='+ W('word/changed') ) !== -1 && w.byTag( w.theme, 'select' ).filter( function( one ) { return one.id === 'themes-part-section' } )[0].value === 'own:lindner' && options.some( function( one ) { return one.indexOf( 'craft@1.0.0' ) === 0 } ) );
 
 	OWN_SECTION = 'craft@1.0.0';
+}
+
+// --- AF. the state of the website: where its parts come from, and keeping it as a theme ----------------------------------------------------
+
+{
+	const none = world( { active : 'nino' } );
+
+	none.at( '#themes/craft/settings' );
+
+	check( 'T1. the settings have a button to keep the state of the website as an own theme, and where the website shows no theme there is nothing to keep: it is off, and the hint says so', byId( none.theme, 'themes-keep' ) !== undefined && byId( none.theme, 'themes-keep' ).disabled === true && none.text( byId( none.theme, 'themes-keep-hint' ) ) === W('hint/keep-none') );
+
+	const w = world( { active : 'nino' } );
+
+	w.canRestore = true;
+	w.current = { theme : 'craft', name : { de_DE : 'Craft', en_US : 'Craft' }, origin : { section : { theme : 'craft', version : '1.0.0' }, header : { theme : 'craft', version : '1.0.0' }, page : { own : 'lindner' } } };
+	w.at( '#themes/craft/settings' );
+
+	const said = Wp( 'msg/made-of', 'Header, Section', 'Craft 1.0.0' ) + ' \u00b7 ' + Wp( 'msg/made-of-own', W('word/page'), 'Lindner' );
+	const keep = byId( w.theme, 'themes-keep' );
+
+	check( 'T1. where the website shows a theme the button is on, and the hint says where the parts of the state come from - the groups by the theme and its version they are from, the own theme where it is that - in the words of the card', keep.disabled === false && w.text( byId( w.theme, 'themes-keep-hint' ) ).indexOf( said ) !== -1, w.text( byId( w.theme, 'themes-keep-hint' ) ) );
+
+	fire( keep, 'click' );
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+
+	check( 'T1. it asks for a name in the dialog of the name, which says what is done and - the state is made - that the last state is replaced; nothing is sent yet', dialog.open === true && w.text( dialog ).indexOf( W('msg/keep') ) !== -1 && w.text( dialog ).indexOf( W('msg/replaces-last-plain') ) !== -1 && w.requests.length === 0 );
+
+	findAll( dialog, function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Kept state';
+	pressedOn( w );
+
+	check( 'T1. the answer of the dialog sends the name, the state it was seen in and no force - nothing of a mix: the server keeps what it holds', w.requests.length === 1 && w.requests[0].action === 'themes/keep' && w.requests[0].payload.name === 'Kept state' && w.requests[0].payload.base === 'state-1' && w.requests[0].payload.force === false && Object.keys( w.requests[0].payload ).length === 3 );
+
+	w.serve();
+
+	check( 'T1. the screen goes on to the theme that was made, and the line says that it is made', w.state.hash.indexOf( 'own.kept-state' ) !== -1 || w.state.pushed.some( function( hash ) { return hash.indexOf( 'own.kept-state' ) !== -1 } ) );
+}
+
+{
+	// a name that is taken is asked again, with the sentence at the field
+	const w = world( { active : 'nino' } );
+
+	w.current = { theme : 'craft', name : 'Craft', origin : {} };
+	w.at( '#themes/craft/settings' );
+	fire( byId( w.theme, 'themes-keep' ), 'click' );
+	findAll( w.dialogs[w.dialogs.length - 1], function( node ) { return node.tagName === 'INPUT' } )[0].value = 'Taken';
+	pressedOn( w );
+	w.serve();
+
+	const again = w.dialogs[w.dialogs.length - 1];
+
+	check( 'T1. a name that is taken is 409 at the name: the dialog of the name is drawn again with the sentence at the field, and the state is not kept', w.requests.length === 0 && again.open === true && w.text( again ).indexOf( 'Taken' ) !== -1 && w.copies.length === 0 );
+}
+
+{
+	// a note of where the parts come from that is not whole does not stop the settings from being drawn: what is not a group with a theme is left out
+	const w = world( { active : 'nino' } );
+
+	w.current = { theme : 'craft', name : 'Craft', origin : { footer : null, header : 'text', page : {}, section : { theme : 'craft', version : '1.0.0' } } };
+	w.at( '#themes/craft/settings' );
+
+	check( 'T2. a note with a group that is null, a text or says nothing is not an error of the panel: the settings are drawn - the buttons are there - and the hint says what the whole entries say',
+		byId( w.theme, 'themes-keep' ) !== undefined && byId( w.theme, 'themes-restore' ) !== undefined && byId( w.theme, 'themes-duplicate' ) !== undefined && w.text( byId( w.theme, 'themes-keep-hint' ) ) === Wp( 'hint/keep-from', Wp( 'msg/made-of', 'Section', 'Craft 1.0.0' ) ) );
 }
 
 function Nino_format( text, ...params ) { return String( text ).replace( /%s/g, function() { return String( params.shift() ) } ) }

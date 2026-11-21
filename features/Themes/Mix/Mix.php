@@ -31,9 +31,9 @@ namespace Nino\Modules\Themes {
 	 */
 	class Mix {
 
-		// What a part is taken from: the standard part of the group, an installed theme or a version of one the project holds a copy of, or an own theme - own:<key> -
-		// which holds its parts in full
-		private const string FROM = '/^(?:standard|own:([a-z0-9]+(?:-[a-z0-9]+)*)|([a-z0-9]+(?:-[a-z0-9]+)*)(?:@(\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[A-Za-z0-9.]{1,20})?))?)$/D';
+		// What a part is taken from: the standard part of the group, an installed theme, an own theme - own:<key> - which holds its parts in full, or the copy of the
+		// theme the website shows - current - which only the store names, while it builds
+		private const string FROM = '/^(?:standard|current|own:([a-z0-9]+(?:-[a-z0-9]+)*)|([a-z0-9]+(?:-[a-z0-9]+)*)(?:@(\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[A-Za-z0-9.]{1,20})?))?)$/D';
 		private const string KNOB = '/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$/D';
 
 		// How much a mix may say: the longest name of an own theme, the longest css, the most groups
@@ -107,8 +107,32 @@ namespace Nino\Modules\Themes {
 
 			$theme = Reader::own( $appData )['themes'][$key] ?? null;
 
-			if( $theme === null )
-				return null;
+			return $theme === null ? null : self::_ofTheme( $appData, $theme, 'own:'. $key, $told );
+		}
+
+		/**
+		 *	The mix of the copy of the theme the website shows, as folder() read it: every part it has is 'current'. What the stylesheet of the website is built from
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$theme				As Reader::folder() answers it
+		 *
+		 *	@return 	array
+		 */
+		public static function ofCurrent( array &$appData, array $theme ): array {
+			return self::_ofTheme( $appData, $theme, 'current', false );
+		}
+
+		/**
+		 *	A theme that holds its parts in full as a mix
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$theme				As the reader has read it, with its parts checked
+		 *	@param		string		$own					What a part that is the theme's own is taken from: 'own:<key>' or 'current'
+		 *	@param		bool			$told					See ofOwn()
+		 *
+		 *	@return 	array
+		 */
+		private static function _ofTheme( array &$appData, array $theme, string $own, bool $told ): array {
 
 			$installed = $told === true ? Reader::read( $appData )['themes'] : [];
 			$parts = [];
@@ -121,7 +145,7 @@ namespace Nino\Modules\Themes {
 					$parts[$group] = [ 'from' => 'standard' ];
 				else {
 
-					$parts[$group] = [ 'from' => 'own:'. $key ];
+					$parts[$group] = [ 'from' => $own ];
 
 					foreach( $installed as $other => $offered )
 						if( $part['code'] !== '' && ( $offered['parts'][$group]['code'] ?? '' ) === $part['code'] ) {
@@ -142,7 +166,9 @@ namespace Nino\Modules\Themes {
 
 			ksort( $parts );
 
-			return [ 'name' => $theme['label'], 'parts' => $parts ] + ( ( $theme['css'] ?: $theme['cssRaw'] ) !== '' ? [ 'css' => (string) ( $theme['css'] ?: $theme['cssRaw'] ) ] : [] );
+			$css = (string) ( $theme['css'] ?: ( $theme['cssRaw'] ?? '' ) );
+
+			return [ 'name' => (string) ( $theme['label'] ?? $theme['key'] ), 'parts' => $parts ] + ( $css !== '' ? [ 'css' => $css ] : [] );
 		}
 
 		/**
@@ -367,29 +393,24 @@ namespace Nino\Modules\Themes {
 			if( $journal === null )
 				return;
 
-			// An outcome that was decided - the state of the website was swapped - is not turned round by what comes after
-			$journal['kept'] = $journal['kept'] === true ? true : $kept;
+			$journal['kept'] = $kept;
 
 			if( self::_journal( $appData, $journal ) === true )
 				self::_apply( $appData, $journal );
 		}
 
 		/**
-		 *	The store says that the change holds: the state is in its place. Said before the rest of the change is carried out, so that a request that is broken off between the state and the
-		 *	folder is made whole to the state - a theme that is on the website and the folder it was copied from agree. Nothing where no folder was changed
+		 *	The number of the change of a folder that is under way, as the journal has it: what the store writes into the state it makes, so that the state tells whether the change holds
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	void
+		 *	@return 	string|null								null where no folder was changed or its outcome is told already
 		 */
-		public static function decide( array &$appData ): void {
+		public static function pending( array &$appData ): ?string {
 
 			$journal = self::_pending( $appData );
 
-			if( $journal !== null && $journal['kept'] === null ) {
-				$journal['kept'] = true;
-				self::_journal( $appData, $journal );
-			}
+			return $journal !== null && $journal['kept'] === null ? $journal['id'] : null;
 		}
 
 		/**
@@ -442,6 +463,96 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	A theme as a package has it, copied: theme.json, theme.css, the part.json and part.css of each part, the licence and the readme - the files of the form of a package that
+		 *	a theme of the website needs; not the blocks, not the picture. Files only: no link is followed, none longer than 2 MB, a part or a folder that is a link is not copied
+		 *
+		 *	@param		string		$from					The real path of the folder of the theme
+		 *	@param		string		$to						The path of the folder it is copied into, which is made
+		 *
+		 *	@return 	bool											Whether it was copied
+		 */
+		public static function copy( string $from, string $to ): bool {
+
+			$files = [ 'theme.json', 'theme.css', 'LICENSE.txt', 'README.md' ];
+
+			if( is_link( $from ) === true || is_dir( $from ) === false )
+				return false;
+
+			// A part is copied whole or not at all: one of its files that is a link, or longer than may be, leaves the part out - it rests where it was, and is not made another by a copy that
+			// has the rest of it
+			foreach( is_dir( $from. '/parts' ) === true && is_link( $from. '/parts' ) === false ? (array) glob( $from. '/parts/*', GLOB_ONLYDIR ) : [] as $part ) {
+
+				$whole = is_link( (string) $part ) === false && preg_match( \Nino\Components::NAME, basename( (string) $part ) ) === 1;
+
+				foreach( [ 'part.json', 'part.css' ] as $name )
+					if( $whole === true && ( file_exists( $part. '/'. $name ) === true || is_link( $part. '/'. $name ) === true ) && ( is_link( $part. '/'. $name ) === true || is_file( $part. '/'. $name ) === false || filesize( $part. '/'. $name ) > 2097152 ) )
+						$whole = false;
+
+				if( $whole === true )
+					foreach( [ 'part.json', 'part.css' ] as $name )
+						$files[] = 'parts/'. basename( (string) $part ). '/'. $name;
+			}
+
+			if( is_dir( $to ) === false && @mkdir( $to, 0755, true ) === false )
+				return false;
+
+			foreach( $files as $file ) {
+
+				if( is_file( $from. '/'. $file ) === false || is_link( $from. '/'. $file ) === true || filesize( $from. '/'. $file ) > 2097152 )
+					continue;
+
+				if( is_dir( dirname( $to. '/'. $file ) ) === false && @mkdir( dirname( $to. '/'. $file ), 0755, true ) === false )
+					return false;
+
+				$text = Store::readable( $from. '/'. $file ) === true ? Store::quietRead( $from. '/'. $file ) : false;
+
+				if( $text === false || @file_put_contents( $to. '/'. $file, $text ) === false )
+					return false;
+			}
+
+			return true;
+		}
+
+		/**
+		 *	Where each part of a theme comes from, as the note beside the state of the website keeps it: for a theme of a package, that package at its version; for an own theme, the
+		 *	installed theme whose part it is the same as, else the own theme itself. A group that has no part of its own is the standard part and is not in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The key of an installed theme, or own:<key>
+		 *
+		 *	@return 	array											group => [ 'theme' => key, 'version' => ... ] or [ 'own' => key ]
+		 */
+		public static function origins( array &$appData, string $key ): array {
+
+			$origin = [];
+
+			if( str_starts_with( $key, 'own:' ) === true ) {
+
+				foreach( (array) ( self::ofOwn( $appData, substr( $key, 4 ), true )['parts'] ?? [] ) as $group => $entry ) {
+
+					$from = (string) ( $entry['from'] ?? 'standard' );
+
+					if( $from === 'standard' )
+						continue;
+
+					[ $theme, $version ] = explode( '@', $from, 2 ) + [ 1 => '' ];
+					$origin[$group] = str_starts_with( $from, 'own:' ) === true ? [ 'own' => substr( $from, 4 ) ] : [ 'theme' => $theme, 'version' => $version ];
+				}
+
+				return $origin;
+			}
+
+			$theme = Reader::read( $appData )['themes'][$key] ?? null;
+
+			foreach( array_keys( (array) ( $theme['parts'] ?? [] ) ) as $group )
+				$origin[$group] = [ 'theme' => $key, 'version' => (string) $theme['version'] ];
+
+			ksort( $origin );
+
+			return $origin;
+		}
+
+		/**
 		 *	Make whole what a change that was broken off left in the folder of the own themes, with the lock held - and only then: it is what the store does at the start of a change and
 		 *	what a request that finds something left does after taking the lock itself. A change that was written down is finished as its outcome says - not said: it was not done -; of
 		 *	the rest: a folder that was being written is taken away, a folder that was put aside is back where the theme's folder is not there, and is taken away where it is
@@ -455,7 +566,11 @@ namespace Nino\Modules\Themes {
 			$dir = Reader::ownDir( $appData );
 			$journal = self::_pending( $appData );
 
-			// A journal that is not one - written by hand, left by a version that wrote others, or kept in a backup from the time of a change - touches nothing: it is thrown away
+			// A journal that is not one - written by hand, left by a version that wrote others, or kept in a backup from the time of a change - touches nothing: it is thrown away. Where
+			// the outcome is not told, the state that is in place tells it: it holds the change - the number is in it - or it does not (the states are made whole before)
+			if( $journal !== null && $journal['kept'] === null )
+				$journal['kept'] = Store::holds( $appData, $journal['id'] );
+
 			if( $journal !== null )
 				self::_apply( $appData, $journal );
 			else
@@ -691,7 +806,7 @@ namespace Nino\Modules\Themes {
 					return $group. '.from: standard, or a theme as key@version';
 
 				// A bare key is the version that is installed, which is what a copy is made of
-				if( $from !== 'standard' && ( $found[1] ?? '' ) === '' && ( $found[3] ?? '' ) === '' ) {
+				if( $from !== 'standard' && $from !== 'current' && ( $found[1] ?? '' ) === '' && ( $found[3] ?? '' ) === '' ) {
 
 					$theme = Reader::read( $appData )['themes'][$found[2]] ?? null;
 

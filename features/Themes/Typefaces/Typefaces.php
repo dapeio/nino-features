@@ -323,22 +323,20 @@ namespace Nino\Modules\Themes {
 		public static function usage( array &$appData ): array {
 
 			$state = Store::read( $appData );
-			$active = $state['active'];
-			$mix = null;
+			$plan = null;
 
-			if( $active !== null ) {
+			// What the website draws is what the copy of its theme in the state says, with the brand of the project
+			if( $state['active'] !== null )
+				$plan = Reader::using( $appData, \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/current/theme' ), static function( array|string $theme ) use ( &$appData, $state ): ?array {
 
-				$own = str_starts_with( $active['theme'], 'own:' ) === true;
-				$given = $own === true ? ( $state['own'][substr( $active['theme'], 4 )] ?? null ) : ( $active['mix'] ?? null );
-				$clean = $given === null ? '' : Mix::clean( $appData, $given, $own );
-				$mix = is_array( $clean ) === true ? $clean : null;
-			}
+					$clean = is_array( $theme ) === true ? Mix::clean( $appData, Mix::ofCurrent( $appData, $theme ), false ) : null;
+
+					return is_array( $clean ) === true ? Compiler::plan( $appData, $clean, $state['brand'] ) : null;
+				} );
 
 			$values = [];
 
-			if( $mix !== null ) {
-
-				$plan = Compiler::plan( $appData, $mix, $state['brand'] );
+			if( $plan !== null ) {
 
 				foreach( self::ROLES as $key )
 					if( in_array( $key, $plan['named'], true ) === true )

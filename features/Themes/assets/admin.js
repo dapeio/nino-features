@@ -112,6 +112,7 @@
 		state			: '',
 		canRestore	: false,
 		last			: null,
+		current		: null,
 		invalid		: {},
 		blocked		: '',
 		leftFor		: '',
@@ -1473,6 +1474,8 @@
 		const copyHint = Nino.adminUi.hint('');
 		const restoreButton = Nino.adminUi.button( word('label/restore'), function() { restore( restoreButton ) }, { className : 'nino-admin-btn--small', id : 'themes-restore' } );
 		const restoreHint = Nino.adminUi.hint('');
+		const keepButton = Nino.adminUi.button( word('label/keep'), function() { keepState( keepButton ) }, { className : 'nino-admin-btn--small', id : 'themes-keep' } );
+		const keepHint = Nino.adminUi.hint('');
 		const removeButton = own === true ? Nino.adminUi.button( word('label/delete'), function() { remove( removeButton ) }, { className : 'nino-admin-btn--small nino-admin-btn-danger', id : 'themes-delete' } ) : null;
 		const removeHint = Nino.adminUi.hint('');
 
@@ -1481,6 +1484,8 @@
 		input.setAttribute( 'aria-describedby', 'themes-name-hint' );
 		hint.id = 'themes-name-hint';
 		restoreHint.id = 'themes-restore-hint';
+		keepHint.id = 'themes-keep-hint';
+		keepButton.setAttribute( 'aria-describedby', 'themes-keep-hint' );
 		removeHint.id = 'themes-delete-hint';
 		copyHint.id = 'themes-duplicate-hint';
 		restoreButton.setAttribute( 'aria-describedby', 'themes-restore-hint' );
@@ -1495,6 +1500,7 @@
 		body.appendChild( Nino.adminUi.hint( mixSummary()+ '.' ) );
 		actions.appendChild( saveNew );
 		actions.appendChild( copyButton );
+		actions.appendChild( keepButton );
 		actions.appendChild( restoreButton );
 
 		if( removeButton !== null )
@@ -1502,10 +1508,11 @@
 
 		body.appendChild( actions );
 		body.appendChild( copyHint );
+		body.appendChild( keepHint );
 		body.appendChild( restoreHint );
 		body.appendChild( removeHint );
 
-		S.view.one = { saveNew : saveNew, copy : copyButton, copyHint : copyHint, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
+		S.view.one = { saveNew : saveNew, copy : copyButton, copyHint : copyHint, keep : keepButton, keepHint : keepHint, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
 		paintSettings();
 
 		return body;
@@ -1524,6 +1531,11 @@
 		one.saveNew.disabled = blockReason() !== '';
 		one.copy.disabled = dirty === true;
 		one.copyHint.textContent = dirty === true ? word('hint/restore-dirty') : word('hint/duplicate');
+		const held = S.current !== null && S.current !== undefined && S.current.theme !== '';
+		const said = originSaid();
+
+		one.keep.disabled = held === false || dirty === true;
+		one.keepHint.textContent = held === false ? word('hint/keep-none') : ( dirty === true ? word('hint/restore-dirty') : ( said === '' ? word('hint/keep-plain') : word( 'hint/keep-from', said ) ) );
 		one.restore.disabled = S.canRestore !== true || dirty === true;
 		one.restoreHint.textContent = S.canRestore !== true ? word('hint/restore-none') : ( dirty === true ? word('hint/restore-dirty') : word( 'hint/restore', lastSaid() ) );
 
@@ -2093,6 +2105,9 @@
 
 		if( typeof fresh.state === 'string' )
 			S.state = fresh.state;
+
+		if( fresh.current !== undefined )
+			S.current = fresh.current;
 	};
 
 	/**
@@ -2372,6 +2387,88 @@
 	};
 
 	// The theme that is open is copied, as it is saved: the screen goes on to the copy, where the person finds it
+	/**
+	 *	Where the parts of the theme the website shows come from, as the note beside the state keeps it, in a few words: "Section from Craft 1.0.0 - page from the own theme X".
+	 *	Nothing where the state is saved as a theme, which holds them
+	 *
+	 *	@return		{string}
+	 */
+	const originSaid = function() {
+
+		const origin = S.current === null || S.current === undefined ? {} : S.current.origin ?? {};
+		const by = {};
+
+		Object.keys( origin ).sort().forEach( function( group ) {
+
+			const part = origin[group];
+
+			// What the server sends is whole; a note that is not - a group without a theme - is shown for what it is: nothing
+			if( part === null || typeof part !== 'object' || ( typeof part.own !== 'string' && typeof part.theme !== 'string' ) )
+				return;
+
+			const source = part.own !== undefined ? word( 'msg/made-of-own', '%s', themeName( 'own:'+ part.own ) ) : word( 'msg/made-of', '%s', themeName( part.theme )+ ' '+ ( part.version ?? '' ) );
+
+			by[source] = ( by[source] ?? [] ).concat( [ groupLabelOf( group ) ] );
+		} );
+
+		return Object.keys( by ).map( function( source ) { return source.replace( '%s', function() { return by[source].join(', ') } ) } ).join(' \u00b7 ');
+	};
+
+	/**
+	 *	The state of the website saved as an own theme: the name is asked, the folder is made of the copy the state holds, and the screen goes on to the theme
+	 *
+	 *	@param		{Element}		opener
+	 *
+	 *	@return		{void}
+	 */
+	const keepState = function( opener ) {
+
+		const cancelled = function() { land( opener, S.view === null ? null : S.view.title ) };
+		const about = { title : word('label/keep-title'), message : word('msg/keep'), state : true };
+
+		const send = function( name ) {
+
+			change( 'keep', function( force ) {
+				return { name : name, base : S.state, force : force };
+			}, function( response ) {
+
+				afterSave( response.theme, response, function() {
+					if( S.view !== null )
+						S.view.line.idle( word( 'msg/duplicated', themeName( response.theme ) ) );
+				} );
+			}, cancelled, function( status, response ) {
+
+				if( response === null || typeof response !== 'object' )
+					return false;
+
+				// A name that is taken, or says nothing, is asked again in the dialog, with the sentence at the field
+				if( ( status === 400 || status === 409 ) && response.field === 'name' ) {
+
+					if( S.view !== null )
+						S.view.line.idle();
+
+					askName( name, Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/save' ), function( again ) {
+						if( again === null )
+							cancelled();
+						else
+							send( again );
+					}, about );
+
+					return true;
+				}
+
+				return false;
+			} );
+		};
+
+		askName( copyName( S.theme.name ), '', function( name ) {
+			if( name === null )
+				cancelled();
+			else
+				send( name );
+		}, about );
+	};
+
 	const duplicateOpen = function( opener ) {
 
 		duplicate( { key : S.key, name : S.theme.name, stamp : function() { return S.theme.kind === 'own' ? S.stamp : '' } }, opener, function( response ) {
@@ -2531,6 +2628,7 @@
 			S.state = response.state;
 			S.canRestore = response.canRestore === true;
 			S.last = response.last ?? null;
+			S.current = response.current ?? null;
 		}
 	};
 
@@ -2591,8 +2689,8 @@
 
 	/**
 	 *	The name of an own theme, asked in the form dialog of the workbench: Enter in the field sends. What was wrong with the last name is said at the field
-	 *	and the dialog is drawn once more, so that it stays where it was. The dialog says what is done and - where the brand is saved with the theme, which makes a state of
-	 *	the website, and there is a last state that is kept - that it is replaced, as every question of the panel that writes does. A theme that is saved
+	 *	and the dialog is drawn once more, so that it stays where it was. The dialog says what is done and - where the brand is saved with the theme, or the dialog is about
+	 *	the state of the website, which makes a state of it, and there is a last state that is kept - that it is replaced, as every question of the panel that writes does. A theme that is saved
 	 *	or copied alone is a folder and replaces nothing. The dialog is closed before the name is handed on: what is done with it
 	 *	may ask a question of its own
 	 *
@@ -2620,7 +2718,7 @@
 
 		Nino.adminUi.formDialog( {
 			title		: about.title,
-			message	: about.message+ ( brandDirty() === false || replacesLast() === '' ? '' : ' '+ replacesLast() ),
+			message	: about.message+ ( ( about.state !== true && brandDirty() === false ) || replacesLast() === '' ? '' : ' '+ replacesLast() ),
 			body		: body,
 			submit	: about.title,
 			cancel	: Nino.content.getText('/_admin/common/label/cancel'),
@@ -4158,6 +4256,7 @@
 		S.active = data.active;
 		S.canRestore = data.canRestore === true;
 		S.last = data.last ?? null;
+		S.current = data.current ?? null;
 		S.state = typeof data.state === 'string' ? data.state : S.state;
 
 		const mount = dc.getElementById('themes-list');

@@ -13,24 +13,26 @@ namespace Nino\Modules\Themes {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Modules\Themes		The store: what the project has decided about its look, the state before it, and the copy of every part in use
+	 *	Modules\Themes		The store: what the project has decided about its look, and the state before it
 	 *
 	 *										private/data/theme/
-	 *											state/brand.json          the brand (M5), per value the project's own or the theme's
-	 *											state/active.json         which theme the site shows and what the stylesheet was built from
-	 *											state/variants.php        what the register is told of the active mix
-	 *											state/theme.css           the stylesheet, the source of private/assets/theme.css
+	 *											current/theme/            the theme the website shows, copied in the form of a package: theme.json, parts/<group>/part.json and part.css, theme.css
+	 *											current/brand.json        the brand (M5), per value the project's own or the theme's
+	 *											current/active.json       which theme the site shows (the one it was copied from) and what the stylesheet was built from
+	 *											current/origin.json       where each part of the copy comes from - theme and version - while the state is not saved as a theme
+	 *											current/variants.php      what the register is told of the theme
+	 *											current/theme.css         the stylesheet, the source of private/assets/theme.css
 	 *											previous/                 the last state, in the same shape: one generation
-	 *											copies/<key>@<version>/   theme.json and the parts of every theme in use, only ever added to
+	 *
+	 *										A change is made in a copy of current/ (building/), the stylesheet is built in it from the copy of the theme it holds - and from nothing
+	 *										else: the website reads no folder of an own theme and no package - and then current/ becomes previous/ and the copy becomes current/ - so a
+	 *										state is always whole, the one before it is kept, and restoring is swapping the two (twice is the state it was). A change that changes nothing
+	 *										keeps the last state as it is. Everything runs under one lock.
 	 *
 	 *										The own themes are no part of a state: each is a folder in the form of a theme package, private/themes/<key>/ (see Mix::write()), which the
-	 *										reader reads as it is. Changing one takes the lock of the state, so that a save of the active theme builds the stylesheet from the folder that
-	 *										holds when the build is done - and a build that fails puts the folder back as it was
-	 *
-	 *										A change is made in a copy of state/ (next/), the stylesheet is built in it from what it says,
-	 *										and then state/ becomes previous/ and next/ becomes state/ - so a state is always whole, the one
-	 *										before it is kept, and restoring is swapping the two (twice is the state it was). A change that
-	 *										changes nothing keeps the last state as it is. Everything runs under one lock.
+	 *										reader reads as it is. Changing one takes the lock of the state, so that a theme is not changed under another change; a folder that was
+	 *										replaced is put aside until the change of the state holds and put back where it does not. A theme that is on the website is a copy in the state:
+	 *										what is done to the folder of its own is seen by the website when the theme is applied - or saved, where it is the one that is on.
 	 *
 	 *										The compiler overwrites only what it wrote: a private/assets/theme.css that is not what the
 	 *										compiler left - no head, or a head that does not match the text - is somebody's own file, and
@@ -49,13 +51,21 @@ namespace Nino\Modules\Themes {
 		// The longest file of the state that is read
 		public const int MAX_FILE = 1048576;
 
+		// What a last state says of itself in saved.json: the form of the states that hold the copy of the theme they were built from
+		private const int FORMAT = 2;
+
+		// The longest file of a state that is copied, and the files of a state beside the copy of its theme
+		private const int STATE_FILE = 8388608;
+		private const array FILES = [ 'active.json', 'brand.json', 'origin.json', 'saved.json', 'theme.css', 'variants.php' ];
+
 		/**
 		 *	The state as it stands
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	array											'brand' => as Brand::read() answers it, 'active' => [ 'theme', 'built', 'feature', 'register', 'gone' ] or null,
-		 *																'own' => key => the own theme, 'previous' => whether there is a last state
+		 *																'own' => key => the own theme, 'previous' => whether there is a last state, 'origin' => group => where the part of the copy comes from ([] where it is saved as a theme),
+		 *																'held' => the theme.json of the copy of the theme the website shows, null where there is none
 		 */
 		public static function read( array &$appData ): array {
 
@@ -63,8 +73,8 @@ namespace Nino\Modules\Themes {
 
 			self::heal( $appData );
 
-			$brand = Brand::read( $appData, self::_load( $appData, $dir. '/state/brand.json' ) );
-			$active = self::_load( $appData, $dir. '/state/active.json' );
+			$brand = Brand::read( $appData, self::_load( $appData, $dir. '/current/brand.json' ) );
+			$active = self::_load( $appData, $dir. '/current/active.json' );
 			$own = [];
 
 			// The own themes are folders of the project, read as they are: what a person sees of one is what its parts are told from
@@ -72,12 +82,43 @@ namespace Nino\Modules\Themes {
 				if( is_array( $mix = Mix::ofOwn( $appData, (string) $key, true ) ) === true )
 					$own[(string) $key] = $mix;
 
+			$origin = self::_origin( self::_load( $appData, $dir. '/current/origin.json' ) );
+
 			return [
 				'brand'		=> $brand,
 				'active'	=> is_array( $active ) === true && is_string( $active['theme'] ?? null ) === true ? $active : null,
 				'own'			=> $own,
-				'previous'	=> is_dir( \Nino\Filesystem::path( $appData, $dir. '/previous' ) ),
+				'previous'	=> self::_isState( $appData, $dir. '/previous' ),
+				'origin'	=> $origin,
+				'held'		=> self::_load( $appData, $dir. '/current/theme/theme.json' ),
 			];
+		}
+
+		/**
+		 *	The note of where the parts of the copy come from, as far as it is whole: a group (a slug) with the theme and the version it comes from, or the own theme. An entry that is
+		 *	anything else - a null, a text, a name that is no slug, more than it says - is left out as if the note did not have it: the note is only shown, and is read from a file
+		 *
+		 *	@param		array|null								$note					What the file holds
+		 *
+		 *	@return 	array											group => [ 'theme' => key, 'version' => ... ] or [ 'own' => key ]
+		 */
+		private static function _origin( ?array $note ): array {
+
+			$origin = [];
+			$slug = static fn( mixed $value ): bool => is_string( $value ) === true && strlen( $value ) <= \Nino\Components::NAME_LENGTH && preg_match( \Nino\Components::NAME, $value ) === 1;
+
+			foreach( $note ?? [] as $group => $entry ) {
+
+				if( $slug( $group ) === false || is_array( $entry ) === false )
+					continue;
+
+				if( array_keys( $entry ) === [ 'own' ] && $slug( $entry['own'] ) === true )
+					$origin[$group] = [ 'own' => $entry['own'] ];
+				else if( array_keys( $entry ) === [ 'theme', 'version' ] && $slug( $entry['theme'] ) === true && is_string( $entry['version'] ) === true && ( $entry['version'] === '' || preg_match( '/^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[A-Za-z0-9.]{1,20})?$/D', $entry['version'] ) === 1 ) )
+					$origin[$group] = [ 'theme' => $entry['theme'], 'version' => $entry['version'] ];
+			}
+
+			return $origin;
 		}
 
 		/**
@@ -90,7 +131,7 @@ namespace Nino\Modules\Themes {
 		 */
 		public static function stamp( array &$appData ): string {
 
-			$state = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/state' );
+			$state = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/current' );
 
 			return is_dir( $state ) === true ? self::_digest( $state ) : '';
 		}
@@ -114,12 +155,35 @@ namespace Nino\Modules\Themes {
 			$key = $saved['theme'];
 			$name = '';
 
-			if( str_starts_with( $key, 'own:' ) === true && preg_match( \Nino\Components::NAME, substr( $key, 4 ) ) === 1 )
-				$name = (string) ( Reader::own( $appData )['themes'][substr( $key, 4 )]['label'] ?? substr( $key, 4 ) );
-			else if( $key !== '' )
-				$name = Reader::read( $appData )['themes'][$key]['name'] ?? $key;
+			// The name of the theme is the one in the copy that state holds: the theme may be gone or have another name since
+			if( $key !== '' )
+				$name = self::_load( $appData, $dir. '/theme/theme.json' )['name'] ?? ( str_starts_with( $key, 'own:' ) === true ? substr( $key, 4 ) : $key );
 
 			return [ 'at' => $saved['at'], 'theme' => $key, 'name' => $name ];
+		}
+
+		/**
+		 *	Whether a directory is a state of the website: it is there, and is not one of the form the states had before they held the theme they were built from - which
+		 *	has an own/ folder, or a saved.json that says no format - and is left as it is, unread
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$virtual			The virtual path of the directory
+		 *
+		 *	@return 	bool
+		 */
+		private static function _isState( array &$appData, string $virtual ): bool {
+
+			$path = \Nino\Filesystem::path( $appData, $virtual );
+
+			if( is_dir( $path ) === false )
+				return false;
+
+			if( is_dir( $path. '/own' ) === true || is_dir( $path. '/copies' ) === true )
+				return false;
+
+			$saved = self::_load( $appData, $virtual. '/saved.json' );
+
+			return $saved === null || ( $saved['format'] ?? 0 ) === self::FORMAT;
 		}
 
 		/**
@@ -216,7 +280,7 @@ namespace Nino\Modules\Themes {
 
 			unset( $appData['./nino/themes/variants'], $appData['./nino/themes/read'], $appData['./nino/themes/own'] );
 
-			foreach( [ 'state', 'previous' ] as $folder ) {
+			foreach( [ 'current', 'previous' ] as $folder ) {
 
 				$file = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/'. $folder. '/variants.php' );
 
@@ -246,7 +310,9 @@ namespace Nino\Modules\Themes {
 				$failure = self::_commit( $appData, $change, $force );
 
 				// What the change did to the folder of an own theme is settled here, with the lock held: no request that is made whole in between sees the folder half way
-				Mix::settle( $appData, $failure === null );
+				// A break after the new state was put in place - its stylesheet could not be written - leaves a state that holds the change: the folder goes with it
+				$id = Mix::pending( $appData );
+				Mix::settle( $appData, $failure === null || ( $id !== null && self::holds( $appData, $id ) === true ) );
 
 				return $failure;
 			}
@@ -278,18 +344,22 @@ namespace Nino\Modules\Themes {
 					return [ 409, 'the themes were changed since they were opened', 'themes_state', [], '' ];
 
 				$dir = \Nino\Modules\Themes::DIR;
-				$state = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/state' );
+				$state = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/current' );
 				$previous = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/previous' );
 				$swap = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/swap' );
 
-				if( is_dir( $previous ) === false )
+				if( self::_isState( $appData, $dir. '/previous' ) === false )
 					return [ 409, 'there is no last state', 'themes_nothing', [], '' ];
 
-				// The own themes are not part of a state: a last state that shows an own theme which is gone since cannot be put back
-				$shown = (string) ( self::_load( $appData, $dir. '/previous/active.json' )['theme'] ?? '' );
+				if( ( $stuck = self::_leftover( $appData, [ 'swap' ] ) ) !== null )
+					return $stuck;
 
-				if( str_starts_with( $shown, 'own:' ) === true && isset( Reader::own( $appData, true )['themes'][substr( $shown, 4 )] ) === false )
-					return [ 409, 'the own theme of the last state is gone', 'themes_gone', [ substr( $shown, 4 ) ], '' ];
+				// The stylesheet of the state that comes back is built anew from the theme it holds, as every change builds it: a stylesheet that was made
+				// before a rule was and says what the rule refuses is not put on the website
+				$failure = self::_renew( $appData );
+
+				if( $failure !== null )
+					return $failure;
 
 				$foreign = self::_foreign( $appData, $state. '/theme.css', $force );
 
@@ -304,12 +374,12 @@ namespace Nino\Modules\Themes {
 
 				// Three steps, and a break between any two of them is mended by _heal(): the state is put aside, the last state takes
 				// its place, and the stylesheet follows before the one put aside is the last state
-				if( rename( $state, $swap ) === false || rename( $previous, $state ) === false )
+				if( @rename( $state, $swap ) === false || @rename( $previous, $state ) === false )
 					return [ 500, 'the states could not be swapped', '', [], '' ];
 
 				$failure = self::_sync( $appData, $state, $swap, $foreign );
 
-				if( rename( $swap, $previous ) === false )
+				if( @rename( $swap, $previous ) === false )
 					return [ 500, 'the states could not be swapped', '', [], '' ];
 
 				return $failure;
@@ -318,6 +388,54 @@ namespace Nino\Modules\Themes {
 				self::_forget( $appData );
 				\Nino\Filesystem::unlockFile( $appData, \Nino\Modules\Themes::DIR. '/state.lock' );
 			}
+		}
+
+		/**
+		 *	The last state, built anew with the lock held: a copy of it is built from the theme it holds, and where that is not what the state holds - another
+		 *	stylesheet, other variants, the stamps of the register - the copy is the last state
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array|null								null where it is done, else [ status, message, code, params, field ]
+		 */
+		private static function _renew( array &$appData ): ?array {
+
+			$dir = \Nino\Modules\Themes::DIR;
+			$previous = \Nino\Filesystem::path( $appData, $dir. '/previous' );
+			$building = \Nino\Filesystem::path( $appData, $dir. '/building' );
+			$gone = \Nino\Filesystem::path( $appData, $dir. '/gone' );
+
+			// A state that shows no theme has nothing to build - and its theme.css, where it has one, is the stylesheet that somebody else wrote, kept as it was
+			if( is_string( self::_load( $appData, $dir. '/previous/active.json' )['theme'] ?? null ) === false )
+				return null;
+
+			if( ( $stuck = self::_leftover( $appData, [ 'building', 'gone' ] ) ) !== null )
+				return $stuck;
+
+			if( self::_copy( $previous, $building ) === false ) {
+				self::_clear( $building );
+				return [ 500, 'the last state could not be copied', '', [], '' ];
+			}
+
+			$failure = self::_build( $appData, $dir. '/building' );
+
+			if( $failure !== null ) {
+				self::_clear( $building );
+				return $failure;
+			}
+
+			if( self::_digest( $previous ) === self::_digest( $building ) ) {
+				self::_clear( $building );
+				return null;
+			}
+
+			// The last state is put aside and not removed: a break between the two steps is mended by _heal()
+			if( @rename( $previous, $gone ) === false || @rename( $building, $previous ) === false )
+				return [ 500, 'the states could not be swapped', '', [], '' ];
+
+			self::_clear( $gone );
+
+			return null;
 		}
 
 		/**
@@ -334,7 +452,7 @@ namespace Nino\Modules\Themes {
 		private static function _heal( array &$appData ): bool {
 
 			$base = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR );
-			[ $state, $previous, $next, $gone, $swap, $building ] = array_map( static fn( string $name ): string => $base. '/'. $name, [ 'state', 'previous', 'next', 'gone', 'swap', 'building' ] );
+			[ $state, $previous, $next, $gone, $swap, $building ] = array_map( static fn( string $name ): string => $base. '/'. $name, [ 'current', 'previous', 'next', 'gone', 'swap', 'building' ] );
 			$mended = false;
 
 			if( is_dir( $base ) === false )
@@ -344,13 +462,13 @@ namespace Nino\Modules\Themes {
 
 				// A change that was past its second rename: the state it made is whole, and it is the state
 				if( is_dir( $next ) === true )
-					$mended = rename( $next, $state );
+					$mended = @rename( $next, $state );
 				// A swap that was begun and not carried on: the state put aside is the state once more
 				else if( is_dir( $swap ) === true )
-					$mended = rename( $swap, $state );
+					$mended = @rename( $swap, $state );
 				// Nothing else of it is left: the last state is the state, and nothing is lost that was not lost already
-				else if( is_dir( $previous ) === true )
-					$mended = rename( $previous, $state );
+				else if( self::_isState( $appData, \Nino\Modules\Themes::DIR. '/previous' ) === true )
+					$mended = @rename( $previous, $state );
 			}
 
 			if( is_dir( $state ) === true ) {
@@ -359,16 +477,16 @@ namespace Nino\Modules\Themes {
 				if( is_dir( $swap ) === true ) {
 
 					if( is_dir( $previous ) === false )
-						rename( $swap, $previous );
+						@rename( $swap, $previous );
 					else
-						\Nino\Filesystem::removeDir( $swap );
+						self::_clear( $swap );
 
 					$mended = true;
 				}
 
 				// A change that was broken off after the last state was put aside, before the state was: the last state is back
 				if( is_dir( $previous ) === false && is_dir( $gone ) === true ) {
-					rename( $gone, $previous );
+					@rename( $gone, $previous );
 					$mended = true;
 				}
 			}
@@ -376,7 +494,7 @@ namespace Nino\Modules\Themes {
 			if( is_dir( $state ) === true )
 				foreach( [ $gone, $building, $next ] as $left )
 					if( is_dir( $left ) === true ) {
-						\Nino\Filesystem::removeDir( $left );
+						self::_clear( $left );
 						$mended = true;
 					}
 
@@ -396,15 +514,30 @@ namespace Nino\Modules\Themes {
 		 */
 		public static function heal( array &$appData ): bool {
 
-			$mended = self::_healOwn( $appData );
+			// The states first: whether a change of a folder holds is told by the state that is in place
+			$mended = self::_healStates( $appData );
+
+			return self::_healOwn( $appData ) || $mended;
+		}
+
+		/**
+		 *	The states of heal(): where the state is not there and the themes are - or the last state is put aside and not in its place - they are made whole, with the lock taken
+		 *	and not waited for
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool											Whether it mended something
+		 */
+		private static function _healStates( array &$appData ): bool {
+
 			$base = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR );
 
-			if( is_dir( $base ) === false || ( is_dir( $base. '/state' ) === true && is_dir( $base. '/gone' ) === false && is_dir( $base. '/swap' ) === false )
+			if( is_dir( $base ) === false || ( is_dir( $base. '/current' ) === true && is_dir( $base. '/gone' ) === false && is_dir( $base. '/swap' ) === false )
 				|| \Nino\Filesystem::lockFile( $appData, \Nino\Modules\Themes::DIR. '/state.lock', false ) === false )
-				return $mended;
+				return false;
 
 			try {
-				$mended = self::_heal( $appData ) || $mended;
+				$mended = self::_heal( $appData );
 				self::_forget( $appData );
 
 				return $mended;
@@ -446,18 +579,23 @@ namespace Nino\Modules\Themes {
 		private static function _commit( array &$appData, callable $change, bool $force ): ?array {
 
 			$dir = \Nino\Modules\Themes::DIR;
-			$state = \Nino\Filesystem::path( $appData, $dir. '/state' );
+			$state = \Nino\Filesystem::path( $appData, $dir. '/current' );
 			$previous = \Nino\Filesystem::path( $appData, $dir. '/previous' );
 			$next = \Nino\Filesystem::path( $appData, $dir. '/next' );
 			$gone = \Nino\Filesystem::path( $appData, $dir. '/gone' );
 			$building = \Nino\Filesystem::path( $appData, $dir. '/building' );
 
 			// What a break left is mended and what is left over is gone: nothing is made on a state that is not whole
-			if( is_dir( $building ) === true )
-				\Nino\Filesystem::removeDir( $building );
+			if( ( $stuck = self::_leftover( $appData, [ 'building', 'next', 'gone' ] ) ) !== null )
+				return $stuck;
 
-			if( is_dir( $state ) === true )
-				\Nino\Filesystem::copyDir( $state, $building );
+			if( is_dir( $state ) === true ) {
+
+				if( self::_copy( $state, $building ) === false ) {
+					self::_clear( $building );
+					return [ 500, 'the state could not be copied', '', [], '' ];
+				}
+			}
 			else
 				@mkdir( $building, 0755, true );
 
@@ -467,60 +605,75 @@ namespace Nino\Modules\Themes {
 				$failure = self::_build( $appData, $dir. '/building' );
 
 			if( $failure !== null ) {
-				\Nino\Filesystem::removeDir( $building );
+				self::_clear( $building );
 				return $failure;
 			}
 
 			// The same state as before: nothing is moved, and the last state stays the last
 			if( is_dir( $state ) === true && self::_digest( $state ) === self::_digest( $building ) ) {
-				\Nino\Filesystem::removeDir( $building );
+				self::_clear( $building );
 				return self::_sync( $appData, $state, $previous, self::_foreign( $appData, $state. '/theme.css', $force ) );
 			}
 
 			$foreign = is_file( $building. '/theme.css' ) === true ? self::_foreign( $appData, $building. '/theme.css', $force ) : null;
 
 			if( is_array( $foreign ) === true ) {
-				\Nino\Filesystem::removeDir( $building );
+				self::_clear( $building );
 				return $foreign;
 			}
 
 			// A stylesheet that cannot be put in place is found out before anything is moved: a state that is written and said not to be saved is a
 			// state the person does not know they have
 			if( self::_replaceable( $appData, $building, $foreign ) === false ) {
-				\Nino\Filesystem::removeDir( $building );
+				self::_clear( $building );
 				return [ 409, 'the stylesheet of the project cannot be replaced', 'themes_locked', [], '' ];
 			}
 
 			// When it was saved and what the website showed, for the one who reads what the last state is; it is no part of what the state says, so it
 			// is written after the states were compared
-			\Nino\Filesystem::putFileContent( $appData, $dir. '/building/saved.json', [ 'at' => time(), 'theme' => (string) ( self::_load( $appData, $dir. '/building/active.json' )['theme'] ?? '' ) ] );
+			// The change of a folder of an own theme that goes with this state - the number of its journal - is written into the state itself: the state that has it is the state
+			// that holds the change, and that is how a request that is broken off is told, by the next one, which way the folder goes (Mix::heal())
+			$saved = [ 'at' => time(), 'theme' => (string) ( self::_load( $appData, $dir. '/building/active.json' )['theme'] ?? '' ), 'format' => self::FORMAT ];
+
+			if( ( $change = Mix::pending( $appData ) ) !== null )
+				$saved['change'] = $change;
+
+			\Nino\Filesystem::putFileContent( $appData, $dir. '/building/saved.json', $saved );
 
 			// The new state is whole from the day it is called next: that name is what _heal() takes it by
-			if( rename( $building, $next ) === false )
+			if( @rename( $building, $next ) === false )
 				return [ 500, 'the state could not be saved', '', [], '' ];
 
 			if( is_dir( $state ) === false )
 				@mkdir( $state, 0755, true );
 
+			// A last state of the days before the states held their theme is not one: it is put aside as it is, unread, and is none of the states
+			if( is_dir( $previous ) === true && self::_isState( $appData, $dir. '/previous' ) === false ) {
+
+				$aside = \Nino\Filesystem::path( $appData, $dir. '/legacy-previous' );
+
+				if( file_exists( $aside ) === true )
+					$aside .= '-'. time();
+
+				if( @rename( $previous, $aside ) === false )
+					return [ 500, 'the state could not be saved', '', [], '' ];
+			}
+
 			// The last state is put aside and not removed: while there is no state, it is what a break would need
-			if( is_dir( $previous ) === true && rename( $previous, $gone ) === false )
+			if( is_dir( $previous ) === true && @rename( $previous, $gone ) === false )
 				return [ 500, 'the state could not be saved', '', [], '' ];
 
-			if( rename( $state, $previous ) === false )
+			if( @rename( $state, $previous ) === false )
 				return [ 500, 'the state could not be saved', '', [], '' ];
-
-			// The state is gone from its place and the new one is whole under its name: from here on a request that is broken off is made whole to the new state (_heal() takes it) - the change
-			// holds, and the folder of an own theme that went with it is settled to that
-			Mix::decide( $appData );
 
 			// The stylesheet before the new state has its name, so that a break after it leaves a state and a stylesheet that belong together
 			$failure = self::_sync( $appData, $next, $previous, $foreign );
 
-			if( rename( $next, $state ) === false )
+			if( @rename( $next, $state ) === false )
 				return [ 500, 'the state could not be saved', '', [], '' ];
 
 			if( is_dir( $gone ) === true )
-				\Nino\Filesystem::removeDir( $gone );
+				self::_clear( $gone );
 
 			return $failure;
 		}
@@ -545,34 +698,27 @@ namespace Nino\Modules\Themes {
 				return null;
 			}
 
-			if( str_starts_with( $active['theme'], 'own:' ) === true ) {
-
-				$key = substr( $active['theme'], 4 );
-				$mix = preg_match( \Nino\Components::NAME, $key ) === 1 ? Mix::ofOwn( $appData, $key ) : null;
-			}
-			else
-				$mix = is_array( $active['mix'] ?? null ) === true ? $active['mix'] : Mix::of( $appData, $active['theme'] );
-
-			if( is_array( $mix ) === false ) {
-
-				// An own theme that is gone - its folder was taken away by hand, or it is one of the days before the themes were folders - leaves the stylesheet as it is for a change that
-				// does not touch the brand: a copy, a theme that is saved, a theme that is deleted are not stopped by it. A theme that is applied is one that is there
-				if( str_starts_with( $active['theme'], 'own:' ) === true && self::_kept( $appData, $next, [ 'brand.json' ] ) === true )
-					return null;
-
-				return [ 404, 'the theme is not there: '. $active['theme'], 'themes_unknown', [ $active['theme'] ], '' ];
-			}
-
-			// A state is files, and what is in files is checked as what is posted is
-			$mix = Mix::clean( $appData, $mix, false );
-
-			if( is_string( $mix ) === true )
-				return [ 409, 'the mix of the active theme is refused: '. $mix, 'themes_mix', [ $mix, Mix::where( $mix ) ], '' ];
-
+			// The website is built from the copy of its theme that the state holds, and from nothing else: no folder of an own theme, no package. A state is files, and
+			// what is in files is checked as what is posted is
+			$folder = \Nino\Filesystem::path( $appData, $next. '/theme' );
 			$brand = Brand::read( $appData, self::_load( $appData, $next. '/brand.json' ) );
-			$built = Compiler::compile( $appData, $mix, $brand );
+			$built = Reader::using( $appData, $folder, static function( array|string $theme ) use ( &$appData, $active, $brand ): array {
 
-			self::keep( $appData, $built['plan'] );
+				if( is_string( $theme ) === true )
+					return [ 'failure' => [ 409, 'the state holds no theme: '. $theme, 'themes_unknown', [ (string) $active['theme'] ], '' ] ];
+
+				$mix = Mix::clean( $appData, Mix::ofCurrent( $appData, $theme ), false );
+
+				if( is_string( $mix ) === true )
+					return [ 'failure' => [ 409, 'the mix of the active theme is refused: '. $mix, 'themes_mix', [ $mix, Mix::where( $mix ) ], '' ] ];
+
+				return [ 'built' => Compiler::compile( $appData, $mix, $brand ) ];
+			} );
+
+			if( isset( $built['failure'] ) === true )
+				return $built['failure'];
+
+			$built = $built['built'];
 
 			$active['built'] = Compiler::stamp( $built['css'] );
 			$active['gone'] = $built['gone'];
@@ -585,71 +731,6 @@ namespace Nino\Modules\Themes {
 				return [ 500, 'the stylesheet could not be written', '', [], '' ];
 
 			return null;
-		}
-
-		/**
-		 *	Whether files of the state that is being made are the files of the state as it stands
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$next					The virtual path of the state being made
-		 *	@param		array			$names				The names of the files
-		 *
-		 *	@return 	bool
-		 */
-		private static function _kept( array &$appData, string $next, array $names ): bool {
-
-			foreach( $names as $name ) {
-
-				$then = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/state/'. $name );
-				$now = \Nino\Filesystem::path( $appData, $next. '/'. $name );
-
-				if( ( is_file( $then ) === true ? (string) @sha1_file( $then ) : '' ) !== ( is_file( $now ) === true ? (string) @sha1_file( $now ) : '' ) )
-					return false;
-			}
-
-			return true;
-		}
-
-		/**
-		 *	A copy of each part a mix takes from a theme that is installed, where the project has none yet: theme.json of the theme and
-		 *	the folder of the part. Only a part the reader read and accepted is copied, and as the text it was read as - written, never
-		 *	copied as a file, which would follow a link to what the theme has no business with - so that a part that rests has no copy
-		 *	to be taken for a good one at the next build. What is there is never overwritten, so a copy is the version it was made
-		 *	from, and a part is copied when a theme of the project - the active one, an own one - names it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$plan					As Compiler::plan() answers it
-		 *
-		 *	@return 	void
-		 */
-		public static function keep( array &$appData, array $plan ): void {
-
-			$entries = [ 'page' => $plan['page'] ] + $plan['groups'];
-
-			foreach( $entries as $group => $entry ) {
-
-				if( $entry['origin'] !== 'installed' || $entry['part'] === null || preg_match( \Nino\Components::NAME, (string) $group ) !== 1 )
-					continue;
-
-				$theme = Reader::theme( $entry['dir'], '' );
-				$raw = is_array( $theme ) === true ? ( $theme['raw'][$group] ?? null ) : null;
-
-				if( $raw === null || Reader::check( $appData, (string) $group, $raw )['ok'] !== true )
-					continue;
-
-				$into = \Nino\Modules\Themes::DIR. '/copies/'. $entry['theme']. '@'. $entry['version'];
-
-				if( is_dir( \Nino\Filesystem::path( $appData, $into. '/parts/'. $group ) ) === true )
-					continue;
-
-				if( is_file( \Nino\Filesystem::path( $appData, $into. '/theme.json' ) ) === false )
-					\Nino\Filesystem::putFileContent( $appData, $into. '/theme.json', [ 'key' => $theme['key'], 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'] ] );
-
-				\Nino\Filesystem::putFileContent( $appData, $into. '/parts/'. $group. '/part.json', $raw['json'] );
-
-				if( trim( $raw['css'] ) !== '' )
-					\Nino\Filesystem::putFileContent( $appData, $into. '/parts/'. $group. '/part.css', $raw['css'] );
-			}
 		}
 
 		/**
@@ -761,6 +842,109 @@ namespace Nino\Modules\Themes {
 			@unlink( $probe );
 
 			return true;
+		}
+
+		/**
+		 *	A directory of the states taken away, links and all: a link - to a file or to a folder, at any depth - is removed as the link it is, with unlink(), and is never entered, so that what it
+		 *	points at is not touched; what is left is removed after. The directories of the states are the store's, but a link can be put into them by hand, and removeDir() of the kernel leaves a link
+		 *	to a folder where it is - which a directory that is then not empty keeps from being renamed over
+		 *
+		 *	@param		string		$path					The real path
+		 *	@param		int				$depth				How deep it has gone: the states are shallow, and a directory that is deeper than any of them is left
+		 *
+		 *	@return 	bool											Whether nothing of it is left
+		 */
+		private static function _clear( string $path, int $depth = 0 ): bool {
+
+			if( is_link( $path ) === true || is_file( $path ) === true )
+				return @unlink( $path );
+
+			if( is_dir( $path ) === false )
+				return true;
+
+			if( $depth > 16 )
+				return false;
+
+			$done = true;
+
+			foreach( (array) @scandir( $path ) as $entry )
+				if( $entry !== '.' && $entry !== '..' )
+					$done = self::_clear( $path. '/'. $entry, $depth + 1 ) && $done;
+
+			return @rmdir( $path ) && $done;
+		}
+
+		/**
+		 *	What an earlier change left in the directories a change is made in - the one it builds in, the one it is called when it is whole, the one the last state is put aside in - taken away
+		 *	before a change goes on: a change is never made over what is left of another
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$names				The names of the directories
+		 *
+		 *	@return 	array|null								null where nothing is left; else the failure: a directory that cannot be taken away is said, and the change is not made
+		 */
+		private static function _leftover( array &$appData, array $names ): ?array {
+
+			foreach( $names as $name ) {
+
+				$path = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/'. $name );
+
+				if( file_exists( $path ) === true || is_link( $path ) === true )
+					self::_clear( $path );
+
+				if( file_exists( $path ) === true || is_link( $path ) === true )
+					return [ 409, 'a folder of an earlier change is left and cannot be taken away: '. $name, 'themes_stuck', [ $name ], '' ];
+			}
+
+			return null;
+		}
+
+		/**
+		 *	Whether the state that is in place holds the change of a folder: its saved.json has the number of the change. The change is what the state was made with - a request that
+		 *	is broken off before the state is in place leaves the state that was, which has no such number
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$id					The number of the change, as the journal has it
+		 *
+		 *	@return 	bool
+		 */
+		public static function holds( array &$appData, string $id ): bool {
+
+			$dir = \Nino\Modules\Themes::DIR;
+
+			// The state that was made is in place, or - the request was broken off between the two renames - is the one that is called next while none is in place
+			$where = is_dir( \Nino\Filesystem::path( $appData, $dir. '/current' ) ) === true ? '/current' : '/next';
+
+			return ( self::_load( $appData, $dir. $where. '/saved.json' )['change'] ?? null ) === $id;
+		}
+
+		/**
+		 *	A state copied: the files a state has, and the copy of the theme it holds as a package has its files - one source for both, the positive list of Mix::copy(). Files only: a
+		 *	link is not followed and is not copied, a file that a state does not have is not taken, whatever it is called; a state whose copy of the theme is a link has no copy
+		 *	of the theme - it is a state that holds no theme to read, which a change that needs it refuses (themes_unknown) as it refuses a state whose copy is gone
+		 *
+		 *	@param		string		$from					The real path of the state
+		 *	@param		string		$to						The real path of the copy, which is made
+		 *
+		 *	@return 	bool											Whether it was copied
+		 */
+		private static function _copy( string $from, string $to ): bool {
+
+			if( is_link( $from ) === true || is_dir( $from ) === false || ( is_dir( $to ) === false && @mkdir( $to, 0755, true ) === false ) )
+				return false;
+
+			foreach( self::FILES as $file ) {
+
+				if( is_link( $from. '/'. $file ) === true || is_file( $from. '/'. $file ) === false || filesize( $from. '/'. $file ) > self::STATE_FILE )
+					continue;
+
+				$text = self::readable( $from. '/'. $file ) === true ? self::quietRead( $from. '/'. $file ) : false;
+
+				if( $text === false || @file_put_contents( $to. '/'. $file, $text ) === false )
+					return false;
+			}
+
+			return is_link( $from. '/theme' ) === true || is_dir( $from. '/theme' ) === false || Mix::copy( $from. '/theme', $to. '/theme' );
 		}
 
 		/**

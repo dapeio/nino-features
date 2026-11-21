@@ -14,7 +14,8 @@ namespace Nino\Modules\Themes {
 	//	themes/brand		the brand alone: the project's, whichever theme is open
 	//	themes/save-as	a new own theme - a new folder - from a draft
 	//	themes/duplicate	a new own theme from a theme as it is saved: a copy of its folder; the brand is the project's and is not copied
-	//	themes/apply		the website shows a theme
+	//	themes/apply		the website shows a theme: a copy of it, in the form of a package, is the state of the website
+	//	themes/keep			the state of the website saved as an own theme: a folder made of the copy it holds
 	//	themes/restore	the last state in place of this one, and this one in place of the last - asked with the state it was seen in
 	//	themes/delete		an own theme: its folder is taken away
 	//	themes/upload-check	a theme package that was chosen, read and checked, and what is in it - nothing is written; the bytes are held for this session and this account
@@ -42,6 +43,7 @@ namespace Nino\Modules\Themes {
 				'themes/duplicate'	=> [ self::class, 'apiDuplicate' ],
 				'themes/brand'		=> [ self::class, 'apiBrand' ],
 				'themes/apply'		=> [ self::class, 'apiApply' ],
+				'themes/keep'		=> [ self::class, 'apiKeep' ],
 				'themes/restore'	=> [ self::class, 'apiRestore' ],
 				'themes/delete'		=> [ self::class, 'apiDelete' ],
 				'themes/upload-check'	=> [ self::class, 'apiUploadCheck' ],
@@ -91,6 +93,7 @@ namespace Nino\Modules\Themes {
 				'themes/save-as'	=> 'Save Theme As '. self::_shown( (string) ( is_array( $data['mix'] ?? null ) === true ? \Nino\Admin\Admin::postString( $data['mix'], 'name' ) : '' ) ),
 				'themes/duplicate'	=> 'Duplicate Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ). ' As '. self::_shown( \Nino\Admin\Admin::postString( $data, 'name' ) ),
 				'themes/apply'		=> 'Apply Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
+				'themes/keep'			=> 'Keep Website State As Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'name' ) ),
 				'themes/restore'	=> 'Restore Last Theme State',
 				'themes/delete'		=> 'Delete Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				'themes/upload'		=> 'Upload Theme',
@@ -322,7 +325,13 @@ namespace Nino\Modules\Themes {
 					if( (string) $other !== $key && self::_sameName( (string) $prepared['mix']['name'], $name ) === true )
 						return [ 409, 'an own theme of that name is there', 'themes_name_taken', [ $name ], 'name' ];
 
-				return self::_write( $appData, $next, $key, $prepared, $current, true );
+				if( ( $failure = self::_write( $appData, $next, $key, $prepared, $current, true ) ) !== null )
+					return $failure;
+
+				// The theme that is on the website is a copy in the state: where this is the one, the copy is made anew, so that what is saved is what the website shows
+				$active = \Nino\Filesystem::getFileContent( $appData, $next. '/active.json', [] );
+
+				return is_array( $active ) === true && ( $active['theme'] ?? '' ) === 'own:'. $key ? self::_hold( $appData, $next, 'own:'. $key ) : null;
 			}, ( $data['force'] ?? false ) === true );
 
 			self::_finish( $appData, $request, $theme, $failure );
@@ -439,8 +448,8 @@ namespace Nino\Modules\Themes {
 
 			$key = $theme['key'];
 
-			// A theme of a package is applied as the mix it is at that time, kept in the state: the site does not hang on the package. An own theme
-			// is applied as the one who asks saw it - the stamp is looked at with the lock held, as it is at a save, and force is no answer to it
+			// The theme is copied into the state, in the form of a package, and the stylesheet is built from the copy: the site hangs on neither the package nor the folder of an own
+			// theme. An own theme is applied as the one who asks saw it - the stamp is looked at with the lock held, as it is at a save, and force is no answer to it
 			self::_finish( $appData, $request, $key, Store::commit( $appData, static function( array &$appData, string $next ) use ( $key, $theme, $data ): ?array {
 
 				if( $theme['kind'] === 'own' ) {
@@ -451,10 +460,92 @@ namespace Nino\Modules\Themes {
 						return self::_changedFailure( (string) ( $current['label'] ?? substr( $key, 4 ) ) );
 				}
 
-				$active = [ 'theme' => $key ] + ( $theme['kind'] === 'theme' ? [ 'mix' => $theme['mix'] ] : [] );
-
-				return \Nino\Filesystem::putFileContent( $appData, $next. '/active.json', $active ) === true ? null : [ 500, 'the state could not be written', '', [], '' ];
+				return self::_hold( $appData, $next, $key );
 			}, ( $data['force'] ?? false ) === true ) );
+		}
+
+		/**
+		 *	The state of the website saved as an own theme: its name is asked, its folder is made of the copy of the theme the state holds - every part, byte for byte, the
+		 *	licence and the readme - and the state is then that theme: the stylesheet is the one it was, the website shows the own theme, and the note of where each part came
+		 *	from is gone, since the theme holds them. Asked with the state it was seen in, as a restore is
+		 */
+		public static function apiKeep( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$state = Store::read( $appData );
+
+			if( $state['held'] === null || $state['active'] === null ) {
+				self::_fail( $request, [ 409, 'the website shows no theme to keep', 'themes_none_held', [], '' ] );
+				return;
+			}
+
+			$named = Mix::clean( $appData, [ 'name' => \Nino\Admin\Admin::postString( $data, 'name' ) ], true );
+
+			if( is_string( $named ) === true ) {
+				self::_fail( $request, [ 400, 'the mix is refused: '. $named, 'themes_mix', [ $named, Mix::where( $named ) ], 'name' ] );
+				return;
+			}
+
+			$made = '';
+			$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( &$made, $named, $data ): ?array {
+
+				// The state the one who asks has seen, looked at with the lock held: a change that came between is not kept unseen
+				if( is_string( $data['base'] ?? null ) === false || hash_equals( Store::stamp( $appData ), $data['base'] ) === false )
+					return [ 409, 'the themes were changed since they were opened', 'themes_state', [], '' ];
+
+				return Reader::using( $appData, \Nino\Filesystem::path( $appData, $next. '/theme' ), static function( array|string $held ) use ( &$appData, $next, $named, &$made ): ?array {
+
+					if( is_string( $held ) === true )
+						return [ 409, 'the state holds no theme: '. $held, 'themes_none_held', [], '' ];
+
+					$mix = Mix::ofCurrent( $appData, $held );
+					$mix['name'] = $named['name'];
+					$prepared = self::_prepare( $appData, [ 'mix' => $mix ], [] );
+
+					if( isset( $prepared['failure'] ) === true )
+						return $prepared['failure'];
+
+					if( ( $failure = self::_create( $appData, $next, $prepared, $held, $made ) ) !== null )
+						return $failure;
+
+					@unlink( \Nino\Filesystem::path( $appData, $next. '/origin.json' ) );
+
+					return \Nino\Filesystem::putFileContent( $appData, $next. '/active.json', [ 'theme' => 'own:'. $made ] ) === true ? null : [ 500, 'the state could not be written', '', [], '' ];
+				} );
+			}, ( $data['force'] ?? false ) === true );
+
+			self::_finish( $appData, $request, 'own:'. $made, $failure );
+		}
+
+		/**
+		 *	A theme copied into the state that is being made: the folder of the theme - an installed one or an own one - in the form of a package, as the theme the website
+		 *	shows, and the note of where each of its parts comes from; the stylesheet is built from it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$next					The virtual path of the state
+		 *	@param		string		$key					The key of an installed theme, or own:<key>
+		 *
+		 *	@return 	array|null
+		 */
+		private static function _hold( array &$appData, string $next, string $key ): ?array {
+
+			$own = str_starts_with( $key, 'own:' ) === true;
+			$source = $own === true ? Reader::own( $appData, true )['themes'][substr( $key, 4 )]['dir'] ?? '' : Reader::read( $appData )['themes'][$key]['dir'] ?? '';
+			$into = \Nino\Filesystem::path( $appData, $next. '/theme' );
+
+			\Nino\Filesystem::removeDir( $into );
+
+			if( $source === '' || Mix::copy( $source, $into ) === false )
+				return [ 500, 'the theme could not be copied into the state', '', [], '' ];
+
+			if( \Nino\Filesystem::putFileContent( $appData, $next. '/origin.json', Mix::origins( $appData, $key ) ) === false
+				|| \Nino\Filesystem::putFileContent( $appData, $next. '/active.json', [ 'theme' => $key ] ) === false )
+				return [ 500, 'the state could not be written', '', [], '' ];
+
+			return null;
 		}
 
 		public static function apiRestore( array &$appData, array &$request ): void {
@@ -1095,6 +1186,7 @@ namespace Nino\Modules\Themes {
 				'canRestore'	=> $state['previous'],
 				'last'			=> $state['previous'] === true ? Store::last( $appData ) : null,
 				'state'			=> Store::stamp( $appData ),
+				'current'		=> [ 'theme' => $active === null ? '' : $active['theme'], 'name' => $state['held']['name'] ?? '', 'origin' => $state['origin'] === [] ? new \stdClass() : $state['origin'] ],
 				'brandStamp'	=> self::_stamp( $state['brand'] ),
 			];
 		}

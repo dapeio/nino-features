@@ -52,6 +52,9 @@ namespace Nino\Modules\Themes {
 		// <key>/theme.json
 		public const string ROOTS = '/nino/themes/roots';
 
+		// The copy of the theme the website shows while the store builds from it: the theme as folder() read it, or the reason it is none (see using())
+		private static array|string|null $_current = null;
+
 		// What a theme.json and a part.json may say, and the tokens of the page a knob of it may set (the fixed set of the
 		// contract, S1)
 		private const array THEME_KEYS = [ 'key', 'version', 'name', 'description', 'brand' ];
@@ -119,8 +122,8 @@ namespace Nino\Modules\Themes {
 			'variants-shape'		=> 'variants of "%s": a variant is a slug with a label, a string or a locale => string map',
 			'standard'					=> 'standard of "%s": the component of the group and one of its variants',
 			'css'								=> 'the css of the part breaks the rules of a part: %s',
-			'copy-refused'			=> 'the copy of %s is refused: %s',
-			'not-installed'			=> 'the theme %s is not installed and the project holds no copy of it',
+			'not-installed'			=> 'the theme %s is not installed',
+			'no-current'				=> 'the state of the website holds no theme',
 		];
 
 		private const string VERSION = '/^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[A-Za-z0-9.]{1,20})?$/D';
@@ -375,7 +378,7 @@ namespace Nino\Modules\Themes {
 		 *	only where they are files of the folder itself
 		 *
 		 *	@param		string		$folder				The directory
-		 *	@param		string		$name					What its key has to be; '' for a copy, whose folder is <key>@<version>
+		 *	@param		string		$name					What its key has to be; '' for the copy of the theme the website shows, whose folder is not named by it
 		 *
 		 *	@return 	array|string							The theme, with 'raw' => group => [ 'json', 'css', 'problem' ], or why it is none
 		 */
@@ -548,52 +551,97 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
-		 *	The part of a group of a theme the way a mix says it, 'craft@1.0.0' or the bare key: the copy the project holds of that
-		 *	version, else the installed theme of that version (the one there is, for a bare key). The website never hangs on the
-		 *	installed package - a copy there is what is used
+		 *	The part of a group of a theme the way a mix says it: 'craft@1.0.0' or the bare key - the installed theme of that version, the one there is for a bare key -,
+		 *	'own:<key>' - the folder of an own theme - or 'current' - the copy of the theme the website shows, which the store builds the stylesheet from while it
+		 *	holds it (using()). The website never hangs on an installed package: what it shows is the copy in the state
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$from					'<key>@<version>' or '<key>'
+		 *	@param		string		$from					'<key>@<version>', '<key>', 'own:<key>' or 'current'
 		 *	@param		string		$group
 		 *
-		 *	@return 	array											'theme' => key, 'version' => ..., 'origin' => 'copy'|'installed'|'', 'dir' => the theme's folder, 'brand' => its suggestions,
-		 *																'part' => the checked part or null, 'problem' => why it cannot be used ('' for a theme that brings no part for the group)
+		 *	@return 	array											'theme' => key, 'version' => ..., 'origin' => 'installed'|'own'|'current'|'', 'dir' => the theme's folder, 'brand' => its suggestions,
+		 *																'part' => the checked part or null, 'problem' => why it cannot be used ('' for a theme that brings no part for the group), 'code' => what the part is
 		 */
 		public static function resolve( array &$appData, string $from, string $group ): array {
 
 			if( str_starts_with( $from, 'own:' ) === true )
 				return self::_resolveOwn( $appData, substr( $from, 4 ), $group );
 
+			if( $from === 'current' )
+				return self::_resolveCurrent( $group );
+
 			[ $key, $version ] = explode( '@', $from, 2 ) + [ 1 => '' ];
 			$none = [ 'theme' => $key, 'version' => $version, 'origin' => '', 'dir' => '', 'brand' => [], 'part' => null, 'problem' => '', 'code' => '' ];
-
-			$copied = null;
-
-			if( $version !== '' ) {
-
-				$copy = \Nino\Filesystem::path( $appData, \Nino\Modules\Themes::DIR. '/copies/'. $key. '@'. $version );
-
-				if( is_dir( $copy ) === true ) {
-
-					$copied = self::theme( $copy, '' );
-
-					if( is_string( $copied ) === true )
-						return [ 'problem' => self::why( 'copy-refused', $from, $copied ) ] + $none;
-
-					$found = [ 'version' => $copied['version'], 'origin' => 'copy', 'dir' => $copied['dir'], 'brand' => $copied['brand'] ] + $none;
-
-					// A copy holds the parts that were in use when it was made - the part of a group it has not is the installed theme's
-					if( isset( $copied['raw'][$group] ) === true )
-						return array_merge( $found, self::_answer( self::check( $appData, $group, $copied['raw'][$group] ) ) );
-				}
-			}
-
 			$theme = self::read( $appData )['themes'][$key] ?? null;
 
 			if( $theme === null || ( $version !== '' && $theme['version'] !== $version ) )
-				return $copied !== null ? $found : [ 'problem' => self::why( 'not-installed', $from ) ] + $none;
+				return [ 'problem' => self::why( 'not-installed', $from ) ] + $none;
 
 			$found = [ 'version' => $theme['version'], 'origin' => 'installed', 'dir' => $theme['dir'], 'brand' => $theme['brand'] ] + $none;
+
+			return isset( $theme['parts'][$group] ) === true ? array_merge( $found, self::_answer( $theme['parts'][$group] ) ) : $found;
+		}
+
+		/**
+		 *	A folder as a theme, read and checked, whatever its name is: the copy of the theme the website shows, in the state. Not kept anywhere
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$folder				The directory
+		 *
+		 *	@return 	array|string							As read() has a theme - with 'parts' checked - or why it is none
+		 */
+		public static function folder( array &$appData, string $folder ): array|string {
+
+			$theme = self::theme( $folder, '' );
+
+			if( is_string( $theme ) === true )
+				return $theme;
+
+			foreach( $theme['raw'] as $group => $raw )
+				$theme['parts'][$group] = self::check( $appData, $group, $raw );
+
+			unset( $theme['raw'] );
+
+			return $theme;
+		}
+
+		/**
+		 *	Run something with a folder as 'current': what resolve( 'current' ) reads while it runs. The store builds the stylesheet of the website from the copy of its theme
+		 *	this way; nothing else names it, and a mix that says 'current' outside of it is refused, since no folder is held
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$folder				The directory of the copy
+		 *	@param		callable	$run					Called with the theme as folder() read it, or the reason
+		 *
+		 *	@return 	mixed											What $run answers
+		 */
+		public static function using( array &$appData, string $folder, callable $run ): mixed {
+
+			$was = self::$_current;
+			self::$_current = self::folder( $appData, $folder );
+
+			try {
+				return $run( self::$_current );
+			}
+			finally {
+				self::$_current = $was;
+			}
+		}
+
+		/**
+		 *	The part of a group of the copy of the theme the website shows - where one is held
+		 *
+		 *	@return 	array											As resolve() answers it, 'origin' => 'current'
+		 */
+		private static function _resolveCurrent( string $group ): array {
+
+			$none = [ 'theme' => '', 'version' => '', 'origin' => '', 'dir' => '', 'brand' => [], 'part' => null, 'problem' => '', 'code' => '' ];
+			$theme = self::$_current;
+
+			if( is_array( $theme ) === false )
+				return [ 'problem' => self::why( 'no-current' ) ] + $none;
+
+			$found = [ 'version' => $theme['version'], 'origin' => 'current', 'dir' => $theme['dir'], 'brand' => $theme['brand'] ] + $none;
 
 			return isset( $theme['parts'][$group] ) === true ? array_merge( $found, self::_answer( $theme['parts'][$group] ) ) : $found;
 		}
