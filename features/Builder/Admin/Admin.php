@@ -646,6 +646,10 @@ namespace Nino\Modules\Builder {
 			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'address' => self::_address( $appData, $template, $locale ) ] );
 		}
 
+		// The places that are the frames' own: the top of a page, the header and the footer with the parts they hold, and the places that they open to every column below them. A
+		// component that stands only at these places is the frames' and no choice anywhere else
+		private const array FRAME_PLACES = [ 'page', 'header-wrap', 'header-actions', 'footer-wrap', 'footer-col', 'header', 'footer' ];
+
 		// Where a component stands in the dialog that offers them - the one place that says it, for the blocks, the frames and every other place a component is put in. It is the
 		// dialog's own order and no group of the register, which belongs to the themes: a part of a section, a part of a card, what is of a group of components, the loops, what a
 		// feature brings under the name of the feature, and the rest as general
@@ -723,9 +727,12 @@ namespace Nino\Modules\Builder {
 			$offered = \Nino\Components::offer( $appData, $route, (array) ( $container['c'] ?? [] ) );
 
 			// What the register has that this place does not take is in the dialog as well, grey and with its reason: the person sees what there is, and why not here. The
-			// frames' own parts and what stands at the top of a page - a section - are no choice of any place inside a block
+			// frames' own parts, what stands at the top of a page - a section - and what a feature offers only at the places of the frames - the menu in a column of a header
+			// or a footer - are no choice of any place outside the frames, inside a block or a page; within a header or a footer they are grey where they do not fit
+			$inFrame = in_array( 'header-wrap', $route, true ) === true || in_array( 'footer-wrap', $route, true ) === true;
+
 			foreach( $registry as $name => $schema )
-				if( isset( $offered[$name] ) === false && in_array( (string) ( $schema['group'] ?? '' ), [ 'header', 'footer' ], true ) === false && ( $schema['in'] ?? [] ) !== [ 'page' ] && ( $name !== 'html' || $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ) )
+				if( isset( $offered[$name] ) === false && in_array( (string) ( $schema['group'] ?? '' ), [ 'header', 'footer' ], true ) === false && ( $schema['in'] ?? [] ) !== [ 'page' ] && ( $inFrame === true || ( $schema['in'] ?? [] ) === [] || array_diff( (array) $schema['in'], self::FRAME_PLACES ) !== [] ) && ( $name !== 'html' || $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ) )
 					$offered[$name] = 'place';
 
 			$schemas = Tree::schemas( $appData, [], $registry, array_map( 'strval', array_keys( $offered ) ) );

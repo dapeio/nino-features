@@ -95,6 +95,76 @@ function menuSave( array &$appData, callable $panel, array $data, string $action
 	return ninoCall( $appData, $panel, $data, $action );
 }
 
+/**
+ *	The rules of a stylesheet, the at-rules they stand in said with them: [ 'at' => 'the preludes from outside to inside', 'selector' => ..., 'body' => the declarations ]
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array
+ */
+function menuRules( string $css ): array {
+
+	$css = (string) preg_replace( '#/\*.*?\*/#s', '', $css );
+	$rules = [];
+	$stack = [];
+	$buffer = '';
+
+	for( $at = 0, $length = strlen( $css ); $at < $length; $at++ ) {
+
+		if( $css[$at] === '{' ) {
+			$stack[] = [ trim( (string) preg_replace( '/\s+/', ' ', $buffer ) ), $at + 1 ];
+			$buffer = '';
+		}
+		else if( $css[$at] === '}' ) {
+
+			[ $prelude, $from ] = array_pop( $stack );
+			$inner = substr( $css, $from, $at - $from );
+
+			if( str_contains( $inner, '{' ) === false )
+				$rules[] = [ 'at' => implode( ' ', array_column( $stack, 0 ) ), 'selector' => $prelude, 'body' => trim( (string) preg_replace( '/\s+/', ' ', $inner ) ) ];
+
+			$buffer = '';
+		}
+		else
+			$buffer .= $css[$at];
+	}
+
+	return $rules;
+}
+
+/**
+ *	What the rules that meet an element declare, as property => value with no blanks, the later rule over the earlier: the rules whose selector names every one of the
+ *	classes and the attribute, whatever the order or the blanks, and that stand in a media query of width (or in none)
+ *
+ *	@param		array			$rules
+ *	@param		array			$names				Words the selector has to hold, eg. 'menu--in-row'
+ *	@param		bool			$wide					Whether the rule stands under min-width
+ *
+ *	@return 	array
+ */
+function menuDeclared( array $rules, array $names, bool $wide = false ): array {
+
+	$flat = static fn( string $text ): string => (string) preg_replace( '/\s+/', '', $text );
+	$found = [];
+
+	foreach( $rules as $rule ) {
+
+		$selector = $flat( $rule['selector'] );
+
+		if( str_contains( $selector, '::' ) === true || str_contains( $rule['at'], 'min-width' ) !== $wide || array_filter( $names, static fn( string $name ): bool => str_contains( $selector, $name ) === false ) !== [] )
+			continue;
+
+		foreach( explode( ';', $rule['body'] ) as $declaration )
+			if( str_contains( $declaration, ':' ) === true ) {
+
+				[ $property, $value ] = explode( ':', $declaration, 2 );
+				$found[$flat( $property )] = $flat( $value );
+			}
+	}
+
+	return $found;
+}
+
 function menuStore( array &$appData, array $entries, string $key = 'main' ): void {
 	\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Menu::STORAGE, [ $key => [ 'entries' => $entries ] ] );
 }
@@ -135,8 +205,14 @@ check( 'every attribute has a label in both languages, and the key is a choice a
 	&& ( $schema['attributes']['key']['type'] ?? '' ) === 'choice' );
 check( 'the group has its three knobs, and the standard part keeps the rule of mixing', array_keys( $group['knobs'] ?? [] ) === [ 'menu.width', 'menu.gap', 'menu.radius' ]
 	&& \Nino\Components::partProblems( (string) file_get_contents( $dir. '/groups/menu/part/part.css' ), [ 'menu' ] ) === [] );
-check( 'a tool offers it in the header and in a column of the footer, and nowhere else', in_array( 'menu', \Nino\Components::allowed( $appData, 'header-wrap' ), true ) === true
-	&& in_array( 'menu', \Nino\Components::allowed( $appData, 'footer-col' ), true ) === true && in_array( 'menu', \Nino\Components::allowed( $appData, 'section-col' ), true ) === false );
+$offered = static fn( array $path ): bool => ( \Nino\Components::offer( $appData, $path, [] )['menu'] ?? null ) === true;
+$found = static fn( string $source ): array => \Nino\Components::check( $appData, \Nino\Markup::parse( $source, \Nino\Components::containers( $appData ) ) );
+check( 'a tool offers it in the header, in a column of a row of the header and of the footer, and in a column of the footer - in a column of a page it does not, and the check says so',
+	$offered( [ 'header-wrap' ] ) === true && $offered( [ 'footer-wrap', 'footer-col' ] ) === true && $offered( [ 'header-wrap', 'section-row', 'section-col' ] ) === true && $offered( [ 'footer-wrap', 'section-row', 'section-col' ] ) === true
+	&& $offered( [ 'section-wrap', 'section-row', 'section-col' ] ) === false && in_array( 'menu', \Nino\Components::allowed( $appData, 'section-col' ), true ) === false
+	&& $found( '[header-wrap][section-row][section-col][menu][/section-col][/section-row][/header-wrap][footer-wrap][section-row][section-col][menu][/section-col][/section-row][/footer-wrap]' ) === []
+	&& $found( '[header-wrap][menu][/header-wrap][footer-wrap][footer-col][menu][/footer-col][/footer-wrap]' ) === []
+	&& array_column( array_merge( ...array_values( $found( '[section-wrap][section-row][section-col][menu][/section-col][/section-row][/section-wrap]' ) ) ), 'detail' ) === [ 'menu' ] );
 
 menuStore( $appData, menuFixture() );
 check( 'the key is a choice among the first menu and each menu of the data', array_keys( \Nino\Modules\Menu::options( $appData, 'key' ) ) === [ '', 'main' ] );
@@ -146,7 +222,15 @@ check( 'the block is listed with the feature as its origin, a frame, without a m
 	isset( $blocks['menu-header'] ) === true && in_array( 'menu', $blocks['menu-header']['features'] ?? [], true ) === true && ( $blocks['menu-header']['category'] ?? '' ) === 'frame'
 	&& ( $blocks['menu-header']['missing'] ?? [] ) === [] && \Nino\Blocks::rejected( $appData ) === [] );
 $demo = $group['demo'] ?? '';
-check( 'the demo of the group is read without a note and draws the component, in a header', $demo !== '' && substr_count( $draw( $demo ), 'class="menu"' ) === 1 && str_contains( $draw( $demo ), 'header-wrap' ) === true );
+$demoDrawn = $dom( $draw( $demo ) );
+check( 'the demo of the group is read without a note and draws the component, in a header of one row: the logo in a column as wide as its content, the menu in the column that fills the rest and stands at its end',
+	$demo !== '' && $demoDrawn->query( '//header/div[contains(@class,"section-row")]/div[contains(@class,"section-col--size-auto")]/a[contains(@class,"header-logo")]' )->length === 1
+	&& $demoDrawn->query( '//header/div[contains(@class,"section-row")]/div[contains(@class,"section-col--size-fill") and contains(@class,"section-col--align-end")]/nav[contains(concat(" ",@class," ")," menu ")]' )->length === 1 && \Nino\Components::check( $appData, \Nino\Markup::parse( $demo, \Nino\Components::containers( $appData ) ) ) === [] );
+$blockTree = \Nino\Markup::parse( (string) file_get_contents( $dir. '/blocks/menu-header/block.tpl' ), \Nino\Components::containers( $appData ) );
+$blockDrawn = $dom( $draw( (string) file_get_contents( $dir. '/blocks/menu-header/block.tpl' ) ) );
+check( 'the block of the header is the same row - the logo, then the menu - kept at the top, and the register has nothing against it',
+	$blockDrawn->query( '//header[contains(@class,"header-wrap--sticky")]/div[contains(@class,"section-row--valign-center")]/div[contains(@class,"section-col--size-auto")]/a[contains(@class,"header-logo")]' )->length === 1
+	&& $blockDrawn->query( '//header/div[contains(@class,"section-row")]/div[contains(@class,"section-col--size-fill")]/nav[contains(concat(" ",@class," ")," menu ")]' )->length === 1 && \Nino\Components::check( $appData, $blockTree ) === [] );
 check( 'the part is in the style bundle, in the layer of the components', str_contains( \Nino\Modules\Assets::stylesheet( $appData, '/.cache/style.css' ), '.menu-panel' ) === true );
 
 $off = ninoSandbox( 'menu-off' );
@@ -199,6 +283,27 @@ $twice = $draw( '[header-wrap][menu][/header-wrap][footer-wrap][footer-col][menu
 preg_match_all( '/ id="([^"]+)"/', $twice, $ids );
 check( 'a second menu of the key on the page - the foot - has ids of its own, and in the foot the list is open and has no burger of its own',
 	count( $ids[1] ) === count( array_unique( $ids[1] ) ) && str_contains( $twice, 'id="menu-main--2"' ) === true && str_contains( $twice, '<nav class="menu menu--footer"' ) === true && substr_count( $twice, '<details class="menu-details" open>' ) === 1 );
+
+// Where a menu stands says how it is drawn, and the register says where it stands: the foot is the menu whose outermost component is the footer - or whose place is the column of the markup that has the parts in the wrap -, a menu below a column of the header is in a row, and no call can say either
+$form = static function( string $source ) use ( $draw, $dom ): array {
+
+	$nav = $dom( $draw( $source ) )->query( '//nav[contains(concat(" ",@class," ")," menu ")]' );
+
+	return $nav->length !== 1 ? [ 'drawn' => $nav->length ] : [ 'classes' => array_values( array_diff( explode( ' ', $nav->item( 0 )->getAttribute( 'class' ) ), [ 'menu' ] ) ), 'open' => $dom( $draw( $source ) )->query( '//nav//details[@open]' )->length === 1 ];
+};
+$cell = '[section-row][section-col]%s[/section-col][/section-row]';
+check( 'the form follows the outermost component and, for the old markup, the place: the foot is open with no button in a column of a footer of rows, in the column of the old markup and in a box inside a column, a menu in a column of the header of rows or in a box there is in a row, and a menu in the header itself is neither',
+	$form( '[header-wrap][menu][/header-wrap]' ) === [ 'classes' => [], 'open' => false ]
+	&& $form( '[header-wrap]'. sprintf( $cell, '[menu]' ). '[/header-wrap]' ) === [ 'classes' => [ 'menu--in-row' ], 'open' => false ]
+	&& $form( '[header-wrap]'. sprintf( $cell, '[button-group][menu][/button-group]' ). '[/header-wrap]' ) === [ 'classes' => [ 'menu--in-row' ], 'open' => false ]
+	&& $form( '[footer-wrap][footer-col][menu][/footer-col][/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ]
+	&& $form( '[footer-wrap]'. sprintf( $cell, '[menu]' ). '[/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ]
+	&& $form( '[footer-wrap]'. sprintf( $cell, '[button-group][menu][/button-group]' ). '[/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ] );
+check( 'SAFETY: a call cannot make itself the foot or a row - the class, the place and the root it names are no attributes of the component, the words of its key and its name say nothing of it, and a menu that stands in a column of the header stays what the register says it is - and a context that names a place and no root is told by the place',
+	$form( '[header-wrap]'. sprintf( $cell, '[menu class="menu--footer" place="footer-col" root="footer-wrap" open label="footer-col" key="footer"]' ). '[/header-wrap]' ) === [ 'classes' => [ 'menu--in-row' ], 'open' => false ]
+	&& $form( '[footer-wrap]'. sprintf( $cell, '[menu class="menu--in-row" root="header-wrap"]' ). '[/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ]
+	&& str_contains( \Nino\Modules\Menu::componentMenu( $appData, [ 'key' => '', 'label' => '', 'class' => 'menu' ], '', [ 'place' => 'footer-col' ] ), 'menu--footer' ) === true
+	&& str_contains( \Nino\Modules\Menu::componentMenu( $appData, [ 'key' => '', 'label' => '', 'class' => 'menu' ], '', [ 'place' => 'section-col' ] ), 'menu--' ) === false );
 
 menuStore( $appData, [ [ 'id' => 'gone', 'kind' => 'page', 'uri' => '/nowhere', 'label' => '', 'panel' => null ], [ 'id' => 'mute', 'kind' => 'link', 'href' => '/x', 'target' => '', 'label' => '/feature/menu/main/mute', 'panel' => null ] ] );
 check( 'a page with no route, and a link nobody wrote a word for, are no links: a menu with nothing to draw is not drawn', $draw( $header() ) === '<header class="header-wrap"><div class="header-wrap-inner"></div></header>' || str_contains( $draw( $header() ), 'menu-list' ) === false );
@@ -546,6 +651,21 @@ check( 'the name of an entry keeps its width with no script (its basis is auto, 
 check( 'the wide form (a row, a panel that hangs from its entry) stands under the media query of scripting and does not wait for the script, so that the header does not jump; a panel then waits hidden and opens on :hover and :focus-within until the script has started',
 	preg_match( '/@media \(scripting: enabled\)\s*\{\s*@media \(min-width: 768px\)\s*\{\s*@supports[^@]*flex-direction: row/', $css ) === 1 && str_contains( $css, '.menu--ready:not( .menu--footer ) .menu-list' ) === false
 	&& str_contains( $css, '.menu-panel { visibility: hidden; }' ) === true && str_contains( $css, ':focus-within > .menu-panel' ) === true && str_contains( $css, 'menu-wait' ) === false );
+
+
+// The menu in a row: what the part says of the class the register writes - the list that is folded lies under the row over its width and above what follows, and a wide screen shows it in the column
+$rules = menuRules( $css );
+$lies = menuDeclared( $rules, [ 'menu--in-row', 'menu-list', '[open]' ] );
+$ink = $lies['color'] ?? '';
+$ground = $lies['background-color'] ?? '';
+check( 'the list of a menu in a row that is open and folded lies under the row, over its width and above the section that follows - absolute, from edge to edge of the row, one step above the page - and is drawn in its own ink on its own ground, so that it reads on a bar of any colour',
+	( $lies['position'] ?? '' ) === 'absolute' && ( $lies['inset-inline'] ?? '' ) === '0' && (int) ( $lies['z-index'] ?? 0 ) >= 1 && str_starts_with( $lies['top'] ?? '', 'calc(100%+' ) === true
+	&& str_starts_with( $ink, 'var(--brand-' ) === true && str_starts_with( $ground, 'var(--brand-' ) === true && $ink !== $ground );
+check( 'on a wide screen the list is a row in the column, in the flow: not absolute',
+	( menuDeclared( $rules, [ 'menu--in-row', 'menu-list', '[open]' ], true )['position'] ?? '' ) === 'static' );
+$blockDrawn2 = $dom( $draw( (string) file_get_contents( $dir. '/blocks/menu-header/block.tpl' ) ) );
+check( 'the block of the header keeps the menu in the column that fills the rest of the row and stands at its end',
+	$blockDrawn2->query( '//header//div[contains(@class,"section-col--size-fill") and contains(@class,"section-col--align-end")]/nav[contains(concat(" ",@class," ")," menu ")]' )->length === 1 );
 
 echo "\nThe panel script - what it is built from\n";
 

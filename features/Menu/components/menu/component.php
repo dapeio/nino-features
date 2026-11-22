@@ -5,7 +5,7 @@ return [
 	'group'      => 'menu',
 	'label'      => [ 'de_DE' => 'Menü mit Panels', 'en_US' => 'Menu with panels' ],
 	'icon'       => 'panels-top-left',
-	'in'         => [ 'header-wrap', 'footer-col' ],
+	'in'         => [ 'header-wrap', 'footer-col', 'header', 'footer' ],
 	'once'       => true,
 	'source'     => 'none',
 	'preview'    => 'block',

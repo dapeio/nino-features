@@ -27,8 +27,10 @@ namespace Nino\Modules {
 	 *										the feature.
 	 *
 	 *										The component stands where the header of the feature Basis
-	 *										has its menu (in header-wrap), or in a column of the
-	 *										footer. It writes a nav with a details for the small
+	 *										has its menu (in header-wrap) or in a column of a row of
+	 *										the header (the place header), and in a column of the
+	 *										footer (footer-col) or of a row of the footer (the place
+	 *										footer). It writes a nav with a details for the small
 	 *										screen and, for every entry that has a panel, the link, a
 	 *										button with aria-expanded and the panel after it; menu.js
 	 *										makes the button work, and where there is no script the
@@ -542,8 +544,13 @@ namespace Nino\Modules {
 			if( $items === '' )
 				return '';
 
-			$footer = ( $context['place'] ?? '' ) === 'footer-col';
-			$args['class'] .= $footer === true ? ' menu--footer' : '';
+			// The foot is where the outermost component is the footer, or - the markup that has the parts directly in the wrap - the column of it; the register says so, no call does.
+			// A menu in the header that stands below a column, not in the line of the wrap itself, is in a row: the part lays its open list under the row
+			$place = (string) ( $context['place'] ?? '' );
+			$root = (string) ( $context['root'] ?? '' );
+			$footer = $root === 'footer-wrap' || $place === 'footer-col';
+			$inRow = $footer === false && $root === 'header-wrap' && $place !== 'header-wrap';
+			$args['class'] .= $footer === true ? ' menu--footer' : ( $inRow === true ? ' menu--in-row' : '' );
 			$name = $args['label'] !== '' ? $args['label'] : self::_text( \Nino\Html::renderTextfill( $appData, '/module/basis/navigation/'. ( $footer === true ? 'footer' : 'primary' ) ) );
 
 			return \Nino\Components::fill( $appData, 'menu', $args, $content, [

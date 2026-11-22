@@ -2014,6 +2014,42 @@ check( 'a place offers what the register says for it, and the call of html to no
 	&& array_column( array_filter( $rowOffer['offers'], static fn( array $entry ): bool => $entry['why'] !== 'place' ), 'name' ) === array_keys( \Nino\Components::offer( $site, Tree::route( $tree, $row ) ?? [], Tree::at( $tree, $row )['c'] ) ) && $nowhere === 400
 	&& in_array( 'html', array_column( $offer['offers'], 'name' ), true ) === false && in_array( 'html', array_column( $withHtml['offers'], 'name' ), true ) === false && $offer['blank'] === "\n". str_repeat( "\t", count( $route ) ) );
 
+// what stands only in the frames is no choice anywhere else: the dialog of a column of a page does not list a feature's component of the header and the footer - not grey either -, and that of a column of
+// a header and of a footer lists it, ready
+$framed = ninoSandbox( 'builder-framed' );
+$framed['./nino/filesystem/path'] = $root;
+$framed['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Builder', '\\Nino\\Modules\\Menu', '\\Nino\\Modules\\Social' ];
+\Nino\Html::init( $framed );
+\Nino\Features::registerComponents( $framed );
+\Nino\Modules::callModules( $framed, 'init' );
+builderAccount( $framed, 'designer3@example.com', [ '/_admin/builder/manage' ] );
+$dialog = static function( string $source, string $container = 'section-col' ) use ( &$framed ): array {
+
+	$nodes = \Nino\Markup::parse( $source, \Nino\Components::containers( $framed ) );
+	$column = builderFind( $nodes, static fn( array $node ): bool => ( $node['n'] ?? '' ) === $container ) ?? '';
+	$entries = \Nino\Modules\Builder\Admin::offered( $framed, $nodes, $column, \Nino\Modules\Builder::level( $framed ) )['offers'] ?? [];
+
+	return array_column( $entries, 'ok', 'name' );
+};
+$cell = '[section-row][section-col][/section-col][/section-row]';
+$inPage = $dialog( '[section-wrap]'. $cell. '[/section-wrap]' );
+$inHeader = $dialog( '[header-wrap]'. $cell. '[/header-wrap]' );
+$inFooter = $dialog( '[footer-wrap]'. $cell. '[/footer-wrap]' );
+check( 'a column of a page offers neither the menu with panels, nor the logo or the menu of the header and of the footer - none of them is in its dialog, not even grey - and a column of a header and of a footer has them ready: the logo and the menu of its own side, and the menu with panels',
+	array_intersect( [ 'menu', 'header-logo', 'header-nav', 'footer-logo', 'footer-nav' ], array_keys( $inPage ) ) === [] && ( $inPage['text'] ?? null ) === true
+	&& ( $inHeader['menu'] ?? null ) === true && ( $inHeader['header-logo'] ?? null ) === true && ( $inHeader['header-nav'] ?? null ) === true && isset( $inHeader['footer-logo'] ) === false
+	&& ( $inFooter['menu'] ?? null ) === true && ( $inFooter['footer-logo'] ?? null ) === true && ( $inFooter['footer-nav'] ?? null ) === true && isset( $inFooter['header-logo'] ) === false );
+
+// ...but only outside the frames: within a header or a footer the menu is in the dialog where it does not fit, grey with its reason, as every component of the register is; and a component
+// that stands at a place of the frames and in the flow (a social link: flow, footer-col) is no frame-only part, so a place of a page that does not take it lists it grey
+$row = '[section-row][/section-row]';
+$greyPlace = static fn( array $listed, string $name ): bool => array_key_exists( $name, $listed ) === true && $listed[$name] === false;
+$pageRow = $dialog( '[section-wrap]'. $row. '[/section-wrap]', 'section-row' );
+check( 'within a header or a footer the menu is listed where it does not fit - the row, the parts of the old markup, the wrap of the footer, a box of a column - grey; outside the frames - the row of a page - it is not listed at all, and what is also of the flow is listed grey there',
+	$greyPlace( $dialog( '[header-wrap]'. $row. '[/header-wrap]', 'section-row' ), 'menu' ) === true && $greyPlace( $dialog( '[header-wrap][header-actions][/header-actions][/header-wrap]', 'header-actions' ), 'menu' ) === true
+	&& $greyPlace( $dialog( '[footer-wrap][/footer-wrap]', 'footer-wrap' ), 'menu' ) === true && $greyPlace( $dialog( '[header-wrap][section-row][section-col][button-group][/button-group][/section-col][/section-row][/header-wrap]', 'button-group' ), 'menu' ) === true
+	&& isset( $pageRow['menu'] ) === false && $greyPlace( $pageRow, 'social' ) === true && ( $inPage['social'] ?? null ) === true );
+
 // the dialog of the components has its own parts - a section, a card, what is general, what a feature brings, the groups, the loops - and each component stands in one of them, told by
 // the one place that says it; what the place does not take is in the dialog all the same, grey, with the word for it - never left out
 $byName = array_column( $offer['offers'], null, 'name' );

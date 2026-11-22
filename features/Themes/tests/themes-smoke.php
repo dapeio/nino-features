@@ -43,8 +43,81 @@ $groupNames	= [ 'button', 'footer', 'header', 'image', 'section', 'text' ];
 
 // The two things the site is drawn from: the bundle of the stylesheet and a page of components that stand where a theme works
 const THEMES_BUNDLE = '/.cache/style.css';
+// The size the kernel allows the style bundle of its own starter site (its install suite says 60 KB), for the bundle of the starter with the theme Nino; the sites of the
+// probe themes stay under their own, narrower limit, and what a theme adds stays below 6 KB by its own pin
+const THEMES_BUNDLE_MAX = 60 * 1024;
 const THEMES_PAGE = '[header-wrap][header-logo][header-nav][/header-wrap]'
 	. '[section-wrap id="hero" variant="band" ground="dark" height="80"][section-row gap="3"][section-col variant="card" pad="2"][section-title text="A title" tag="h2" size="l"][section-subtitle text="A subtitle"][text text="Some words" size="s"][button text="Go" href="/go" tone="quiet" size="l"][/section-col][/section-row][/section-wrap]';
+
+/**
+ *	The rules of a stylesheet, with the at-rules they stand in said in front of them: [ 'at' => the preludes from outside in, 'selector' => ..., 'body' => the declarations ]
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array
+ */
+function themesRules( string $css ): array {
+
+	$css = (string) preg_replace( '#/\*.*?\*/#s', '', $css );
+	$rules = [];
+	$stack = [];
+	$buffer = '';
+
+	for( $at = 0, $length = strlen( $css ); $at < $length; $at++ ) {
+
+		if( $css[$at] === '{' ) {
+			$stack[] = [ trim( (string) preg_replace( '/\s+/', ' ', $buffer ) ), $at + 1 ];
+			$buffer = '';
+		}
+		else if( $css[$at] === '}' ) {
+
+			[ $prelude, $from ] = array_pop( $stack );
+			$inner = substr( $css, $from, $at - $from );
+
+			if( str_contains( $inner, '{' ) === false )
+				$rules[] = [ 'at' => implode( ' ', array_column( $stack, 0 ) ), 'selector' => $prelude, 'body' => trim( (string) preg_replace( '/\s+/', ' ', $inner ) ) ];
+
+			$buffer = '';
+		}
+		else
+			$buffer .= $css[$at];
+	}
+
+	return $rules;
+}
+
+/**
+ *	What the rules that meet an element declare, as property => value with no blanks, the later rule over the earlier: the rules whose selector holds every one of the words (a class, a
+ *	function), whatever the order and the blanks, and none of the words to leave out
+ *
+ *	@param		array			$rules
+ *	@param		array			$has					Words the selector holds
+ *	@param		array			$without			Words it does not
+ *
+ *	@return 	array
+ */
+function themesDeclared( array $rules, array $has, array $without = [] ): array {
+
+	$flat = static fn( string $text ): string => (string) preg_replace( '/\s+/', '', $text );
+	$found = [];
+
+	foreach( $rules as $rule ) {
+
+		$selector = $flat( $rule['selector'] );
+
+		if( array_filter( $has, static fn( string $word ): bool => str_contains( $selector, $word ) === false ) !== [] || array_filter( $without, static fn( string $word ): bool => str_contains( $selector, $word ) === true ) !== [] )
+			continue;
+
+		foreach( explode( ';', $rule['body'] ) as $declaration )
+			if( str_contains( $declaration, ':' ) === true ) {
+
+				[ $property, $value ] = explode( ':', $declaration, 2 );
+				$found[$flat( $property )] = $flat( $value );
+			}
+	}
+
+	return $found;
+}
 
 /**
  *	Boot a site the way \Nino\init() does: the modules it lists, its components and standard parts, the files its features
@@ -2172,6 +2245,25 @@ check( 'the variants: the bar for the header, the dark surface for the footer an
 $classes = [ 'header-wrap' => 'bar', 'footer-wrap' => 'dark', 'section-wrap' => 'band' ];
 check( 'each variant is drawn by a rule of the part of its group on the class the register gives it', array_filter( $classes, static fn( string $variant, string $component ): bool => preg_match( '/\.'. preg_quote( $component. '--variant-'. $variant, '/' ). '(?![\w-])/', $ninoParts[explode( '-', $component )[0]]['css'] ?? '' ) !== 1, ARRAY_FILTER_USE_BOTH ) === [] );
 
+// The variants on a header and a footer of rows, on every ground, with a picture and with a height: the part of the theme says what stands where a person chose a ground or a picture, and the
+// rule of mixing of the kernel is asked of it as it is
+$headerRules = themesRules( $ninoParts['header']['css'] ?? '' );
+$footerRules = themesRules( $ninoParts['footer']['css'] ?? '' );
+$onBar = array_filter( $headerRules, static fn( array $rule ): bool => str_contains( $rule['selector'], 'variant-bar' ) === true && str_contains( $rule['body'], '--brand-color-1' ) === true );
+$barInk = themesDeclared( $headerRules, [ 'variant-bar', '--ground-' ], [ 'header-nav-list', 'header-wrap-image' ] );
+$pictured = themesDeclared( $headerRules, [ 'variant-bar', 'header-wrap-image' ], [ 'header-nav-list' ] );
+$picturedList = themesDeclared( $headerRules, [ 'variant-bar', 'header-wrap-image', 'header-nav-list' ] );
+check( 'the bar stands where the header says no ground: every rule that puts the colour of the brand on the bar - the header, the open list of its menu - is bound to a header with no ground class, and a header with a picture gets the ground and the ink of the page back, for the header and for the open list',
+	count( $onBar ) >= 2 && array_filter( $onBar, static fn( array $rule ): bool => str_contains( $rule['selector'], '--ground-' ) === false ) === []
+	&& ( $barInk['background-color'] ?? '' ) === 'var(--brand-color-1)' && ( $barInk['color'] ?? '' ) === 'var(--brand-on-color-1)'
+	&& str_starts_with( $pictured['color'] ?? '', 'var(--brand-ink' ) === true && str_starts_with( $pictured['background-color'] ?? '', 'var(--brand-ground' ) === true && str_starts_with( $picturedList['background-color'] ?? '', 'var(--brand-ground' ) === true );
+$darkRules = array_filter( $footerRules, static fn( array $rule ): bool => str_contains( $rule['selector'], 'variant-dark' ) === true );
+check( 'the dark surface stands where the footer says no ground: the rule that makes the variant dark is bound to a footer with no ground class, and there is no other',
+	count( $darkRules ) === 1 && str_contains( (string) ( array_values( $darkRules )[0]['selector'] ?? '' ), '--ground-' ) === true && ( themesDeclared( $footerRules, [ 'variant-dark' ] )['color-scheme'] ?? '' ) === 'dark' );
+check( 'the parts of the header and of the footer of Nino pass the rule of mixing of the kernel, asked of them as they are',
+	\Nino\Components::partProblems( $ninoParts['header']['css'] ?? '', \Nino\Components::groups( $site )['header']['components'] ) === [] && \Nino\Components::partProblems( $ninoParts['footer']['css'] ?? '', \Nino\Components::groups( $site )['footer']['components'] ) === []
+	&& \Nino\Components::partProblems( $ninoParts['section']['css'] ?? '', \Nino\Components::groups( $site )['section']['components'] ) === [] );
+
 // what a part may write: calculate with the tokens, and write out no length - the two of 24px, the least a target is, apart
 $written = [];
 
@@ -2213,13 +2305,13 @@ check( 'with every knob at -2 and at +2 the mix is clean and builds, to a styles
 $probe = (string) file_get_contents( __DIR__. '/fixtures/pages/nino-probe.tpl' );
 $schemas = \Nino\Components::components( $site );
 $missing = [];
-$attributes = [ 'gap', 'pad', 'size', 'ground', 'width', 'height', 'align', 'reverse', 'hide', 'ratio', 'focus', 'tone', 'wide' ];
+$attributes = [ 'gap', 'pad', 'size', 'ground', 'width', 'height', 'align', 'reverse', 'hide', 'ratio', 'focus', 'tone', 'wide', 'dim', 'picture' ];
 $kinds = 0;
 
 foreach( $schemas as $component => $schema )
 	foreach( $schema['attributes'] ?? [] as $attribute => $definition ) {
 
-		if( in_array( $attribute, $attributes, true ) === false || in_array( $schema['group'], [ 'section', 'text', 'button', 'image', 'footer' ], true ) === false )
+		if( in_array( $attribute, $attributes, true ) === false || in_array( $schema['group'], [ 'section', 'text', 'button', 'image', 'header', 'footer' ], true ) === false )
 			continue;
 
 		$options = $definition['type'] === 'bool' ? [ 'bool' ] : array_diff( array_map( 'strval', (array) ( $definition['options'] ?? [] ) ), [ (string) $definition['default'] ] );
@@ -2234,8 +2326,23 @@ foreach( $schemas as $component => $schema )
 		}
 	}
 
-check( 'the probe page of the suite names every value but the default of each of the thirteen attributes that have a fixed step - '. $kinds. ' attributes of the components they belong to - so that the browser can measure each of them in each variant', $kinds === 21 && $missing === [], $missing );
-check( 'and names each variant of the theme, one of each for the header and the footer, the band for every section that is one', substr_count( $probe, 'variant="bar"' ) === 1 && substr_count( $probe, 'variant="dark"' ) === 1 && preg_match_all( '/\[section-wrap [^\]]*variant="band"/', $probe ) === substr_count( $probe, '[section-wrap' ) );
+check( 'the probe page of the suite names every value but the default of each of the fifteen attributes that have a fixed step - '. $kinds. ' attributes of the components they belong to, the header and the footer among them, and the sizes auto and fill of a column - so that the browser can measure each of them in each variant', $kinds === 31 && $missing === [], $missing );
+
+// The header and the footer are written in two forms - the parts directly in the wrap, and rows of columns - and the variants of the theme are to stand on both, on every ground
+preg_match_all( '/\[(header|footer)-wrap\b([^\]]*)\](.*?)\[\/\1-wrap\]/s', $probe, $wraps, PREG_SET_ORDER );
+$forms = [];
+
+foreach( $wraps as $wrap )
+	$forms[$wrap[1]][str_contains( $wrap[3], '[section-row' ) === true ? 'rows' : 'old'][] = $wrap[2];
+
+$named = static fn( string $kind, string $form, string $has ): int => count( array_filter( $forms[$kind][$form] ?? [], static fn( string $call ): bool => str_contains( $call, $has ) ) );
+check( 'and names each variant of the theme on each form of the header and of the footer - the parts in the wrap and the rows - and on every ground of a wrap in rows, the band for every section that is one',
+	$named( 'header', 'old', 'variant="bar"' ) === 1 && $named( 'footer', 'old', 'variant="dark"' ) === 1 && $named( 'header', 'rows', 'variant="bar"' ) >= 2 && $named( 'footer', 'rows', 'variant="dark"' ) >= 2
+	&& array_diff( [ 'alt', 'tint', 'primary', 'dark' ], array_filter( [ 'alt', 'tint', 'primary', 'dark' ], static fn( string $ground ): bool => $named( 'header', 'rows', 'ground="'. $ground. '"' ) === 1 ) ) === []
+	&& array_diff( [ 'base', 'tint', 'primary', 'dark' ], array_filter( [ 'base', 'tint', 'primary', 'dark' ], static fn( string $ground ): bool => $named( 'footer', 'rows', 'ground="'. $ground. '"' ) === 1 ) ) === []
+	&& substr_count( $probe, 'variant="bar"' ) === count( array_filter( $wraps, static fn( array $wrap ): bool => $wrap[1] === 'header' && str_contains( $wrap[2], 'variant="bar"' ) ) )
+	&& substr_count( $probe, 'variant="dark"' ) === count( array_filter( $wraps, static fn( array $wrap ): bool => $wrap[1] === 'footer' && str_contains( $wrap[2], 'variant="dark"' ) ) )
+	&& preg_match_all( '/\[section-wrap [^\]]*variant="band"/', $probe ) === substr_count( $probe, '[section-wrap' ) );
 
 // drawn: with the feature off the page has no variant, with Nino on it has all three, and a page that names none is drawn the same either way
 $frame = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Basis' ];
@@ -2247,7 +2354,7 @@ $withoutTheme = themesReboot( $site, $frame );
 $themed = \Nino\Html::renderHtml( $drawn, $probeBody );
 $unthemed = \Nino\Html::renderHtml( $withoutTheme, $probeBody );
 check( 'Nino on: the probe page is drawn with the bar, the dark surface and a band on each of its sections, and without the feature it is drawn with none of the three',
-	substr_count( $themed, 'header-wrap--variant-bar' ) === 1 && substr_count( $themed, 'footer-wrap--variant-dark' ) === 1 && substr_count( $themed, 'section-wrap--variant-band' ) === substr_count( $probe, '[section-wrap' )
+	substr_count( $themed, 'header-wrap--variant-bar' ) === substr_count( $probe, '[header-wrap id="p-header-bar"' ) + $named( 'header', 'rows', 'variant="bar"' ) && substr_count( $themed, 'footer-wrap--variant-dark' ) === substr_count( $probe, '[footer-wrap id="p-footer-dark"' ) + $named( 'footer', 'rows', 'variant="dark"' ) && substr_count( $themed, 'section-wrap--variant-band' ) === substr_count( $probe, '[section-wrap' )
 	&& preg_match( '/--variant-(?:bar|dark|band)/', $unthemed ) === 0 );
 check( 'Nino on: a page that names no variant is drawn the same as it is without the feature, byte for byte - nothing in the markup says there is a theme', \Nino\Html::renderHtml( $drawn, $plain ) === \Nino\Html::renderHtml( $withoutTheme, $plain ) && ninoWarnings() === [] );
 
@@ -2257,7 +2364,7 @@ $starting = themesReboot( $site, $starter );
 $bundle = \Nino\Modules\Assets::stylesheet( $starting, THEMES_BUNDLE );
 $base = \Nino\Modules\Assets::stylesheet( themesReboot( $site, array_diff( $starter, [ '\\Nino\\Modules\\Themes' ] ) ), THEMES_BUNDLE );
 $numbers['nino: bundle'] = strlen( $bundle );
-check( 'Nr. 11: the bundle of the style of a site with Nino is the one without it and the stylesheet of the theme, and is under 45 KB', strlen( $bundle ) - strlen( $base ) > $allSheet - 200 && strlen( $bundle ) - strlen( $base ) < $allSheet + 400 && strlen( $bundle ) < 45 * 1024 );
+check( 'Nr. 11: the bundle of the style of a site with Nino is the one without it and the stylesheet of the theme, and is under 60 KB', strlen( $bundle ) - strlen( $base ) > $allSheet - 200 && strlen( $bundle ) - strlen( $base ) < $allSheet + 400 && strlen( $bundle ) < THEMES_BUNDLE_MAX );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nK. The panel\n";

@@ -59,6 +59,21 @@
 /*	In the foot the list stands open, with no button of its own, and the panels are accordions	*/
 .menu--footer .menu-burger { display: none; }
 
+/*	A menu in a column of a header of rows (the register says so: menu--in-row). Closed, the button stands in its column, where the column puts it. Opened where the list is folded - under 768px, and
+	wherever the browser has no ::details-content - the list is laid under the row, over its width, and scrolls in itself, so that the page is not pushed down: the row is positioned (the part of
+	section) and the list stands where the open list of the menu of Basis stands, a line and a gap below it. A wide screen shows the list open in the column, as long as its entries, at the start, the middle or the end of it as the column says	*/
+.menu--in-row .menu-burger { margin-inline-start: 0; }
+.menu--in-row .menu-details[open] > .menu-list { position: absolute; inset-inline: 0; top: calc( 100% + var(--page-space-4) + var(--page-space-2) ); z-index: 1; margin-top: 0; text-align: start; background-color: var(--brand-ground); color: var(--brand-ink); box-shadow: 0 .5rem 1.5rem color-mix( in srgb, var(--brand-ink) 16%, transparent ); }
+@supports selector( ::details-content ) {
+	.menu--in-row .menu-details[open]::details-content { display: contents; }
+}
+@media (min-width: 768px) {
+	@supports selector( ::details-content ) {
+		.menu--in-row .menu-details[open]::details-content { display: block; }
+		.menu--in-row .menu-details[open] > .menu-list { position: static; background-color: transparent; color: inherit; box-shadow: none; }
+	}
+}
+
 /*	Where scripting is on, a wide screen has the line of the header at once, so that nothing jumps when the script starts: the list is a row and a panel hangs from its entry.
 	Until menu.js has started - it puts menu--ready on the nav - a panel waits hidden and opens on the :hover or the :focus-within of its entry, which is also all that is left where
 	the script never starts. Once it has, the button beside an entry is shown and turns the panel, which is shut until it is pressed; aria-expanded says which is open	*/

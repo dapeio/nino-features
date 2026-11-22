@@ -2212,16 +2212,22 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	check( 'M. a block whose calls read no text of the website says so', textOf( dialogOf( w ) ).indexOf( W('details/reads') ) !== -1 && ( function() { const again = dialogOf( w ); findAll( again, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/reads') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } ); return textOf( again ).indexOf( W('details/reads-none') ) !== -1; } )() );
 }
 
-// The properties of the parts of a header in the editor: what the component declares to be set - the pin of the header ("Stays at the top") and the menu button of the navigation - is in the
-// sheet of its look, as it is for a part of a page. Text alignment and spacing are no setting of a header, a footer or a column of it, so they are no row of it: the sheet shows what has an effect
+// The properties of the parts of a header in the editor, as the kernel declares them: a header is built like a section, of a row and its columns. The wrap has what a section has - the pin of
+// the header ("Stays at the top"), the ground, the picture and its veil, the height - and the row and the column have their own settings, as they have in a section; the menu button of the
+// navigation is in the sheet of its look. Text alignment and spacing are no setting of the wrap, so they are no row of it: the sheet shows what has an effect
 {
 	const choice = { type : 'choice', label : 'Menu button', hint : '', default : 'auto', options : [ 'auto', 'always' ], labels : { auto : 'Automatic', always : 'Always' } };
+	const pick = function( label, fallback, options, extra ) { return Object.assign( { type : 'choice', label : label, hint : '', default : fallback, options : options, optionLabels : null, responsive : false, min : null, max : null, class : true }, extra ?? {} ) };
+	const flag = function( label ) { return { type : 'bool', label : label, hint : '', default : false, options : null, optionLabels : null, responsive : false, min : null, max : null, class : true } };
 	const w = sheetOf( '#themelab/mein-kopf', {
 		key : 'mein-kopf', wrap : 'header-wrap', stamp : 'f1', name : { de_DE : 'Mein Kopf', en_US : 'My head' },
-		tree : [ FRAME_HEAD, { t : '\n' }, { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'header-nav', s : '', a : {}, c : [] }, { t : '\n' } ] }, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
-		known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, 'header-nav' : { label : 'Menu', icon : 'menu', id : '', source : 'none' } },
+		tree : [ FRAME_HEAD, { t : '\n' }, { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'section-row', s : '', a : {}, c : [ { t : '\n\t\t' }, { n : 'section-col', s : '', a : { size : 'fill' }, c : [ { t : '\n\t\t\t' }, { n : 'header-nav', s : '', a : {}, c : [] }, { t : '\n\t\t' } ] }, { t : '\n\t' } ] }, { t : '\n' } ] }, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
+		known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, 'section-row' : { label : 'Row', icon : 'rows-2', id : '', source : 'none' }, 'section-col' : { label : 'Column', icon : 'columns-3', id : '', source : 'none' }, 'header-nav' : { label : 'Menu', icon : 'menu', id : '', source : 'none' } },
 		schemas : Object.assign( {}, pageAnswer().schemas, {
-			'header-wrap' : schema( 'Header', 'panel-top', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, sticky : { type : 'bool', label : 'Stays at the top', hint : '', default : false } } } ),
+			'header-wrap' : schema( 'Header', 'panel-top', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, sticky : { type : 'bool', label : 'Stays at the top', hint : '', default : false },
+				ground : pick( 'Ground', 'base', [ 'base', 'alt', 'tint', 'primary', 'dark' ] ), image : { type : 'image', label : 'Picture', hint : '', default : '', class : false }, picture : pick( 'Show picture', 'on', [ 'on', 'off' ] ), dim : flag( 'Dim the picture' ), height : pick( 'Height', 'auto', [ 'auto', '60', '80', '100' ] ) } } ),
+			'section-row' : schema( 'Row', 'rows-2', 'none', { attributes : { width : pick( 'Width', 'regular', [ 'narrow', 'regular', 'wide', 'full' ] ), gap : pick( 'Gap', '2', [ '0', '1', '2', '3', '4' ] ), valign : pick( 'Vertical alignment', 'start', [ 'start', 'center', 'end' ] ), halign : pick( 'Horizontal alignment', 'start', [ 'start', 'center', 'end', 'between' ] ), reverse : pick( 'Reverse', 'off', [ 'off', 'on' ], { responsive : true } ) } } ),
+			'section-col' : schema( 'Column', 'columns-3', 'none', { attributes : { size : pick( 'Width', '100', [ '25', '50', '100', 'auto', 'fill' ], { responsive : true } ), align : pick( 'Alignment', 'start', [ 'start', 'center', 'end' ], { responsive : true } ), hide : pick( 'Hide', 'off', [ 'off', 'on' ], { responsive : true } ), ground : pick( 'Ground', 'none', [ 'none', 'base', 'alt', 'tint', 'primary', 'dark' ] ), pad : pick( 'Padding', 'auto', [ 'auto', '0', '1', '2', '3', '4' ] ) } } ),
 			'header-nav' : schema( 'Menu', 'menu', 'none', { attributes : { collapse : choice } } ),
 		} ),
 		details : { wrap : 'header-wrap', reads : [], names : { de_DE : 'Mein Kopf', en_US : 'My head' }, descriptions : { de_DE : 'K', en_US : 'H' }, category : 'frame', rank : 0, images : {}, locales : [ 'de_DE', 'en_US' ], placeholders : [] },
@@ -2236,10 +2242,19 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 		return keysOf( boxOf( w ) ).join();
 	};
 	const head = keysAt('root');
-	const nav = keysAt('1');
+	const row = keysAt('1');
+	const column = keysAt('1.1');
+	const nav = keysAt('1.1.1');
+	const named = function( keys ) { return keys.split(',').map( function( key ) { return key.replace( /^[^:]*:/, '' ).replace( /:.*$/, '' ) } ) };
+	const has = function( keys, names ) { return names.every( function( name ) { return named( keys ).indexOf( name ) !== -1 } ) };
+	const lacks = function( keys, names ) { return names.every( function( name ) { return named( keys ).indexOf( name ) === -1 } ) };
 
-	check( 'F326 b. the sheet of the header of a frame has the setting the header declares - it stays at the top - and no text alignment and no spacing: those are no settings of a header',
-		/sticky/.test( head ) === true && /align|space|pad|gap/.test( head ) === false );
+	check( 'F326 b. the sheet of the header of a frame has the settings the header declares - it stays at the top, the ground, the picture with its veil and the height - and no text alignment and no spacing: those are no settings of a header',
+		has( head, [ 'sticky', 'ground', 'picture', 'dim', 'height' ] ) === true && lacks( head, [ 'align', 'space', 'pad', 'gap', 'size', 'width', 'reverse' ] ) === true );
+
+	check( 'F326 b. the row of a header has the settings of a row - width, gap, both alignments and the reversed order - and the column of it those of a column - width with the sizes auto and fill, alignment, hiding, the ground and the padding - and neither has the settings of the header',
+		has( row, [ 'width', 'gap', 'valign', 'halign', 'reverse' ] ) === true && lacks( row, [ 'sticky', 'ground', 'height', 'dim' ] ) === true
+		&& has( column, [ 'size', 'align', 'hide', 'ground', 'pad' ] ) === true && lacks( column, [ 'sticky', 'height', 'dim', 'gap', 'valign' ] ) === true );
 
 	check( 'F326 b. the sheet of the menu of a header has the setting the menu declares: the menu button is a row of its look, as it is in the sheet of a part of a page',
 		/collapse/.test( nav ) === true );

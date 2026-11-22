@@ -1,2 +1,2 @@
-/*	Nino - footer: the dark surface is the dark page's palette, whatever mode the page is in */
-.footer-wrap--variant-dark { color-scheme: dark; }
+/*	Nino - footer: the dark surface is the dark page's palette, whatever mode the page is in, in a footer of columns and in one of rows alike; a footer that says a ground stands on that and not on the surface */
+.footer-wrap--variant-dark:not( [class*="--ground-"] ) { color-scheme: dark; }

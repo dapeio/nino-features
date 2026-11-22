@@ -1,5 +1,8 @@
-/*	Nino - header: the logo as a name is a target of 24px at the least where the type is small (the one length that is written out); the bar stands on the first colour of the brand, and what is written, drawn and focused on it takes the colour written on it	*/
+/*	Nino - header: the logo as a name is a target of 24px at the least where the type is small (the one length that is written out). The bar stands on the first colour of the brand, and what is written, drawn and focused on it takes the colour written on it, in a header of one line and in one of rows alike; the open list of the menu, which stands on the ground of the page, stands on the bar. A header that says a ground stands on that, a person chose it; a header with a picture is the page's dark one, the picture lies under its veil with light writing whatever the brand is	*/
 .header-logo { min-height: 24px; }
-.header-wrap--variant-bar { background-color: var(--brand-color-1); color: var(--brand-on-color-1); border-bottom-color: transparent; }
-.header-wrap--variant-bar .header-nav-toggle { border-color: currentColor; }
-.header-wrap--variant-bar :focus-visible { outline-color: currentColor; }
+.header-wrap--variant-bar:not( [class*="--ground-"] ) { background-color: var(--brand-color-1); color: var(--brand-on-color-1); border-bottom-color: transparent; }
+.header-wrap--variant-bar:not( [class*="--ground-"] ) .header-nav-details[open] > .header-nav-list { background-color: var(--brand-color-1); }
+.header-wrap--variant-bar:not( [class*="--ground-"] ) .header-nav-toggle { border-color: currentColor; }
+.header-wrap--variant-bar:not( [class*="--ground-"] ) :focus-visible { outline-color: currentColor; }
+.header-wrap--variant-bar:has( > .header-wrap-image ) { background-color: var(--brand-ground); color: var(--brand-ink); border-bottom-color: var(--brand-line); }
+.header-wrap--variant-bar:has( > .header-wrap-image ) .header-nav-details[open] > .header-nav-list { background-color: var(--brand-ground); }

@@ -18,15 +18,19 @@ return [
 				'en_US' => 'The name a screen reader gives the navigation; without it the site\'s word for the main navigation, in the footer the one for the foot.',
 				'de_DE' => 'Der Name, den ein Screenreader der Navigation gibt; ohne ihn das Wort der Website für die Hauptnavigation, im Fußbereich das für die Fußnavigation.',
 			],
-			'header-wrap, footer-col' => [
-				'en_US' => 'The two places the component is offered in: where the header of Basis has its menu, and a column of the footer; in the header, swap header-nav for it in Pages.',
-				'de_DE' => 'Die zwei Plätze, an denen die Komponente angeboten wird: im Kopfbereich von Basis, wo dessen Menü steht, und in einer Spalte des Fußbereichs; dort tauschst Du header-nav in Seiten gegen sie.',
+			'header-wrap, footer-col, header, footer' => [
+				'en_US' => 'Offered in the header, in the footer and in the columns of their rows - in no column of a page; in the header, swap header-nav for it in Pages.',
+				'de_DE' => 'Angeboten im Kopfbereich, im Fußbereich und in den Spalten ihrer Zeilen - in keiner Spalte einer Seite; im Kopfbereich tauschst Du header-nav in Seiten gegen sie.',
 			],
 		],
 		'markup' => [
 			'nav.menu > details > ul.menu-list' => [
 				'en_US' => 'What the component writes: li.menu-item with a.menu-link, button.menu-toggle (aria-expanded, aria-controls) and div.menu-panel, in it .menu-cols--<n> and .menu-col.',
 				'de_DE' => 'Das schreibt die Komponente: li.menu-item mit a.menu-link, button.menu-toggle (aria-expanded, aria-controls) und div.menu-panel, darin .menu-cols--<n> und .menu-col.',
+			],
+			'nav.menu--in-row, nav.menu--footer' => [
+				'en_US' => 'In a column of a row of the header the nav is menu--in-row and its folded list lies under the row; in the footer it is menu--footer, open, with no button.',
+				'de_DE' => 'In einer Spalte einer Zeile des Kopfbereichs ist das nav menu--in-row, seine eingeklappte Liste liegt unter der Zeile; im Fußbereich ist es menu--footer, offen und ohne Knopf.',
 			],
 			'.menu-title, .menu-subtitle, .menu-image, .menu-html, .menu-link--sub' => [
 				'en_US' => 'The parts of a column: a title, a subtitle, a picture, HTML+ that the kernel\'s sanitizer has cleaned, and a link of the panel.',

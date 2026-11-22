@@ -5952,8 +5952,9 @@
 		const width = schema.attributes.size !== undefined && schema.attributes.size.responsive === true ? widthsOf( ( node.a ?? {} ).size )[''] : '';
 		const variant = typeof ( node.a ?? {} ).variant === 'string' ? node.a.variant : '';
 
+		// A share of the row is a number and says so; auto and fill are words of the schema, and not a share
 		if( width !== '' )
-			parts.push( width+ ' %' );
+			parts.push( /^\d+$/.test( width ) === true ? width+ ' %' : attrWord( schema.attributes.size, width ) );
 
 		if( variant !== '' && variant !== schema.standard )
 			parts.push( variantLabel( schema, variant ) );

@@ -545,7 +545,7 @@ check( 'B. the dialog asks for as many pictures as the server keeps, and the scr
 
 const schemas = {
 	'section-wrap' : { icon : 'panel-top', label : 'Section', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'alt' ], optionLabels : null, responsive : false } } },
-	'section-col' : { icon : 'columns-3', label : 'Column', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [ 'card' ], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '33', '50', '100' ], optionLabels : null, responsive : true }, link : { type : 'bool', label : 'Link', hint : '', default : false } } },
+	'section-col' : { icon : 'columns-3', label : 'Column', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [ 'card' ], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '33', '50', '100', 'auto', 'fill' ], optionLabels : { auto : 'As wide as its content', fill : 'The rest of the row' }, responsive : true }, link : { type : 'bool', label : 'Link', hint : '', default : false } } },
 	'section-title' : { icon : 'heading', label : 'Title', group : 'section', container : false, source : 'text', format : 'inline', id : '', variants : [], standard : 'regular', attributes : {} },
 	'text' : { icon : 'text', label : 'Text', group : 'text', container : false, source : 'text', format : 'blocks', id : '', variants : [], standard : 'regular', attributes : {} },
 	'spacer' : { icon : 'ellipsis', label : 'Spacer', group : 'text', container : false, source : 'none', format : '', id : '', variants : [], standard : 'regular', attributes : {} },
@@ -605,6 +605,17 @@ check( 'C. an entry of the tree carries the icon of its component, the kind and 
 	return root.icon === 'panel-top' && title.icon === 'heading' && title.kind === 'Title' && title.name === 'Hallo Welt' && title.label === undefined && title.detail === undefined
 		&& column.meta === '50 % · card' && root.meta === '' && free.locked === true && free.icon === 'code' && free.name === undefined
 		&& title.finding !== undefined && title.finding.state === 'warn' && column.finding === undefined && root.children[0].actions.every( function( action ) { return typeof action.icon === 'string' && action.label === undefined } );
+} )() );
+
+check( 'C. the note of a column that is as wide as its content or takes the rest of the row says it in the words of the schema, and not as a share: a number has the percent sign, auto and fill have none', ( function() {
+	extended();
+
+	const noted = function( size ) {
+		S.top[3].c[1].a.size = size;
+		return builder.itemsNow()[0].children[0].meta;
+	};
+
+	return noted( '33' ) === '33 %' && noted( 'auto' ) === 'As wide as its content' && noted( 'fill' ) === 'The rest of the row' && noted( 'fill m:50' ) === 'The rest of the row' && noted( '50 m:auto' ) === '50 %';
 } )() );
 
 check( 'C. a component that repeats its children for each element is a loop with its type and sort, and a value that comes from a field of the element is the field as its source', ( function() {
