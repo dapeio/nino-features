@@ -948,7 +948,11 @@ function previewDialog( w, preview ) {
 
 	check( 'C. the groups as a page is read: the brand of the project, the page, the header, the others by name in the language of the interface, the footer last - and none that is called as a section of the panel is', rows.map( function( row ) { return row.dataset.group } ).join() === 'brand,page,header,section,footer', rows.map( function( row ) { return row.dataset.group } ).join() );
 	check( 'C. each row is a link with the address of its group, and says where its part comes from - the brand, that it is the project\'s', rows.map( function( row ) { return row.href } ).join() === '#themes/nino/brand,#themes/nino/page,#themes/nino/header,#themes/nino/section,#themes/nino/footer' && w.byClass( rows[0], 'themes-source' )[0].textContent === W('word/project') && w.byClass( rows[1], 'themes-source' )[0].textContent === 'Nino' && w.byClass( rows[2], 'themes-source' )[0].textContent === 'Standard' );
-	check( 'C. the first level has three sections - the groups, the settings, the own css - and one of them is open: the groups', w.theme.querySelectorAll('[aria-expanded]').length === 3 && w.theme.querySelectorAll('[aria-expanded="true"]').length === 1 && w.theme.querySelectorAll('[aria-expanded]')[0].attributes['aria-expanded'] === 'true' );
+	check( 'C. the first level has three sections - the groups, the settings, the own css - and one of them is open: the groups', ( function() {
+		const heads = w.theme.querySelectorAll('[aria-expanded]').filter( function( node ) { return String( node.className ).indexOf('nino-admin-help-button') === -1 } );
+
+		return heads.length === 3 && heads.filter( function( node ) { return node.attributes['aria-expanded'] === 'true' } ).length === 1 && heads[0].attributes['aria-expanded'] === 'true';
+	} )() );
 	check( 'C. the switch of the split view says Groups on this level', w.byClass( w.theme, 'nino-admin-split-switch' )[0].children[0].textContent === 'Groups' );
 	check( 'C. the state is Saved, the website shows another theme: nothing to reset or save, the theme can be applied', w.state_() === SAVED && w.bar().querySelectorAll('button').every( function( b ) { return b.textContent === W('label/apply') ? b.disabled === false && b.hidden === false : ( b.disabled === true || b.hidden === true ) } ) );
 }
@@ -4428,7 +4432,7 @@ function nameField( w ) {
 	const sheet = require('fs').readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' );
 
 	check( 'T10. the names of fields are the workbench\'s class for them - nino-admin-field-name, which has the size, the weight and the colour of the other panels - and none is the class that the workbench has no rule for; the one rule of the sheet is for the same class',
-		script.indexOf('nino-admin-field-label') === -1 && sheet.indexOf('nino-admin-field-label') === -1 && ( script.match( /nino-admin-field-name/g ) ?? [] ).length === 4 && /\.nino-admin-accordion-body \.nino-admin-field-name \{/.test( sheet ) === true );
+		script.indexOf('nino-admin-field-label') === -1 && sheet.indexOf('nino-admin-field-label') === -1 && ( script.match( /nino-admin-field-name/g ) ?? [] ).length === 5 && /\.nino-admin-accordion-body \.nino-admin-field-name \{/.test( sheet ) === true );
 }
 
 // --- AD. the css of a theme is held to the rule of a theme -----------------------------------------------------------------------
@@ -4534,6 +4538,27 @@ function nameField( w ) {
 
 	check( 'F333 b. a choice in the bar and one in the field are one act: the same cards are left, the address is the same, and nothing is asked of the server',
 		cardsOf( withBar.w ) === cardsOf( withoutBar.w ) && cardsOf( withBar.w ) === 'own:lindner' && withBar.w.state.hash === withoutBar.w.state.hash && withBar.w.requests.length === asked );
+}
+
+{
+	// the three explanations of the editor stand behind a (?) at the title they belong to: the groups, the colours of the brand and the palette - and what is only content stays open
+	const w = world( { active : 'nino' } );
+	const titledBy = function( root, title, sentence ) {
+		return w.byClass( root, 'themes-titled' ).filter( function( row ) { return w.text( row ).indexOf( title ) === 0 && w.byClass( row, 'nino-admin-help-text' ).some( function( node ) { return w.text( node ) === sentence } ) } ).length === 1;
+	};
+	const openAs = function( root, sentence ) { return w.byClass( root, 'nino-admin-hint' ).filter( function( node ) { return w.text( node ) === sentence && String( node.parentNode.className ).indexOf('nino-admin-help') === -1 } ).length };
+
+	w.at( '#themes/nino' );
+
+	const groups = titledBy( w.theme, W('label/groups'), W('hint/groups') ) === true && openAs( w.theme, W('hint/groups') ) === 0;
+
+	w.at( '#themes/nino/brand/colours' );
+
+	const brand = w.theme;
+
+	check( 'F336 a. the explanation of the groups is a (?) at the title Groups, the one of the colours a (?) at the title Colours and the one of the palette a (?) at the title Palette - and none of the three stands open as a paragraph',
+		groups === true && titledBy( brand, W('word/colours'), W('hint/colour') ) === true && titledBy( brand, W('label/palette'), W('hint/palette') ) === true
+		&& openAs( brand, W('hint/colour') ) === 0 && openAs( brand, W('hint/palette') ) === 0 );
 }
 
 // --- AE. an own theme is a folder: where its parts come from is what the server finds in the files ---------------------------------------

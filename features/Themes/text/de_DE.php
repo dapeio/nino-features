@@ -16,6 +16,7 @@ return [
 	'[[/_admin/themes/label/save-as]]'	=> 'Als eigenes Theme speichern',
 	'[[/_admin/themes/label/reset]]'	=> 'Zurücksetzen',
 	'[[/_admin/themes/label/groups]]'	=> 'Gruppen',
+	'[[/_admin/themes/label/palette]]'	=> 'Palette',
 	'[[/_admin/themes/label/settings]]'	=> 'Einstellungen',
 	'[[/_admin/themes/label/name]]'	=> 'Name des Themes',
 	'[[/_admin/themes/label/page]]'	=> 'Seite der Vorschau',

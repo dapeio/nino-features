@@ -133,6 +133,17 @@
 		return Nino.adminUi.format( Nino.content.getText( '/_admin/themes/'+ key ), ...params );
 	};
 
+	// A title with the sentence that explains what stands under it behind a (?) at the title - never an open paragraph
+	const titled = function( title, sentence ) {
+
+		const row = el( 'div', 'nino-admin-field-name themes-fieldname themes-titled' );
+
+		row.appendChild( el( 'span', '', title ) );
+		row.appendChild( Nino.adminUi.fieldHelp( sentence, { name : title } ) );
+
+		return row;
+	};
+
 	/**
 	 *	Why a theme or a part is not used, in the words of the panel: the API sends the code of the reason and what goes into its sentence
 	 *
@@ -1233,7 +1244,7 @@
 			address		: { panel : 'themes', parts : addressOf( [ S.key ] ) },
 			open		: open === null ? [] : ( LEVEL_ONE.indexOf( open ) === -1 ? 'groups' : open ),
 			sections	: [
-				{ key : 'groups', label : word('label/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( list ); box.appendChild( Nino.adminUi.hint( word('hint/groups') ) ); reservedNotes( box ); return box } },
+				{ key : 'groups', label : word('label/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( titled( word('label/groups'), word('hint/groups') ) ); box.appendChild( list ); reservedNotes( box ); return box } },
 				{ key : 'settings', label : word('label/settings'), summary : S.mix.name ?? S.theme.name, badge : S.theme.kind === 'own' && ( S.mix.name ?? '' ) !== ( S.saved.mix.name ?? '' ) ? word('state/changed-mark') : '', content : settingsOne },
 				{ key : 'css', label : word('label/css'), summary : cssSummary(), badge : cssOf( S.mix ) !== cssOf( S.saved.mix ) ? word('state/changed-mark') : '', content : cssOne },
 			],
@@ -1897,7 +1908,7 @@
 		if( palette.source === 'reset' )
 			box.appendChild( Nino.adminUi.notice( word('msg/palette-reset') ) );
 
-		box.appendChild( Nino.adminUi.hint( word('hint/palette') ) );
+		box.appendChild( titled( word('label/palette'), word('hint/palette') ) );
 
 		[ 'light', 'dark' ].forEach( function( mode ) {
 
@@ -2016,10 +2027,10 @@
 
 			const said = el( 'p', 'nino-admin-hint themes-adjusted' );
 
+			body.appendChild( titled( word('word/colours'), word('hint/colour') ) );
 			body.appendChild( brandRow( 'color-1', one ) );
 			body.appendChild( said );
 			body.appendChild( brandRow( 'color-2', two ) );
-			body.appendChild( Nino.adminUi.hint( word('hint/colour') ) );
 			body.appendChild( brandRow( 'tone', choiceField( 'tone', TONES ) ) );
 			body.appendChild( box );
 			const paintAdjusted = function() {
