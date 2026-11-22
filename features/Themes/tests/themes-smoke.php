@@ -1315,7 +1315,7 @@ function themesEmpties( mixed $value, string $path, array &$found ): void {
 }
 
 // The lists an answer of the panel may have empty; every other empty thing in it is a map and is an object
-$lists = '~^(?:themes\.#\.frames|rejected|pages|cssFaults|cssRule|notes|groups\.[a-z-]+\.(?:knobs|components)|brand\.(?:unavailable|named))$~D';
+$lists = '~^(?:themes\.#\.frames|rejected|pages|cssFaults|cssRule|cssFindings|cssFindings\.#\.params|notes|groups\.[a-z-]+\.(?:knobs|components)|brand\.(?:unavailable|named))$~D';
 $arrays = [];
 
 foreach( [ 'list' => $listed, 'open' => $openedShipped, 'open of an own theme' => $opened, 'preview' => $previewed ] as $name => $answer ) {
@@ -3507,13 +3507,27 @@ $parts = $read()['themes']['half']['parts'];
 check( 'P. reading: a part.json that is no part rests with its reason, and the group has the standard part: the theme is applied and the part draws nothing', ( $parts['section']['ok'] ?? true ) === false && ( $parts['page']['ok'] ?? false ) === true && themesCall( $own, 'themes/apply', [ 'theme' => 'own:half' ] )[0] === 200 && str_contains( (string) file_get_contents( ninoSandboxDir( $own ). '/private/assets/theme.css' ), '--section-wrap-space: 1.75rem;' ) === false );
 themesCall( $own, 'themes/apply', [ 'theme' => 'nino' ] );
 
-// a theme.css that breaks the rule is not used, and says where
+// the findings of the rule of a theme that the kernel gives by code are said in both languages of the workbench: each code the kernel has - where it has any - has its words in the panel
+$ruleCodes = defined( 'Nino\Components::CSS_WHY' ) === true ? array_keys( \Nino\Components::CSS_WHY ) : [];
+$ruleDe = require __DIR__. '/../text/de_DE.php';
+$ruleEn = require __DIR__. '/../text/en_US.php';
+$ruleMissing = array_filter( $ruleCodes, static fn( string $code ): bool => isset( $ruleDe['[[/_admin/themes/rule/'. $code. ']]'], $ruleEn['[[/_admin/themes/rule/'. $code. ']]'] ) === false );
+check( 'P. every code the kernel gives for a finding of the rule of a theme has its sentence in German and in English - a kernel that gives none has nothing to say', $ruleMissing === [] && isset( $ruleDe['[[/_admin/themes/rule-line]]'], $ruleEn['[[/_admin/themes/rule-line]]'] ) );
+$ruleOpen = static fn( string $css ): array => \Nino\Modules\Themes\Mix::cssFindings( $css );
+check( 'P. what the panel is told of a css that breaks the rule is the findings of the kernel by code, params and line where it gives them - the same number as the sentences - and none where it does not', ( method_exists( \Nino\Components::class, 'themeFindings' ) === true
+	? count( $ruleOpen( "body { color: red; }\n" ) ) === count( \Nino\Modules\Themes\Mix::cssRule( "body { color: red; }\n" ) ) && ( $ruleOpen( "body { color: red; }\n" )[0]['line'] ?? null ) === 1 && is_array( $ruleOpen( "body { color: red; }\n" )[0]['params'] ?? null )
+	: $ruleOpen( "body { color: red; }\n" ) === [] ) && $ruleOpen( '' ) === [] );
+
+// a theme.css that breaks the rule is not used, and says where. A kernel that says the line of a finding on a selector - whatever it is asked, as here - gives the reason the line; one that does not gives the
+// reason without it: what is expected is what this kernel does
+$kernelLine = preg_match( '/\(line 2\)/', implode( '; ', \Nino\Components::themeProblems( ".fine { color: red; }\nbody { color: red; }\n" ) ) ) === 1;
+$expectedWhy = $kernelLine === true ? [ 'theme-css', [ '2' ] ] : [ 'theme-css-any', [] ];
 file_put_contents( $ownDir. '/half/theme.css', ".fine { color: red; }\nbody { color: red; }\n" );
 $found = $read();
 [ , $listed ] = themesCall( $own, 'themes/list' );
 $card = array_values( array_filter( $listed['themes'], static fn( array $theme ): bool => $theme['key'] === 'own:half' ) )[0];
 themesCall( $own, 'themes/apply', [ 'theme' => 'own:half' ] );
-check( 'P. reading: a theme.css that breaks the rule of a theme is not used - the stylesheet has nothing of it - and the list says that and where: the line, as a code with its params - and the editor has its text, to correct it', ( $found['themes']['half']['css'] ?? 'x' ) === '' && $card['css']['why']['code'] === 'theme-css-any' && $card['parts']['header']['ok'] === false && $card['parts']['header']['why']['code'] === 'css' && $card['parts']['page']['ok'] === true
+check( 'P. reading: a theme.css that breaks the rule of a theme is not used - the stylesheet has nothing of it - and the list says that and where: the line, as a code with its params - and the editor has its text, to correct it', ( $found['themes']['half']['css'] ?? 'x' ) === '' && [ $card['css']['why']['code'], $card['css']['why']['params'] ?? [] ] === $expectedWhy && $card['parts']['header']['ok'] === false && $card['parts']['header']['why']['code'] === 'css' && $card['parts']['page']['ok'] === true
 	&& str_contains( (string) file_get_contents( ninoSandboxDir( $own ). '/private/assets/theme.css' ), '.fine' ) === false && themesOwnMix( $own, 'half' )['css'] === trim( ".fine { color: red; }\nbody { color: red; }\n" ) );
 file_put_contents( $ownDir. '/half/theme.css', ".fine { color: red; }\n@font-face { font-family: \"O\"; src: url(https://example.invalid/o.woff2); }\n" );
 check( 'P. ...and where the kernel knows the line of what it refuses, the line is in the reason, for the panel to say: the code and the number', ( \Nino\Modules\Themes\Reader::explain( $read()['themes']['half']['cssProblem'] )['params'] ?? [] ) === [ '2' ] && \Nino\Modules\Themes\Reader::explain( $read()['themes']['half']['cssProblem'] )['code'] === 'theme-css' );
@@ -4424,6 +4438,40 @@ else {
 	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/themes-panel-js-smoke.js' ). ' 2>&1', $output, $exit );
 	check( 'K. themes-panel-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
 }
+
+// the keys the lists of the panel use as a choice are no keys of a theme: an own theme named "All" has the key t-all, as one that begins with a digit has a letter before it
+$reserved = \Nino\Modules\Themes\Store::RESERVED;
+$site = themesSite();
+ninoUser( $site, 'designer@example.com' );
+$made = [];
+
+foreach( [ 'all', 'own', 'project', 'uploaded', 'catalogue', 'shipped' ] as $word ) {
+
+	[ $status, $body ] = themesCall( $site, 'themes/save-as', [ 'mix' => themesMix( ucfirst( $word ), [] ) ] );
+	$made[$word] = [ $status, $body['theme'] ?? '' ];
+}
+
+$other = themesSite();
+ninoUser( $other, 'designer@example.com' );
+themesCall( $other, 'themes/save-as', [ 'mix' => themesMix( 'Base', [] ) ] );
+[ $copyStatus, $copy ] = themesCall( $other, 'themes/duplicate', [ 'theme' => 'own:base', 'name' => 'Project' ] );
+check( 'the name of an own theme that is a choice of the lists - All, Own, Project, Uploaded, Catalogue, Shipped - makes the key t-all, t-own and so on, never the choice itself: by "Save as an own theme" and by a copy, and the list of the keys is one list with every choice of the lists in it',
+	array_map( static fn( array $one ): array => $one, $made ) === [ 'all' => [ 200, 'own:t-all' ], 'own' => [ 200, 'own:t-own' ], 'project' => [ 200, 'own:t-project' ], 'uploaded' => [ 200, 'own:t-uploaded' ], 'catalogue' => [ 200, 'own:t-catalogue' ], 'shipped' => [ 200, 'own:t-shipped' ] ]
+	&& $copyStatus === 200 && ( $copy['theme'] ?? '' ) === 'own:t-project' && array_diff( [ 'all', 'own', 'project', 'uploaded', 'catalogue', 'shipped' ], $reserved ) === [] );
+
+// a folder somebody put there by hand with such a key is no theme: it is in the list as refused, with the reason
+themesHand( $site, 'all', [] );
+themesHand( $site, 'Uploaded', [] );
+unset( $site['./nino/themes/read'], $site['./nino/themes/own'] );
+[ , $listed ] = themesCall( $site, 'themes/list' );
+$refusedOwn = [];
+
+foreach( $listed['rejected'] ?? [] as $one )
+	$refusedOwn[(string) $one['folder']] = (string) ( $one['why']['code'] ?? '' );
+
+ksort( $refusedOwn );
+check( 'a folder of the own themes with a key that is a choice of the lists is refused, with the reason that the key is reserved - and it is no theme of the list', ( $refusedOwn['all'] ?? '' ) === 'key-reserved'
+	&& array_filter( $listed['themes'], static fn( array $theme ): bool => in_array( $theme['key'], [ 'own:all', 'own:Uploaded' ], true ) ) === [] );
 
 // The links a probe leaves in a sandbox are taken away first: removeDir() does not follow a link, and a folder with a link in it stays
 foreach( $sandboxes as $sandbox ) {

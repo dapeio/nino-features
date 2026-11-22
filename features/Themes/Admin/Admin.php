@@ -156,7 +156,7 @@ namespace Nino\Modules\Themes {
 					if( $part['ok'] === false && isset( $from[$group] ) === true )
 						$from[$group] = 'rests';
 
-				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'from' => $from, 'parts' => $parts, 'css' => $css, 'stamp' => self::_ownStamp( $appData, $key ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key , 'blocks' => Package::counted( Reader::ownDir( $appData ). '/'. $key ) ];
+				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'from' => $from, 'parts' => $parts, 'css' => $css, 'stamp' => self::_ownStamp( $appData, $key ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key , 'blocks' => Package::counted( Reader::ownDir( $appData ). '/'. $key ), 'sameKey' => Upload::origin( $appData, (string) $key ) ];
 			}
 
 			$groups = [];
@@ -217,7 +217,7 @@ namespace Nino\Modules\Themes {
 
 			$plan = Compiler::plan( $appData, $theme['mix'], $state['brand'] );
 
-			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => self::_wired( $theme['mix'] ), 'cssRule' => Mix::cssRule( (string) ( $theme['mix']['css'] ?? '' ) ), 'stamp' => $theme['kind'] === 'own' ? self::_ownStamp( $appData, substr( $theme['key'], 4 ) ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'theme' => [ 'key' => $theme['key'], 'kind' => $theme['kind'], 'name' => $theme['name'] ], 'mix' => self::_wired( $theme['mix'] ), 'cssRule' => Mix::cssRule( (string) ( $theme['mix']['css'] ?? '' ) ), 'cssFindings' => Mix::cssFindings( (string) ( $theme['mix']['css'] ?? '' ) ), 'stamp' => $theme['kind'] === 'own' ? self::_ownStamp( $appData, substr( $theme['key'], 4 ) ) : '' ] + self::_describe( $appData, $plan, $state['brand'] ) + self::_state( $appData, $state ) );
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {
@@ -249,7 +249,7 @@ namespace Nino\Modules\Themes {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'cssFaults' => $built['faults'], 'cssRule' => $built['rule'] ] + self::_describe( $appData, $built['plan'], $brand ) );
+			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'cssFaults' => $built['faults'], 'cssRule' => $built['rule'], 'cssFindings' => $built['findings'] ] + self::_describe( $appData, $built['plan'], $brand ) );
 		}
 
 		public static function apiThumb( array &$appData, array &$request ): void {
@@ -1228,6 +1228,10 @@ namespace Nino\Modules\Themes {
 
 			if( preg_match( \Nino\Components::NAME, $base_key ) !== 1 )
 				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
+
+			// A key the lists of the panel use as a choice - all, own, ... - is never a key: the name "All" is the key t-all, as a name that begins with a digit is
+			if( in_array( $base_key, Store::RESERVED, true ) === true )
+				$base_key = rtrim( substr( 't-'. $base_key, 0, \Nino\Components::NAME_LENGTH ), '-' );
 
 			$dir = Reader::ownDir( $appData );
 			$made = $base_key;

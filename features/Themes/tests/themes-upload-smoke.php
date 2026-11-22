@@ -335,6 +335,13 @@ foreach( $archives as $name => $data ) {
 check( 'what is no theme package - a text, an archive that is cut off, a link, a php file, an .htaccess, a hidden file, a file that is too large, too many entries, a bomb, a file beside the folder, a second folder, an upload over the size - is refused with a code of its own, nothing is held and nothing is written',
 	array_filter( $why, static fn( bool $ok ): bool => $ok === false ) === [] );
 
+// the same keys in a folder of the hook - a theme that is put there by hand - are refused by the reader, with the reason: a theme that is read has no such key
+upHook( $site, 'uploaded', [ 'theme.json' => upLight( 'uploaded', '1.0.0' )['theme.json'] ] );
+unset( $site['./nino/themes/read'] );
+$handRead = \Nino\Modules\Themes\Reader::read( $site );
+check( 'a folder of the hook with a key that a list of the panel uses as a choice is refused with the reason that the key is reserved, and it is no theme of the list',
+	isset( $handRead['themes']['uploaded'] ) === false && array_values( array_filter( $handRead['rejected'], static fn( string $reason, string $folder ): bool => basename( $folder ) === 'uploaded' && ( \Nino\Modules\Themes\Reader::explain( $reason )['code'] ?? '' ) === 'key-reserved', ARRAY_FILTER_USE_BOTH ) ) !== [] );
+
 $paths = [
 	'a folder that climbs'							=> [ 'parts/../../escape/part.json', '{}' ],
 	'a path with a backslash'						=> [ 'parts\\button\\part.json', '{}' ],
@@ -605,7 +612,7 @@ $_SESSION = [];
 $base = upWritten( $site );
 $why = [];
 
-foreach( [ 'project', 'basis', 'own', 'themes', 'pack' ] as $reserved ) {
+foreach( \Nino\Modules\Themes\Store::RESERVED as $reserved ) {
 
 	unset( $_SESSION[Upload::SESSION] );
 	[ , $shown ] = upChoose( $site, upPack( upLight( $reserved, '1.0.0' ) ) );
@@ -904,6 +911,9 @@ check( 'an own theme made of a theme with steps and css begins at the steps and 
 // a css of a theme that does not keep the rule is not drawn: not by the theme, not by a theme made of it
 $filesBad = upRich( 'bad-css', '1.0.0' );
 upHook( $site, 'bad-css', [ 'theme.json' => $filesBad['theme.json'], 'theme.css' => "body { color: red }\n.ok { color: blue }\n", 'parts/button/part.json' => $filesBad['parts/button/part.json'] ] );
+// a kernel that says the line of a finding on a selector gives the reason the line (the rule is at line 1 here); one that does not gives it without: what is expected is what this kernel does
+$kernelLine = preg_match( '/\(line 1\)/', implode( '; ', \Nino\Components::themeProblems( "body { color: red }\n.ok { color: blue }\n" ) ) ) === 1;
+$expectedWhy = $kernelLine === true ? [ 'theme-css', [ '1' ] ] : [ 'theme-css-any', [] ];
 $badRead = \Nino\Modules\Themes\Reader::read( $site )['themes']['bad-css'] ?? [];
 $badMix = \Nino\Modules\Themes\Mix::of( $site, 'bad-css' ) ?? [];
 upCall( $site, 'themes/apply', [ 'theme' => 'bad-css' ] );
@@ -918,17 +928,18 @@ $badOwnSheet = $sheetOf();
 $badCard = array_values( array_filter( $listed['themes'], static fn( array $one ): bool => $one['key'] === 'bad-css' ) )[0] ?? [];
 
 check( 'a css of a theme that does not keep the rule is left out and named: the theme is read and used without it, it is not in the stylesheet - not of the theme, not of an own theme made of it, whose css begins empty - and the list says why, with what it found',
-	( $badRead['css'] ?? 'x' ) === '' && ( \Nino\Modules\Themes\Reader::explain( (string) ( $badRead['cssProblem'] ?? '' ) )['code'] ?? '' ) === 'theme-css-any' && isset( $badMix['css'] ) === false && str_contains( $badSheet, 'color: red' ) === false && str_contains( $badSheet, 'color: blue' ) === false
-	&& str_contains( $badOwnSheet, 'color: red' ) === false && ( $badOwn['css'] ?? '' ) === '' && ( $badCard['css']['why']['code'] ?? '' ) === 'theme-css-any' );
+	( $badRead['css'] ?? 'x' ) === '' && ( ( $badExplained = \Nino\Modules\Themes\Reader::explain( (string) ( $badRead['cssProblem'] ?? '' ) ) )['code'] ?? '' ) === $expectedWhy[0] && ( $badExplained['params'] ?? [] ) === $expectedWhy[1] && isset( $badMix['css'] ) === false && str_contains( $badSheet, 'color: red' ) === false && str_contains( $badSheet, 'color: blue' ) === false
+	&& str_contains( $badOwnSheet, 'color: red' ) === false && ( $badOwn['css'] ?? '' ) === '' && [ $badCard['css']['why']['code'] ?? '', $badCard['css']['why']['params'] ?? [] ] === $expectedWhy );
 
 // a package whose css breaks the rule is not put in place at all
 $nastyCss = upRich( 'nasty-css', '1.0.0' );
 $nastyCss['theme.css'] = "body { color: red }\n";
 $before = upWritten( $site );
 [ $nastyStatus, $nastyBody ] = upChoose( $site, upPack( $nastyCss ) );
+$expectedBody = $kernelLine === true ? [ 'themes_upload_package_theme_css', [ 'theme.css', '1' ] ] : [ 'themes_upload_package_theme_css_any', null ];
 
 check( 'a package whose theme.css breaks the rule of a theme is refused before it is held, with the file named, and nothing is written',
-	$nastyStatus === 400 && ( $nastyBody['code'] ?? '' ) === 'themes_upload_package_theme_css_any' && isset( $_SESSION[Upload::SESSION] ) === false && upWritten( $site ) === $before );
+	$nastyStatus === 400 && ( $nastyBody['code'] ?? '' ) === $expectedBody[0] && ( $expectedBody[1] === null || ( $nastyBody['params'] ?? [] ) === $expectedBody[1] ) && isset( $_SESSION[Upload::SESSION] ) === false && upWritten( $site ) === $before );
 
 // a package whose values are no steps of knobs is refused as any package with a part that is wrong
 $nastyValues = upRich( 'nasty-values', '1.0.0' );
@@ -1334,6 +1345,47 @@ $id = upHeld();
 
 check( 'where the own themes are as many as there may be, a package is not copied: a 409 with the number, the bytes stay held, and no folder is made',
 	$limited === 409 && ( $bodyLimited['code'] ?? '' ) === 'themes_limit' && upHeld() === $id && is_dir( $own. '/one-more' ) === false && array_values( array_filter( (array) scandir( $own ), static fn( string $entry ): bool => $entry[0] !== '.' ) ) === $full );
+
+
+echo "\nH. The export of an own theme whose key an installed theme has\n";
+
+// an own theme and an installed one may have the same key - the own one is told by "own:" - and the package that is made of the own one meets the installed one when it is uploaded on this site:
+// it replaces nothing unasked, and the list tells the own theme that its key is an installed theme's
+$site = upSite();
+upChoose( $site, upPack( upLight( 'dupe', '1.0.0' ), 'dupe' ) );
+upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+$ownRoot = ninoSandboxDir( $site ). '/private/themes';
+
+foreach( [ 'dupe', 'nino' ] as $same ) {
+
+	@mkdir( $ownRoot. '/'. $same. '/parts', 0755, true );
+	file_put_contents( $ownRoot. '/'. $same. '/theme.json', json_encode( [ 'key' => $same, 'version' => '1.0.0', 'name' => ucfirst( $same ). ' own', 'description' => 'Own' ] ) );
+}
+
+unset( $site['./nino/themes/own'], $site['./nino/themes/read'] );
+[ , $listed ] = upCall( $site, 'themes/list' );
+$sameKeys = [];
+
+foreach( $listed['themes'] as $one )
+	if( $one['kind'] === 'own' )
+		$sameKeys[$one['key']] = $one['sameKey'] ?? 'missing';
+
+ksort( $sameKeys );
+$installedDir = \Nino\Packages::dir( $site, \Nino\Packages::THEME, 'dupe' );
+$installedBefore = upFiles( $installedDir );
+$outcome = [];
+
+foreach( [ 'dupe' => 'themes_upload_exists', 'nino' => 'themes_upload_taken_shipped' ] as $same => $code ) {
+
+	$export = \Nino\Modules\Themes\Package::files( $site, $same );
+	unset( $_SESSION[Upload::SESSION] );
+	upChoose( $site, upPack( (array) ( $export['files'] ?? [] ), $same ) );
+	[ $status, $body ] = upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+	$outcome[$same] = [ $status, $body['code'] ?? '' ];
+}
+
+check( 'the list tells an own theme whose key an installed theme has what that theme is - by the key, "uploaded" for a package put in place here, "shipped" for the one of the feature - and the upload of the package of the own theme replaces nothing unasked: the one that was uploaded is not replaced and the shipped one never, a 409 each and the installed folder is as it was',
+	$sameKeys === [ 'own:dupe' => 'uploaded', 'own:nino' => 'shipped' ] && $outcome === [ 'dupe' => [ 409, 'themes_upload_exists' ], 'nino' => [ 409, 'themes_upload_taken_shipped' ] ] && upFiles( $installedDir ) === $installedBefore && $installedBefore !== [] );
 
 
 ninoDone( $site );

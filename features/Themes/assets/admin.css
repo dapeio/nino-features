@@ -331,10 +331,17 @@
 }
 
 #themes-app .themes-actions {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	justify-items: start;
 	gap: .4rem;
 	margin: .75rem 0 .25rem;
+}
+
+/* A button and the (?) that tells what it does stay together on one line */
+#themes-app .themes-action {
+	display: inline-flex;
+	align-items: center;
+	gap: .1rem;
 }
 
 #themes-app .themes-palette .themes-least {

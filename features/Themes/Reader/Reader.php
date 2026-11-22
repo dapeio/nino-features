@@ -93,6 +93,7 @@ namespace Nino\Modules\Themes {
 			'own-many'					=> 'there is no room for more than %s own themes',
 			'own-missing'				=> 'the own theme %s is not there',
 			'key-taken'					=> 'the key "%s" is the theme %s\'s',
+			'key-reserved'			=> 'the key "%s" is reserved: the lists of the panel use it as a choice',
 			'part-key'					=> '"%s" is no key of a part - there are %s',
 			'part-values'				=> '"values" is a map of knobs of the part to a step from -2 to 2 - "%s" is none of them or has no step',
 			'theme-css'					=> 'theme.css breaks the rules of a theme at line %s',
@@ -402,6 +403,9 @@ namespace Nino\Modules\Themes {
 
 			if( is_string( $key ) === false || preg_match( \Nino\Components::NAME, $key ) !== 1 || strlen( $key ) > \Nino\Components::NAME_LENGTH || ( $name !== '' && $key !== $name ) )
 				return self::why( 'key-slug', \Nino\Components::NAME_LENGTH );
+
+			if( in_array( strtolower( $key ), Store::RESERVED, true ) === true )
+				return self::why( 'key-reserved', $key );
 
 			if( is_string( $json['version'] ?? null ) === false || preg_match( self::VERSION, $json['version'] ) !== 1 )
 				return self::why( 'version' );

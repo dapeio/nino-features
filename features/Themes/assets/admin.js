@@ -89,6 +89,7 @@
 		demo			: '',
 		cssFaults	: [],
 		cssRule		: [],
+		cssFindings : [],
 		listing		: true,
 		from			: 'all',
 		find			: '',
@@ -851,6 +852,7 @@
 			S.failure = null;
 			S.cssFaults = Array.isArray( response.cssFaults ) === true ? response.cssFaults : [];
 			S.cssRule = Array.isArray( response.cssRule ) === true ? response.cssRule : [];
+			S.cssFindings = Array.isArray( response.cssFindings ) === true ? response.cssFindings : [];
 			paintCssFaults();
 			sayCss();
 			paintBar();
@@ -1281,7 +1283,20 @@
 
 	// What the css of the theme does against the rule of a theme, as the server says it of the draft: every finding in one sentence; '' where it keeps the rule
 	const cssRuleText = function() {
-		return S.cssRule.length === 0 ? '' : Nino.adminUi.format( Nino.content.getText('/_admin/error/themes_css_rule'), S.cssRule.join('; ') );
+
+		if( S.cssRule.length === 0 )
+			return '';
+
+		// Where the kernel gives each finding as a code with its params and its line, each is said in the language of the workbench; a finding with no sentence here - and a kernel that gives
+		// no codes - is said with the English sentence of the kernel
+		const said = S.cssFindings.length === S.cssRule.length ? S.cssFindings.map( function( found, at ) {
+
+			const sentence = word( 'rule/'+ found.code, ...found.params );
+
+			return sentence === '' ? S.cssRule[at] : sentence+ ( found.line === null || found.line === undefined ? '' : ' ('+ word( 'rule-line', found.line )+ ')' );
+		} ) : S.cssRule;
+
+		return Nino.adminUi.format( Nino.content.getText('/_admin/error/themes_css_rule'), said.join('; ') );
 	};
 
 	// The sentence at the field of the css: what the browser can tell at once, else what the rule of a theme finds in it - drawn anew where the answer for the draft comes
@@ -1465,84 +1480,71 @@
 
 		const body = el('div');
 		const own = S.theme.kind === 'own';
-		const field = Nino.adminUi.textField( { label : word('label/name'), id : 'themes-theme-name', value : own === true ? ( S.mix.name ?? S.theme.name ) : S.theme.name, required : own, maxLength : S.list.limits.name, onInput : function( value ) { if( own === true ) renamed( value ) } } );
+		const sentence = own === true ? word('hint/name-own') : word( 'hint/name-package', S.list.themes.find( function( theme ) { return theme.key === S.key } )?.version ?? '' )+ ' '+ word('hint/delete-package');
+		const field = Nino.adminUi.textField( { label : word('label/name'), id : 'themes-theme-name', value : own === true ? ( S.mix.name ?? S.theme.name ) : S.theme.name, required : own, maxLength : S.list.limits.name, help : sentence, onInput : function( value ) { if( own === true ) renamed( value ) } } );
 		const input = field.querySelector('input');
-		const version = S.list.themes.find( function( theme ) { return theme.key === S.key } )?.version ?? '';
-		const hint = Nino.adminUi.hint( own === true ? word('hint/name-own') : word( 'hint/name-package', version ) );
 		const actions = el( 'div', 'nino-admin-actions themes-actions' );
-		const saveNew = Nino.adminUi.button( word('label/save-as'), function() { saveAsNew( saveNew ) }, { className : 'nino-admin-btn--small', id : 'themes-save-as' } );
-		const copyButton = Nino.adminUi.button( word('label/duplicate'), function() { duplicateOpen( copyButton ) }, { className : 'nino-admin-btn--small', id : 'themes-duplicate' } );
-		const copyHint = Nino.adminUi.hint('');
-		const restoreButton = Nino.adminUi.button( word('label/restore'), function() { restore( restoreButton ) }, { className : 'nino-admin-btn--small', id : 'themes-restore' } );
-		const restoreHint = Nino.adminUi.hint('');
-		const keepButton = Nino.adminUi.button( word('label/keep'), function() { keepState( keepButton ) }, { className : 'nino-admin-btn--small', id : 'themes-keep' } );
-		const keepHint = Nino.adminUi.hint('');
-		const exportButton = own === true ? Nino.adminUi.button( word('label/export'), function() { exportOwn( exportButton ) }, { className : 'nino-admin-btn--small', id : 'themes-export' } ) : null;
-		const exportHint = Nino.adminUi.hint('');
-		const blocksIn = S.list.themes.find( function( theme ) { return theme.key === S.key } )?.blocks ?? 0;
-		const blocksButton = blocksIn > 0 && S.list.blocksTake === true ? Nino.adminUi.button( word('label/blocks-take'), function() { takeBlocks( S.key, blocksButton ) }, { className : 'nino-admin-btn--small', id : 'themes-blocks' } ) : null;
-		const blocksHint = blocksIn > 0 ? Nino.adminUi.hint( word( 'msg/blocks-in', blocksIn )+ ( blocksButton === null ? '' : ' '+ word('hint/blocks-take') ) ) : null;
-		const removeButton = own === true ? Nino.adminUi.button( word('label/delete'), function() { remove( removeButton ) }, { className : 'nino-admin-btn--small nino-admin-btn-danger', id : 'themes-delete' } ) : null;
-		const removeHint = Nino.adminUi.hint('');
+
+		// What a button does is told behind a (?) beside it - the sentence is no open paragraph under the row; the sentence is the button's description, and a button that is off says its reason as its title
+		const act = function( id, label, onClick, className, plain ) {
+
+			const button = Nino.adminUi.button( label, onClick, { className : 'nino-admin-btn--small'+ ( className ?? '' ), id : 'themes-'+ id } );
+			const cell = el( 'span', 'themes-action' );
+
+			cell.appendChild( button );
+			actions.appendChild( cell );
+
+			if( plain === true )
+				return { button : button, hint : null };
+
+			const help = Nino.adminUi.fieldHelp( '', { name : label } );
+
+			help.sentence.id = 'themes-'+ id+ '-hint';
+			help.querySelector('button').setAttribute( 'aria-controls', help.sentence.id );
+			button.setAttribute( 'aria-describedby', help.sentence.id );
+			cell.appendChild( help );
+
+			return { button : button, hint : help.sentence };
+		};
+
+		const sentenceOf = field.querySelector('.nino-admin-help');
+
+		if( sentenceOf !== null && sentenceOf !== undefined && sentenceOf.sentence !== undefined ) {
+			sentenceOf.sentence.id = 'themes-name-hint';
+			sentenceOf.querySelector('button').setAttribute( 'aria-controls', 'themes-name-hint' );
+		}
 
 		input.name = 'name';
 		input.readOnly = own === false;
 		input.setAttribute( 'aria-describedby', 'themes-name-hint' );
-		hint.id = 'themes-name-hint';
-		restoreHint.id = 'themes-restore-hint';
-		keepHint.id = 'themes-keep-hint';
-		keepButton.setAttribute( 'aria-describedby', 'themes-keep-hint' );
-		exportHint.id = 'themes-export-hint';
-		removeHint.id = 'themes-delete-hint';
-		copyHint.id = 'themes-duplicate-hint';
-		restoreButton.setAttribute( 'aria-describedby', 'themes-restore-hint' );
-		copyButton.setAttribute( 'aria-describedby', 'themes-duplicate-hint' );
-
-		if( removeButton !== null )
-			removeButton.setAttribute( 'aria-describedby', 'themes-delete-hint' );
-
-		if( exportButton !== null )
-			exportButton.setAttribute( 'aria-describedby', 'themes-export-hint' );
 
 		body.appendChild( field );
-		body.appendChild( hint );
 		body.appendChild( el( 'div', 'nino-admin-field-name themes-fieldname', word('label/mix') ) );
 		body.appendChild( Nino.adminUi.hint( mixSummary()+ '.' ) );
-		actions.appendChild( saveNew );
-		actions.appendChild( copyButton );
-		actions.appendChild( keepButton );
 
-		if( exportButton !== null )
-			actions.appendChild( exportButton );
-
-		actions.appendChild( restoreButton );
-
-		if( blocksButton !== null )
-			actions.appendChild( blocksButton );
-
-		if( removeButton !== null )
-			actions.appendChild( removeButton );
+		const saveNew = act( 'save-as', word('label/save-as'), function() { saveAsNew( saveNew.button ) }, '', true );
+		const copy = act( 'duplicate', word('label/duplicate'), function() { duplicateOpen( copy.button ) } );
+		const keep = act( 'keep', word('label/keep'), function() { keepState( keep.button ) } );
+		const exported = own === true ? act( 'export', word('label/export'), function() { exportOwn( exported.button ) } ) : null;
+		const restoreAct = act( 'restore', word('label/restore'), function() { restore( restoreAct.button ) } );
+		const blocksIn = S.list.themes.find( function( theme ) { return theme.key === S.key } )?.blocks ?? 0;
+		const blocks = blocksIn > 0 && S.list.blocksTake === true ? act( 'blocks', word('label/blocks-take'), function() { takeBlocks( S.key, blocks.button ) } ) : null;
+		const removeAct = own === true ? act( 'delete', word('label/delete'), function() { remove( removeAct.button ) }, ' nino-admin-btn-danger' ) : null;
 
 		body.appendChild( actions );
 
-		if( blocksHint !== null ) {
-			blocksHint.id = 'themes-blocks-hint';
-			body.appendChild( blocksHint );
+		if( blocks !== null )
+			blocks.hint.textContent = word( 'msg/blocks-in', blocksIn )+ ' '+ word('hint/blocks-take');
+		else if( blocksIn > 0 ) {
 
-			if( blocksButton !== null )
-				blocksButton.setAttribute( 'aria-describedby', 'themes-blocks-hint' );
+			// Only the number: it is what the theme holds, no sentence to explain
+			const held = Nino.adminUi.hint( word( 'msg/blocks-in', blocksIn ) );
+
+			held.id = 'themes-blocks-hint';
+			body.appendChild( held );
 		}
 
-		body.appendChild( copyHint );
-		body.appendChild( keepHint );
-
-		if( exportButton !== null )
-			body.appendChild( exportHint );
-
-		body.appendChild( restoreHint );
-		body.appendChild( removeHint );
-
-		S.view.one = { saveNew : saveNew, copy : copyButton, copyHint : copyHint, keep : keepButton, keepHint : keepHint, export : exportButton, exportHint : exportHint, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
+		S.view.one = { saveNew : saveNew.button, copy : copy.button, copyHint : copy.hint, keep : keep.button, keepHint : keep.hint, export : exported === null ? null : exported.button, exportHint : exported === null ? null : exported.hint, restore : restoreAct.button, restoreHint : restoreAct.hint, remove : removeAct === null ? null : removeAct.button, removeHint : removeAct === null ? null : removeAct.hint };
 		paintSettings();
 
 		return body;
@@ -1585,8 +1587,12 @@
 			one.remove.disabled = isActive() === true;
 			one.removeHint.textContent = isActive() === true ? word('hint/delete-active') : word('hint/delete');
 		}
-		else
-			one.removeHint.textContent = word('hint/delete-package');
+
+		// A button that is off says why as its title: the reason is the sentence of its (?)
+		[ [ one.copy, one.copyHint ], [ one.keep, one.keepHint ], [ one.export, one.exportHint ], [ one.restore, one.restoreHint ], [ one.remove, one.removeHint ] ].forEach( function( pair ) {
+			if( pair[0] !== null && pair[0] !== undefined )
+				pair[0].title = pair[0].disabled === true ? pair[1].textContent : '';
+		} );
 	};
 
 	// The heads of the sections that say what the draft holds: the name and the css on the first level, the values on the level of the brand
@@ -1982,8 +1988,14 @@
 
 		// The way back from the images ends here, on the link that was followed
 		open.addEventListener( 'click', function() { S.leftFor = 'logo' } );
-		body.appendChild( Nino.adminUi.hint( word('hint/logo') ) );
-		body.appendChild( open );
+
+		// What the logo is, behind a (?) beside the link to the images
+		const help = Nino.adminUi.fieldHelp( word('hint/logo'), { field : open, name : word('label/logo-open') } );
+		const cell = el( 'span', 'themes-action' );
+
+		cell.appendChild( open );
+		cell.appendChild( help );
+		body.appendChild( cell );
 
 		return body;
 	};
@@ -2764,7 +2776,7 @@
 		} );
 	};
 
-	const exportOwn = function( opener, plain ) {
+	const exportOwn = function( opener, plain, told ) {
 
 		const send = function() {
 
@@ -2782,6 +2794,28 @@
 
 		if( plain === true ) {
 			send();
+			return;
+		}
+
+		// A package that carries the key of an installed theme is said so before it is made - a note, not a ban: the upload of it is the one that never replaces unasked
+		const same = ( S.list.themes.find( function( theme ) { return theme.key === S.key } ) ?? {} ).sameKey ?? '';
+
+		if( same !== '' && told !== true ) {
+
+			Nino.adminUi.choiceDialog( {
+				title		: word('export/key-title'),
+				content	: el( 'p', '', word( 'export/key-taken', S.key.replace( /^own:/, '' ), same === 'project' ? word('word/project') : word( 'chip/'+ same ) ) ),
+				opener	: opener,
+				choices	: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'go', label : word('export/key-go'), kind : 'primary' } ],
+				onChoose	: function( value ) {
+
+					if( value === 'go' )
+						exportOwn( opener, plain, true );
+					else
+						land( opener, null );
+				},
+			} );
+
 			return;
 		}
 

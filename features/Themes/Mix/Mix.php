@@ -943,6 +943,25 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	What cssRule() finds, by code: where the kernel gives each finding as a code with its params and its line (\Nino\Components::themeFindings()) the panel says it in the
+		 *	language of the workbench; a kernel that does not gives [] and the panel says the sentences of cssRule()
+		 *
+		 *	@param		string		$css					The css as it is stored
+		 *
+		 *	@return 	array											[ [ 'code' => ..., 'params' => [ ... ], 'line' => int|null ], ... ] in the order of cssRule()
+		 */
+		public static function cssFindings( string $css ): array {
+
+			// Asked of the class: a kernel that has no such call gives none
+			$kernel = new \ReflectionClass( \Nino\Components::class );
+
+			if( trim( $css ) === '' || $kernel->hasMethod( 'themeFindings' ) === false )
+				return [];
+
+			return array_map( static fn( array $found ): array => [ 'code' => (string) $found['code'], 'params' => array_map( 'strval', (array) $found['params'] ), 'line' => $found['line'] ?? null ], (array) $kernel->getMethod( 'themeFindings' )->invoke( null, $css ) );
+		}
+
+		/**
 		 *	The css of the developer as it is stored: text, one line ending, a null byte is none, a length is the limit
 		 *
 		 *	@param		mixed			$css

@@ -43,9 +43,6 @@ namespace Nino\Modules\Themes {
 		// The most themes that were uploaded here and are installed: a package is up to 4 MiB and its copies stay as long as the project does
 		public const int MAX_UPLOADED = 20;
 
-		// The names a package may not take: the origins the kernel gives blocks that are not a theme's - the key of a theme is the origin of its blocks
-		private const array RESERVED = [ 'project', 'basis', 'own', 'themes', 'pack' ];
-
 		// The files a theme package may hold, as \Nino\Packages::check() says them - and nothing the check would refuse is asked of the reader
 		public const string ALLOWED = '~^(?:theme\.(?:json|css)|LICENSE\.txt|README\.md|preview\.webp|parts/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/part\.(?:json|css)|blocks/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/(?:block\.(?:json|tpl)|text/[a-z]{2}_[A-Z]{2}\.json|images/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)))$~D';
 
@@ -416,7 +413,7 @@ namespace Nino\Modules\Themes {
 		private static function _taken( array &$appData, string $key ): ?string {
 
 			$fold = strtolower( $key );
-			$names = self::RESERVED;
+			$names = Store::RESERVED;
 
 			foreach( \Nino\Features::all( $appData ) as $feature => $unused )
 				$names[] = (string) $feature;

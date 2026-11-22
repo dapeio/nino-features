@@ -146,6 +146,11 @@ const CHANGED = '\u25CF '+ W('state/changed');
 		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'shipped', 'catalogue', 'uploaded', 'project' ].map( function( origin ) { return 'chip/'+ origin } ), [ 'written', 'copied', 'skipped', 'left', 'failed', 'untried' ].map( function( result ) { return 'blocks/result-'+ result } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary', 'on-second' ].map( function( role ) { return 'role/'+ role } ) )
 		.forEach( function( key ) { asked.add( key ) } );
 
+	// The findings of the rule of a theme that the kernel gives by code (\Nino\Components::CSS_WHY): the panel puts the key together from the code, so each code has its words
+	[ 'unreadable', 'braces', 'escape', 'token-set', 'token-read', 'important', 'url', 'loads', 'picture', 'at', 'selector-deep', 'selector-empty', 'selector-brackets', 'selector-more', 'selector-noclass', 'selector-nth', 'selector-function', 'class-foreign', 'id', 'attribute-class', 'selector-own', 'markup', 'font-face', 'expression', 'binding', 'src-property', 'page', 'attr', 'control' ]
+		.forEach( function( code ) { asked.add( 'rule/'+ code ) } );
+	asked.add('rule-line');
+
 	// The reasons the API gives by code: each code of the reader has its words
 	( /public const array WHY = \[([\s\S]*?)\n\t\t\];/.exec( fs.readFileSync( path.join( featureDir, 'Reader/Reader.php' ), 'utf8' ) )[1].match( /^\t\t\t'([a-z-]+)'/gm ) ?? [] )
 		.forEach( function( line ) { asked.add( 'why/'+ line.trim().slice( 1, -1 ) ) } );
@@ -308,7 +313,7 @@ function listAnswer( active, extra, pages, demos, copies ) {
 			{ key : 'nino', kind : 'theme', origin : 'shipped', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'nino' },
 			{ key : 'craft', kind : 'theme', origin : 'uploaded', frames : [ { key : 'craft-foot', name : { de_DE : 'Fuß <b>x</b>', en_US : 'Foot <b>x</b>' }, reads : [ { key : '/project/company/general/name', text : 'Nino <b>GmbH</b>', logo : false }, { key : '/logo', text : null, logo : true } ] } ], css : { lines : 4, why : null }, version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
 			{ key : 'rest', kind : 'theme', origin : 'catalogue', css : { lines : 0, why : { code : 'theme-css', params : [ 'line 3 has an element selector' ] } }, version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
-			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : OWN_SECTION, header : 'standard' }, active : active === 'own:lindner', blocks : LINDNER_BLOCKS },
+			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : OWN_SECTION, header : 'standard' }, active : active === 'own:lindner', blocks : LINDNER_BLOCKS, sameKey : SAME_KEY },
 		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
 		groups : [ 'brand', 'footer', 'section', 'settings', 'css', 'groups', 'header' ].map( function( key ) { return { key : key, label : GROUP_LABEL[key], feature : 'basis', components : [], demo : ( demos ?? [] ).indexOf( key ) !== -1 } } ),
@@ -320,6 +325,7 @@ function listAnswer( active, extra, pages, demos, copies ) {
 // How many blocks the own theme Lindner carries, and whether the account may take blocks into the project
 let LINDNER_BLOCKS = 0;
 let BLOCKS_TAKE = false;
+let SAME_KEY = '';
 
 // What the own theme Lindner takes its section from: the part of Craft, or - the folder of the theme holds a part that no installed theme has - its own
 let OWN_SECTION = 'craft@1.0.0';
@@ -533,9 +539,9 @@ function world( options ) {
 					w.answer( 200, listed );
 				}
 				else if( request.action === 'themes/open' )
-					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? ( w.copies.find( function( copy ) { return copy.key === payload.theme } )?.name ?? 'Lindner' ) : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), cssRule : w.cssRule, stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, current : w.current, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
+					w.answer( 200, Object.assign( { theme : { key : payload.theme, kind : payload.theme.indexOf('own:') === 0 ? 'own' : 'theme', name : payload.theme.indexOf('own:') === 0 ? ( w.copies.find( function( copy ) { return copy.key === payload.theme } )?.name ?? 'Lindner' ) : { de_DE : { rest : 'Ruhe', craft : 'Craft' }[payload.theme] ?? 'Nino', en_US : { rest : 'Rest', craft : 'Craft' }[payload.theme] ?? 'Nino' } }, mix : mixOf( payload.theme ), cssRule : w.cssRule, cssFindings : w.cssFindings, stamp : payload.theme.indexOf('own:') === 0 ? w.stamp : '', brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, current : w.current, last : w.last, active : w.activeState() }, describe( mixOf( payload.theme ), w.rest === 'gone' || w.rest === 'adjust' ? w.rest : false, w.brandStored ) ) );
 				else if( request.action === 'themes/preview' )
-					w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900 }, describe( payload.mix, w.rest, payload.brand ), { cssRule : w.cssRule } ) );
+					w.answer( 200, Object.assign( { token : 'a'.repeat( 32 ), query : 'nino-theme-preview='+ 'a'.repeat( 32 ), expires : 4102444800, ttl : 900 }, describe( payload.mix, w.rest, payload.brand ), { cssRule : w.cssRule, cssFindings : w.cssFindings } ) );
 				else if( request.action === 'themes/keep' && payload.name === 'Taken' )
 					w.answer( 409, { error : 'an own theme of that name is there', code : 'themes_name_taken', params : [ 'Taken Before' ], field : 'name' } );
 				else if( request.action === 'themes/keep' ) {
@@ -633,6 +639,7 @@ function world( options ) {
 		bump : function() { w.stateStamp = 'state-'+ ( Number( w.stateStamp.slice( 6 ) ) + 1 ); w.canRestore = true },
 		rest : false,
 		cssRule : [],
+		cssFindings : [],
 		sent : [],
 		activeState : function() { return w.active === '' ? null : { theme : w.active, built : '', stale : false } },
 
@@ -2601,7 +2608,7 @@ function pressed( w, label ) {
 
 	const name = byId( w.theme, 'themes-theme-name' );
 
-	check( 'R. the name of a theme of a package is read and not written, and the sentence says that it is never overwritten; it has no button to delete it, and says that it is not deleted here', name.value === 'Craft' && name.readOnly === true && w.text( byId( w.theme, 'themes-name-hint' ) ) === Wp( 'hint/name-package', '1.0.0' ) && byId( w.theme, 'themes-delete' ) === undefined && w.text( byId( w.theme, 'themes-delete-hint' ) ) === W('hint/delete-package') );
+	check( 'R. the name of a theme of a package is read and not written, and the sentence says that it is never overwritten; it has no button to delete it, and says that it is not deleted here', name.value === 'Craft' && name.readOnly === true && w.text( byId( w.theme, 'themes-name-hint' ) ) === Wp( 'hint/name-package', '1.0.0' )+ ' '+ W('hint/delete-package') && byId( w.theme, 'themes-delete' ) === undefined && byId( w.theme, 'themes-delete-hint' ) === undefined );
 	check( 'R. the first level is the settings of a theme of a package as well, with the name in the head of the section, and no change in it', w.text( byId( w.theme, 'themes-groups-1-head' ) ).indexOf('Craft') !== -1 && w.dirty.entries.themes.isDirty() === false );
 
 	// Save as own theme in the settings: the dialog, and the name goes with the mix
@@ -2753,6 +2760,23 @@ function pressed( w, label ) {
 	w.at( '#themes/own.lindner/settings' );
 
 	check( 'R. the theme that the website shows has a button to delete that cannot be pressed, and the sentence says to apply another one first', byId( w.theme, 'themes-delete' ).disabled === true && w.text( byId( w.theme, 'themes-delete-hint' ) ).indexOf( W('hint/delete-active') ) !== -1 );
+
+	// the explanations of the buttons of the settings are behind a (?) each - no open paragraph stands under the row of the buttons
+	const actions = w.byClass( w.theme, 'themes-actions' )[0];
+	const own = [ 'duplicate', 'keep', 'export', 'restore', 'delete' ];
+	const helps = own.map( function( name ) {
+		const sentence = byId( w.theme, 'themes-'+ name+ '-hint' );
+		const button = byId( w.theme, 'themes-'+ name );
+
+		return sentence !== undefined && sentence.className.indexOf('nino-admin-help-text') !== -1 && sentence.parentNode.className.indexOf('nino-admin-help') !== -1 && actions.contains !== undefined && button.attributes['aria-describedby'] === 'themes-'+ name+ '-hint' && w.text( sentence ) !== '';
+	} );
+	const after = actions.parentNode.children.slice( actions.parentNode.children.indexOf( actions ) + 1 );
+
+	check( 'F330 a. each button of the settings that needs an explanation has a (?) with its sentence - the sentence describes the button - and no open paragraph of hint stands under the row of the buttons',
+		helps.every( function( ok ) { return ok === true } ) && after.every( function( node ) { return String( node.className ).indexOf('nino-admin-hint') === -1 } ) && w.byClass( actions, 'nino-admin-help' ).length === own.length );
+
+	check( 'F330 a. a button that cannot be pressed says why as its title: the theme of the website is not deleted - the sentence of its (?) is the title',
+		byId( w.theme, 'themes-delete' ).title === w.text( byId( w.theme, 'themes-delete-hint' ) ) && byId( w.theme, 'themes-delete' ).title.indexOf( W('hint/delete-active') ) !== -1 && byId( w.theme, 'themes-duplicate' ).title === '' );
 }
 
 {
@@ -4438,6 +4462,28 @@ function nameField( w ) {
 	check( 'R1. a draft typed that breaks the rule is said at the field as the answer says it, and keeps Save off - the rule is the server\'s: the panel only says what the draft was answered', w.text( byId( w.theme, 'themes-css-problem' ) ) === Nino_format( words.en['/_admin/error/themes_css_rule'], 'uses url()' ) && w.button( w.bar(), W('label/save') ).disabled === true );
 }
 
+{
+	// where the kernel gives the findings as codes with their params and their line, they are said in the language of the workbench; a code the panel has no sentence for is said with the English sentence of the kernel
+	const w = world( { active : 'nino' } );
+
+	w.cssRule = [ 'uses !important (line 3)', 'meets an id: #x (line 5)', 'does something new (line 7)' ];
+	w.cssFindings = [ { code : 'important', params : [], line : 3 }, { code : 'id', params : [ '#x' ], line : 5 }, { code : 'not-a-code-of-the-panel', params : [], line : 7 } ];
+	w.at( '#themes/own.lindner/css' );
+
+	const said = w.text( byId( w.theme, 'themes-css-problem' ) );
+	const german = String( words.de['/_admin/themes/rule/id'] ).replace( '%s', '#x' );
+
+	check( 'F330 d. a finding of the rule of a theme that comes as a code with its params and its line is said in the words of the workbench - the sentence of the code, its params and the line - and one whose code the panel has no sentence for is said with the English sentence of the kernel',
+		said === Nino_format( words.en['/_admin/error/themes_css_rule'], [ Wp( 'rule/important' )+ ' ('+ Wp( 'rule-line', 3 )+ ')', Wp( 'rule/id', '#x' )+ ' ('+ Wp( 'rule-line', 5 )+ ')', 'does something new (line 7)' ].join('; ') ) && german.indexOf('#x') !== -1 && german !== Wp( 'rule/id', '#x' ) );
+
+	w.cssFindings = [];
+	type( byId( w.theme, 'themes-css' ), '.a { color: red !important }' );
+	w.tick();
+	w.serve();
+
+	check( 'F330 d. where the kernel gives no codes - the answer has none - the sentences of the kernel are said as they are', w.text( byId( w.theme, 'themes-css-problem' ) ) === Nino_format( words.en['/_admin/error/themes_css_rule'], w.cssRule.join('; ') ) );
+}
+
 // --- AE. an own theme is a folder: where its parts come from is what the server finds in the files ---------------------------------------
 
 {
@@ -4590,6 +4636,46 @@ function nameField( w ) {
 	check( 'U1. the file is asked for after the check is answered again, by a form that posts into a frame nobody sees - the action, the key of the theme and no "check" - and the line says which file is saved',
 		own.sent.filter( function( request ) { return request.action === 'themes/export' } ).length === 1 && form !== undefined && form.method === 'post' && form.target === 'themes-download' && fields.action === 'themes/export' && fields.data === '{"theme":"own:lindner"}'
 		&& own.text( own.theme ).indexOf( Wp( 'msg/exported', 'lindner-1.0.0.tar.gz' ) ) !== -1 );
+}
+
+{
+	// a package that carries the key of an installed theme is said so before it is made: the dialog names the key and what it is, and the file is made where the person goes on - not before
+	SAME_KEY = 'shipped';
+
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/own.lindner/settings' );
+	w.sent.length = 0;
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+
+	const asked = w.dialogs[w.dialogs.length - 1];
+
+	check( 'F330 e. the export of an own theme whose key an installed theme has asks first, with the key and what the installed theme is - nothing is made and no question about blocks is asked before the person says to go on',
+		asked !== undefined && asked.open === true && w.text( asked ).indexOf( Wp( 'export/key-taken', 'lindner', W('chip/shipped') ) ) !== -1 && w.posted.length === 0 && w.sent.filter( function( request ) { return request.action === 'themes/export-blocks' } ).length === 0 );
+
+	pressed( w, Nino_format( '%s', workbench['/_admin/common/label/cancel'] ) );
+	w.serve();
+
+	check( 'F330 e. ...and "Cancel" makes nothing', w.posted.length === 0 && w.sent.filter( function( request ) { return request.action === 'themes/export-blocks' } ).length === 0 );
+
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+	pressed( w, W('export/key-go') );
+	w.serve();
+
+	check( 'F330 e. ...and the way on goes the way of an export with no such key: the question about blocks is asked, or the file is made', w.sent.filter( function( request ) { return request.action === 'themes/export-blocks' } ).length === 1 || w.posted.length === 1 );
+
+	SAME_KEY = '';
+
+	const plain = world( { active : 'nino' } );
+
+	plain.at( '#themes/own.lindner/settings' );
+	plain.sent.length = 0;
+	fire( byId( plain.theme, 'themes-export' ), 'click' );
+	plain.serve();
+
+	check( 'F330 e. an own theme whose key no installed theme has is exported with no such question', plain.sent.filter( function( request ) { return request.action === 'themes/export-blocks' } ).length === 1 || plain.posted.length === 1 );
 }
 
 {

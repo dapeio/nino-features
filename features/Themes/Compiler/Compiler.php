@@ -205,7 +205,7 @@ namespace Nino\Modules\Themes {
 
 			$body = implode( "\n\n", $blocks ). "\n";
 
-			return [ 'css' => sprintf( self::HEAD, hash( 'sha256', $body ) ). "\n". $body, 'variants' => $variants, 'plan' => $plan, 'gone' => $gone, 'faults' => $faults, 'rule' => $rule ];
+			return [ 'css' => sprintf( self::HEAD, hash( 'sha256', $body ) ). "\n". $body, 'variants' => $variants, 'plan' => $plan, 'gone' => $gone, 'faults' => $faults, 'rule' => $rule, 'findings' => Mix::cssFindings( (string) ( $mix['css'] ?? '' ) ) ];
 		}
 
 		/**

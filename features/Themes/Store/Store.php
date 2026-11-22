@@ -48,6 +48,13 @@ namespace Nino\Modules\Themes {
 		// The most own themes there are, and the keys of the files of the state
 		public const int MAX_OWN = 50;
 
+		/**
+		 *	The keys no theme has: the choices of the lists of the panels - all, own, uploaded, catalogue, shipped, project: where the blocks of a theme come from - and the origins the kernel
+		 *	gives blocks that are not a theme's. The key of a theme is the origin of its blocks and stands beside these choices, so none of these is the key of a theme: not of an own one,
+		 *	not of a package, whatever way it came
+		 */
+		public const array RESERVED = [ 'all', 'own', 'project', 'uploaded', 'catalogue', 'shipped', 'basis', 'themes', 'pack' ];
+
 		// The longest file of the state that is read
 		public const int MAX_FILE = 1048576;
 
