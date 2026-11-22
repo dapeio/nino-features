@@ -3130,7 +3130,8 @@ function said( w, node ) {
 	groups.panel.showCurrent();
 	groups.serve();
 
-	check( 'S. ...it goes with the section: the settings are open and the sentence is not on the screen', groups.byClass( groups.theme, 'themes-groups' ).length === 0 && groups.text( groups.theme ).indexOf( W('hint/groups') ) === -1 );
+	check( 'S. ...it goes with the section: where the settings are open the list of the groups is not drawn, and the sentence is still the one (?) in the head of the section Groups',
+		groups.byClass( groups.theme, 'themes-groups' ).length === 0 && groups.byClass( groups.theme, 'nino-admin-help-text' ).filter( function( node ) { return groups.text( node ) === W('hint/groups') } ).length === 1 );
 
 	const apply = world( { active : 'nino' } );
 	const seen = levels( apply );
@@ -4287,7 +4288,7 @@ function nameField( w ) {
 	group.state.hash = '#themes/nino/brand';
 	group.panel.showCurrent();
 	check( 'N3. and so does the brand: its sentence behind the (?) at its title, none as an open line',
-		group.byClass( group.byClass( group.theme, 'themes-title' )[0], 'nino-admin-help-button' ).length === 1 && group.byClass( group.theme, 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ).join() === words.en['/_admin/themes/hint/brand']
+		group.byClass( group.byClass( group.theme, 'themes-title' )[0], 'nino-admin-help-button' ).length === 1 && group.byClass( group.byClass( group.theme, 'themes-title' )[0], 'nino-admin-help-text' ).map( function( node ) { return node.textContent } ).join() === words.en['/_admin/themes/hint/brand']
 		&& group.byClass( group.theme, 'nino-admin-hint' ).every( function( node ) { return node.textContent !== words.en['/_admin/themes/hint/brand'] } ) );
 }
 
@@ -4575,8 +4576,26 @@ function nameField( w ) {
 }
 
 {
-	// the three explanations of the editor stand behind a (?) at the title they belong to: the groups, the colours of the brand and the palette - and what is only content stays open
+	// the explanation of the groups and the one of the colours of the brand stand in the head of their section of the accordion, behind its (?), and a section has no title line
+	// that says its own name again; the palette, which has a name of its own inside the colours, keeps the (?) at its title - and none of the three stands open as a paragraph
 	const w = world( { active : 'nino' } );
+	const heads = function( root ) { return w.byClass( root, 'nino-admin-accordion-row' ) };
+	const helpOf = function( root, label ) {
+
+		const row = heads( root ).filter( function( one ) { return w.byClass( one, 'nino-admin-accordion-label' ).some( function( node ) { return w.text( node ) === label } ) } );
+
+		return row.length === 1 ? w.byClass( row[0], 'nino-admin-help-text' ).map( function( node ) { return w.text( node ) } ) : null;
+	};
+	const labelOf = function( root, body ) {
+		return w.byClass( root, 'nino-admin-accordion-button' ).filter( function( button ) { return button.id === body.getAttribute('aria-labelledby') } ).map( function( button ) { return w.text( w.byClass( button, 'nino-admin-accordion-label' )[0] ) } )[0];
+	};
+	// The title lines inside the sections that begin with the name of the head of their section
+	const repeated = function( root ) {
+		return w.byClass( root, 'nino-admin-accordion-body' ).reduce( function( count, body ) {
+			const name = labelOf( root, body );
+			return count + w.byClass( body, 'themes-titled' ).filter( function( row ) { return w.text( row ).indexOf( name ) === 0 } ).length;
+		}, 0 );
+	};
 	const titledBy = function( root, title, sentence ) {
 		return w.byClass( root, 'themes-titled' ).filter( function( row ) { return w.text( row ).indexOf( title ) === 0 && w.byClass( row, 'nino-admin-help-text' ).some( function( node ) { return w.text( node ) === sentence } ) } ).length === 1;
 	};
@@ -4584,15 +4603,20 @@ function nameField( w ) {
 
 	w.at( '#themes/nino' );
 
-	const groups = titledBy( w.theme, W('label/groups'), W('hint/groups') ) === true && openAs( w.theme, W('hint/groups') ) === 0;
+	const groups = helpOf( w.theme, W('label/groups') );
+
+	check( 'F347 a. the section Groups carries its explanation in its head, behind a (?) of the accordion - once - and the section has no title line of the same name and no open paragraph of the sentence',
+		groups !== null && groups.length === 1 && groups[0] === W('hint/groups') && repeated( w.theme ) === 0 && openAs( w.theme, W('hint/groups') ) === 0 );
 
 	w.at( '#themes/nino/brand/colours' );
 
 	const brand = w.theme;
+	const colours = helpOf( brand, W('word/colours') );
+	const others = [ 'type', 'mode', 'logo' ].map( function( key ) { return helpOf( brand, W( 'word/'+ key ) ) } );
 
-	check( 'F336 a. the explanation of the groups is a (?) at the title Groups, the one of the colours a (?) at the title Colours and the one of the palette a (?) at the title Palette - and none of the three stands open as a paragraph',
-		groups === true && titledBy( brand, W('word/colours'), W('hint/colour') ) === true && titledBy( brand, W('label/palette'), W('hint/palette') ) === true
-		&& openAs( brand, W('hint/colour') ) === 0 && openAs( brand, W('hint/palette') ) === 0 );
+	check( 'F347 b. the section Colours of the brand carries its explanation in its head - once - the sections without one have no (?) in their head, the section has no title line of the same name, and the palette keeps its own title with its (?)',
+		colours !== null && colours.length === 1 && colours[0] === W('hint/colour') && others.every( function( one ) { return one === null || one.length === 0 } )
+		&& repeated( brand ) === 0 && openAs( brand, W('hint/colour') ) === 0 && titledBy( brand, W('label/palette'), W('hint/palette') ) === true && openAs( brand, W('hint/palette') ) === 0 );
 }
 
 // --- AE. an own theme is a folder: where its parts come from is what the server finds in the files ---------------------------------------

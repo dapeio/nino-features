@@ -133,7 +133,8 @@
 		return Nino.adminUi.format( Nino.content.getText( '/_admin/themes/'+ key ), ...params );
 	};
 
-	// A title with the sentence that explains what stands under it behind a (?) at the title - never an open paragraph
+	// A title inside a section that has a name of its own (the palette), with the sentence that explains what stands under it behind a (?) at the title - never an open paragraph.
+	// What explains a whole section stands in the head of the accordion (its option help), and a title that only says the name of its section is not drawn
 	const titled = function( title, sentence ) {
 
 		const row = el( 'div', 'nino-admin-field-name themes-fieldname themes-titled' );
@@ -1243,7 +1244,7 @@
 			address		: { panel : 'themes', parts : addressOf( [ S.key ] ) },
 			open		: open === null ? [] : ( LEVEL_ONE.indexOf( open ) === -1 ? 'groups' : open ),
 			sections	: [
-				{ key : 'groups', label : word('label/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( titled( word('label/groups'), word('hint/groups') ) ); box.appendChild( list ); reservedNotes( box ); return box } },
+				{ key : 'groups', label : word('label/groups'), help : word('hint/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( list ); reservedNotes( box ); return box } },
 				{ key : 'settings', label : word('label/settings'), summary : S.mix.name ?? S.theme.name, badge : S.theme.kind === 'own' && ( S.mix.name ?? '' ) !== ( S.saved.mix.name ?? '' ) ? word('state/changed-mark') : '', content : settingsOne },
 				{ key : 'css', label : word('label/css'), summary : cssSummary(), badge : cssOf( S.mix ) !== cssOf( S.saved.mix ) ? word('state/changed-mark') : '', content : cssOne },
 			],
@@ -2037,7 +2038,6 @@
 
 			const said = el( 'p', 'nino-admin-hint themes-adjusted' );
 
-			body.appendChild( titled( word('word/colours'), word('hint/colour') ) );
 			body.appendChild( brandRow( 'color-1', one ) );
 			body.appendChild( said );
 			body.appendChild( brandRow( 'color-2', two ) );
@@ -2123,7 +2123,7 @@
 			address		: { panel : 'themes', parts : addressOf( [ S.key, 'brand' ] ) },
 			open		: open === null ? [] : ( keys.indexOf( open ) === -1 ? keys[0] : open ),
 			sections	: keys.map( function( key ) {
-				return { key : key, label : word( 'word/'+ key ), summary : brandSummary( key ), badge : brandChangedIn( key ) === true ? word('state/changed-mark') : '', content : function() { return brandSection( key ) } };
+				return { key : key, label : word( 'word/'+ key ), help : key === 'colours' ? word('hint/colour') : '', summary : brandSummary( key ), badge : brandChangedIn( key ) === true ? word('state/changed-mark') : '', content : function() { return brandSection( key ) } };
 			} ),
 		} );
 
