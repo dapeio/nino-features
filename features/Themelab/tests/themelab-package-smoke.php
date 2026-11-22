@@ -167,10 +167,16 @@ check( 'the download is a file the kernel answers as one (Http::download): the t
 	&& ( $header['X-Content-Type-Options'] ?? '' ) === 'nosniff' && is_string( $bytes ) === true && str_starts_with( $bytes, "\x1f\x8b" ) === true
 	&& ( $header['Content-Length'] ?? '' ) === (string) strlen( $bytes ) && ( $request['/nino/http/response']['raw'] ?? false ) === true );
 
+// The size that the question names is the bytes of the files together - the archive's own length depends on the second it was made in, as gzip packs the time with the rest - and the file that
+// follows is those files: it is unpacked and its files are those of the package, and their bytes are the size that was said. A pause between the two (PACK_PAUSE seconds, none by default) makes
+// no difference to either
 [ $dry, $said ] = packCall( $a, 'themelab/export', $given + [ 'check' => true ] );
+usleep( (int) ( 1000000 * (float) ( getenv( 'PACK_PAUSE' ) ?: 0 ) ) );
+[ , $fetched ] = packCall( $a, 'themelab/export', $given );
+$got = is_string( $fetched ) === true ? \Nino\Archive::read( $fetched, 'my-blocks', 400, \Nino\Blocks::MAX_PICTURE, $limits['bytes'] ) : 'none';
 
-check( 'a request that only asks whether the package can be made says so in the words of the panel: the file, its size, the number of blocks - and sends no file',
-	$dry === 200 && ( $said['file'] ?? '' ) === 'my-blocks-1.0.0.tar.gz' && ( $said['size'] ?? 0 ) === strlen( (string) $bytes ) && ( $said['blocks'] ?? 0 ) === 2 );
+check( 'a request that only asks whether the package can be made says so in the words of the panel: the file, its size, the number of blocks - and sends no file - and the size is the bytes of the files of the package, which are the files of the file that is sent: unpacked, they are the ones of the first download and add up to it',
+	$dry === 200 && ( $said['file'] ?? '' ) === 'my-blocks-1.0.0.tar.gz' && is_array( $got ) === true && $got == $files && ( $said['size'] ?? 0 ) === array_sum( array_map( 'strlen', $got ) ) && ( $said['blocks'] ?? 0 ) === 2 );
 
 // a licence the project has of its own goes in; none is made up
 file_put_contents( $dirA. '/LICENSE.txt', "Meine Lizenz\n" );

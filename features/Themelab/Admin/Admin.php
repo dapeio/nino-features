@@ -1286,7 +1286,7 @@ namespace Nino\Modules\Themelab {
 			}
 
 			if( ( $data['check'] ?? false ) === true ) {
-				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => strlen( $made['bytes'] ), 'blocks' => count( $made['blocks'] ) ] );
+				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => $made['unpacked'], 'blocks' => count( $made['blocks'] ) ] );
 				return;
 			}
 

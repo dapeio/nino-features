@@ -584,7 +584,6 @@ return [
 	'[[/_admin/themes/export/col-kind]]'	=> 'Art',
 	'[[/_admin/themes/export/col-files]]'	=> 'Dateien',
 	'[[/_admin/themes/export/col-size]]'	=> 'Größe',
-	'[[/_admin/themes/export/kind-frame]]'	=> 'Kopf-/Fußbereich',
 	'[[/_admin/themes/export/search]]'	=> 'Blocks suchen',
 	'[[/_admin/themes/export/empty]]'	=> 'Das Projekt hat keine eigenen Blocks.',
 	'[[/_admin/themes/export/no-match]]'	=> 'Kein Block passt.',

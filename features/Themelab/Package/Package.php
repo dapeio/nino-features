@@ -167,7 +167,7 @@ namespace Nino\Modules\Themelab {
 		 *	@param		array			$keys					The keys of the blocks; each is a block of the project
 		 *	@param		array			$given				'key', 'version', 'name', 'description' of the package, as the request has them
 		 *
-		 *	@return 	array											'bytes', 'file' (the name of the download), 'blocks' (the keys), 'files' (the number of files); or 'failure' => [ status, message, code, params, field ]
+		 *	@return 	array											'bytes', 'file' (the name of the download), 'blocks' (the keys), 'files' (the number of files), 'unpacked' (the bytes of the files together - the archive's own length depends on the second it was made in); or 'failure' => [ status, message, code, params, field ]
 		 */
 		public static function export( array &$appData, array $keys, array $given, string $locale = 'en_US' ): array {
 
@@ -242,7 +242,7 @@ namespace Nino\Modules\Themelab {
 			if( self::same( $bytes, $key, $files, count( $keys ) ) === false )
 				return self::_fail( 500, 'export_archive', [ '', 'different' ], 'keys' );
 
-			return [ 'bytes' => $bytes, 'file' => $key. '-'. $version. '.tar.gz', 'blocks' => $keys, 'files' => count( $files ) ];
+			return [ 'bytes' => $bytes, 'file' => $key. '-'. $version. '.tar.gz', 'blocks' => $keys, 'files' => count( $files ), 'unpacked' => array_sum( array_map( 'strlen', $files ) ) ];
 		}
 
 		/**
@@ -270,13 +270,26 @@ namespace Nino\Modules\Themelab {
 		}
 
 		/**
+		 *	The word of the workbench for a category of blocks, in the language asked for: the one this feature has for it - the key where it has none. What another feature shows of a
+		 *	category is told by this list, and never read from the texts of this one
+		 *
+		 *	@param		string		$category
+		 *	@param		string		$locale
+		 *
+		 *	@return 	string
+		 */
+		private static function _category( string $category, string $locale ): string {
+			return Sheet::words( [ $locale ], 'cat/'. $category )[$locale] ?: $category;
+		}
+
+		/**
 		 *	The blocks of the project a person may put into a package of a theme - the list of the blocks of the project, the blocks of a header or a footer among them - each with what
 		 *	the dialog says of it: its name, whether it is a frame, what a frame reads of the site, and the files and bytes it adds to a package. The one source for it: the list of this feature
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$locale				The language the names are told in
 		 *
-		 *	@return 	array											[ [ key, name, category, frame, reads, files, bytes ] ], by key
+		 *	@return 	array											[ [ key, name, category, kind (the word for the category), frame, reads, files, bytes ] ], by key
 		 */
 		public static function choices( array &$appData, string $locale ): array {
 
@@ -296,6 +309,7 @@ namespace Nino\Modules\Themelab {
 					'key'			=> (string) $key,
 					'name'		=> is_array( $name ) === true ? (string) ( $name[$locale] ?? $name[\Nino\Blocks::FALLBACK] ?? reset( $name ) ?: $key ) : (string) $name,
 					'category'	=> (string) ( $block['category'] ?? '' ),
+					'kind'		=> self::_category( (string) ( $block['category'] ?? '' ), $locale ),
 					'frame'		=> ( $block['wrap'] ?? Library::PAGE ) !== Library::PAGE,
 					'reads'		=> $whole === null ? [] : array_map( 'strval', \Nino\Blocks::reads( $whole ) ),
 					'files'		=> count( $files ),
@@ -397,7 +411,8 @@ namespace Nino\Modules\Themelab {
 
 			foreach( $keys as $key ) {
 
-				if( preg_match( \Nino\Components::NAME, $key ) !== 1 || isset( $listed[$key] ) === false || (string) $listed[$key]['origin'] !== 'project' )
+				// The list is the project's own blocks, and a key that is not in it - a block of a theme, of the system, or none - is not chosen
+				if( preg_match( \Nino\Components::NAME, $key ) !== 1 || isset( $listed[$key] ) === false )
 					return [ 'failure' => [ 404, 'there is no such block of the project', 'themes_export_block_unknown', [ mb_substr( (string) preg_replace( '/[^\P{C}]+/u', ' ', $key ), 0, 80 ) ], 'blocks' ] ];
 
 				$folder = self::folder( $appData, $key );
@@ -531,7 +546,7 @@ namespace Nino\Modules\Themelab {
 		 *	@param		array			$read					As read() answers
 		 *	@param		string		$locale
 		 *
-		 *	@return 	array											[ [ key, name, category, variants (the labels), images, state ('free' or 'taken'), origin ('' or where the block of that key is from), replace (whether it may be replaced) ] ]
+		 *	@return 	array											[ [ key, name, category, kind (the word for the category), variants (the labels), images, state ('free' or 'taken'), origin ('' or where the block of that key is from), replace (whether it may be replaced) ] ]
 		 */
 		public static function listed( array &$appData, array $read, string $locale ): array
 		{
@@ -553,6 +568,7 @@ namespace Nino\Modules\Themelab {
 					'key'			=> (string) $key,
 					'name'		=> (string) ( $name[$locale] ?? $name[\Nino\Blocks::FALLBACK] ?? reset( $name ) ?: $key ),
 					'category'	=> (string) ( $meta['category'] ?? '' ),
+					'kind'		=> self::_category( (string) ( $meta['category'] ?? '' ), $locale ),
 					'variants'	=> $variants,
 					'images'		=> count( (array) ( $meta['images'] ?? [] ) ),
 					'state'		=> $taken === true ? 'taken' : 'free',

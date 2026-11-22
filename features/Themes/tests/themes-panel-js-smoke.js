@@ -4700,8 +4700,8 @@ function nameField( w ) {
 function exportOffer( change ) {
 
 	return Object.assign( { available : true, blocks : [
-		{ key : 'my-split', name : 'My split', category : 'content', frame : false, reads : [], files : 4, bytes : 2048 },
-		{ key : 'my-head', name : 'My head', category : 'frame', frame : true, reads : [ '/logo', '/project/company/general/name' ], files : 3, bytes : 1024 },
+		{ key : 'my-split', name : 'My split', category : 'content', kind : 'Static content', frame : false, reads : [], files : 4, bytes : 2048 },
+		{ key : 'my-head', name : 'My head', category : 'frame', kind : 'Header/footer', frame : true, reads : [ '/logo', '/project/company/general/name' ], files : 3, bytes : 1024 },
 	], base : { files : 5, bytes : 4096 }, carried : { 'my-split' : { files : 2, bytes : 100 } }, limits : { files : 400, bytes : 4194304 } }, change ?? {} );
 }
 
@@ -4719,7 +4719,7 @@ function exportOffer( change ) {
 	const text = w.text( dialog );
 
 	check( 'V1. where the project has blocks that the account may put in, the export asks which in a dialog before anything is sent: the note says that nothing in the project changes, each block is a row with its name, a header says what it is, what a header reads of the site is told in its row, and a block that the folder carries already says that the project\'s takes its place',
-		dialog.open === true && text.indexOf( W('export/note') ) !== -1 && text.indexOf( 'My split' ) !== -1 && text.indexOf( 'My head' ) !== -1 && text.indexOf( W('export/kind-frame') ) !== -1 && text.indexOf( Wp( 'export/reads', '/logo, /project/company/general/name' ) ) !== -1
+		dialog.open === true && text.indexOf( W('export/note') ) !== -1 && text.indexOf( 'My split' ) !== -1 && text.indexOf( 'My head' ) !== -1 && text.indexOf( 'Header/footer' ) !== -1 && text.indexOf( 'Static content' ) !== -1 && text.indexOf( Wp( 'export/reads', '/logo, /project/company/general/name' ) ) !== -1
 		&& text.indexOf( W('export/replaces') ) !== -1 && w.posted.length === 0 && w.sent.filter( function( request ) { return request.action === 'themes/export' } ).length === 0 );
 
 	const boxes = findAll( dialog, function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } );
@@ -4879,8 +4879,8 @@ function exportOffer( change ) {
 	const w = world( { active : 'nino' } );
 
 	w.blocksOffer = { theme : 'Lindner', blocks : [
-		{ key : 'my-split', name : 'My split', category : 'content', variants : [ 'One' ], images : 1, state : 'taken', origin : 'project', replace : true },
-		{ key : 'my-head', name : 'My head', category : 'frame', variants : [], images : 0, state : 'free', origin : '', replace : false },
+		{ key : 'my-split', name : 'My split', category : 'content', kind : 'Static content', variants : [ 'One' ], images : 1, state : 'taken', origin : 'project', replace : true },
+		{ key : 'my-head', name : 'My head', category : 'frame', kind : 'Header/footer', variants : [], images : 0, state : 'free', origin : '', replace : false },
 	] };
 	w.blocksResults = [ { key : 'my-split', name : 'My split', result : 'copied', as : 'my-split-2' }, { key : 'my-head', name : 'My head', result : 'failed', as : '', code : 'invalid', message : 'the kernel does not take the block like that' } ];
 	w.at( '#themes/own.lindner/settings' );
@@ -4892,7 +4892,7 @@ function exportOffer( change ) {
 	const shown = w.text( dialog );
 
 	check( 'W2. the dialog shows the blocks of the theme: the sentence of what is done and what is not, the name of the theme, a row for each block with what it is - a header is said to be one - and, for the one whose key the project has, the choice between skipping it and a copy under a new key: no choice to replace',
-		w.sent.some( function( request ) { return request.action === 'themes/blocks' && request.payload.theme === 'own:lindner' } ) && shown.indexOf( Wp( 'blocks/pack', 'Lindner' ) ) !== -1 && shown.indexOf( 'My split' ) !== -1 && shown.indexOf( W('export/kind-frame') ) !== -1 && shown.indexOf( W('blocks/how-skip') ) !== -1 && shown.indexOf( W('blocks/how-copy') ) !== -1
+		w.sent.some( function( request ) { return request.action === 'themes/blocks' && request.payload.theme === 'own:lindner' } ) && shown.indexOf( Wp( 'blocks/pack', 'Lindner' ) ) !== -1 && shown.indexOf( 'My split' ) !== -1 && shown.indexOf( 'Header/footer' ) !== -1 && shown.indexOf( 'Static content' ) !== -1 && shown.indexOf( W('blocks/how-skip') ) !== -1 && shown.indexOf( W('blocks/how-copy') ) !== -1
 		&& shown.indexOf( 'Replace' ) === -1 && findAll( dialog, function( node ) { return node.tagName === 'SELECT' } ).length === 1 );
 
 	const select = findAll( dialog, function( node ) { return node.tagName === 'SELECT' } )[0];

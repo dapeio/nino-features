@@ -131,6 +131,12 @@ check( 'the dialog of the export is given what the project offers: the own block
 	$madeOwn === 200 && $adopted === 200 && $offerStatus === 200 && ( $offer['available'] ?? false ) === true && $keys === [ $empty, 'mein-kopf', $split ] && ( $by[$split]['name'] ?? '' ) === 'My split' && ( $by['mein-kopf']['frame'] ?? false ) === true && ( $by[$split]['frame'] ?? true ) === false
 	&& is_array( $by['mein-kopf']['reads'] ?? null ) === true && ( $by[$split]['files'] ?? 0 ) === count( bkFiles( $sandbox. '/private/blocks/'. $split ) ) && ( $by[$split]['bytes'] ?? 0 ) === array_sum( array_map( 'strlen', bkFiles( $sandbox. '/private/blocks/'. $split ) ) ) );
 
+[ , $offerDe ] = bkCall( $site, 'themes/export-blocks', [ 'theme' => 'own:boxed', 'locale' => 'de_DE' ] );
+$byDe = array_column( $offerDe['blocks'] ?? [], null, 'key' );
+
+check( 'each block of the dialog says what it is in the words of the workbench for its category, in the language asked for - the list of the feature that lists the blocks carries the word, the themes read none of its texts - and a header is a "Header/footer": in English and in German',
+	( $by[$split]['kind'] ?? '' ) === 'Static content' && ( $by['mein-kopf']['kind'] ?? '' ) === 'Header/footer' && ( $by[$empty]['kind'] ?? '' ) === 'Titles' && ( $byDe[$split]['kind'] ?? '' ) === 'Statische Inhalte' && ( $byDe['mein-kopf']['kind'] ?? '' ) === 'Kopf-/Fußbereich' && ( $byDe[$empty]['kind'] ?? '' ) === 'Titel' );
+
 check( 'and the limits of a package, and what the folder of the theme has already: the files and bytes of the folder without blocks, none carried - so that a package that is too large is said before it is packed - and nothing is written by asking',
 	( $offer['limits'] ?? [] ) === [ 'files' => $limits['files'], 'bytes' => $limits['bytes'] ] && ( $offer['base']['files'] ?? 0 ) === count( $ownBefore ) && ( $offer['base']['bytes'] ?? 0 ) === array_sum( array_map( 'strlen', bkFiles( $ownDir ) ) ) && ( $offer['carried'] ?? null ) === [] && bkHashes( $ownDir ) === $ownBefore );
 
@@ -211,7 +217,7 @@ check( 'what the folder carries in blocks/ is joined with the choice: the block 
 // what may not be chosen
 $refused = [];
 
-foreach( [ 'a block that is not there' => 'no-such-block', 'a block of the kernel' => 'hero-full', 'a key that leaves the folder' => '../blocks', 'a key with a slash' => $split. '/images', 'upper case' => 'Mein-Kopf' ] as $what => $key ) {
+foreach( [ 'a block that is not there' => 'no-such-block', 'a block of the kernel' => 'hero-full', 'a block of the theme that comes with the feature' => 'header-line', 'a key that leaves the folder' => '../blocks', 'a key with a slash' => $split. '/images', 'upper case' => 'Mein-Kopf' ] as $what => $key ) {
 
 	[ $statusOne, $bodyOne ] = bkCall( $site, 'themes/export', [ 'theme' => 'own:boxed', 'blocks' => [ $key ] ] );
 	[ $statusTwo ] = bkCall( $site, 'themes/export', [ 'theme' => 'own:boxed', 'check' => true, 'blocks' => [ $key ] ] );
@@ -259,7 +265,10 @@ check( 'a package that carries blocks is copied as an own theme, and its card sa
 	$packStatus === 200 && $checked === 200 && $copied === 200 && ( $card['blocks'] ?? 0 ) === 2 && ( $list['blocksTake'] ?? false ) === true && $registered === [] && array_intersect( [ $split, 'mein-kopf' ], array_keys( \Nino\Blocks::all( $siteB ) ) ) === [] && $blocksBefore === [] );
 
 [ $shownStatus, $shown ] = bkCall( $siteB, 'themes/blocks', [ 'theme' => 'own:boxed' ] );
+[ , $shownDe ] = bkCall( $siteB, 'themes/blocks', [ 'theme' => 'own:boxed', 'locale' => 'de_DE' ] );
 $shownBy = array_column( $shown['blocks'] ?? [], null, 'key' );
+
+check( 'the blocks of the theme say what they are in the words of the workbench for their category, in the language asked for', array_column( $shown['blocks'] ?? [], 'kind', 'key' ) === [ 'mein-kopf' => 'Header/footer', $split => 'Static content' ] && array_column( $shownDe['blocks'] ?? [], 'kind', 'key' ) === [ 'mein-kopf' => 'Kopf-/Fußbereich', $split => 'Statische Inhalte' ] );
 
 check( 'the blocks of the theme are shown before anything is written: each with its name, its category and whether the project has the key - all are free here - and the name of the theme',
 	$shownStatus === 200 && array_keys( $shownBy ) === [ 'mein-kopf', $split ] && ( $shownBy[$split]['state'] ?? '' ) === 'free' && ( $shownBy[$split]['name'] ?? '' ) === 'My split' && ( $shownBy['mein-kopf']['category'] ?? '' ) === 'frame' && ( $shown['theme'] ?? '' ) === 'Boxed' && bkHashes( $sandboxB. '/private/blocks' ) === $blocksBefore );
@@ -343,6 +352,21 @@ ninoUser( $siteB, 'owner2@example.com', $all );
 
 check( 'an account that holds the right of the themes and not the right of the blocks sees how many blocks a theme holds, is told that none can be taken - the list says so - and can neither read the blocks nor take them: 403, also past the dispatcher, and a request without its token; nothing is written',
 	$noBlocks === 403 && $noTake === 403 && ( $noTakeBody['code'] ?? '' ) === 'themes_blocks_right' && ( $plainList['blocksTake'] ?? true ) === false && ( $plainCard['blocks'] ?? 0 ) === 2 && $noTokenTake === 403 && $directDenied === [ 403, 403 ] && bkHashes( $sandboxB. '/private/blocks' ) === $beforeDenied );
+
+// a folder the reader of the own themes refuses - its name is not the key in its theme.json - is no theme to take blocks from, whatever it carries
+$mismatch = $sandboxB. '/private/themes/rj-folder';
+\Nino\Filesystem::copyDir( $sandboxB. '/private/themes/boxed', $mismatch );
+file_put_contents( $mismatch. '/theme.json', json_encode( array_merge( json_decode( (string) file_get_contents( $mismatch. '/theme.json' ), true ), [ 'key' => 'rj-mismatch' ] ) ) );
+unset( $siteB['./nino/themes/own'] );
+$beforeRefused = bkHashes( $sandboxB. '/private/blocks' );
+[ $refusedList ] = bkCall( $siteB, 'themes/blocks', [ 'theme' => 'own:rj-folder' ] );
+[ $refusedTake ] = bkCall( $siteB, 'themes/blocks-take', [ 'theme' => 'own:rj-folder', 'items' => [ $split => [ 'take' => true, 'how' => 'copy' ] ] ] );
+[ $refusedKey ] = bkCall( $siteB, 'themes/blocks', [ 'theme' => 'own:rj-mismatch' ] );
+
+check( 'blocks are taken from a theme that the reader of the own themes knows: a folder it refuses - the name of the folder is not the key in its theme.json - is a 404 for the list and for the taking, so is the key in its theme.json, and nothing is written',
+	$refusedList === 404 && $refusedTake === 404 && $refusedKey === 404 && bkHashes( $sandboxB. '/private/blocks' ) === $beforeRefused );
+\Nino\Filesystem::removeDir( $mismatch );
+unset( $siteB['./nino/themes/own'] );
 
 // a theme that is none, a key that leaves the folder, a theme that carries no blocks
 [ $none ] = bkCall( $siteB, 'themes/blocks', [ 'theme' => 'own:not-there' ] );

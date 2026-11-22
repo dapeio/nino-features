@@ -2614,7 +2614,7 @@
 				{ key : 'files', label : word('export/col-files'), type : 'integer' },
 				{ key : 'size', label : word('export/col-size'), type : 'integer', render : function( value ) { return sizeSaid( value ) } },
 			],
-			rows		: offer.blocks.map( function( block ) { return { key : block.key, name : block.name, kind : block.frame === true ? word('export/kind-frame') : block.category, files : block.files, size : block.bytes, reads : block.reads } } ),
+			rows		: offer.blocks.map( function( block ) { return { key : block.key, name : block.name, kind : block.kind, files : block.files, size : block.bytes, reads : block.reads } } ),
 			select	: { label : word('export/pick-head'), rowLabel : function( row ) { return word( 'export/pick', row.name ) }, actions : [ { key : 'export', label : word('export/with'), run : function( keys ) {
 
 				const sums = totals( keys );
@@ -2677,7 +2677,7 @@
 			const row = el( 'div', 'themes-blocks-row' );
 			const pick = { take : true, how : 'skip' };
 			const tick = Nino.adminUi.checkField( { key : 'take:'+ block.key, label : block.name, checked : true, className : 'nino-admin-field themes-blocks-take', onChange : function( on ) { pick.take = on } } );
-			const facts = el( 'small', 'nino-admin-hint themes-blocks-facts', [ block.category === 'frame' ? word('export/kind-frame') : block.category, word( 'blocks/variants', block.variants.length ), word( 'blocks/images', block.images ) ].join(' · ') );
+			const facts = el( 'small', 'nino-admin-hint themes-blocks-facts', [ block.kind, word( 'blocks/variants', block.variants.length ), word( 'blocks/images', block.images ) ].join(' · ') );
 
 			picks[block.key] = pick;
 			row.appendChild( tick );

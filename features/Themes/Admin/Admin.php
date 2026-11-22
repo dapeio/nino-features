@@ -791,7 +791,7 @@ namespace Nino\Modules\Themes {
 			}
 
 			if( ( $data['check'] ?? false ) === true ) {
-				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => strlen( $made['bytes'] ), 'files' => $made['files'], 'replaced' => $made['replaced'] ] );
+				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => $made['unpacked'], 'files' => $made['files'], 'replaced' => $made['replaced'] ] );
 				return;
 			}
 

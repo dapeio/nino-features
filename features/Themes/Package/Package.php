@@ -191,7 +191,7 @@ namespace Nino\Modules\Themes {
 		 *	@param		string		$key					The key of the own theme
 		 *	@param		array			$blocks				The keys of blocks of the project that go into the package as well, none for a package of the folder alone
 		 *
-		 *	@return 	array											'bytes', 'file' (key and version of the theme), 'files' (how many) and 'replaced' (the keys of the folder's own blocks/ that the project's blocks took the place of); or 'failure' => [ status, message, code, params, field ]
+		 *	@return 	array											'bytes', 'file' (key and version of the theme), 'files' (how many), 'unpacked' (the bytes of the files together - the length of the archive depends on the second it was made in) and 'replaced' (the keys of the folder's own blocks/ that the project's blocks took the place of); or 'failure' => [ status, message, code, params, field ]
 		 */
 		public static function export( array &$appData, string $key, array $blocks = [] ): array {
 
@@ -253,7 +253,7 @@ namespace Nino\Modules\Themes {
 			if( is_array( $back ) === false || $back != $files )
 				return [ 'failure' => [ 500, 'the archive is not the files', 'themes_export_archive', [ '', 'different' ], 'theme' ] ];
 
-			return [ 'bytes' => $bytes, 'file' => $key. '-'. (string) ( $theme['version'] ?? '' ). '.tar.gz', 'files' => count( $files ), 'replaced' => $replaced ];
+			return [ 'bytes' => $bytes, 'file' => $key. '-'. (string) ( $theme['version'] ?? '' ). '.tar.gz', 'files' => count( $files ), 'unpacked' => array_sum( array_map( 'strlen', $files ) ), 'replaced' => $replaced ];
 		}
 	}
 }

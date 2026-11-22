@@ -1044,10 +1044,16 @@ upCall( $site, 'themes/upload-drop', [ 'id' => upHeld() ] );
 
 check( 'what is exported is what comes in: the package of an export is read by the check of the upload - the same rules of the words and of the brand - and shown, 200', $came === 200 );
 
+// The size that the question names is the bytes of the files together - the archive's own length depends on the second it was made in, as gzip packs the time with the rest - and the file that
+// follows is those files: it is unpacked and its files are those of the folder, and their bytes are the size that was said. A pause between the two (PACK_PAUSE seconds, none by default) makes
+// no difference to either
 [ $dry, $said ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made', 'check' => true ] );
+usleep( (int) ( 1000000 * (float) ( getenv( 'PACK_PAUSE' ) ?: 0 ) ) );
+[ , $fetched ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made' ] );
+$got = is_string( $fetched ) === true ? $read( $fetched, 'hand-made' ) : 'none';
 
-check( 'a request that asks only whether it can be exported is answered with the name of the file, its size and the number of files - JSON, no file - and the size is the size of the file that follows',
-	$dry === 200 && is_array( $said ) === true && ( $said['file'] ?? '' ) === 'hand-made-1.2.0.tar.gz' && ( $said['size'] ?? 0 ) === strlen( (string) $bytes ) && ( $said['files'] ?? 0 ) === count( $files ) );
+check( 'a request that asks only whether it can be exported is answered with the name of the file, its size and the number of files - JSON, no file - and the size is the bytes of the files, which are the files of the file that is sent: unpacked, they are the files of the folder, as many as were said, and add up to it',
+	$dry === 200 && is_array( $said ) === true && ( $said['file'] ?? '' ) === 'hand-made-1.2.0.tar.gz' && is_array( $got ) === true && $got == $files && ( $said['size'] ?? 0 ) === array_sum( array_map( 'strlen', $got ) ) && ( $said['files'] ?? 0 ) === count( $files ) );
 
 // a theme that cannot be exported says why - each reason is a sentence of the panel - and no file is made of it
 $bad = [

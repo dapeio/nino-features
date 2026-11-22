@@ -584,7 +584,6 @@ return [
 	'[[/_admin/themes/export/col-kind]]'	=> 'Kind',
 	'[[/_admin/themes/export/col-files]]'	=> 'Files',
 	'[[/_admin/themes/export/col-size]]'	=> 'Size',
-	'[[/_admin/themes/export/kind-frame]]'	=> 'Header/footer',
 	'[[/_admin/themes/export/search]]'	=> 'Search blocks',
 	'[[/_admin/themes/export/empty]]'	=> 'The project has no own blocks.',
 	'[[/_admin/themes/export/no-match]]'	=> 'No block matches.',
