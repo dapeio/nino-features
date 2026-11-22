@@ -10824,12 +10824,12 @@
 		return key === 'header' || key === 'footer' ? word( 'frame/'+ key ) : ( entry !== undefined && entry.name !== '' ? entry.name : key.replace( /^(?:header|footer)-/, '' ) );
 	};
 
-	// What stands beside the name of a frame: that it is the standard one, or its word, and on how many pages it is chosen
+	// What stands beside the name of a frame, which the title has said: on how many pages it is chosen and, for a named frame, the word it is called by - where it has a name
 	const frameDetail = function( frame ) {
 
 		const count = frame.uses === 0 ? word('frame/uses-none') : ( frame.uses === 1 ? word('frame/uses-one') : word( 'frame/uses-many', String( frame.uses ) ) );
 
-		return frame.default === true ? word( 'frame/standard', count ) : word( 'frame/word', frame.key.replace( /^(?:header|footer)-/, '' ), count );
+		return frame.default === true || frame.name === '' ? count : word( 'frame/word', frame.key.replace( /^(?:header|footer)-/, '' ), count );
 	};
 
 	// The frames in the list of the pages - the standard ones and the named ones the site has -, for the one who designs: each a row with the choice of its block, the way back to what it was, and - where Themelab is on and the account may
@@ -10895,7 +10895,11 @@
 					} );
 				}, { small : true, name : word( 'frame/undo-of', name ) } ) );
 
-			return { key : frame.key, title : name, detail : frameDetail( frame ), actions : actions };
+			// The row says which header or footer it is and what that is called in the dialog of a page's choice: the word of the standard one, or the name of the named one. The name is text
+			const side = frame.side === 'footer' ? 'footer' : 'header';
+			const choice = frame.default === true ? 'default' : frame.key.replace( /^(?:header|footer)-/, '' );
+
+			return { key : frame.key, title : word( 'frame/of', word( 'frame/'+ side ), frameWord( choice, side ) ), detail : frameDetail( frame ), actions : actions };
 		} );
 
 		return Nino.adminUi.list( rows, { title : word('frame/title'), level : 2 } );

@@ -85,6 +85,7 @@
 		from		: kept(),
 		drawn		: '',
 		query		: '',
+		category	: 'all',
 		open		: null,
 		startup	: false,
 		button	: null,
@@ -713,7 +714,14 @@
 		N.drawn = N.from;
 
 		const own = N.from === 'own';
-		const rows = data.blocks.filter( function( block ) { return N.from === 'all' || ( own === true ? block.own === true : block.origin === N.from ) } );
+		const ofSource = data.blocks.filter( function( block ) { return N.from === 'all' || ( own === true ? block.own === true : block.origin === N.from ) } );
+		const kinds = categoriesOf( data, ofSource );
+
+		// The choice of a category narrows the blocks of the source that is chosen: one the source has none of is no choice - the list shows all of its blocks
+		if( kinds.indexOf( N.category ) === -1 )
+			N.category = 'all';
+
+		const rows = N.category === 'all' ? ofSource : ofSource.filter( function( block ) { return block.group === N.category } );
 
 		if( rows.length === 0 ) {
 
@@ -773,6 +781,10 @@
 			}
 			else
 				holder.querySelector('.nino-admin-table-toolbar').insertBefore( chooser( data ), holder.querySelector('.nino-admin-table-search') );
+
+			// The categories the blocks of the source have, in one select after the search: a second select of the bar's kind, named for what it picks
+			if( kinds.length > 2 )
+				holder.querySelector('.nino-admin-table-toolbar').appendChild( categoryChoice( data, kinds ) );
 		}
 
 		N.button = null;
@@ -783,6 +795,48 @@
 			N.button = Nino.adminUi.button( word('new/button'), function() { askNew( N.button ) }, { kind : 'primary', id : 'themelab-new' } );
 			mount.appendChild( Nino.adminUi.actionBar( { list : true, secondary : [ Nino.adminUi.button( word('import/button'), function( event ) { askImport( event.currentTarget ) }, { kind : 'secondary', id : 'themelab-import' } ) ], primary : N.button } ).el );
 		}
+	};
+
+	// The categories of some blocks, with "all" first: the order the server lists them in, the others - the head and the foot of a page, the dynamic ones - after them by their words
+	const categoriesOf = function( data, blocks ) {
+
+		const present = Array.from( new Set( blocks.map( function( block ) { return block.group } ) ) );
+		const order = function( category ) { const at = data.categories.indexOf( category ); return at === -1 ? data.categories.length : at };
+
+		return [ 'all' ].concat( present.sort( function( one, other ) { return order( one ) - order( other ) || categoryWord( one ).localeCompare( categoryWord( other ) ) } ) );
+	};
+
+	// The choice of a category beside the search: the select of the bar of the workbench - the kind of a block is what it picks -, named for a screen reader as the column of the table is. A bar
+	// that has no select of its own gives a select field with the same options, as the choice of the source does
+	const categoryChoice = function( data, kinds ) {
+
+		const wanted = {
+			id			: 'themelab-category',
+			label		: word('list/category'),
+			options	: kinds.map( function( kind ) { return { value : kind, label : kind === 'all' ? word('category/all') : categoryWord( kind ) } } ),
+			value		: N.category,
+			onChange	: function( value ) {
+
+				N.category = value;
+				render( N.data );
+				Nino.adminUi.showLevel( 'themelab-list', { focus : dc.querySelector('[data-key="themelab-category"]') ?? false } );
+			},
+		};
+
+		if( barHasSelect() === true ) {
+
+			const select = Nino.adminUi.filterBar( { filter : wanted } ).select;
+
+			select.dataset.key = 'themelab-category';
+
+			return select;
+		}
+
+		const field = Nino.adminUi.selectField( { key : 'themelab-category', label : wanted.label, options : wanted.options, value : wanted.value, onChange : wanted.onChange } );
+
+		field.querySelectorAll( ':scope > span' ).forEach( function( caption ) { caption.classList.add('nino-admin-sr-only') } );
+
+		return field;
 	};
 
 	// Where a source is called: the name of the source in the language of the person, the own blocks by the word of the panel
@@ -2624,8 +2678,23 @@
 
 			const at = here();
 
-			if( Nino.admin.themelab.ready === true && at.panel !== 'themelab' )
+			// The editor is one for the pane of the pages as well: a page opened there while a sheet of this panel was open took the sheet, and the list that was unloaded for it is drawn by nobody
+			// else. The panel that comes back to no sheet draws its list again, and keeps no block it has not open
+			const lost = Nino.admin.themelab.ready === true && N.open !== null && sheetOpen() === false;
+
+			if( lost === true )
+				N.open = null;
+
+			if( Nino.admin.themelab.ready === true && at.panel !== 'themelab' ) {
+
+				if( lost === true )
+					Nino.admin.themelab.reload( function() {
+						Nino.admin.router.set( 'themelab', tabParts( N.tab ) );
+						Nino.adminUi.showLevel( 'themelab-list', { focus : false } );
+					} );
+
 				return;
+			}
 
 			const proceed = function() { Nino.admin.themelab.follow() };
 

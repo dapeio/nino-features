@@ -153,8 +153,8 @@ check( 'the blocks of the owner are "Own blocks" - "Eigene Blocks" - in every wo
 
 $style = (string) file_get_contents( $feature. '/assets/admin.css' );
 
-check( 'the picture of a block in the list is as large as the tile of the dialog "Insert block" - 15 rem - a name is broken where it is long, never cut off, and the head of the column of the pictures is set like the heads of the others: small, quiet capitals',
-	preg_match( '/\.themelab-tile\s*\{[^}]*width:\s*15rem/', $style ) === 1 && preg_match( '/\.builder-cell-name[^{]*\{[^}]*overflow-wrap:\s*anywhere[^}]*white-space:\s*normal/s', $style ) === 1
+check( 'a name in the list is broken where it is long, never cut off, and the head of the column of the pictures is set like the heads of the others: small, quiet capitals',
+	preg_match( '/\.builder-cell-name[^{]*\{[^}]*overflow-wrap:\s*anywhere[^}]*white-space:\s*normal/s', $style ) === 1
 	&& preg_match( '/th\[data-key="tile"\]\s*\{[^}]*text-transform:\s*uppercase/', $style ) === 1 );
 
 // ---------------------------------------------------------------------------------------------------------------------------------

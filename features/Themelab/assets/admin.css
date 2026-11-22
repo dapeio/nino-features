@@ -12,9 +12,9 @@
 
 @layer nino.tool {
 
-/* The picture of a block in a row of the list: as large as the tile of the dialog "Insert block" of the Builder, of which it is the same picture - the row is as high as it is */
+/* The picture of a block in a row of the list: the same picture as the tile of the dialog "Insert block" of the Builder, drawn small - the row is as high as it is */
 #themelab-app .themelab-tile {
-	width: 15rem;
+	width: 11rem;
 	max-width: 100%;
 }
 

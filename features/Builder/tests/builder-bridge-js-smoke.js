@@ -98,8 +98,8 @@ check( 'C5c. the bar of a section has the pencil of its section and a button for
 	has( /const sectionTools = function\( node, block \)/ ) === true && has( /pencil\.dataset\.action = 'properties'/ ) === true && has( /button\.dataset\.action = 'row'/ ) === true && has( /openProperties\( at, 'root', opener \)/ ) === true
 	&& has( /const ROW_BUTTONS\s*= 6;/ ) === true && has( /const sectionPen = function\( at \)[\s\S]*?hasProperties\( 'root' \)/ ) === true && has( /button\.addEventListener\( 'pointerenter', function\(\) \{ show\( true \) \} \)/ ) === true
 	&& [ 'label/edit-section', 'label/edit-row', 'ident/change-of', 'ident/field-of', 'ident/fixed-of', 'ident/why-frame', 'ident/why-block', 'ident/why-content', 'ident/why-locked', 'ident/form', 'ident/long', 'ident/taken' ].every( function( key ) { return word( de, key ) !== '' && word( en, key ) !== '' && word( de, key ) !== word( en, key ) } ) === true );
-check( 'C5d. the frames of the list of the pages are all the frames of the site: a named one by the name it was given with its word beside it, and by its word where it has no name; the standard ones by the words of the panel',
-	has( /const name = frameName\( frame\.key, frame \);/ ) === true && has( /entry\.name !== '' \? entry\.name : key\.replace\( \/\^\(\?:header\|footer\)-\/, '' \)/ ) === true && has( /frame\.default === true \? word\( 'frame\/standard', count \) : word\( 'frame\/word', frame\.key\.replace\( \/\^\(\?:header\|footer\)-\/, '' \), count \)/ ) === true
+check( 'C5d. the frames of the list of the pages are all the frames of the site: a named one by the name it was given with its word beside it, and by its word where it has no name; the standard ones by the words of the panel, the line under the title telling the number of pages only',
+	has( /const name = frameName\( frame\.key, frame \);/ ) === true && has( /entry\.name !== '' \? entry\.name : key\.replace\( \/\^\(\?:header\|footer\)-\/, '' \)/ ) === true && has( /frame\.default === true \|\| frame\.name === '' \? count : word\( 'frame\/word', frame\.key\.replace\( \/\^\(\?:header\|footer\)-\/, '' \), count \)/ ) === true
 	&& has( /key === 'header' \|\| key === 'footer' \? word\( 'frame\/'\+ key \)/ ) === true && has( /data\.frames\.map\( function\( frame \) \{/ ) === true );
 check( 'C6. the pencil belongs to the component under a pointer that stands still when the page is rolled: the roll asks what is under the pointer again, and a pointer that left the page asks nothing',
 	has( /let pointerAt = null;/ ) === true && has( /doc\.addEventListener\( 'pointerleave', function\(\) \{ pointerAt = null; outerAt = null \} \)/ ) === true && has( /doc\.elementFromPoint\( pointerAt\.x, pointerAt\.y \)/ ) === true
@@ -131,9 +131,44 @@ check( 'D6. the wide column of the settings beside the preview is the workbench\
 	has( /settingsWidth\s*: S\.adapter\.props === 'panel' \? 'wide' : undefined/ ) === true && /nino-admin-split--fill > \.nino-admin-split-grid \{\s*grid-template-columns/.test( sheet ) === false && /480px/.test( sheet ) === false );
 check( 'D7. a column too narrow for a label beside its field stacks them - the label over the field -, so that a choice is never cut: the label goes to the left of the field only where the column is 22 rem wide - the column is the one of the workbench, and the preview gives way - and the strip of the preview over the column of a narrow window is the one rule for it, in a container query of the split, for #themelab-app',
 	/@container builder-props \(min-width: 22rem\) \{\s*\.builder-props \.nino-admin-field \{\s*display: grid;/.test( sheet ) === true && /@container nino-split \(max-width: 44rem\) \{[\s\S]*?#themelab-app \.nino-admin-split--fill\.builder-props-live\[data-view="settings"\] > \.nino-admin-split-grid \{\s*grid-template-rows: 9rem minmax\(0, 1fr\);/.test( sheet ) === true );
-check( 'D3. the row of the devices has no caption on the screen and keeps its name for a screen reader, the devices stand at its right; the inputs that the width switches share one quiet surface with it - and so does a setting that has one value for each width',
+check( 'D3. the row of the devices has no caption on the screen and keeps its name for a screen reader; the inputs that the width switches share one quiet surface with it - and so does a setting that has one value for each width',
 	has( /el\( 'span', 'nino-admin-sr-only', word\('rows\/width'\) \)/ ) === true && has( /'builder-widths-group builder-widths-box'/ ) === true && has( /'nino-admin-field builder-widths-set builder-widths-box'/ ) === true
-	&& /\.builder-lightbox \.builder-widths-box \{[^}]*background: var\(--editor-bg\);/.test( sheet ) === true && /\.builder-lightbox \.builder-width-pick \{[^}]*justify-content: flex-end/.test( sheet ) === true );
+	&& /\.builder-lightbox \.builder-widths-box \{[^}]*background: var\(--editor-bg\);/.test( sheet ) === true );
+check( 'F344 b. the row of the devices stands alone in its row and is in the middle of it: what the stylesheet declares last for it as a flex row is the centre, whatever rules come before',
+	( function() {
+
+		// The declarations the stylesheet gives a selector, in the order of the rules: a plain reading of "selector { property: value; }" blocks, comments gone
+		const rules = [];
+		const plain = sheet.replace( /\/\*[\s\S]*?\*\//g, '' );
+
+		plain.replace( /([^{}@]+)\{([^{}]*)\}/g, function( all, selectors, body ) {
+			rules.push( { selectors : selectors.split(',').map( function( one ) { return one.trim().replace( /\s+/g, ' ' ) } ), body : body } );
+			return all;
+		} );
+
+		const given = function( selector, property ) {
+
+			let value = null;
+
+			rules.forEach( function( rule ) {
+
+				if( rule.selectors.indexOf( selector ) === -1 )
+					return;
+
+				for( const line of rule.body.split(';') ) {
+
+					const at = line.indexOf(':');
+
+					if( at !== -1 && line.slice( 0, at ).trim() === property )
+						value = line.slice( at + 1 ).trim();
+				}
+			} );
+
+			return value;
+		};
+
+		return given( '.builder-lightbox .builder-width-pick', 'display' ) === 'flex' && given( '.builder-lightbox .builder-width-pick', 'justify-content' ) === 'center';
+	} )() );
 check( 'D4. the notation of a component is no part of a page: the button behind the code is for a sheet of the editor of the blocks and for the one who designs',
 	has( /S\.level >= 2 && S\.sheet === 'block'/ ) === true );
 check( 'D5. the notices of the third party name no strokes of the Builder: it draws no icon of its own',
@@ -207,8 +242,8 @@ check( 'F294 T5. the advanced part has no id row for a component below a section
 	has( /const advancedWants = function\( rel \)/ ) === true && has( /S\.level >= 2 && advancedWants\( rel \) === true \)\s*sections\.push\( \{ key : 'advanced'/ ) === true
 	&& has( /const id = rel === 'root' && S\.sheet === 'page' \? Object\.keys/ ) === true && has( /if\( sections\.length === 0 \) \{\s*holder\.appendChild\( el\( 'p', 'builder-props-none', word\('box\/none'\) \) \);/ ) === true
 	&& word( de, 'box/none' ) !== '' && word( en, 'box/none' ) !== '' );
-check( 'F294 T6. the heading of the tab of the frames says "Standard-Auswahl der Seite" and "Default choice of the site" - the word "Rahmen" in the other words of the panel is not part of it',
-	word( de, 'frame/title' ) === 'Standard-Auswahl der Seite' && word( en, 'frame/title' ) === 'Default choice of the site' );
+check( 'F294 T6. the heading of the tab of the frames says "Standard-Wert für jede Seite" and "Default for every page" - the word "Rahmen" in the other words of the panel is not part of it',
+	word( de, 'frame/title' ) === 'Standard-Wert für jede Seite' && word( en, 'frame/title' ) === 'Default for every page' );
 
 {
 	// The word for the head and the foot of a page: in German "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich", in English "header" and "footer" and "header/footer" - the old words are in no text of the

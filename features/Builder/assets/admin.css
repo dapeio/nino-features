@@ -331,10 +331,10 @@
 	background: var(--editor-bg);
 }
 
-/* The devices stand at the right edge of their row */
+/* The devices stand alone in their row, in the middle of it */
 .builder-lightbox .builder-width-pick {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: center;
 	margin: 0;
 }
 

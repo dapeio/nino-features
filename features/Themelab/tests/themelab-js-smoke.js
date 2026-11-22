@@ -2325,6 +2325,43 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 		pageLevel.children.length === 0 && pageLevel.classList.contains('admin-hidden') === true && listLevel.classList.contains('admin-hidden') === false );
 }
 
+// The editor is the pane of the pages' as well: a page opened there while a sheet of this panel is open takes the sheet - the level of the sheet is emptied - and the list that was unloaded for the
+// sheet is drawn by nobody else. The panel that is shown next asks for its list again and shows it, and the level of the sheet that is gone is not the one that shows
+{
+	const x = shown('#themelab/karten');
+	const w = x.w;
+	const levels = function( id ) { return findAll( w.page, function( el ) { return el.id === id } )[0] };
+	const list = levels('themelab-list');
+	const sheet = levels('themelab-sheet');
+
+	w.requests.length = 0;
+	w.panel.follow();
+	answerOf( request( w, 'themelab/open' ), 200, SHEET() );
+
+	const open = w.builder.editor.state().sheet === 'block' && sheet.children.length > 0 && list.children.length === 0;
+
+	// The pane of the pages opens a page: that is a closeSheet() of the editor, and the address is the one of the pages
+	w.builder.editor.close();
+	w.state.hash = '#builder/home';
+	w.requests.length = 0;
+	w.panel.showCurrent();
+
+	const asked = request( w, 'themelab/list' );
+
+	if( asked !== undefined )
+		answerOf( asked, 200, LIST() );
+
+	check( 'F344 a. the panel that comes back after a page of the pane of the pages took its sheet asks for its list and draws it: the list level has its rows and shows, the level of the sheet that is gone is hidden and empty',
+		open === true && asked !== undefined && rowsOfList( w ).length === 2 && list.classList.contains('admin-hidden') === false && sheet.classList.contains('admin-hidden') === true && sheet.children.length === 0 );
+
+	// the block that was lost is forgotten: shown once more, the panel asks for nothing
+	w.requests.length = 0;
+	w.state.hash = '#builder/home';
+	w.panel.showCurrent();
+
+	check( 'F344 a. the block the editor no longer holds is forgotten once the list is drawn: the panel shown once more asks for nothing and has no block open', request( w, 'themelab/list' ) === undefined && list.classList.contains('admin-hidden') === false );
+}
+
 {
 	// The choice of where the blocks come from is drawn by the bar of the workbench where that has a select of its own, and by a select field put in front of the search where it has not: the options
 	// are one list for both, and the way it is asked for is the same - both ways are tried with a bar that is made to be the one or the other
@@ -2387,6 +2424,72 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 
 	check( 'F333 a. a choice made in the bar and one made in the field are the same act: the address of the list is the same, and the choice is the one the list is drawn for',
 		withBar.w.state.hash === withoutBar.w.state.hash && withBar.w.requests.length === withoutBar.w.requests.length );
+}
+
+{
+	// F344: the list of the blocks has the category beside the search: one select with "all" first and the categories the blocks of the source have, narrowing the rows together with the search and the
+	// choice of the source, kept over the drawing of the list anew
+	const x = shown('#themelab');
+	const w = x.w;
+	const bar = function( now ) { return findAll( now.page, function( el ) { return String( el.className ).split(/\s+/).indexOf('nino-admin-table-toolbar') !== -1 } )[0] };
+	const category = function( now ) { return findAll( now.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-category' } )[0] };
+	const search = function( now ) { return findAll( now.page, function( el ) { return String( el.className ).split(/\s+/).indexOf('nino-admin-table-search') !== -1 } )[0] };
+	const keys = function( now ) { return rowsOfList( now ).map( function( row ) { return row.dataset.row } ).join() };
+	const options = function( select ) { return findAll( select, function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value } ).join() };
+	const choose = function( now, value ) { category( now ).value = value; fire( category( now ), 'change' ) };
+	const kids = bar( w ).children;
+
+	check( 'F344 e. the list has a select for the category after the search in the bar over it: "all" is the first and the one that is chosen, then the categories its blocks have in the order the server lists them; it is named for a screen reader as the column is',
+		category( w ) !== undefined && kids.indexOf( search( w ) ) !== -1 && kids.indexOf( category( w ) ) > kids.indexOf( search( w ) ) && options( category( w ) ) === 'all,intro,content' && category( w ).value === 'all'
+		&& category( w ).attributes['aria-label'] === W('list/category') && keys( w ) === 'karten,held' );
+
+	choose( w, 'intro' );
+
+	check( 'F344 e. a category narrows the rows to the blocks of it, the choice of the source and the search go with it: the search of the table is kept over the drawing of the list, and a search that finds nothing in the category has the sentence of the list',
+		keys( w ) === 'held' && category( w ).value === 'intro' );
+
+	search( w ).value = 'karten';
+	fire( search( w ), 'input' );
+
+	check( 'F344 e. ...a search that finds nothing in the category shows the sentence of the list and no row', keys( w ) === '' && textOf( w.page ).indexOf( W('list/no-match') ) !== -1 );
+
+	search( w ).value = '';
+	fire( search( w ), 'input' );
+	w.panel.reload();
+	answerOf( w.requests.filter( function( entry ) { return entry.action === 'themelab/list' } ).pop(), 200, LIST() );
+
+	check( 'F344 e. ...the choice stays when the list is asked for and drawn anew', category( w ).value === 'intro' && keys( w ) === 'held' );
+
+	choose( w, 'all' );
+
+	const one = shown( '#themelab', LIST( { blocks : LIST().blocks.map( function( block ) { return Object.assign( {}, block, { category : 'content', group : 'content' } ) } ) } ) ).w;
+	const theirs = shown( '#themelab/@blocks/nino', THEME() ).w;
+
+	// a category that the list now drawn has no block of is no choice: it is "all", and the list is not empty for it
+	const stale = shown('#themelab').w;
+
+	choose( stale, 'intro' );
+	stale.panel.reload();
+	answerOf( stale.requests.filter( function( entry ) { return entry.action === 'themelab/list' } ).pop(), 200, LIST( { blocks : LIST().blocks.map( function( block ) { return Object.assign( {}, block, { category : 'content', group : 'content' } ) } ) } ) );
+
+	check( 'F344 e. "all" shows every block again; a category the list drawn next has no block of is dropped, and the list shows all its blocks; a source whose blocks have one category has no select for it - there is nothing to choose; the blocks of a source have the select as the own ones do, with the categories they have',
+		keys( w ) === 'karten,held' && keys( stale ) === 'karten,held' && category( stale ) === undefined && category( one ) === undefined && category( theirs ) !== undefined && options( category( theirs ) ) === 'all,intro,content' );
+}
+
+{
+	// F344: the picture of a block in a row of the list is 11 rem wide - what the stylesheet declares for it outside of the rules of a narrow screen
+	const sheet = fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' ).replace( /\/\*[\s\S]*?\*\//g, '' ).replace( /@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '' );
+	const width = [];
+
+	sheet.replace( /([^{}]+)\{([^{}]*)\}/g, function( all, selectors, body ) {
+
+		if( selectors.split(',').map( function( one ) { return one.trim().replace( /\s+/g, ' ' ) } ).indexOf('#themelab-app .themelab-tile') !== -1 )
+			body.split(';').forEach( function( line ) { if( line.slice( 0, Math.max( line.indexOf(':'), 0 ) ).trim() === 'width' ) width.push( line.slice( line.indexOf(':') + 1 ).trim() ) } );
+
+		return all;
+	} );
+
+	check( 'F344 e. the picture of a block in a row of the list is 11 rem wide', width.pop() === '11rem' );
 }
 
 {

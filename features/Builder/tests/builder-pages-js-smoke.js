@@ -859,7 +859,7 @@ function world( options ) {
 	const rows = findAll( w.frames, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'footer' ) } );
 
 	check( 'G. the list of the pages has the two frames for the one who designs - a row each, "applies to all pages", with the choice of a block, the way back only where there is a last state, and nothing that names Themelab where Themelab is off',
-		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '2' ) ) ) !== -1 && textOf( rows[1] ).indexOf( W( 'frame/standard', W('frame/uses-none') ) ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 && buttons( w.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 0 );
+		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W( 'frame/uses-many', '2' ) ) !== -1 && textOf( rows[1] ).indexOf( W('frame/uses-none') ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 && buttons( w.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 0 );
 
 	const content = world( { list : answer( { frames : [] } ) } );
 
@@ -951,8 +951,33 @@ function world( options ) {
 
 	check( 'T. the list of the pages has no tabs of its own - the frames are the tab of the pane, drawn from the same answer into its own mount: the pages are in the list and the frames are not, the named frame is a row with its name, its word and the number of pages, the standard ones are marked with theirs',
 		tabs( w.list.parentNode ?? w.list ).length === 0 && w.table() !== null && findAll( w.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } ).length === 0
-		&& rows.length === 1 && textOf( rows[0] ).indexOf('Landing') !== -1 && textOf( rows[0] ).indexOf( W( 'frame/word', 'landing', W('frame/uses-one') ) ) !== -1 && textOf( w.frames ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '3' ) ) ) !== -1
+		&& rows.length === 1 && textOf( rows[0] ).indexOf('Landing') !== -1 && textOf( rows[0] ).indexOf( W( 'frame/word', 'landing', W('frame/uses-one') ) ) !== -1 && textOf( w.frames ).indexOf( W( 'frame/uses-many', '3' ) ) !== -1
 		&& textOf( w.frames ).indexOf( W('frame/title') ) !== -1 );
+
+	// F344 d.: a row says which header or footer it is and what the dialog of a page's choice calls it - the word of the standard one, the name of a named one -, and the name is text
+	const odd = '<img src=x onerror=alert(1)> '+ 'long '.repeat( 40 );
+	const marked = named.map( function( frame ) { return frame.key === 'header-landing' ? Object.assign( {}, frame, { names : { de_DE : odd, en_US : odd }, name : odd } ) : frame } );
+	const naming = world( { list : answer( { frames : marked, bridge : true } ) } );
+
+	naming.open('#builder');
+
+	const rowText = function( x, key ) { return textOf( findAll( x.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === key } )[0] ) };
+
+	check( 'F344 d. each row of the frames says the side and the name the dialog of a page shows for it: "side: Standard" for the standard header and footer, "side: name" for a named one - the name as text, never as markup, and a long one in the same row',
+		rowText( w, 'header' ).indexOf( W( 'frame/of', W('frame/header'), W('frames/default') ) ) !== -1 && rowText( w, 'footer' ).indexOf( W( 'frame/of', W('frame/footer'), W('frames/default') ) ) !== -1
+		&& rowText( w, 'header-landing' ).indexOf( W( 'frame/of', W('frame/header'), 'Landing' ) ) !== -1
+		&& rowText( naming, 'header-landing' ).indexOf( W( 'frame/of', W('frame/header'), odd ) ) !== -1 && findAll( naming.frames, function( el ) { return el.tagName === 'IMG' } ).length === 0
+		&& findAll( naming.frames, function( el ) { return el.dataset !== undefined && el.dataset.row !== undefined } ).length === 3 );
+
+	// F344 g.: the line under the title tells what the title does not: the name of the title is not said a second time
+	const detailOf = function( x, key ) { return textOf( findAll( findAll( x.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === key } )[0], function( el ) { return el.tagName === 'SMALL' } )[0] ) };
+	const bare = world( { list : answer( { frames : named.map( function( frame ) { return frame.key === 'header-landing' ? Object.assign( {}, frame, { names : {}, name : '' } ) : frame } ), bridge : true } ) } );
+
+	bare.open('#builder');
+
+	check( 'F344 g. the line under the title of a frame holds the number of pages and, for a named frame, its word - and not the name that the title has: not "Standard" for the standard ones, not the name of a named one, and not the word of a frame that has no name and is told by it in the title',
+		detailOf( w, 'header' ) === W( 'frame/uses-many', '3' ) && detailOf( w, 'footer' ) === W( 'frame/uses-many', '4' ) && detailOf( w, 'header-landing' ) === W( 'frame/word', 'landing', W('frame/uses-one') )
+		&& detailOf( w, 'header-landing' ).indexOf('Landing') === -1 && detailOf( bare, 'header-landing' ) === W('frame/uses-one') );
 
 	const again = world( { list : answer( { frames : named, bridge : true } ) } );
 

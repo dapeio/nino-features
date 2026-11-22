@@ -101,6 +101,7 @@ return [
 	'[[/_admin/themelab/list/preview]]'	=> 'Preview',
 	'[[/_admin/themelab/list/name]]'	=> 'Name',
 	'[[/_admin/themelab/list/category]]'	=> 'Category',
+	'[[/_admin/themelab/category/all]]'	=> 'All categories',
 	'[[/_admin/themelab/list/variants]]'	=> 'Variants',
 	'[[/_admin/themelab/list/search]]'	=> 'Search blocks',
 	'[[/_admin/themelab/list/no-match]]'	=> 'No block matches the search.',

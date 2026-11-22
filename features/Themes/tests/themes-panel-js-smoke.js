@@ -1821,7 +1821,11 @@ function previewDialog( w, preview ) {
 	w.tick();
 	w.serve();
 
-	check( 'L. the standard variant says where it applies', w.text( w.byClass( w.theme, 'nino-admin-field-name' )[0] ).indexOf( words.en['/_admin/themes/hint/variant'] ) !== -1 );
+	check( 'F344 c. the choice of the standard variant is its name and the steps and no hint beside the name: the hint that said where it applies is gone, with its words', ( function() {
+		const name = w.byClass( w.theme, 'nino-admin-field-name' )[0];
+
+		return name.children.length === 0 && w.byClass( w.theme, 'themes-value' ).every( function( node ) { return node.parentNode !== name } ) && words.en['/_admin/themes/hint/variant'] === undefined && words.de['/_admin/themes/hint/variant'] === undefined;
+	} )() );
 }
 
 {
@@ -2092,6 +2096,9 @@ function type( node, value ) {
 	check( 'O. the colours are the workbench\'s own field, with the code and the contrast of the text that is written on it, and a value that the project has not set is the theme\'s: the default of Nino.css, said so, and no way back to offer', color1.value === '#1c5db8' && color2.value === '#17233a' && w.byClass( w.theme, 'nino-admin-color-contrast' ).length === 2 && w.text( w.byClass( w.theme, 'nino-admin-color-contrast' )[0] ).indexOf('enough') !== -1
 		&& byId( w.theme, 'themes-brand-back-color-1' ).hidden === true && w.text( w.byClass( w.theme, 'themes-origin' )[0] ).indexOf( W('chip/from-standard') ) !== -1 && w.text( w.byClass( w.theme, 'themes-origin' )[2] ).indexOf( Wp( 'chip/from-theme', 'Nino' ) ) !== -1, w.text( w.byClass( w.theme, 'themes-origin' )[0] ) );
 
+	check( 'F344 f. the first colour of the brand is required and the second is not: the first field is marked and says so to a screen reader, the second is neither - the second colour is optional, and a brand with one colour is a brand',
+		color1.attributes['aria-required'] === 'true' && color2.attributes['aria-required'] !== 'true' && w.text( color1.parentNode ).indexOf('*') !== -1 && w.text( color2.parentNode ).indexOf('*') === -1 );
+
 	// the first colour typed is the project's own
 	type( color1, '#9a4b1d' );
 
@@ -2125,6 +2132,12 @@ function type( node, value ) {
 	type( color2, '#17233b' );
 	w.tick();
 	w.serve();
+	type( color2, '' );
+	w.tick();
+
+	check( 'F344 f. the second colour left empty is no error and no colour of the project: the draft that goes out has it as not its own, and the field shows the colour of the theme',
+		w.requests[0]?.payload?.brand?.['color-2']?.own === false && byId( w.theme, 'themes-brand-color-2' ).value === '#17233a' && w.text( byId( w.theme, 'themes-acc-0-body' ) ).indexOf( workbench['/_admin/common/error/required'] ) === -1 );
+	w.serve();
 	fire( w.button( w.bar(), W('label/reset') ), 'click' );
 
 	check( 'O. Reset drops a brand that was changed with the rest of the draft: the field shows the saved value, nothing is the project\'s own, the state says so', byId( w.theme, 'themes-brand-color-2' ).value === '#17233a' && byId( w.theme, 'themes-brand-back-color-2' ).hidden === true && w.state_() === APPLIED && w.dirty.entries.themes.isDirty() === false );
@@ -2155,14 +2168,14 @@ function type( node, value ) {
 		&& w.byClass( w.theme, 'themes-pair-swatch' ).filter( function( node ) { return node.style.backgroundColor === '#404040' } ).length === 3 );
 	check( 'O. the colour written on the second colour is a pair of its own, the last of the list, with the colours of the second colour and the number the API gave', pairs[24].children[0].style.color === '#ffffff' && pairs[24].children[0].style.backgroundColor === '#17233a' && w.text( pairs[24] ).indexOf( W('role/on-second') ) !== -1 && w.text( pairs[24] ).indexOf( Wp( 'msg/ratio', 7.8 ) ) !== -1 );
 	check( 'O. the smallest contrast is told in a line of its own, with the word', w.text( w.byClass( w.theme, 'themes-least' )[0] ) === Wp( 'msg/palette-bad', 1, 4.2 ), w.text( w.byClass( w.theme, 'themes-least' )[0] ) );
-	check( 'O. a brand that names no colour has the colours of the reset, and the section says so, where the palette is', w.byClass( w.theme, 'nino-admin-notice' ).filter( function( node ) { return node.textContent.indexOf( W('msg/palette-reset') ) !== -1 } ).length === 1 );
+	check( 'F344 c. a brand that names no colour has the colours of the reset and the palette says nothing of it: the palette is drawn - 25 pairs - and there is no notice, and no word for one', w.byClass( w.theme, 'themes-pair' ).length === 25 && w.byClass( w.theme, 'nino-admin-notice' ).length === 0 && words.en['/_admin/themes/msg/palette-reset'] === undefined && words.de['/_admin/themes/msg/palette-reset'] === undefined );
 
 	// a draft with an own colour is a palette of the brand: no notice
 	type( byId( w.theme, 'themes-brand-color-1' ), '#9a4b1d' );
 	w.tick();
 	w.serve();
 
-	check( 'O. the palette is made again with every answer of the preview: with a colour of the project\'s own the notice that the reset stands is gone, and the contrast line of the field is told the colour that is written on it', w.byClass( w.theme, 'nino-admin-notice' ).filter( function( node ) { return node.textContent.indexOf( W('msg/palette-reset') ) !== -1 } ).length === 0 && w.byClass( w.theme, 'themes-pair' ).length === 25 );
+	check( 'O. the palette is made again with every answer of the preview: with a colour of the project\'s own it is drawn again - 25 pairs - and the contrast line of the field is told the colour that is written on it', w.byClass( w.theme, 'themes-pair' ).length === 25 );
 }
 
 {
@@ -4357,11 +4370,11 @@ function nameField( w ) {
 		en.state.hash = '#themes';
 		fire( button, 'click' );
 
-		return button.textContent === words.en['/_admin/themes/card/edit'] && en.state.hash === '#themes/'+ card.dataset.theme.replace( ':', '.' );
+		return button.textContent.trim() === '' && button.attributes['aria-label'] === words.en['/_admin/themes/card/edit'] && button.title === button.attributes['aria-label'] && button.className.indexOf('nino-admin-btn-icon--small') !== -1 && button.querySelector('svg') !== null && en.state.hash === '#themes/'+ card.dataset.theme.replace( ':', '.' );
 	} );
 
 	en.state.hash = '#themes';
-	check( 'T4. every card has a button to edit with the word Edit, beside the link of the card, and it leads to the address the link has', pressed.length === 4 && pressed.every( function( one ) { return one === true } ) && words.de['/_admin/themes/card/edit'] === 'Bearbeiten' );
+	check( 'T4. every card has an icon button to edit, named Edit for a screen reader and in its title, beside the link of the card, and it leads to the address the link has', pressed.length === 4 && pressed.every( function( one ) { return one === true } ) && words.de['/_admin/themes/card/edit'] === 'Bearbeiten' );
 
 	const select = en.byTag( en.list, 'select' ).find( function( one ) { return classes( one ).indexOf('themes-from') !== -1 || ( one.parentNode !== null && classes( one.parentNode ).indexOf('themes-from') !== -1 ) } );
 	const bar = en.byClass( en.list, 'nino-admin-filterbar' )[0];
@@ -4399,9 +4412,9 @@ function nameField( w ) {
 	const kinds = actions.children.map( function( node ) { return node.tagName === 'BUTTON' ? ( node.dataset.editbutton !== undefined ? 'edit' : ( node.dataset.apply !== undefined ? 'apply' : 'button' ) ) : 'icons' } ).join();
 	const icons = findAll( actions, function( node ) { return classes( node ).indexOf('themes-card-icons') !== -1 } )[0];
 
-	check( 'T6. the buttons of a card are Edit and Apply with their words, then the icons - duplicate, and remove or delete - each with no word, the name of the theme in its name and in its title: edit, apply, duplicate, remove',
-		kinds === 'edit,apply,icons' && icons.children.map( function( node ) { return node.dataset.duplicate !== undefined ? 'duplicate' : ( node.dataset.remove !== undefined ? 'remove' : ( node.dataset.delete !== undefined ? 'delete' : '?' ) ) } ).join() === 'duplicate,remove'
-		&& icons.children.every( function( node ) { return node.textContent.trim() === '' && node.attributes['aria-label'] !== '' && node.title === node.attributes['aria-label'] && node.attributes['aria-label'].indexOf('Craft') !== -1 } ) );
+	check( 'T6. the buttons of a card are Apply with its word, then the icons - edit, duplicate, and remove or delete - each with no word, in its name and in its title, the name of the theme in the name of all but edit: apply, edit, duplicate, remove',
+		kinds === 'apply,icons' && icons.children.map( function( node ) { return node.dataset.editbutton !== undefined ? 'edit' : node.dataset.duplicate !== undefined ? 'duplicate' : ( node.dataset.remove !== undefined ? 'remove' : ( node.dataset.delete !== undefined ? 'delete' : '?' ) ) } ).join() === 'edit,duplicate,remove'
+		&& icons.children.every( function( node ) { return node.textContent.trim() === '' && node.attributes['aria-label'] !== '' && node.title === node.attributes['aria-label'] && ( node.dataset.editbutton !== undefined || node.attributes['aria-label'].indexOf('Craft') !== -1 ) } ) );
 }
 
 {
@@ -4433,6 +4446,27 @@ function nameField( w ) {
 
 	check( 'T10. the names of fields are the workbench\'s class for them - nino-admin-field-name, which has the size, the weight and the colour of the other panels - and none is the class that the workbench has no rule for; the one rule of the sheet is for the same class',
 		script.indexOf('nino-admin-field-label') === -1 && sheet.indexOf('nino-admin-field-label') === -1 && ( script.match( /nino-admin-field-name/g ) ?? [] ).length === 5 && /\.nino-admin-accordion-body \.nino-admin-field-name \{/.test( sheet ) === true );
+
+	check( 'F344 c. the value beside the name of a setting is in the normal weight - what the stylesheet declares last for it - where the name has the weight of the workbench: the value is told from its name',
+		( function() {
+
+			const rules = [];
+
+			sheet.replace( /\/\*[\s\S]*?\*\//g, '' ).replace( /([^{}@]+)\{([^{}]*)\}/g, function( all, selectors, body ) {
+				rules.push( { selectors : selectors.split(',').map( function( one ) { return one.trim().replace( /\s+/g, ' ' ) } ), body : body } );
+				return all;
+			} );
+
+			let weight = null;
+
+			rules.forEach( function( rule ) {
+
+				if( rule.selectors.indexOf('#themes-app .themes-value') !== -1 )
+					rule.body.split(';').forEach( function( line ) { if( line.slice( 0, Math.max( line.indexOf(':'), 0 ) ).trim() === 'font-weight' ) weight = line.slice( line.indexOf(':') + 1 ).trim() } );
+			} );
+
+			return weight === 'normal' || weight === '400';
+		} )() );
 }
 
 // --- AD. the css of a theme is held to the rule of a theme -----------------------------------------------------------------------

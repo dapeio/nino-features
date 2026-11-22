@@ -51,7 +51,7 @@
 	margin: 0;
 }
 
-/* The buttons of a card: Edit and Apply with their words at the left, the icons at the right */
+/* The buttons of a card: Apply with its word at the left, the icons - edit, duplicate, delete - at the right */
 #themes-app .themes-card-actions {
 	align-items: center;
 }
@@ -265,8 +265,10 @@
 	margin-top: 0;
 }
 
+/* The value beside the name of a setting is the one that is written: it stands in the normal weight, the name keeps its own */
 #themes-app .themes-value {
 	margin-left: .5rem;
+	font-weight: normal;
 }
 
 #themes-app .themes-extra {

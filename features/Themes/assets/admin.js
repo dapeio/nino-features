@@ -979,7 +979,6 @@
 			if( choices.length <= 4 ) {
 				const name = el( 'div', 'nino-admin-field-name', word('label/variant') );
 				name.id = id;
-				name.appendChild( el( 'span', 'nino-admin-hint themes-value', word('hint/variant') ) );
 				body.appendChild( name );
 				body.appendChild( Nino.adminUi.steps( { labelledby : id, wide : true, steps : choices, value : standardOf( group, section.component ), onChange : choose } ).el );
 			}
@@ -1775,11 +1774,25 @@
 			label    : word( 'label/'+ key ),
 			id      : 'themes-brand-'+ key,
 			value    : brandValue( key ),
-			required  : true,
+			// The first colour is the brand's; the second is optional - a field left empty is the value of the theme, as the way back sets it. The server takes a colour that is not the project's own
+			required  : key === 'color-1',
 			against    : on(),
 			onChange  : function( value ) {
 				delete S.invalid[key];
-				setBrand( key, value );
+
+				if( value !== '' ) {
+					setBrand( key, value );
+					return;
+				}
+
+				S.brand[key] = { own : false };
+				field.set( themeValue( key ) );
+
+				if( S.view.rows[key] !== undefined )
+					S.view.rows[key]();
+
+				changed();
+				loop.schedule();
 			},
 			onInvalid  : function() {
 				S.invalid[key] = true;
@@ -1904,9 +1917,6 @@
 		const least = Math.min( ...ratios );
 		const short = ratios.filter( function( ratio ) { return ratio < Nino.adminUi.colorModel.ENOUGH } ).length;
 		const list = el( 'details', 'themes-allpairs' );
-
-		if( palette.source === 'reset' )
-			box.appendChild( Nino.adminUi.notice( word('msg/palette-reset') ) );
 
 		box.appendChild( titled( word('label/palette'), word('hint/palette') ) );
 
@@ -4655,12 +4665,8 @@
 			card.appendChild( reads );
 		}
 
-		// Edit and Apply are buttons with their words; duplicating and deleting or removing are icons, each named by the theme it is about - the order is the one of the bar
+		// Apply is a button with its word; editing, duplicating and deleting or removing are icons - editing named by its word, the others by the theme they are about
 		const actions = el( 'div', 'nino-admin-actions themes-card-actions' );
-		const edit = Nino.adminUi.button( word('card/edit'), function() { Nino.admin.themes.go( [ theme.key ], {} ) }, { className : 'nino-admin-btn--small' } );
-
-		edit.dataset.editbutton = theme.key;
-		actions.appendChild( edit );
 
 		if( theme.active !== true ) {
 			const use = Nino.adminUi.button( word('card/apply'), function() {
@@ -4679,6 +4685,11 @@
 		}
 
 		const icons = el( 'span', 'themes-card-icons' );
+		const edit = Nino.adminUi.iconButton( 'pencil', word('card/edit'), function() { Nino.admin.themes.go( [ theme.key ], {} ) }, { small : true } );
+
+		edit.dataset.editbutton = theme.key;
+		icons.appendChild( edit );
+
 		const copy = Nino.adminUi.iconButton( 'copy', word( 'card/duplicate-of', localized( theme.name ) ), function() {
 			duplicate( { key : theme.key, name : localized( theme.name ), stamp : function() { return theme.stamp ?? '' } }, copy, function( response ) {
 				refreshList( function() {
