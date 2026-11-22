@@ -1479,6 +1479,9 @@
 		const keepHint = Nino.adminUi.hint('');
 		const exportButton = own === true ? Nino.adminUi.button( word('label/export'), function() { exportOwn( exportButton ) }, { className : 'nino-admin-btn--small', id : 'themes-export' } ) : null;
 		const exportHint = Nino.adminUi.hint('');
+		const blocksIn = S.list.themes.find( function( theme ) { return theme.key === S.key } )?.blocks ?? 0;
+		const blocksButton = blocksIn > 0 && S.list.blocksTake === true ? Nino.adminUi.button( word('label/blocks-take'), function() { takeBlocks( S.key, blocksButton ) }, { className : 'nino-admin-btn--small', id : 'themes-blocks' } ) : null;
+		const blocksHint = blocksIn > 0 ? Nino.adminUi.hint( word( 'msg/blocks-in', blocksIn )+ ( blocksButton === null ? '' : ' '+ word('hint/blocks-take') ) ) : null;
 		const removeButton = own === true ? Nino.adminUi.button( word('label/delete'), function() { remove( removeButton ) }, { className : 'nino-admin-btn--small nino-admin-btn-danger', id : 'themes-delete' } ) : null;
 		const removeHint = Nino.adminUi.hint('');
 
@@ -1514,10 +1517,22 @@
 
 		actions.appendChild( restoreButton );
 
+		if( blocksButton !== null )
+			actions.appendChild( blocksButton );
+
 		if( removeButton !== null )
 			actions.appendChild( removeButton );
 
 		body.appendChild( actions );
+
+		if( blocksHint !== null ) {
+			blocksHint.id = 'themes-blocks-hint';
+			body.appendChild( blocksHint );
+
+			if( blocksButton !== null )
+				blocksButton.setAttribute( 'aria-describedby', 'themes-blocks-hint' );
+		}
+
 		body.appendChild( copyHint );
 		body.appendChild( keepHint );
 
@@ -2505,23 +2520,278 @@
 		dc.body.removeChild( form );
 	};
 
-	const exportOwn = function( opener ) {
+	// How big a file is said: whole KiB, or MiB where it is more
+	const sizeSaid = function( bytes ) {
+		return bytes >= 1048576 ? ( Math.round( bytes / 104857.6 ) / 10 )+ ' MiB' : Math.max( 1, Math.round( bytes / 1024 ) )+ ' KiB';
+	};
 
-		// Asked again for the folder as it is now, so that a refusal is said here and the file that follows is the one that was asked about
-		Nino.admin.themes.call( 'export', { theme : S.key, check : true }, function( status, response ) {
+	// The file asked for with the blocks of the project that were chosen: the question first, so that a refusal is said where it was chosen; where it is none, the file
+	const exportFile = function( blocks, say, done ) {
+
+		const ask = { theme : S.key, check : true };
+
+		if( blocks.length > 0 )
+			ask.blocks = blocks;
+
+		Nino.admin.themes.call( 'export', ask, function( status, response ) {
 
 			if( status !== 200 ) {
-
-				S.exported = { key : S.key, stamp : S.stamp, ok : false, why : Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/export' ) };
-				paintSettings();
-
+				say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/export' ), status, response );
 				return;
 			}
 
-			download( { theme : S.key } );
+			const fetched = { theme : S.key };
 
-			if( S.view !== null )
-				S.view.line.idle( word( 'msg/exported', response.file ) );
+			if( blocks.length > 0 )
+				fetched.blocks = blocks;
+
+			download( fetched );
+			done( response );
+		} );
+	};
+
+	// The blocks of the project that may go into the package: one row each, chosen with the box before it, none to begin with; what a block adds to the package is said in its row, and
+	// what is too much is said here, before anything is packed. The folder of the theme is not written: the blocks go into the file only
+	const askExportBlocks = function( offer, opener ) {
+
+		const holder = el( 'div', 'themes-export-blocks' );
+		const box = el( 'div', 'themes-export-table' );
+		const problem = el( 'p', 'nino-admin-error themes-export-problem' );
+		const carried = offer.carried ?? {};
+		let handle = null;
+
+		holder.appendChild( el( 'p', '', word('export/note') ) );
+		holder.appendChild( box );
+		holder.appendChild( problem );
+
+		// What the package would be with these blocks: the folder's own files, the blocks it carries that no chosen block takes the place of, and the chosen blocks
+		const totals = function( keys ) {
+
+			const sums = { files : offer.base.files, bytes : offer.base.bytes };
+
+			Object.keys( carried ).forEach( function( key ) {
+
+				if( keys.indexOf( key ) === -1 ) {
+					sums.files += carried[key].files;
+					sums.bytes += carried[key].bytes;
+				}
+			} );
+
+			keys.forEach( function( key ) {
+
+				const block = offer.blocks.find( function( one ) { return one.key === key } );
+
+				if( block !== undefined ) {
+					sums.files += block.files;
+					sums.bytes += block.bytes;
+				}
+			} );
+
+			return sums;
+		};
+
+		const nameCell = function( value, row ) {
+
+			const cell = el('div');
+
+			cell.appendChild( el( 'span', 'themes-export-name', value ) );
+
+			if( row.reads.length > 0 )
+				cell.appendChild( el( 'small', 'nino-admin-hint themes-export-reads', ' '+ word( 'export/reads', row.reads.join(', ') ) ) );
+
+			if( carried[row.key] !== undefined )
+				cell.appendChild( el( 'small', 'nino-admin-hint themes-export-replaces', ' '+ word( 'export/replaces', value ) ) );
+
+			return cell;
+		};
+
+		Nino.adminUi.table( {
+			mount		: box,
+			rowKey	: 'key',
+			columns	: [
+				{ key : 'name', label : word('export/col-name'), type : 'string', render : nameCell },
+				{ key : 'kind', label : word('export/col-kind'), type : 'string' },
+				{ key : 'files', label : word('export/col-files'), type : 'integer' },
+				{ key : 'size', label : word('export/col-size'), type : 'integer', render : function( value ) { return sizeSaid( value ) } },
+			],
+			rows		: offer.blocks.map( function( block ) { return { key : block.key, name : block.name, kind : block.frame === true ? word('export/kind-frame') : block.category, files : block.files, size : block.bytes, reads : block.reads } } ),
+			select	: { label : word('export/pick-head'), rowLabel : function( row ) { return word( 'export/pick', row.name ) }, actions : [ { key : 'export', label : word('export/with'), run : function( keys ) {
+
+				const sums = totals( keys );
+
+				problem.textContent = '';
+
+				// What is too much is said here: the package is not made
+				if( sums.files > offer.limits.files ) {
+					problem.textContent = word( 'export/too-files', sums.files, offer.limits.files );
+					return;
+				}
+
+				if( sums.bytes > offer.limits.bytes ) {
+					problem.textContent = word( 'export/too-bytes', sizeSaid( sums.bytes ), sizeSaid( offer.limits.bytes ) );
+					return;
+				}
+
+				exportFile( keys, function( text ) { problem.textContent = text }, function( response ) {
+
+					if( handle !== null )
+						handle.close('with');
+
+					if( S.view !== null )
+						S.view.line.idle( word( 'msg/exported', response.file )+ ( ( response.replaced ?? [] ).length > 0 ? ' '+ word( 'export/replaced', response.replaced.join(', ') ) : '' ) );
+				} );
+			} } ] },
+			labels	: { search : word('export/search'), empty : word('export/empty'), noMatch : word('export/no-match') },
+			search	: true,
+		} );
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('export/title'),
+			content	: holder,
+			size		: 'wide',
+			opener	: opener,
+			choices	: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'without', label : word('export/without'), kind : 'primary' } ],
+			onOpen	: function( opened ) { handle = opened },
+			onChoose	: function( value ) {
+
+				if( value === 'without' )
+					exportOwn( opener, true );
+				else if( value === 'cancel' )
+					land( opener, null );
+			},
+		} );
+
+	};
+
+	// What a theme carries in its folder blocks/, one line for each block: the box before its name, and quietly what it is; where the project has the key, the choice of what is done - a
+	// block is skipped or comes in as a copy under a key of its own, and none replaces another
+	const blockRows = function( offer, picks ) {
+
+		const holder = el( 'div', 'themes-blocks' );
+
+		holder.appendChild( el( 'p', '', word('hint/blocks-take') ) );
+		holder.appendChild( el( 'p', 'nino-admin-hint', word( 'blocks/pack', offer.theme ) ) );
+
+		offer.blocks.forEach( function( block ) {
+
+			const row = el( 'div', 'themes-blocks-row' );
+			const pick = { take : true, how : 'skip' };
+			const tick = Nino.adminUi.checkField( { key : 'take:'+ block.key, label : block.name, checked : true, className : 'nino-admin-field themes-blocks-take', onChange : function( on ) { pick.take = on } } );
+			const facts = el( 'small', 'nino-admin-hint themes-blocks-facts', [ block.category === 'frame' ? word('export/kind-frame') : block.category, word( 'blocks/variants', block.variants.length ), word( 'blocks/images', block.images ) ].join(' · ') );
+
+			picks[block.key] = pick;
+			row.appendChild( tick );
+			row.appendChild( facts );
+
+			if( block.state === 'taken' )
+				row.appendChild( Nino.adminUi.selectField( { key : 'how:'+ block.key, label : word('blocks/exists'), options : [ { value : 'skip', label : word('blocks/how-skip') }, { value : 'copy', label : word('blocks/how-copy') } ], value : 'skip', className : 'nino-admin-field themes-blocks-how', onChange : function( value ) { pick.how = value } } ) );
+
+			holder.appendChild( row );
+		} );
+
+		return holder;
+	};
+
+	// The result of taking the blocks: a line for each, and where one failed, which and why
+	const askBlocksResult = function( results, opener ) {
+
+		const holder = el('div');
+		const list = el( 'ul', 'themes-blocks-results' );
+		const failed = results.find( function( result ) { return result.result === 'failed' } );
+
+		results.forEach( function( result ) {
+			list.appendChild( el( 'li', result.result === 'failed' ? 'is-failed' : '', word( 'blocks/result-'+ result.result, result.name, result.result === 'failed' ? ( result.message ?? '' ) : ( result.as ?? '' ) ) ) );
+		} );
+
+		if( failed !== undefined )
+			holder.appendChild( el( 'p', 'nino-admin-error', word( 'blocks/stopped', failed.name ) ) );
+
+		holder.appendChild( list );
+
+		Nino.adminUi.choiceDialog( {
+			title		: word('blocks/done-title'),
+			content	: holder,
+			opener	: opener,
+			choices	: [ { value : 'close', label : word('blocks/close'), kind : 'primary' } ],
+			onChoose	: function() { land( opener, null ) },
+		} );
+	};
+
+	// The blocks of a theme into the project: shown first - nothing is written - and then taken, by the import of the feature that lists the blocks of the project, which holds them to its
+	// own checks; nothing is put on the website by it
+	const takeBlocks = function( key, opener ) {
+
+		Nino.admin.themes.call( 'blocks', { theme : key, locale : uploadLocale() }, function( status, response ) {
+
+			if( status !== 200 ) {
+				Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/blocks' ) );
+				return;
+			}
+
+			const picks = {};
+
+			Nino.adminUi.choiceDialog( {
+				title		: word('blocks/title'),
+				content	: blockRows( response, picks ),
+				size		: 'form',
+				opener	: opener,
+				choices	: [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' }, { value : 'take', label : word('blocks/submit'), kind : 'primary' } ],
+				guard		: function( value ) {
+
+					if( value !== 'take' || Object.keys( picks ).some( function( one ) { return picks[one].take === true } ) === true )
+						return true;
+
+					Nino.adminUi.say( word('blocks/none'), { kind : 'info' } );
+
+					return false;
+				},
+				onChoose	: function( value ) {
+
+					if( value !== 'take' )
+						return;
+
+					Nino.admin.themes.call( 'blocks-take', { theme : key, items : picks, locale : uploadLocale() }, function( taken, answer ) {
+
+						if( taken !== 200 ) {
+							Nino.admin.themes.say( Nino.adminUi.api.errorText( taken, answer, '/_admin/themes/error/blocks' ) );
+							return;
+						}
+
+						askBlocksResult( answer.results, opener );
+					} );
+				},
+			} );
+		} );
+	};
+
+	const exportOwn = function( opener, plain ) {
+
+		const send = function() {
+
+			// Asked again for the folder as it is now, so that a refusal is said here and the file that follows is the one that was asked about
+			exportFile( [], function( text, status, response ) {
+
+				S.exported = { key : S.key, stamp : S.stamp, ok : false, why : text };
+				paintSettings();
+			}, function( response ) {
+
+				if( S.view !== null )
+					S.view.line.idle( word( 'msg/exported', response.file ) );
+			} );
+		};
+
+		if( plain === true ) {
+			send();
+			return;
+		}
+
+		// Where the project has blocks that a person who holds the right for them may put in, the dialog asks which; for anybody else, and where there is nothing to choose, it is the folder alone
+		Nino.admin.themes.call( 'export-blocks', { theme : S.key, locale : uploadLocale() }, function( status, response ) {
+
+			if( status === 200 && response.available === true && response.blocks.length > 0 )
+				askExportBlocks( response, opener );
+			else
+				send();
 		} );
 	};
 
@@ -4290,6 +4560,25 @@
 
 			note.title = resting.map( function( group ) { return word( 'msg/card-rests', groupLabelOf( group ), reasonText( theme.parts[group].why ) ) } ).join('\n');
 			card.appendChild( note );
+		}
+
+		// What the folder of the theme carries of blocks, and - for whoever may put blocks into the project - the way to take them
+		if( theme.blocks > 0 ) {
+
+			// The whole card is one link: what has to be pressed on its own stands in a row of the card that stands over it, as the buttons of the card do
+			const carries = el( 'div', 'nino-admin-actions themes-card-blocks' );
+
+			carries.appendChild( el( 'span', 'nino-admin-hint', word( 'msg/blocks-in', theme.blocks ) ) );
+
+			if( S.list.blocksTake === true ) {
+
+				const take = Nino.adminUi.button( word('label/blocks-take'), function() { takeBlocks( theme.key, take ) }, { className : 'nino-admin-btn--small' } );
+
+				take.dataset.blocks = theme.key;
+				carries.appendChild( take );
+			}
+
+			card.appendChild( carries );
 		}
 
 		// The css of the theme that is not used, and why: the theme is used without it

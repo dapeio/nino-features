@@ -58,6 +58,69 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	What a theme carries in its folder blocks/, as the files of a package: for an installed theme or an own one, read as files only - a link, a file that is none or one that is too large
+		 *	is the problem the check of a package says of it, and nothing is read through a link. A folder that has no blocks/ carries none
+		 *
+		 *	@param		string		$dir					The real path of the folder of the theme
+		 *
+		 *	@return 	array											'files' => path (blocks/...) => bytes; or 'problem' => [ 'code', 'path', 'params' ]
+		 */
+		public static function carried( string $dir ): array {
+
+			if( is_link( $dir. '/blocks' ) === true )
+				return [ 'problem' => [ 'code' => 'path', 'path' => 'blocks', 'params' => [] ] ];
+
+			if( is_dir( $dir. '/blocks' ) === false )
+				return [ 'files' => [] ];
+
+			$files = [];
+			$sum = 0;
+			$found = self::_walk( $dir. '/blocks', 'blocks', 2, \Nino\Packages::LIMITS[\Nino\Packages::THEME], $files, $sum );
+
+			return $found === null ? [ 'files' => $files ] : [ 'problem' => $found ];
+		}
+
+		/**
+		 *	How many blocks the folder of a theme carries in blocks/: the folders that are named as a block is and are no links, each with the block.json and the block.tpl of a block
+		 *
+		 *	@param		string		$dir					The real path of the folder of the theme
+		 *
+		 *	@return 	int
+		 */
+		public static function counted( string $dir ): int {
+
+			$count = 0;
+
+			if( is_link( $dir. '/blocks' ) === true || is_dir( $dir. '/blocks' ) === false )
+				return 0;
+
+			foreach( (array) scandir( $dir. '/blocks' ) as $entry ) {
+
+				$path = $dir. '/blocks/'. $entry;
+
+				if( preg_match( \Nino\Components::NAME, (string) $entry ) === 1 && is_link( $path ) === false && is_dir( $path ) === true && is_file( $path. '/block.json' ) === true && is_link( $path. '/block.json' ) === false && is_file( $path. '/block.tpl' ) === true && is_link( $path. '/block.tpl' ) === false )
+					$count++;
+			}
+
+			return $count;
+		}
+
+		/**
+		 *	Whether blocks of the project may be put into a package: the feature that lists them is on, and the account holds the right of it - for an account without the right a package
+		 *	is the folder of the theme and nothing else
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool
+		 */
+		public static function blocksAvailable( array &$appData ): bool {
+
+			$active = array_map( static fn( mixed $class ): string => '\\'. ltrim( (string) $class, '\\' ), (array) ( $appData['/nino/modules'] ?? [] ) );
+
+			return in_array( '\\Nino\\Modules\\Themelab', $active, true ) === true && \Nino\Auth::checkPermission( $appData, \Nino\Modules\Themelab::PERM ) === true;
+		}
+
+		/**
 		 *	@return 	array|null								The problem, or null
 		 */
 		private static function _walk( string $dir, string $below, int $depth, array $limits, array &$files, int &$sum ): ?array {
@@ -126,10 +189,11 @@ namespace Nino\Modules\Themes {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key					The key of the own theme
+		 *	@param		array			$blocks				The keys of blocks of the project that go into the package as well, none for a package of the folder alone
 		 *
-		 *	@return 	array											'bytes', 'file' (key and version of the theme) and 'files' (how many); or 'failure' => [ status, message, code, params, field ]
+		 *	@return 	array											'bytes', 'file' (key and version of the theme), 'files' (how many) and 'replaced' (the keys of the folder's own blocks/ that the project's blocks took the place of); or 'failure' => [ status, message, code, params, field ]
 		 */
-		public static function export( array &$appData, string $key ): array {
+		public static function export( array &$appData, string $key, array $blocks = [] ): array {
 
 			$read = self::files( $appData, $key );
 
@@ -143,6 +207,22 @@ namespace Nino\Modules\Themes {
 				return Upload::problem( $read['problem'] );
 
 			$files = $read['files'];
+			$replaced = [];
+
+			// Blocks of the project go into the archive and nowhere else: the folder of the theme is not written. What the folder carries in blocks/ and the project has a block of is
+			// replaced by the project's block, and the answer says which
+			if( $blocks !== [] ) {
+
+				$carried = array_filter( $files, static fn( string $path ): bool => str_starts_with( $path, 'blocks/' ), ARRAY_FILTER_USE_KEY );
+				$bundle = \Nino\Modules\Themelab\Package::bundle( $appData, $blocks, $carried );
+
+				if( isset( $bundle['failure'] ) === true )
+					return $bundle;
+
+				$files = array_diff_key( $files, $carried ) + $bundle['files'];
+				$replaced = $bundle['replaced'];
+			}
+
 			$problem = \Nino\Packages::check( $appData, \Nino\Packages::THEME, $files );
 
 			if( $problem !== null )
@@ -173,7 +253,7 @@ namespace Nino\Modules\Themes {
 			if( is_array( $back ) === false || $back != $files )
 				return [ 'failure' => [ 500, 'the archive is not the files', 'themes_export_archive', [ '', 'different' ], 'theme' ] ];
 
-			return [ 'bytes' => $bytes, 'file' => $key. '-'. (string) ( $theme['version'] ?? '' ). '.tar.gz', 'files' => count( $files ) ];
+			return [ 'bytes' => $bytes, 'file' => $key. '-'. (string) ( $theme['version'] ?? '' ). '.tar.gz', 'files' => count( $files ), 'replaced' => $replaced ];
 		}
 	}
 }

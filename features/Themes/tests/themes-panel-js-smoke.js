@@ -143,7 +143,7 @@ const CHANGED = '\u25CF '+ W('state/changed');
 
 	// The keys put together from a name or read by the panel of the shell: the sections of the page, the three widths, the two states, the plurals of a summary, the failure of a load
 	[ 'word/type', 'word/measures', 'word/motion', 'word/more', 'word/mobile', 'word/tablet', 'word/desktop', 'state/saved', 'state/applied', 'msg/knob-one', 'msg/knobs', 'variant/regular', 'error/load', 'confirm/brand-title', 'label/take-back', 'label/take-back-standard', 'msg/adjust-darker', 'msg/adjust-lighter', 'msg/palette-ok', 'msg/palette-bad', 'msg/replaces-last', 'msg/unreadable', 'msg/foreign', 'confirm/save-title', 'word/reaches', 'word/falls-short', 'word/colours', 'word/mode', 'word/logo', 'label/color-1', 'label/color-2', 'label/tone', 'label/mode', 'label/font-title', 'label/font-text', 'label/font-button' ]
-		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'shipped', 'catalogue', 'uploaded', 'project' ].map( function( origin ) { return 'chip/'+ origin } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary', 'on-second' ].map( function( role ) { return 'role/'+ role } ) )
+		.concat( [ 'warm', 'neutral', 'cool' ].map( function( tone ) { return 'word/tone-'+ tone } ), [ 'light', 'dark', 'auto' ].map( function( mode ) { return 'word/mode-'+ mode } ), [ 'sans', 'serif', 'mono' ].map( function( font ) { return 'word/font-system-'+ font } ), [ 'shipped', 'catalogue', 'uploaded', 'project' ].map( function( origin ) { return 'chip/'+ origin } ), [ 'written', 'copied', 'skipped', 'left', 'failed', 'untried' ].map( function( result ) { return 'blocks/result-'+ result } ), [ 'base', 'alt', 'tint', 'ink', 'quiet', 'line', 'accent', 'on', 'picture', 'on-primary', 'on-second' ].map( function( role ) { return 'role/'+ role } ) )
 		.forEach( function( key ) { asked.add( key ) } );
 
 	// The reasons the API gives by code: each code of the reader has its words
@@ -308,14 +308,18 @@ function listAnswer( active, extra, pages, demos, copies ) {
 			{ key : 'nino', kind : 'theme', origin : 'shipped', version : '1.0.0', name : { de_DE : 'Nino', en_US : 'Nino' }, description : { de_DE : 'Ruhig und klar.', en_US : 'Calm and clear.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'nino' },
 			{ key : 'craft', kind : 'theme', origin : 'uploaded', frames : [ { key : 'craft-foot', name : { de_DE : 'Fuß <b>x</b>', en_US : 'Foot <b>x</b>' }, reads : [ { key : '/project/company/general/name', text : 'Nino <b>GmbH</b>', logo : false }, { key : '/logo', text : null, logo : true } ] } ], css : { lines : 4, why : null }, version : '1.0.0', name : { de_DE : 'Craft', en_US : 'Craft' }, description : { de_DE : 'Warm.', en_US : 'Warm.' }, brand : {}, parts : { section : { ok : true, problem : '', why : null } }, active : active === 'craft' },
 			{ key : 'rest', kind : 'theme', origin : 'catalogue', css : { lines : 0, why : { code : 'theme-css', params : [ 'line 3 has an element selector' ] } }, version : '1.0.0', name : { de_DE : '<b>Ruhe</b>', en_US : '<b>Rest</b>' }, description : { de_DE : 'Bricht.', en_US : 'Breaks.' }, brand : {}, parts : { button : { ok : false, problem : 'English detail of the css', why : CSS_WHY }, section : { ok : true, problem : '', why : null } }, active : false },
-			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : OWN_SECTION, header : 'standard' }, active : active === 'own:lindner' },
+			{ key : 'own:lindner', kind : 'own', name : 'Lindner', from : { page : 'nino@1.0.0', section : OWN_SECTION, header : 'standard' }, active : active === 'own:lindner', blocks : LINDNER_BLOCKS },
 		].concat( ( copies ?? [] ).map( function( copy ) { return { key : copy.key, kind : 'own', name : copy.name, from : { page : 'nino@1.0.0', section : 'nino@1.0.0', header : 'standard' }, active : false } } ) ),
 		rejected : [],
 		groups : [ 'brand', 'footer', 'section', 'settings', 'css', 'groups', 'header' ].map( function( key ) { return { key : key, label : GROUP_LABEL[key], feature : 'basis', components : [], demo : ( demos ?? [] ).indexOf( key ) !== -1 } } ),
 		fonts : FONTS, limits : { css : 65536, name : 60, key : 40 }, state : 'state-1', pages : ( pages ?? [ { path : '/', title : 'Start' }, { path : '/contact', title : '' } ] ).map( function( page ) { return typeof page === 'string' ? { path : page, title : '' } : page } ),
-		active : active === '' ? null : { theme : active, built : '', stale : false }, foreign : false, canRestore : false,
+		active : active === '' ? null : { theme : active, built : '', stale : false }, foreign : false, canRestore : false, blocksTake : BLOCKS_TAKE,
 	}, extra ?? {} );
 }
+
+// How many blocks the own theme Lindner carries, and whether the account may take blocks into the project
+let LINDNER_BLOCKS = 0;
+let BLOCKS_TAKE = false;
 
 // What the own theme Lindner takes its section from: the part of Craft, or - the folder of the theme holds a part that no installed theme has - its own
 let OWN_SECTION = 'craft@1.0.0';
@@ -480,6 +484,9 @@ function world( options ) {
 		Nino : Nino, context : context, ui : Nino.adminUi, doc : doc, app : app, list : list, theme : theme, requests : requests, timers : timers, dialogs : dialogs, asked : asked, state : state, router : router, dirty : dirty, dirtyAnswers : dirtyAnswers,
 		panel : Nino.admin.themes,
 		posted : posted,
+		exportOffer : null,
+		blocksOffer : null,
+		blocksResults : null,
 		exportRefused : null,
 		importTaken : false,
 
@@ -538,10 +545,16 @@ function world( options ) {
 					w.current = { theme : made.key, name : payload.name, origin : {} };
 					w.answer( 200, { saved : true, theme : made.key, applied : true, stamp : w.stamp, brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, current : w.current, active : w.activeState() } );
 				}
+				else if( request.action === 'themes/export-blocks' )
+					w.answer( 200, w.exportOffer ?? { available : false } );
+				else if( request.action === 'themes/blocks' )
+					w.answer( 200, w.blocksOffer );
+				else if( request.action === 'themes/blocks-take' )
+					w.answer( 200, { results : w.blocksResults } );
 				else if( request.action === 'themes/export' && w.exportRefused !== null )
 					w.answer( 400, w.exportRefused );
 				else if( request.action === 'themes/export' )
-					w.answer( 200, { file : payload.theme.slice( 4 )+ '-1.0.0.tar.gz', size : 4096, files : 7 } );
+					w.answer( 200, { file : payload.theme.slice( 4 )+ '-1.0.0.tar.gz', size : 4096, files : 7, replaced : [] } );
 				else if( request.action === 'themes/upload-own' && payload.name === '' && w.importTaken === true )
 					w.answer( 409, { error : 'an own theme of that name is there', code : 'themes_name_taken', params : [ 'Second look' ], field : 'name' } );
 				else if( request.action === 'themes/upload-own' ) {
@@ -4680,6 +4693,249 @@ function nameField( w ) {
 
 	check( 'U4. a person who leaves the dialog of the name lets go of the bytes that are held for the package, and nothing is copied',
 		gone.requests.length === 1 && gone.requests[0].action === 'themes/upload-drop' && gone.requests[0].payload.id === 'a'.repeat( 32 ) && gone.copies.length === 0 );
+}
+
+// --- AH. the blocks that go with a theme: into the package, and out of the folder of a theme into the project ---------------------------------
+
+function exportOffer( change ) {
+
+	return Object.assign( { available : true, blocks : [
+		{ key : 'my-split', name : 'My split', category : 'content', frame : false, reads : [], files : 4, bytes : 2048 },
+		{ key : 'my-head', name : 'My head', category : 'frame', frame : true, reads : [ '/logo', '/project/company/general/name' ], files : 3, bytes : 1024 },
+	], base : { files : 5, bytes : 4096 }, carried : { 'my-split' : { files : 2, bytes : 100 } }, limits : { files : 400, bytes : 4194304 } }, change ?? {} );
+}
+
+{
+	// where the account is shown the dialog: it asks which blocks, and the file is asked for with the ones that were chosen
+	const w = world( { active : 'nino' } );
+
+	w.exportOffer = exportOffer();
+	w.at( '#themes/own.lindner/settings' );
+	w.sent.length = 0;
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+	const text = w.text( dialog );
+
+	check( 'V1. where the project has blocks that the account may put in, the export asks which in a dialog before anything is sent: the note says that nothing in the project changes, each block is a row with its name, a header says what it is, what a header reads of the site is told in its row, and a block that the folder carries already says that the project\'s takes its place',
+		dialog.open === true && text.indexOf( W('export/note') ) !== -1 && text.indexOf( 'My split' ) !== -1 && text.indexOf( 'My head' ) !== -1 && text.indexOf( W('export/kind-frame') ) !== -1 && text.indexOf( Wp( 'export/reads', '/logo, /project/company/general/name' ) ) !== -1
+		&& text.indexOf( W('export/replaces') ) !== -1 && w.posted.length === 0 && w.sent.filter( function( request ) { return request.action === 'themes/export' } ).length === 0 );
+
+	const boxes = findAll( dialog, function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } );
+
+	check( 'V1. the rows have a box each and none is chosen to begin with', boxes.length >= 3 && boxes.slice( 1 ).every( function( box ) { return box.checked !== true } ) );
+
+	const choices = findAll( dialog, function( node ) { return node.tagName === 'BUTTON' } ).map( function( node ) { return node.textContent.trim() } );
+
+	check( 'V1. the dialog has the answers Cancel and "Export without blocks" - the folder alone', choices.indexOf( CANCEL ) !== -1 && choices.indexOf( W('export/without') ) !== -1 );
+
+	pressed( w, W('export/without') );
+	w.serve();
+
+	check( 'V1. "Export without blocks" is the export of the folder alone: the question and the file say no blocks',
+		w.posted.length === 1 && JSON.parse( findAll( w.posted[0], function( node ) { return node.name === 'data' } )[0].value ).blocks === undefined && w.sent.filter( function( request ) { return request.action === 'themes/export' } ).every( function( request ) { return request.payload.blocks === undefined } ) );
+}
+
+{
+	// where the account may not, or there is nothing to choose: no dialog
+	const w = world( { active : 'nino' } );
+
+	w.exportOffer = exportOffer( { blocks : [] } );
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+
+	check( 'V2. where the project has no block to put in there is no dialog - the file is asked for at once, the folder alone', w.dialogs.length === 0 && w.posted.length === 1 );
+
+	const none = world( { active : 'nino' } );
+
+	none.at( '#themes/own.lindner/settings' );
+	fire( byId( none.theme, 'themes-export' ), 'click' );
+	none.serve();
+
+	check( 'V2. nor where the account is told that there is nothing to choose for it - no right of the blocks, or the feature is off', none.dialogs.length === 0 && none.posted.length === 1 );
+}
+
+{
+	// the limits are said in the dialog, before the package is made
+	const w = world( { active : 'nino' } );
+
+	w.exportOffer = exportOffer( { limits : { files : 8, bytes : 4194304 } } );
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+	const boxes = findAll( dialog, function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } );
+
+	boxes[1].checked = true;
+	fire( boxes[1], 'click' );
+	fire( boxes[1], 'change' );
+	w.sent.length = 0;
+	fire( findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim().indexOf( W('export/with') ) === 0 } )[0], 'click' );
+	w.serve();
+
+	check( 'V3. what is too much is said in the dialog before anything is packed: the folder has five files, the block that is chosen takes the place of none the folder carries and adds four - nine, where eight are allowed - the sentence has both numbers, the dialog stays open, and no question and no file is sent',
+		w.text( dialog ).indexOf( Wp( 'export/too-files', 9, 8 ) ) !== -1 && dialog.open === true && w.sent.filter( function( request ) { return request.action === 'themes/export' } ).length === 0 && w.posted.length === 0 );
+}
+
+{
+	// what is chosen is asked, and then fetched: the key of the blocks is in the question and in the form
+	const w = world( { active : 'nino' } );
+
+	w.exportOffer = exportOffer();
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+	const boxes = findAll( dialog, function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } );
+
+	boxes.slice( 1 ).forEach( function( box ) {
+		box.checked = true;
+		fire( box, 'click' );
+		fire( box, 'change' );
+	} );
+	w.sent.length = 0;
+	fire( findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim().indexOf( W('export/with') ) === 0 } )[0], 'click' );
+	w.serve();
+
+	const asked = w.sent.filter( function( request ) { return request.action === 'themes/export' } );
+	const fields = w.posted.length === 0 ? {} : JSON.parse( findAll( w.posted[0], function( node ) { return node.name === 'data' } )[0].value );
+
+	check( 'V4. with blocks chosen the question names them - and asks for no more than whether it can be done - and the file is fetched with the same keys: the dialog is closed by it, and the line says which file',
+		asked.length === 1 && asked[0].payload.check === true && asked[0].payload.blocks.slice().sort().join() === 'my-head,my-split' && fields.blocks.slice().sort().join() === 'my-head,my-split' && fields.theme === 'own:lindner' && dialog.open === false );
+}
+
+{
+	// the bytes are said too
+	const w = world( { active : 'nino' } );
+
+	w.exportOffer = exportOffer( { limits : { files : 400, bytes : 5000 } } );
+	w.at( '#themes/own.lindner/settings' );
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+	const boxes = findAll( dialog, function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } );
+
+	boxes[1].checked = true;
+	fire( boxes[1], 'click' );
+	fire( boxes[1], 'change' );
+	fire( findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim().indexOf( W('export/with') ) === 0 } )[0], 'click' );
+	w.serve();
+
+	check( 'V5. the size is held to its limit in the dialog as the number of files is: the folder\'s 4 KiB and a block of 2 KiB are 6 KiB where less than 5 are allowed - said, with both sizes, and nothing is sent', w.text( dialog ).indexOf( Wp( 'export/too-bytes', '6 KiB', '5 KiB' ) ) !== -1 && w.posted.length === 0 );
+}
+
+{
+	// the refusal of the server at the choice is said in the dialog, and the file is not fetched
+	const w = world( { active : 'nino' } );
+
+	w.exportOffer = exportOffer();
+	w.exportRefused = { error : 'x', code : 'themes_upload_package_files_many', params : [ '-', '400' ], field : 'file' };
+	w.at( '#themes/own.lindner/settings' );
+	check( 'V5. a folder the check refuses has the button locked, so no dialog is asked for it', byId( w.theme, 'themes-export' ).disabled === true && w.sent.every( function( request ) { return request.action !== 'themes/export-blocks' } ) );
+}
+
+{
+	// what a theme carries in its folder blocks/: the card and the settings say it, and for the account that may take blocks they have the way
+	LINDNER_BLOCKS = 2;
+	BLOCKS_TAKE = true;
+
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const card = w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === 'own:lindner' } );
+
+	check( 'W1. the card of a theme that carries blocks says so, and has the button to take them into the project where the account may; a card without blocks says nothing of them',
+		w.text( card ).indexOf( Wp( 'msg/blocks-in', 2 ) ) !== -1 && findAll( card, function( node ) { return node.dataset.blocks === 'own:lindner' } ).length === 1 && w.text( w.byTag( w.list, 'article' ).find( function( one ) { return one.dataset.theme === 'nino' } ) ).indexOf( Wp( 'msg/blocks-in', 2 ) ) === -1 );
+
+	w.at( '#themes/own.lindner/settings' );
+
+	check( 'W1. the settings say it too, and have the button with the sentence of what it does - the project\'s own keys are never replaced, nothing is applied to the website',
+		byId( w.theme, 'themes-blocks' ) !== undefined && w.text( byId( w.theme, 'themes-blocks-hint' ) ).indexOf( W('hint/blocks-take') ) !== -1 );
+
+	BLOCKS_TAKE = false;
+
+	const plain = world( { active : 'nino' } );
+
+	plain.at( '#themes/own.lindner/settings' );
+	const plainCard = plain.byTag( plain.list, 'article' ).find( function( one ) { return one.dataset.theme === 'own:lindner' } );
+
+	check( 'W1. for an account that may not take blocks into the project the number is said and there is no button - on the card and in the settings',
+		plain.text( byId( plain.theme, 'themes-blocks-hint' ) ).indexOf( Wp( 'msg/blocks-in', 2 ) ) !== -1 && byId( plain.theme, 'themes-blocks' ) === undefined && ( plainCard === undefined || findAll( plainCard, function( node ) { return node.dataset.blocks !== undefined } ).length === 0 ) );
+
+	BLOCKS_TAKE = true;
+}
+
+{
+	// the blocks of a theme are shown, chosen and taken
+	LINDNER_BLOCKS = 2;
+	BLOCKS_TAKE = true;
+
+	const w = world( { active : 'nino' } );
+
+	w.blocksOffer = { theme : 'Lindner', blocks : [
+		{ key : 'my-split', name : 'My split', category : 'content', variants : [ 'One' ], images : 1, state : 'taken', origin : 'project', replace : true },
+		{ key : 'my-head', name : 'My head', category : 'frame', variants : [], images : 0, state : 'free', origin : '', replace : false },
+	] };
+	w.blocksResults = [ { key : 'my-split', name : 'My split', result : 'copied', as : 'my-split-2' }, { key : 'my-head', name : 'My head', result : 'failed', as : '', code : 'invalid', message : 'the kernel does not take the block like that' } ];
+	w.at( '#themes/own.lindner/settings' );
+	w.sent.length = 0;
+	fire( byId( w.theme, 'themes-blocks' ), 'click' );
+	w.serve();
+
+	const dialog = w.dialogs[w.dialogs.length - 1];
+	const shown = w.text( dialog );
+
+	check( 'W2. the dialog shows the blocks of the theme: the sentence of what is done and what is not, the name of the theme, a row for each block with what it is - a header is said to be one - and, for the one whose key the project has, the choice between skipping it and a copy under a new key: no choice to replace',
+		w.sent.some( function( request ) { return request.action === 'themes/blocks' && request.payload.theme === 'own:lindner' } ) && shown.indexOf( Wp( 'blocks/pack', 'Lindner' ) ) !== -1 && shown.indexOf( 'My split' ) !== -1 && shown.indexOf( W('export/kind-frame') ) !== -1 && shown.indexOf( W('blocks/how-skip') ) !== -1 && shown.indexOf( W('blocks/how-copy') ) !== -1
+		&& shown.indexOf( 'Replace' ) === -1 && findAll( dialog, function( node ) { return node.tagName === 'SELECT' } ).length === 1 );
+
+	const select = findAll( dialog, function( node ) { return node.tagName === 'SELECT' } )[0];
+
+	select.value = 'copy';
+	fire( select, 'change' );
+	w.sent.length = 0;
+	pressed( w, W('blocks/submit') );
+
+	const sent = w.requests.map( function( request ) { return request.action+ ' '+ JSON.stringify( request.payload ) } );
+
+	check( 'W2. the answer sends the key of the theme and what was chosen for each block - take or leave it, skip or copy - and the language',
+		sent.length === 1 && sent[0] === 'themes/blocks-take '+ JSON.stringify( { theme : 'own:lindner', items : { 'my-split' : { take : true, how : 'copy' }, 'my-head' : { take : true, how : 'skip' } }, locale : '' } ) );
+
+	w.serve();
+
+	const done = w.dialogs[w.dialogs.length - 1];
+	const lines = w.text( done );
+
+	check( 'W2. the result is a line for each block - the one written as a copy under its key, the one that failed with why - and says where it stopped',
+		lines.indexOf( Wp( 'blocks/result-copied', 'My split', 'my-split-2' ) ) !== -1 && lines.indexOf( Wp( 'blocks/result-failed', 'My head', 'the kernel does not take the block like that' ) ) !== -1 && lines.indexOf( Wp( 'blocks/stopped', 'My head' ) ) !== -1 );
+
+	// nothing chosen is said, and nothing is sent
+	const none = world( { active : 'nino' } );
+
+	none.blocksOffer = w.blocksOffer;
+	none.at( '#themes/own.lindner/settings' );
+	fire( byId( none.theme, 'themes-blocks' ), 'click' );
+	none.serve();
+
+	const choose = none.dialogs[none.dialogs.length - 1];
+
+	findAll( choose, function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } ).forEach( function( box ) {
+		box.checked = false;
+		fire( box, 'change' );
+	} );
+	none.sent.length = 0;
+	pressed( none, W('blocks/submit') );
+
+	check( 'W2. with no block chosen nothing is asked of the server: the dialog stays open', none.requests.length === 0 && choose.open === true );
+
+	LINDNER_BLOCKS = 0;
+	BLOCKS_TAKE = false;
 }
 
 function Nino_format( text, ...params ) { return String( text ).replace( /%s/g, function() { return String( params.shift() ) } ) }

@@ -467,6 +467,74 @@
 	}
 }
 
+/* The blocks a theme carries, to take into the project - in a dialog, which stands in the shell: one frame for each, the box that takes a block stands before its name, and what it is stands quietly beside it */
+#admin-page-wrap .themes-blocks {
+	display: grid;
+	gap: var(--nino-admin-space-4);
+	min-width: 0;
+}
+
+#admin-page-wrap .themes-blocks-row {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	padding: var(--nino-admin-space-4);
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	min-width: 0;
+}
+
+#admin-page-wrap .themes-blocks-take {
+	display: inline-flex;
+	flex-direction: row-reverse;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--nino-admin-space-3);
+	margin: 0;
+}
+
+#admin-page-wrap .themes-blocks-take input {
+	width: 24px;
+	height: 24px;
+	margin: 0;
+	flex: none;
+}
+
+#admin-page-wrap .themes-blocks-facts {
+	color: var(--editor-text-secondary);
+	font-size: var(--nino-admin-text-sm);
+}
+
+#admin-page-wrap .themes-blocks-results {
+	display: grid;
+	gap: var(--nino-admin-space-2);
+	margin: 0;
+	padding-left: var(--nino-admin-space-5);
+}
+
+#admin-page-wrap .themes-blocks-results .is-failed {
+	color: var(--editor-red-ink);
+	font-weight: var(--nino-admin-weight-strong);
+}
+
+/* The row of a card that says what the folder carries of blocks, over the link that is the whole card */
+#themes-app .themes-card-blocks {
+	align-items: center;
+}
+
+/* The blocks that may go into a package: the table is as wide as its columns and no wider than the dialog - on a narrow screen it scrolls by itself and the sentences above it stay in the dialog */
+#admin-page-wrap .themes-export-blocks {
+	display: grid;
+	gap: var(--nino-admin-space-4);
+	min-width: 0;
+	max-width: 100%;
+}
+
+#admin-page-wrap .themes-export-table {
+	min-width: 0;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
 /* The dialogs of a theme package stand in the shell, in the workbench's root and not in the panel: what a package says of itself is the words of whoever made it, and a name
    that has no space in it breaks where the dialog ends and does not push the dialog wider */
 #admin-page-wrap .themes-upload p,

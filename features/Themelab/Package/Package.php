@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Nino\Modules\Themelab {
 
 	use Nino\Modules\Builder\Custom;
+	use Nino\Modules\Builder\Library;
 
 	// The own blocks of the project as a package of the catalogue's form, and a package of that form as own blocks. A package is a folder with a pack.json and, for each block, its folder
 	// with block.json, block.tpl, text/ and images/ - written by \Nino\Archive::write(), held to \Nino\Packages::check() before it leaves, and read by \Nino\Archive::read() and held to the
@@ -50,7 +51,7 @@ namespace Nino\Modules\Themelab {
 		 *
 		 *	@return 	array|null								path below the folder of the block => bytes; null for a folder that is no folder of the project's or holds what a block does not
 		 */
-		private static function _folder( array &$appData, string $key ): ?array {
+		public static function folder( array &$appData, string $key ): ?array {
 
 			$content = (string) ( $appData['./nino/filesystem/contentpath'] ?? '' );
 			$own = realpath( $content. \Nino\Blocks::OWN );
@@ -201,7 +202,7 @@ namespace Nino\Modules\Themelab {
 				if( preg_match( \Nino\Components::NAME, $block ) !== 1 || ( $all[$block]['origin'] ?? '' ) !== 'project' )
 					return self::_fail( 404, 'export_unknown', [ self::_shown( $block ) ], 'keys' );
 
-				$folder = self::_folder( $appData, $block );
+				$folder = self::folder( $appData, $block );
 
 				if( $folder === null )
 					return self::_fail( 500, 'export_read', [ $block ], 'keys' );
@@ -266,6 +267,200 @@ namespace Nino\Modules\Themelab {
 		 */
 		private static function _shown( string $text ): string {
 			return mb_substr( (string) preg_replace( '/[\x00-\x1F\x7F]+/', ' ', $text ), 0, 80 );
+		}
+
+		/**
+		 *	The blocks of the project a person may put into a package of a theme - the list of the blocks of the project, the blocks of a header or a footer among them - each with what
+		 *	the dialog says of it: its name, whether it is a frame, what a frame reads of the site, and the files and bytes it adds to a package. The one source for it: the list of this feature
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$locale				The language the names are told in
+		 *
+		 *	@return 	array											[ [ key, name, category, frame, reads, files, bytes ] ], by key
+		 */
+		public static function choices( array &$appData, string $locale ): array {
+
+			$out = [];
+
+			foreach( Sheet::listed( $appData, 'project', true ) as $key => $block ) {
+
+				$files = self::folder( $appData, (string) $key );
+
+				if( $files === null )
+					continue;
+
+				$whole = \Nino\Blocks::get( $appData, (string) $key );
+				$name = $block['name'];
+
+				$out[] = [
+					'key'			=> (string) $key,
+					'name'		=> is_array( $name ) === true ? (string) ( $name[$locale] ?? $name[\Nino\Blocks::FALLBACK] ?? reset( $name ) ?: $key ) : (string) $name,
+					'category'	=> (string) ( $block['category'] ?? '' ),
+					'frame'		=> ( $block['wrap'] ?? Library::PAGE ) !== Library::PAGE,
+					'reads'		=> $whole === null ? [] : array_map( 'strval', \Nino\Blocks::reads( $whole ) ),
+					'files'		=> count( $files ),
+					'bytes'		=> array_sum( array_map( 'strlen', $files ) ),
+				];
+			}
+
+			usort( $out, static fn( array $one, array $other ): int => strcmp( $one['key'], $other['key'] ) );
+
+			return $out;
+		}
+
+		/**
+		 *	The blocks of a package of a theme, as read() has them: the files of the folders blocks/<key>/ of the package, each block with its block.json, its block.tpl, its texts and its pictures
+		 *	- a block that lacks the one or the other is not one
+		 *
+		 *	@param		array			$files				path => bytes, as the package of a theme has its files
+		 *
+		 *	@return 	array											key => [ 'json' => text, 'tpl' => text, 'texts' => locale => text, 'pictures' => file => bytes ]
+		 */
+		public static function ofTheme( array $files ): array {
+
+			$blocks = [];
+
+			foreach( $files as $path => $content ) {
+
+				if( preg_match( '#^blocks/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)/(block\.json|block\.tpl|text/([a-z]{2}_[A-Z]{2})\.json|images/([a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)))$#D', (string) $path, $found ) !== 1 || is_string( $content ) === false )
+					continue;
+
+				if( $found[2] === 'block.json' )
+					$blocks[$found[1]]['json'] = $content;
+				else if( $found[2] === 'block.tpl' )
+					$blocks[$found[1]]['tpl'] = $content;
+				else if( ( $found[3] ?? '' ) !== '' )
+					$blocks[$found[1]]['texts'][$found[3]] = $content;
+				else
+					$blocks[$found[1]]['pictures'][$found[4]] = $content;
+			}
+
+			foreach( $blocks as $key => $parts ) {
+
+				if( isset( $parts['json'], $parts['tpl'] ) === false ) {
+					unset( $blocks[$key] );
+					continue;
+				}
+
+				$blocks[$key]['texts'] = $parts['texts'] ?? [];
+				$blocks[$key]['pictures'] = $parts['pictures'] ?? [];
+			}
+
+			ksort( $blocks );
+
+			return $blocks;
+		}
+
+		/**
+		 *	Whether the blocks that a package of a theme carries are blocks the kernel takes: they are held to the check of a package of blocks - the same one, with the files the way that
+		 *	package has them - before any of them is shown or written
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$files				path (blocks/<key>/...) => bytes
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array|null								'failure' => [ ... ], or null where the blocks are whole
+		 */
+		public static function refuse( array &$appData, array $files, string $locale ): ?array {
+
+			$as = [ 'pack.json' => json_encode( [ 'key' => 'theme-blocks', 'version' => '1.0.0', 'name' => 'Blocks', 'description' => 'Blocks' ] ) ];
+
+			foreach( $files as $path => $bytes )
+				if( str_starts_with( (string) $path, 'blocks/' ) === true )
+					$as[substr( (string) $path, 7 )] = $bytes;
+
+			$problem = \Nino\Packages::check( $appData, \Nino\Packages::BLOCKS, $as );
+
+			return $problem === null ? null : self::_problem( $problem, 'import', $appData, $locale );
+		}
+
+		/**
+		 *	The files of blocks of the project as the folders blocks/<key>/ of a package of a theme have them, joined with what the package carries already: for a key in both, the block of the
+		 *	project is the one that goes in, and the key is said. Nothing is written
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$keys					The keys of the blocks of the project that are chosen
+		 *	@param		array			$carried			path => bytes of what the package carries in blocks/
+		 *
+		 *	@return 	array											'files' => path => bytes of all of blocks/, 'replaced' => the keys the project's block won; or 'failure' => [ status, message, code, params, field ]
+		 */
+		public static function bundle( array &$appData, array $keys, array $carried ): array {
+
+			$keys = array_values( array_unique( array_filter( $keys, 'is_string' ) ) );
+
+			if( count( $keys ) > 100 )
+				return [ 'failure' => [ 400, 'more blocks than a package takes', 'themes_export_blocks_many', [ 100 ], 'blocks' ] ];
+
+			$listed = Sheet::listed( $appData, 'project', true );
+			$files = $carried;
+			$replaced = [];
+
+			foreach( $keys as $key ) {
+
+				if( preg_match( \Nino\Components::NAME, $key ) !== 1 || isset( $listed[$key] ) === false || (string) $listed[$key]['origin'] !== 'project' )
+					return [ 'failure' => [ 404, 'there is no such block of the project', 'themes_export_block_unknown', [ mb_substr( (string) preg_replace( '/[^\P{C}]+/u', ' ', $key ), 0, 80 ) ], 'blocks' ] ];
+
+				$folder = self::folder( $appData, $key );
+
+				if( $folder === null )
+					return [ 'failure' => [ 500, 'the block could not be read', 'themes_export_block_read', [ $key ], 'blocks' ] ];
+
+				foreach( array_keys( $files ) as $path )
+					if( str_starts_with( (string) $path, 'blocks/'. $key. '/' ) === true ) {
+						unset( $files[$path] );
+						$replaced[$key] = true;
+					}
+
+				foreach( $folder as $path => $bytes ) {
+
+					// A svg leaves as the picture that cleanSvg() rebuilds of it: what the project has written before the rule was held is cleaned on its way out
+					if( str_ends_with( $path, '.svg' ) === true && ( $bytes = \Nino\Images::cleanSvg( $bytes ) ) === null )
+						return [ 'failure' => [ 500, 'the block could not be read', 'themes_export_block_read', [ $key ], 'blocks' ] ];
+
+					$files['blocks/'. $key. '/'. $path] = $bytes;
+				}
+			}
+
+			return [ 'files' => $files, 'replaced' => array_keys( $replaced ) ];
+		}
+
+		/**
+		 *	Take the chosen blocks of a package that was read - by the one way blocks come into the project: import() - and tell each result by the name of its block, and a failure in
+		 *	words
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$read					'blocks' => as read() has them
+		 *	@param		array			$items				key => [ 'take' => bool, 'how' => 'skip' | 'copy' | 'replace' ], as the request has them
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array											[ [ key, name, result, as, code, message ] ] as import() answers it
+		 */
+		public static function take( array &$appData, array $read, array $items, string $locale ): array {
+
+			$choices = [];
+
+			foreach( $read['blocks'] as $key => $parts ) {
+
+				$item = is_array( $items[$key] ?? null ) === true ? $items[$key] : [];
+				$choices[(string) $key] = [ 'take' => ( $item['take'] ?? false ) === true, 'how' => is_string( $item['how'] ?? null ) === true ? $item['how'] : 'skip' ];
+			}
+
+			$names = [];
+
+			foreach( self::listed( $appData, $read, $locale ) as $one )
+				$names[$one['key']] = $one['name'];
+
+			$results = self::import( $appData, $read, $choices );
+
+			foreach( $results as $at => $result ) {
+
+				$results[$at]['name'] = $names[$result['key']] ?? $result['key'];
+
+				if( ( $result['result'] ?? '' ) === 'failed' )
+					$results[$at]['message'] = Sheet::words( [ $locale ], 'import/failed-'. ( in_array( $result['code'] ?? '', [ 'taken', 'invalid', 'write', 'key', 'block' ], true ) === true ? $result['code'] : 'unknown' ) )[$locale];
+			}
+
+			return $results;
 		}
 
 		/**

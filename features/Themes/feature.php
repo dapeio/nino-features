@@ -79,6 +79,10 @@ return [
 				'en_US' => 'A theme package (.tar.gz) is checked and shown first; one uploaded here is replaced by a higher version, removed here or copied as an own theme; blocks ask the right of the features too.',
 				'de_DE' => 'Ein Theme-Paket (.tar.gz) wird zuerst geprüft und gezeigt; ein hochgeladenes wird ersetzt, entfernt oder als eigenes Theme kopiert; Blocks verlangen auch das Recht der Features.',
 			],
+			'Themes > Blocks' => [
+				'en_US' => 'With the right of Themelab an own theme is exported with blocks of the project chosen in a dialog, and the blocks a theme carries are taken into the project but never over a key it has.',
+				'de_DE' => 'Mit dem Recht von Themelab wird ein eigenes Theme mit Blocks des Projekts aus einem Dialog exportiert, und die Blocks eines Themes kommen ins Projekt, aber nie über einen vorhandenen Schlüssel.',
+			],
 			'Themes > Fonts' => [
 				'en_US' => 'The fonts of public/fonts/ with their licence and their place in the brand, and the signed list of the repository, loaded on the button alone, to install a family from.',
 				'de_DE' => 'Die Schriften aus public/fonts/ mit Lizenz und ihrem Platz in der Marke, dazu die signierte Liste des Repositorys, geladen nur auf Knopfdruck, um eine Familie zu installieren.',

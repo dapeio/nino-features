@@ -46,6 +46,9 @@ namespace Nino\Modules\Themes {
 				'themes/keep'		=> [ self::class, 'apiKeep' ],
 				'themes/restore'	=> [ self::class, 'apiRestore' ],
 				'themes/export'		=> [ self::class, 'apiExport' ],
+				'themes/export-blocks'	=> [ self::class, 'apiExportBlocks' ],
+				'themes/blocks'		=> [ self::class, 'apiBlocks' ],
+				'themes/blocks-take'	=> [ self::class, 'apiBlocksTake' ],
 				'themes/delete'		=> [ self::class, 'apiDelete' ],
 				'themes/upload-check'	=> [ self::class, 'apiUploadCheck' ],
 				'themes/upload'		=> [ self::class, 'apiUpload' ],
@@ -101,6 +104,7 @@ namespace Nino\Modules\Themes {
 				'themes/upload'		=> 'Upload Theme',
 				'themes/upload-own'	=> 'Copy Uploaded Theme As Own Theme',
 				'themes/export'		=> 'Export Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
+				'themes/blocks-take'	=> 'Take Blocks Of Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				'themes/remove'		=> 'Remove Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				default						=> '',
 			};
@@ -130,7 +134,7 @@ namespace Nino\Modules\Themes {
 				// The css of the theme as a whole - how many lines it has, and why it is not used where the rule refuses it - and the frames the theme brings that show texts
 				// of the website: each with the keys it reads, which a person who puts the theme on looks at first
 				$css = [ 'lines' => (string) $theme['css'] === '' ? 0 : substr_count( (string) $theme['css'], "\n" ) + 1, 'why' => Reader::explain( (string) $theme['cssProblem'] ) ];
-				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'origin' => $origin, 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'css' => $css, 'frames' => Upload::framesOf( $appData, (string) $key ), 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
+				$themes[] = [ 'key' => $key, 'kind' => 'theme', 'origin' => $origin, 'version' => $theme['version'], 'name' => $theme['name'], 'description' => $theme['description'], 'brand' => $theme['brand'], 'parts' => $parts, 'css' => $css, 'frames' => Upload::framesOf( $appData, (string) $key ), 'blocks' => Package::counted( (string) $theme['dir'] ), 'active' => ( $state['active']['theme'] ?? '' ) === $key ];
 			}
 
 			// An own theme says where each of its parts comes from - the installed theme whose part it is the same as, which is all that is told of it - so that a card can say what it is
@@ -152,7 +156,7 @@ namespace Nino\Modules\Themes {
 					if( $part['ok'] === false && isset( $from[$group] ) === true )
 						$from[$group] = 'rests';
 
-				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'from' => $from, 'parts' => $parts, 'css' => $css, 'stamp' => self::_ownStamp( $appData, $key ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key ];
+				$themes[] = [ 'key' => 'own:'. $key, 'kind' => 'own', 'name' => (string) ( $mix['name'] ?? $key ), 'from' => $from, 'parts' => $parts, 'css' => $css, 'stamp' => self::_ownStamp( $appData, $key ), 'active' => ( $state['active']['theme'] ?? '' ) === 'own:'. $key , 'blocks' => Package::counted( Reader::ownDir( $appData ). '/'. $key ) ];
 			}
 
 			$groups = [];
@@ -176,7 +180,7 @@ namespace Nino\Modules\Themes {
 			\Nino\Preview::tidy( $appData );
 			self::_dropOld( $appData );
 
-			\Nino\Http::ok( $request, [ 'themes' => self::_objects( [ 'themes' => $themes ], [ 'themes.*.from', 'themes.*.parts', 'themes.*.brand' ] )['themes'], 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'package' => [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => self::pages( $appData ) ] + self::_state( $appData, $state ) );
+			\Nino\Http::ok( $request, [ 'blocksTake' => Package::blocksAvailable( $appData ), 'themes' => self::_objects( [ 'themes' => $themes ], [ 'themes.*.from', 'themes.*.parts', 'themes.*.brand' ] )['themes'], 'rejected' => $rejected, 'groups' => $groups, 'fonts' => $fonts, 'package' => [ 'bytes' => \Nino\Catalogue::ARCHIVE_BYTES[\Nino\Packages::THEME] ], 'limits' => [ 'css' => Mix::CSS_LENGTH, 'name' => Mix::NAME_LENGTH, 'key' => \Nino\Components::NAME_LENGTH ], 'pages' => self::pages( $appData ) ] + self::_state( $appData, $state ) );
 		}
 
 		/**
@@ -771,7 +775,15 @@ namespace Nino\Modules\Themes {
 				return;
 			}
 
-			$made = Package::export( $appData, substr( $theme, 4 ) );
+			// Blocks of the project are put in by an account that holds the right of the feature that lists them: for any other the request is refused, not made without them
+			$blocks = is_array( $data['blocks'] ?? null ) === true ? array_values( $data['blocks'] ) : [];
+
+			if( $blocks !== [] && Package::blocksAvailable( $appData ) === false ) {
+				self::_fail( $request, [ 403, 'blocks of the project are not put in a package by this account', 'themes_blocks_right', [], 'blocks' ] );
+				return;
+			}
+
+			$made = Package::export( $appData, substr( $theme, 4 ), $blocks );
 
 			if( isset( $made['failure'] ) === true ) {
 				self::_fail( $request, $made['failure'] );
@@ -779,11 +791,166 @@ namespace Nino\Modules\Themes {
 			}
 
 			if( ( $data['check'] ?? false ) === true ) {
-				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => strlen( $made['bytes'] ), 'files' => $made['files'] ] );
+				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => strlen( $made['bytes'] ), 'files' => $made['files'], 'replaced' => $made['replaced'] ] );
 				return;
 			}
 
 			\Nino\Http::download( $request, $made['bytes'], $made['file'], 'application/gzip' );
+		}
+
+		/**
+		 *	What the dialog of the export asks of the project: the blocks of the project that may go into the package, the blocks and the files the folder of the theme carries already, and the
+		 *	limits of a package - so that what is too much is said before anything is packed. For an account that does not hold the right of the feature that lists the blocks, or where that feature
+		 *	is off, the answer is that there is nothing to choose, and the export is the folder alone. Nothing is written
+		 */
+		public static function apiExportBlocks( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$theme = \Nino\Admin\Admin::postString( $data, 'theme' );
+			$read = str_starts_with( $theme, 'own:' ) === true ? Package::files( $appData, substr( $theme, 4 ) ) : [ 'missing' => true ];
+
+			if( isset( $read['missing'] ) === true ) {
+				self::_fail( $request, [ 404, 'there is no such own theme', 'themes_export_unknown', [], 'theme' ] );
+				return;
+			}
+
+			if( isset( $read['rejected'] ) === true ) {
+				self::_fail( $request, [ 400, 'the folder is no own theme, the reader refuses it', 'themes_export_rejected', [], 'theme' ] );
+				return;
+			}
+
+			if( Package::blocksAvailable( $appData ) === false ) {
+				\Nino\Http::ok( $request, [ 'available' => false ] );
+				return;
+			}
+
+			if( isset( $read['problem'] ) === true ) {
+				self::_fail( $request, Upload::problem( $read['problem'] )['failure'] );
+				return;
+			}
+
+			$base = [ 'files' => 0, 'bytes' => 0 ];
+			$carried = [];
+
+			foreach( $read['files'] as $path => $bytes ) {
+
+				if( preg_match( '~^blocks/([^/]+)/~', (string) $path, $found ) === 1 ) {
+					$carried[$found[1]]['files'] = ( $carried[$found[1]]['files'] ?? 0 ) + 1;
+					$carried[$found[1]]['bytes'] = ( $carried[$found[1]]['bytes'] ?? 0 ) + strlen( $bytes );
+				}
+				else {
+					$base['files']++;
+					$base['bytes'] += strlen( $bytes );
+				}
+			}
+
+			$limits = \Nino\Packages::LIMITS[\Nino\Packages::THEME];
+
+			\Nino\Http::ok( $request, [ 'available' => true, 'blocks' => \Nino\Modules\Themelab\Package::choices( $appData, self::_locale( $appData, $data ) ), 'base' => $base,
+				'carried' => $carried === [] ? new \stdClass() : $carried, 'limits' => [ 'files' => $limits['files'], 'bytes' => $limits['bytes'] ] ] );
+		}
+
+		/**
+		 *	The blocks a theme carries in its folder - an installed theme or an own one - as a person who may put blocks into the project is shown them: each with its name, its category and
+		 *	what stands in the way of its key. They are read as files of a package and held to the rule of the kernel for blocks, as a package of blocks is; nothing is written
+		 */
+		public static function apiBlocks( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$locale = self::_locale( $appData, $data );
+			$found = self::_carried( $appData, \Nino\Admin\Admin::postString( $data, 'theme' ), $locale );
+
+			if( isset( $found['failure'] ) === true ) {
+				self::_fail( $request, $found['failure'] );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'theme' => $found['theme'], 'blocks' => \Nino\Modules\Themelab\Package::listed( $appData, [ 'blocks' => $found['blocks'] ], $locale ) ] );
+		}
+
+		/**
+		 *	The blocks that were chosen, put into the project - by the way blocks come into it, the import of the feature that lists them, with all its checks: a block of a key that the
+		 *	project has is left, or is a copy under a key of its own, and never replaces. Nothing is registered by it and nothing is applied: a block is a block of the project, and a
+		 *	header or a footer among them is one that can be chosen
+		 */
+		public static function apiBlocksTake( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$locale = self::_locale( $appData, $data );
+			$found = self::_carried( $appData, \Nino\Admin\Admin::postString( $data, 'theme' ), $locale );
+
+			if( isset( $found['failure'] ) === true ) {
+				self::_fail( $request, $found['failure'] );
+				return;
+			}
+
+			$items = is_array( $data['items'] ?? null ) === true ? $data['items'] : [];
+
+			// The one way blocks come in does not replace: what a request says of "replace" is a "skip"
+			foreach( $items as $key => $item )
+				if( is_array( $item ) === true && ( $item['how'] ?? '' ) === 'replace' )
+					$items[$key]['how'] = 'skip';
+
+			\Nino\Http::ok( $request, [ 'results' => \Nino\Modules\Themelab\Package::take( $appData, [ 'blocks' => $found['blocks'] ], $items, $locale ) ] );
+		}
+
+		/**
+		 *	The blocks that the folder of a theme carries, read and held to the rule of the kernel for blocks: for the right of the feature that lists the blocks, a theme that is an
+		 *	installed one or an own one, and nothing else - the key is a key and the folder is a folder, not a link
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$theme				'own:<key>' or the key of an installed theme
+		 *	@param		string		$locale
+		 *
+		 *	@return 	array											'theme' => the name, 'blocks' => as the import reads them; or 'failure'
+		 */
+		private static function _carried( array &$appData, string $theme, string $locale ): array {
+
+			if( Package::blocksAvailable( $appData ) === false )
+				return [ 'failure' => [ 403, 'blocks are not put into the project by this account', 'themes_blocks_right', [], 'theme' ] ];
+
+			$own = str_starts_with( $theme, 'own:' ) === true;
+			$key = $own === true ? substr( $theme, 4 ) : $theme;
+			$dir = '';
+			$name = $key;
+
+			if( preg_match( \Nino\Components::NAME, $key ) === 1 && strlen( $key ) <= \Nino\Components::NAME_LENGTH ) {
+
+				if( $own === true && isset( Reader::own( $appData )['themes'][$key] ) === true ) {
+					$dir = Reader::ownDir( $appData ). '/'. $key;
+					$name = (string) Reader::own( $appData )['themes'][$key]['label'];
+				}
+				else if( $own === false && isset( Reader::read( $appData )['themes'][$key] ) === true ) {
+					$dir = (string) Reader::read( $appData )['themes'][$key]['dir'];
+					$name = (string) ( is_array( Reader::read( $appData )['themes'][$key]['name'] ) === true ? ( Reader::read( $appData )['themes'][$key]['name'][$locale] ?? reset( Reader::read( $appData )['themes'][$key]['name'] ) ) : Reader::read( $appData )['themes'][$key]['name'] );
+				}
+			}
+
+			if( $dir === '' || is_link( $dir ) === true || is_dir( $dir ) === false )
+				return [ 'failure' => [ 404, 'there is no such theme', 'themes_unknown', [ self::_named( $theme ) ], 'theme' ] ];
+
+			$carried = Package::carried( $dir );
+
+			if( isset( $carried['problem'] ) === true )
+				return Upload::problem( $carried['problem'] );
+
+			$blocks = \Nino\Modules\Themelab\Package::ofTheme( $carried['files'] );
+
+			if( $blocks === [] )
+				return [ 'failure' => [ 404, 'the theme carries no blocks', 'themes_blocks_none', [], 'theme' ] ];
+
+			$refused = \Nino\Modules\Themelab\Package::refuse( $appData, $carried['files'], $locale );
+
+			return $refused ?? [ 'theme' => $name, 'blocks' => $blocks ];
 		}
 
 		/**

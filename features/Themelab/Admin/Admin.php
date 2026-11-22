@@ -1391,30 +1391,8 @@ namespace Nino\Modules\Themelab {
 				return;
 			}
 
-			$items = is_array( $data['items'] ?? null ) === true ? $data['items'] : [];
-			$choices = [];
-
-			foreach( $read['blocks'] as $key => $parts ) {
-
-				$item = is_array( $items[$key] ?? null ) === true ? $items[$key] : [];
-				$choices[(string) $key] = [ 'take' => ( $item['take'] ?? false ) === true, 'how' => is_string( $item['how'] ?? null ) === true ? $item['how'] : 'skip' ];
-			}
-
-			$names = [];
-
-			foreach( Package::listed( $appData, $read, $locale ) as $one )
-				$names[$one['key']] = $one['name'];
-
-			$results = Package::import( $appData, $read, $choices );
+			$results = Package::take( $appData, $read, is_array( $data['items'] ?? null ) === true ? $data['items'] : [], $locale );
 			Package::release();
-
-			foreach( $results as $at => $result ) {
-
-				$results[$at]['name'] = $names[$result['key']] ?? $result['key'];
-
-				if( ( $result['result'] ?? '' ) === 'failed' )
-					$results[$at]['message'] = Sheet::words( [ $locale ], 'import/failed-'. ( in_array( $result['code'] ?? '', [ 'taken', 'invalid', 'write', 'key', 'block' ], true ) === true ? $result['code'] : 'unknown' ) )[$locale];
-			}
 
 			\Nino\Http::ok( $request, [ 'results' => $results ] );
 		}
