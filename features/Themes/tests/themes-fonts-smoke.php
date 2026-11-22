@@ -260,6 +260,12 @@ preg_match_all( '/^([^\s@}\/][^{]*)\{/m', $sheet, $rules );
 check( 'A. the stylesheet of the tab is scoped to its mount: every one of its '. count( $rules[1] ). ' rules begins with the id of the mount, and it loads nothing',
 	count( $rules[1] ) > 10 && array_filter( $rules[1], static fn( string $selector ): bool => str_starts_with( trim( $selector ), '#themes-fonts-list ' ) === false ) === [] && preg_match( '/url\s*\(|@import/', $sheet ) === 0 );
 
+// The two halves stand side by side from the width the workbench gives two columns, measured on the box of the tab, and every space, size, weight and height of the sheet is a step of the design system
+preg_match_all( '/^\s*(?:padding|margin|gap|font-size|font-weight|min-height|border-radius)\s*:\s*([^;]+);/m', $sheet, $declared );
+check( 'A. the stylesheet of the tab puts the two halves in two columns from 46 rem of the box of the tab, and names every space, type size, weight, height and radius by a step of the design system - none by a number',
+	preg_match( '/@container\s+themes-fonts\s+\(min-width:\s*46rem\)\s*\{[^@]*grid-template-columns:\s*repeat\(\s*2\b/', $sheet ) === 1 && count( $declared[1] ) > 20
+	&& array_filter( $declared[1], static fn( string $value ): bool => preg_match( '/^(?:0|auto|var\(--(?:nino-admin|editor)-[a-z0-9-]+\))(?: (?:0|auto|var\(--(?:nino-admin|editor)-[a-z0-9-]+\)))*$/D', trim( $value ) ) !== 1 ) === [] );
+
 $manifest = \Nino\Features::get( $site, 'themes' );
 $settings = ( require $featureDir. '/feature.php' )['settings'];
 check( 'A. the manifest declares the two settings of the repository and no other: an address, whose default is the list of the feature, and a text for the key, empty by default - both with a label and a hint in two languages',

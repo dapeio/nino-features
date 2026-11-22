@@ -247,7 +247,7 @@ function world( options ) {
 	w.show();
 	w.answer( 200, view() );
 
-	const titles = w.byTag( w.box(), 'h3' ).map( w.text );
+	const titles = w.byTag( w.box(), 'h3' ).map( function( heading ) { return [ W('installed/title'), W('available/title') ].find( function( title ) { return w.text( heading ).indexOf( title ) === 0 } ) } );
 
 	check( 'B. the tab has two halves, Installed and Available, each a section named by its heading - and no title of its own: the head of the pane names the screen', w.byTag( w.box(), 'h2' ).length === 0 && titles.join('|') === [ W('installed/title'), W('available/title') ].join('|')
 		&& w.byTag( w.box(), 'section' ).every( function( section ) { return w.doc.getElementById( section.attributes['aria-labelledby'] ) !== null } ) );
@@ -277,13 +277,16 @@ function world( options ) {
 	check( 'B. a card says the faces of the family, the axis of a weight as a range, and its size', full.text( card('open-sans') ).indexOf( W( 'installed/faces', '400, 700, 400 '+ W('installed/italic') ) ) !== -1 && full.text( card('inter-var') ).indexOf( W( 'installed/variable', '100–900' ) ) !== -1
 		&& full.text( card('open-sans') ).indexOf( '244 KB' ) !== -1 && full.text( card('inter-var') ).indexOf( '1 KB' ) !== -1 );
 	check( 'B. ...its version, its category and its licence, and for a folder that was put there by hand that it is one', full.text( card('open-sans') ).indexOf( W( 'installed/version', '1.2' ) ) !== -1 && full.text( card('open-sans') ).indexOf( 'OFL-1.1' ) !== -1 && full.text( card('open-sans') ).indexOf( W('category/sans') ) !== -1
-		&& full.text( card('by-hand') ).indexOf( W('installed/own') ) !== -1 && full.text( card('by-hand') ).indexOf( W('installed/own-note') ) !== -1 );
+		&& full.text( card('by-hand') ).indexOf( W('installed/own') ) !== -1 );
 
 	const usedLine = full.doc.getElementById('themes-font-used-open-sans');
 	const blocked = full.button( card('open-sans'), W('installed/remove') );
 
-	check( 'B. a family the brand uses says where - the text and the buttons - its delete cannot be pressed, and the button is described by that sentence', full.text( usedLine ) === W( 'installed/used', W('role/font-text')+ ', '+ W('role/font-button') ) && blocked.disabled === true
-		&& blocked.attributes['aria-describedby'] === 'themes-font-used-open-sans' && full.text( card('open-sans') ).indexOf( W('installed/used-note') ) !== -1 );
+	const reason = full.byClass( card('open-sans'), 'nino-admin-help-text' )[0];
+
+	check( 'B. a family the brand uses says where - the text and the buttons - its delete cannot be pressed, and the reason is the sentence behind the (?) beside that button, which describes it',
+		full.text( usedLine ) === W( 'installed/used', W('role/font-text')+ ', '+ W('role/font-button') ) && blocked.disabled === true
+		&& reason !== undefined && full.text( reason ) === W('installed/used-note') && blocked.attributes['aria-describedby'] === reason.id && blocked.parentNode === reason.parentNode.parentNode );
 	check( 'B. a family the brand does not use says so and can be deleted', full.text( full.doc.getElementById('themes-font-used-inter-var') ) === W('installed/unused') && full.button( card('inter-var'), W('installed/remove') ).disabled === false );
 
 	const source = full.byTag( card('open-sans'), 'a' )[0];
@@ -291,6 +294,64 @@ function world( options ) {
 	check( 'B. the source of a family is a link that opens apart from the workbench and tells the other side nothing; a family without one has no link', source.href === 'https://github.com/example/open-sans' && source.target === '_blank' && source.rel === 'noopener noreferrer' && full.byTag( card('by-hand'), 'a' ).length === 0 );
 	check( 'B. a folder that was put there by hand has no button that deletes it - nothing brings back what is in it - and its card says so', full.button( card('by-hand'), W('installed/remove') ) === undefined && full.text( card('by-hand') ).indexOf( W('installed/own-note') ) !== -1 && full.button( card('inter-var'), W('installed/remove') ) !== undefined );
 	check( 'B. a family without a licence text has a button for it that cannot be pressed and says why', full.button( card('by-hand'), W('installed/license-show') ).disabled === true && full.button( card('by-hand'), W('installed/license-show') ).title === W('installed/license-none') );
+}
+
+// --- B2. the two halves and what explains them -----------------------------------------------------------------------------------
+
+{
+	// What the project has and what it can get are the two halves of one grid; every explanation is the sentence behind a (?) at the title or the name it belongs to, and
+	// what stays in view is a case: an error, a count, a state
+	const explaining = function( w, sentences ) {
+
+		// Every element of the tab whose text is one of the sentences is the sentence behind a (?), and no paragraph, hint or notice says it open
+		return sentences.every( function( sentence ) {
+			const found = findAll( w.box(), function( node ) { return node.tagName !== undefined && w.text( node ) === sentence } );
+			return found.length > 0 && found.every( function( node ) { return [ 'nino-admin-help', 'nino-admin-help-text' ].indexOf( String( node.className ) ) !== -1 } );
+		} );
+	};
+	const w = world();
+
+	w.show();
+	w.answer( 200, view( { installed : [
+		installed( 'open-sans', 'Open Sans', { used : [ 'font-text' ] } ),
+		installed( 'by-hand', 'By Hand', { made : false, version : '', license : '', category : '', source : '', licensed : false } ),
+	] } ) );
+
+	const columns = w.byClass( w.box(), 'themes-fonts-cols' );
+	const halves = columns.length === 1 ? columns[0].children : [];
+	const head = function( half ) { return w.byTag( half, 'h3' )[0] };
+	const sentenceOf = function( node ) { return w.text( w.byClass( node, 'nino-admin-help-text' )[0] ) };
+
+	check( 'F349 a. the tab is one grid of two halves, what the project has and what it can get, in that order: the installed families, then the repository - each a section whose title is named by its words alone',
+		columns.length === 1 && halves.length === 2 && halves.every( function( half ) { return half.tagName === 'SECTION' } ) && w.text( head( halves[0] ) ).indexOf( W('installed/title') ) === 0 && w.text( head( halves[1] ) ).indexOf( W('available/title') ) === 0
+		&& w.byClass( w.box(), 'themes-fonts-half' ).length === 2 && halves.every( function( half ) { return half.attributes['aria-labelledby'] === w.byClass( head( half ), 'nino-admin-field-text' )[0].id } ) );
+	check( 'F349 b. each half explains itself behind a (?) at its title: the installed ones what they are, the repository which host the button asks and that the list is fetched on the press - and the button that loads is described by that sentence',
+		sentenceOf( head( halves[0] ) ) === W('installed/help') && sentenceOf( head( halves[1] ) ) === W( 'available/from-own', 'fonts.example.test' )+ ' '+ W('available/press')
+		&& w.doc.getElementById('themes-fonts-load').attributes['aria-describedby'] === w.byClass( head( halves[1] ), 'nino-admin-help-text' )[0].id && w.byClass( head( halves[0] ), 'nino-admin-help-button' ).length === 1 && w.byClass( head( halves[1] ), 'nino-admin-help-button' ).length === 1 );
+
+	const hand = w.byClass( w.box(), 'themes-font' ).find( function( one ) { return one.dataset.font === 'by-hand' } );
+	const made = w.byClass( w.box(), 'themes-font' ).find( function( one ) { return one.dataset.font === 'open-sans' } );
+
+	check( 'F349 c. no explanation stands open as a paragraph: the sentence of a folder that was put there by hand is behind a (?) at its name - a card that was installed has none there - and the sentence of a button that is off is behind a (?) at the button',
+		explaining( w, [ W('installed/own-note'), W('installed/used-note'), W('installed/help'), W( 'available/from-own', 'fonts.example.test' )+ ' '+ W('available/press') ] ) === true && w.byClass( w.byClass( hand, 'themes-font-title' )[0], 'nino-admin-help-text' ).length === 1 && w.byClass( w.byClass( hand, 'themes-font-title' )[0], 'nino-admin-help-text' ).every( function( node ) { return w.text( node ) === W('installed/own-note') } )
+		&& w.byClass( w.byClass( made, 'themes-font-title' )[0], 'nino-admin-help-text' ).length === 0 );
+	check( 'F349 d. what is a state stays in view: the line of the use, the faces and the size, and where nothing is loaded the word of it beside the button', w.text( w.doc.getElementById('themes-font-used-open-sans') ) === W( 'installed/used', W('role/font-text') ) && w.text( made ).indexOf( W( 'installed/faces', '400, 700, 400 '+ W('installed/italic') ) ) !== -1
+		&& w.text( w.byClass( w.box(), 'themes-fonts-bar' )[0] ).indexOf( W('available/unloaded') ) !== -1 );
+
+	// The repository that is loaded: the count and the rows stay, and no sentence of the list is open
+	fire( w.doc.getElementById('themes-fonts-load'), 'click' );
+	w.answer( 200, Object.assign( { loaded : 2 }, view( { available : { fetched : 1794816000, stale : false, families : [ family( 'inter', 'Inter', { foreign : true } ), family( 'lora', 'Lora' ) ] } } ) ) );
+
+	check( 'F349 e. a loaded list keeps the explanation behind the (?) at the title, shows its count and the error of a row, and says no sentence of the repository open',
+		explaining( w, [ W( 'available/from-own', 'fonts.example.test' )+ ' '+ W('available/press'), W('installed/help') ] ) === true && sentenceOf( head( w.byClass( w.box(), 'themes-fonts-half' )[1] ) ) === W( 'available/from-own', 'fonts.example.test' )+ ' '+ W('available/press')
+		&& w.text( w.box() ).indexOf( W( 'available/count', 2 ) ) !== -1 && w.text( w.box() ).indexOf( W('available/foreign') ) !== -1 && w.text( w.byClass( w.box(), 'themes-fonts-bar' )[0] ).indexOf( W('available/unloaded') ) === -1 );
+
+	const empty = world();
+
+	empty.show();
+	empty.answer( 200, view() );
+	check( 'F349 f. with no family installed the first half is the empty box and its title keeps the (?): the empty sentence is only the case and the next step, and nothing of the explanation is in it',
+		empty.text( empty.byClass( empty.box(), 'nino-admin-empty' )[0] ) === W('installed/empty') && W('installed/empty').indexOf( W('installed/help') ) === -1 && sentenceOf( head( empty.byClass( empty.box(), 'themes-fonts-half' )[0] ) ) === W('installed/help') );
 }
 
 // --- C. the repository ------------------------------------------------------------------------------------------------------

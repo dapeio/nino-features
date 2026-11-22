@@ -215,6 +215,7 @@
 
 		const card = el( 'div', 'nino-admin-card themes-font' );
 		const head = el( 'div', 'themes-font-head' );
+		const line = el( 'div', 'themes-font-title' );
 		const title = el( 'h4', '', font.name );
 		const used = font.used.length > 0;
 
@@ -222,7 +223,13 @@
 		title.id = 'themes-font-title-'+ font.key;
 		title.title = font.name;
 		title.tabIndex = -1;
-		head.appendChild( title );
+		line.appendChild( title );
+
+		// What was put there by hand is not deleted from here (see Typefaces::remove()): the card has no button for it, and says why behind a (?) at its name
+		if( font.made === false )
+			line.appendChild( Nino.adminUi.fieldHelp( word('installed/own-note'), { name : font.name } ) );
+
+		head.appendChild( line );
 
 		const chip = function( text, state ) {
 			const badge = el( 'span', 'nino-admin-badge', text );
@@ -249,9 +256,6 @@
 		where.id = 'themes-font-used-'+ font.key;
 		card.appendChild( where );
 
-		if( font.made === false )
-			card.appendChild( el( 'p', 'nino-admin-hint', word('installed/own-note') ) );
-
 		const actions = el( 'div', 'nino-admin-actions' );
 		const license = Nino.adminUi.button( word('installed/license-show'), function() { toggleLicense( font, license, holder ) }, { className : 'nino-admin-btn--small' } );
 		const holder = el( 'div', 'themes-fonts-license' );
@@ -276,25 +280,28 @@
 			actions.appendChild( source );
 		}
 
-		// What was put there by hand is not deleted from here (see Typefaces::remove()): the card says so, and has no button for it
 		if( font.made === true ) {
 
 			const remove = Nino.adminUi.button( word('installed/remove'), function() { removeFont( font, remove ) }, { className : 'nino-admin-btn--small nino-admin-btn-danger', disabled : used } );
 
-			// A button that cannot be pressed says why in the text beside it - the line of the brand's use - and for a screen reader here
-			if( used === true )
-				remove.setAttribute( 'aria-describedby', where.id );
+			// A button that cannot be pressed says why behind a (?) beside it and as its title; the sentence describes the button for a screen reader
+			if( used === true ) {
 
-			actions.appendChild( remove );
+				const cell = el( 'span', 'themes-fonts-action' );
+
+				remove.title = word('installed/used-note');
+				cell.appendChild( remove );
+				cell.appendChild( Nino.adminUi.fieldHelp( word('installed/used-note'), { field : remove, name : word('installed/remove') } ) );
+				actions.appendChild( cell );
+			}
+			else
+				actions.appendChild( remove );
 		}
 		card.appendChild( actions );
 		card.appendChild( holder );
 
 		if( F.open[font.key] === true )
 			showLicense( font, license, holder );
-
-		if( used === true )
-			card.appendChild( el( 'p', 'nino-admin-hint', word('installed/used-note') ) );
 
 		return card;
 	};
@@ -413,8 +420,8 @@
 
 		title.id = 'themes-fonts-installed-title';
 		title.tabIndex = -1;
-		half.setAttribute( 'aria-labelledby', title.id );
 		half.appendChild( title );
+		Nino.adminUi.sectionHelp( title, half, word('installed/help') );
 
 		if( F.data.installed.length === 0 ) {
 			half.appendChild( Nino.adminUi.emptyState( word('installed/empty') ) );
@@ -624,7 +631,6 @@
 
 		title.id = 'themes-fonts-available-title';
 		title.tabIndex = -1;
-		half.setAttribute( 'aria-labelledby', title.id );
 		half.appendChild( title );
 
 		if( repository.state !== 'ready' ) {
@@ -646,18 +652,16 @@
 
 		bar.appendChild( button );
 
-		if( available !== null )
-			bar.appendChild( el( 'span', 'nino-admin-hint', word( 'available/loaded', new Date( available.fetched * 1000 ).toLocaleString( lang() === '' ? undefined : lang(), { dateStyle : 'medium', timeStyle : 'short' } ) ) ) );
+		// Which host the button asks, whether its list is checked with a key of the project's own, and that the list is fetched on the press and not before: behind a (?) at the
+		// title, which describes the button for a screen reader. What is the case - nothing loaded, or when it was - stays in view beside the button
+		const help = Nino.adminUi.sectionHelp( title, half, word( repository.ownKey === true ? 'available/from-own' : 'available/from', repository.host )+ ' '+ word('available/press') );
 
+		button.setAttribute( 'aria-describedby', help.sentenceId );
+		bar.appendChild( el( 'span', 'nino-admin-hint', available === null ? word('available/unloaded') : word( 'available/loaded', new Date( available.fetched * 1000 ).toLocaleString( lang() === '' ? undefined : lang(), { dateStyle : 'medium', timeStyle : 'short' } ) ) ) );
 		half.appendChild( bar );
 
-		// Which host the button asks, and whether its list is checked with a key of the project's own
-		half.appendChild( el( 'p', 'nino-admin-hint', word( repository.ownKey === true ? 'available/from-own' : 'available/from', repository.host ) ) );
-
-		if( available === null ) {
-			half.appendChild( el( 'p', 'nino-admin-hint', word('available/unloaded') ) );
+		if( available === null )
 			return half;
-		}
 
 		if( available.stale === true )
 			half.appendChild( Nino.adminUi.notice( word('available/stale') ) );
@@ -696,9 +700,13 @@
 		if( content === null )
 			return;
 
+		// What the project has and what it can get are two halves of one grid: side by side where the tab is wide enough, one under the other in the order they are needed
+		const columns = el( 'div', 'themes-fonts-cols' );
+
 		content.innerHTML = '';
-		content.appendChild( installedHalf() );
-		content.appendChild( availableHalf() );
+		columns.appendChild( installedHalf() );
+		columns.appendChild( availableHalf() );
+		content.appendChild( columns );
 
 		if( keep !== '' )
 			say( keep, failed );
