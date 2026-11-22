@@ -130,7 +130,7 @@ const words = {
 	[ 'tab/pages', 'tab/frames', 'scope/name' ].forEach( function( key ) { asked.add( key ) } );
 	[ 'pick', 'new', 'fixed', 'page', 'address' ].forEach( function( key ) { asked.add( 'source/tab-'+ key ) } );
 	// Where a text is from, the technical fields of an element and the menus of the starter site
-	[ 'company', 'website', 'mail', 'project', 'common', 'page', 'feature', 'other' ].forEach( function( key ) { asked.add( 'source/area-'+ key ) } );
+	[ 'company', 'website', 'mail', 'project', 'common', 'page', 'feature', 'module', 'place' ].forEach( function( key ) { asked.add( 'source/area-'+ key ) } );
 	[ 'id', 'uri', 'slug' ].forEach( function( key ) { asked.add( 'source/field-'+ key ) } );
 	[ 'text', 'image', 'link' ].forEach( function( key ) { asked.add( 'source/label-'+ key ) } );
 	[ 'asc', 'desc' ].forEach( function( way ) { [ 'text', 'date', 'number' ].forEach( function( kind ) { asked.add( 'sort/'+ way+ '-'+ kind ) } ) } );

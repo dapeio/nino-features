@@ -2212,6 +2212,39 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	check( 'M. a block whose calls read no text of the website says so', textOf( dialogOf( w ) ).indexOf( W('details/reads') ) !== -1 && ( function() { const again = dialogOf( w ); findAll( again, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/reads') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } ); return textOf( again ).indexOf( W('details/reads-none') ) !== -1; } )() );
 }
 
+// The properties of the parts of a header in the editor: what the component declares to be set - the pin of the header ("Stays at the top") and the menu button of the navigation - is in the
+// sheet of its look, as it is for a part of a page. Text alignment and spacing are no setting of a header, a footer or a column of it, so they are no row of it: the sheet shows what has an effect
+{
+	const choice = { type : 'choice', label : 'Menu button', hint : '', default : 'auto', options : [ 'auto', 'always' ], labels : { auto : 'Automatic', always : 'Always' } };
+	const w = sheetOf( '#themelab/mein-kopf', {
+		key : 'mein-kopf', wrap : 'header-wrap', stamp : 'f1', name : { de_DE : 'Mein Kopf', en_US : 'My head' },
+		tree : [ FRAME_HEAD, { t : '\n' }, { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'header-nav', s : '', a : {}, c : [] }, { t : '\n' } ] }, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
+		known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, 'header-nav' : { label : 'Menu', icon : 'menu', id : '', source : 'none' } },
+		schemas : Object.assign( {}, pageAnswer().schemas, {
+			'header-wrap' : schema( 'Header', 'panel-top', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, sticky : { type : 'bool', label : 'Stays at the top', hint : '', default : false } } } ),
+			'header-nav' : schema( 'Menu', 'menu', 'none', { attributes : { collapse : choice } } ),
+		} ),
+		details : { wrap : 'header-wrap', reads : [], names : { de_DE : 'Mein Kopf', en_US : 'My head' }, descriptions : { de_DE : 'K', en_US : 'H' }, category : 'frame', rank : 0, images : {}, locales : [ 'de_DE', 'en_US' ], placeholders : [] },
+	} );
+	const sheet = w.builder.editor.state();
+	const keysOf = function( node ) { return findAll( node, function( el ) { return el.dataset !== undefined && ( el.dataset.key !== undefined || el.dataset.stepKey !== undefined ) } ).map( function( el ) { return el.dataset.key ?? el.dataset.stepKey } ).sort() };
+	const keysAt = function( rel ) {
+		leaveBox( w );
+		sheet.adapter.props = 'panel';
+		w.builder.editor.properties( sheet.top.findIndex( function( node ) { return node.n === 'header-wrap' } ), rel, element('button'), function() {} );
+
+		return keysOf( boxOf( w ) ).join();
+	};
+	const head = keysAt('root');
+	const nav = keysAt('1');
+
+	check( 'F326 b. the sheet of the header of a frame has the setting the header declares - it stays at the top - and no text alignment and no spacing: those are no settings of a header',
+		/sticky/.test( head ) === true && /align|space|pad|gap/.test( head ) === false );
+
+	check( 'F326 b. the sheet of the menu of a header has the setting the menu declares: the menu button is a row of its look, as it is in the sheet of a part of a page',
+		/collapse/.test( nav ) === true );
+}
+
 {
 	const css = fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf8' );
 	const script = fs.readFileSync( scriptPath, 'utf8' );
@@ -2270,6 +2303,26 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	const plain = shown( '#themelab', LIST() ).w;
 
 	check( 'F317 b. where the browser has no observer the picture of every row is asked for at once', tilesAsked( plain ) >= rowsOfList( plain ).length && tilesAsked( plain ) > 1 );
+}
+
+// A page that is open in the pane of the pages has its view in the level builder-page. The sheet of a block of this panel is drawn with the same editor and takes that level for itself: the pane of the
+// pages shows its list when it is shown next, and no empty page
+{
+	const x = shown( '#themelab/karten' );
+	const w = x.w;
+	const levels = function( id ) { return findAll( w.page, function( el ) { return el.id === id } )[0] };
+	const pageLevel = levels('builder-page');
+	const listLevel = levels('builder-list');
+
+	w.requests.length = 0;
+	w.panel.follow();
+	pageLevel.classList.remove('admin-hidden');
+	pageLevel.appendChild( element('div') );
+	listLevel.classList.add('admin-hidden');
+	answerOf( request( w, 'themelab/open' ), 200, SHEET() );
+
+	check( 'F326 a. the sheet of a block that is opened while a page is open in the pane of the pages takes the level of the page for itself and gives the pane its list: nothing is left of the page, the list is the level that shows',
+		pageLevel.children.length === 0 && pageLevel.classList.contains('admin-hidden') === true && listLevel.classList.contains('admin-hidden') === false );
 }
 
 {

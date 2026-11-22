@@ -664,6 +664,12 @@
 	font-size: var(--nino-admin-text-xs);
 }
 
+.builder-source-uri {
+	flex: 0 0 100%;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
 .builder-source-pick:hover {
 	background: var(--editor-blue-soft);
 }

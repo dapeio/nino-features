@@ -859,7 +859,7 @@ function world( options ) {
 	const rows = findAll( w.frames, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'footer' ) } );
 
 	check( 'G. the list of the pages has the two frames for the one who designs - a row each, "applies to all pages", with the choice of a block, the way back only where there is a last state, and nothing that names Themelab where Themelab is off',
-		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '2' ) ) ) !== -1 && textOf( rows[1] ).indexOf( W( 'frame/standard', W('frame/uses-none') ) ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 );
+		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W( 'frame/standard', W( 'frame/uses-many', '2' ) ) ) !== -1 && textOf( rows[1] ).indexOf( W( 'frame/standard', W('frame/uses-none') ) ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 && buttons( w.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 0 );
 
 	const content = world( { list : answer( { frames : [] } ) } );
 
@@ -869,8 +869,8 @@ function world( options ) {
 
 	bridged.open('#builder');
 
-	check( 'G. the account that only writes the content gets no frames from the server and so no row of them; where Themelab is on and the account holds its right each row has "Edit in Themelab" as well',
-		findAll( content.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header' } ).length === 0 && buttons( bridged.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 2 );
+	check( 'G. the account that only writes the content gets no frames from the server and so no row of them; and no row has a button "Edit in Themelab" - not where Themelab is on and the account holds its right either: the tab chooses, Themelab edits',
+		findAll( content.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header' } ).length === 0 && buttons( bridged.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 0 && buttons( bridged.frames ).every( function( text ) { return text === W('frame/choose') || text === W('frame/undo') } ) );
 
 	// the choice: the blocks of the frame are asked by its template, the dialog names each with where it comes from, the question is asked before anything is written - and the answer yes writes that block
 	fire( findAll( rows[0], function( el ) { return el.tagName === 'BUTTON' && textOf( el ) === W('frame/choose') } )[0], 'click' );

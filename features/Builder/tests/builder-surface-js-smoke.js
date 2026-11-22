@@ -891,6 +891,53 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return none.order === 'Internal page|Address|Choose a value|New' && none.open === 'Internal page' && address.open === 'Address' && key.open === 'Choose a value';
 	} )() );
 
+	check( 'F326 c. the dialog of the source lists each text with its words, where it is from and - quietly, in monospace, on a line of its own - the key it is saved under; the same key twice is ONE row, two keys with the same words are two rows each with its own key; no row says "Page Page ..." or "Another place"; the search finds a key as it finds words', ( function() {
+		const x = make( 3 );
+
+		x.model.state.box = { block : 'team' };
+		x.w.panel.editor.source( '1', { kind : 'text', attr : '', label : 'Title' }, element('button') );
+
+		const dialog = x.w.dialogs[x.w.dialogs.length - 1];
+		const asked = x.w.requests.filter( function( request ) { return request.action === 'builder/keys' } );
+		const entries = [
+			{ key : '/_nino/webpage/404/name', name : 'name', text : 'Not found', own : false, withheld : true, area : 'page', of : 'Not found' },
+			{ key : '/_nino/webpage/404/title', name : 'title', text : 'Not found', own : false, withheld : true, area : 'page', of : 'Not found' },
+			{ key : '/_nino/webpage/404/title', name : 'title', text : 'Not found', own : false, withheld : true, area : 'page', of : 'Not found' },
+			{ key : '/_nino/locale/de_DE/name', name : 'name', text : 'Deutsch', own : false, withheld : true },
+		];
+
+		asked[0].callback( { status : 200, responseJSON : { entries : entries, more : false }, getAllResponseHeaders : function() { return 'x' } } );
+
+		const rows = findAll( dialog, function( el ) { return el.tagName === 'LI' && String( el.className ).indexOf('builder-source-item') !== -1 } );
+		const uris = rows.map( function( row ) { return findAll( row, function( el ) { return String( el.className ).indexOf('builder-source-uri') !== -1 } ).map( textOf ).join() } );
+		const text = rows.map( textOf ).join(' | ');
+		const draft = uris.indexOf('/template/page-home/team/title') !== -1;
+
+		const typedIn = function( query ) {
+			const input = findAll( dialog, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'source-search' } )[0];
+			const before = x.w.requests.length;
+
+			input.value = query;
+			fire( input, 'input' );
+			x.w.timers.splice( 0 ).forEach( function( fn ) { fn() } );
+
+			const question = x.w.requests.slice( before ).filter( function( request ) { return request.action === 'builder/keys' } )[0];
+
+			question.callback( { status : 200, responseJSON : { entries : [], more : false }, getAllResponseHeaders : function() { return 'x' } } );
+
+			return findAll( dialog, function( el ) { return el.tagName === 'LI' && String( el.className ).indexOf('builder-source-item') !== -1 } ).map( textOf ).join(' | ');
+		};
+		const byKey = typedIn('page-home/team');
+		const none = typedIn('no-such-thing');
+
+		fire( dialog, 'close' );
+
+		return rows.length === 4 && draft === true && uris.filter( function( uri ) { return uri === '/_nino/webpage/404/title' } ).length === 1 && uris.indexOf('/_nino/webpage/404/name') !== -1 && uris.indexOf('/_nino/locale/de_DE/name') !== -1
+			&& /Page · Not found/.test( text ) === true && /Page Not found/.test( text ) === false && /Another place/.test( text ) === false && /Module · locale/.test( text ) === true
+			&& byKey.indexOf('/template/page-home/team/title') !== -1 && byKey.indexOf('/_nino/') === -1 && none.indexOf('/template/') === -1
+			&& /\.builder-source-uri \{[^}]*flex: 0 0 100%;/.test( sheet ) === true && /\.builder-source-code \{[^}]*font-family: var\(--nino-admin-mono\);/.test( sheet ) === true;
+	} )() );
+
 	check( 'I. 11: the notation of a component is no row of "Advanced" but behind the button <> in the foot of the lightbox - for the account that designs and not for the one that writes the content; Escape closes the small window of it and not the lightbox', ( function() {
 		const x = make( 3 );
 		x.model.state.sheet = 'block';

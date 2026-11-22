@@ -5461,8 +5461,15 @@
 
 		const page = dc.getElementById('builder-page');
 
-		if( page !== null && adapter.level !== 'builder-page' )
+		// The page of the pane of the pages is gone with it - its view was drawn into that level, which the sheet of another panel takes for itself: the pane shows its list when it is shown
+		// next time, and no empty page
+		if( page !== null && adapter.level !== 'builder-page' ) {
+
 			page.innerHTML = '';
+
+			if( dc.getElementById('builder-list') !== null )
+				Nino.adminUi.showLevel( 'builder-list', { focus : false } );
+		}
 
 		S.sheet = 'block';
 		S.adapter = adapter;
@@ -6752,13 +6759,22 @@
 	// Where a text of the project is from, in words: the part of the project it is of, or the page
 	const areaOf = function( entry ) {
 
-		if( entry.area === undefined )
-			return word('source/area-other');
-
 		if( [ 'company', 'website', 'mail', 'project' ].indexOf( entry.area ) !== -1 )
 			return word( 'source/shared', word( 'source/area-'+ entry.area ) );
 
-		return entry.area === 'page' || entry.area === 'feature' ? word( 'source/area-'+ entry.area, entry.of ) : word( 'source/area-'+ ( entry.area === 'common' ? 'common' : 'other' ) );
+		if( entry.area === 'page' || entry.area === 'feature' )
+			return word( 'source/area-'+ entry.area, entry.of );
+
+		if( entry.area === 'common' )
+			return word('source/area-common');
+
+		// Any other place is named by what its key names: a module of the kernel, or else the first part of the key
+		const parts = String( entry.key ?? '' ).split('/');
+
+		if( parts[1] === '_nino' && parts[2] !== undefined && parts[2] !== '' )
+			return word( 'source/area-module', parts[2] );
+
+		return parts[1] !== undefined && parts[1] !== '' ? word( 'source/area-place', parts[1] ) : '';
 	};
 
 	// A name that is written in a template: lower case words, joined by hyphens - the umlauts as the German writes them out
@@ -6977,7 +6993,7 @@
 			return box;
 		};
 
-		const entryOf = function( name, text, chip, onPick, code ) {
+		const entryOf = function( name, text, chip, onPick, code, uri ) {
 
 			const item = el( 'li', 'builder-source-item' );
 			const button = el( 'button', 'builder-source-pick' );
@@ -6994,6 +7010,10 @@
 
 			if( chip !== '' )
 				button.appendChild( el( 'span', 'nino-admin-badge', chip ) );
+
+			// The key a text is saved under - the address of its textfill - on a line of its own, quietly: two rows with the same words are told apart by it
+			if( typeof uri === 'string' && uri !== '' )
+				button.appendChild( el( 'code', 'builder-source-code builder-source-uri', uri ) );
 
 			button.addEventListener( 'click', onPick );
 			item.appendChild( button );
@@ -7048,11 +7068,11 @@
 						const block = S.top.find( function( node ) { return node.n !== undefined && idsOf( [ node ], new Set() ).has( key.split('/')[3] ) } );
 						const root = block === undefined ? '' : idOf( block );
 
-						if( mine !== '' && ( name+ ' '+ text+ ' '+ label ).toLowerCase().indexOf( mine ) === -1 )
+						if( mine !== '' && ( name+ ' '+ text+ ' '+ label+ ' '+ key ).toLowerCase().indexOf( mine ) === -1 )
 							return;
 
 						seen.add( key );
-						out.push( entryOf( label !== '' ? label : ( text !== '' ? text : name ), root === '' ? word(																																																																																																			ownWord( 'source/page', 'source/page-block' ) ) : word(																																																																																																																																																																																																																																																													ownWord( 'source/page-of', 'source/page-of-block' ), root.charAt(0).toUpperCase()+ root.slice( 1 ) ), '', function() { finish( { form : 'key', written : writtenFor( key ) } ) } ) );
+						out.push( entryOf( label !== '' ? label : ( text !== '' ? text : name ), root === '' ? word(																																																																																																			ownWord( 'source/page', 'source/page-block' ) ) : word(																																																																																																																																																																																																																																																													ownWord( 'source/page-of', 'source/page-of-block' ), root.charAt(0).toUpperCase()+ root.slice( 1 ) ), '', function() { finish( { form : 'key', written : writtenFor( key ) } ) }, '', key ) );
 					} );
 
 					response.entries.forEach( function( entry ) {
@@ -7060,7 +7080,9 @@
 						if( seen.has( entry.key ) === true || entry.key.indexOf( '/template/'+ S.template+ '/' ) === 0 )
 							return;
 
-						out.push( entryOf( entry.text !== '' ? entry.text : entry.name, areaOf( entry ), S.adapter.frameBlock === true && entry.withheld === true ? word('source/withheld') : '', function() { finish( { form : 'key', written : entry.key, text : entry.text } ) } ) );
+						// One row for a key, whatever the server says: the same address twice is the same text
+						seen.add( entry.key );
+						out.push( entryOf( entry.text !== '' ? entry.text : entry.name, areaOf( entry ), S.adapter.frameBlock === true && entry.withheld === true ? word('source/withheld') : '', function() { finish( { form : 'key', written : entry.key, text : entry.text } ) }, '', entry.key ) );
 					} );
 
 					show( out, response.more );
@@ -10872,11 +10894,6 @@
 						Nino.admin.builder.reload();
 					} );
 				}, { small : true, name : word( 'frame/undo-of', name ) } ) );
-
-			if( data.bridge === true )
-				actions.push( Nino.adminUi.button( word('frame/themelab'), function() {
-					Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ '@frames', frame.key ] ) } );
-				}, { small : true, name : word( 'frame/themelab-of', name ) } ) );
 
 			return { key : frame.key, title : name, detail : frameDetail( frame ), actions : actions };
 		} );

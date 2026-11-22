@@ -60,8 +60,8 @@ check( 'B2. the way is asked about unsaved work first, and goes to the address o
 	has( /Nino\.admin\.dirty\.guard\( \[ 'builder' \], function\(\) \{ Nino\.admin\.router\.go\( 'themelab', \[ key \] \) \} \)/ ) === true && has( /editInBlocks\( S\.own\[box\.block\] \)/ ) === true );
 check( 'B3. the rows of the header and the footer in the outline are a display - "applies to all pages" - and have a button to the editor of the blocks only for the one who holds its right',
 	has( /item\.kind === 'frame' && S\.bridge === true && \( row\.key === '@header' \|\| row\.key === '@footer' \)/ ) === true && has( /'themelab', \[ '@frames', id === '@footer' \? 'footer' : 'header' \]/ ) === true );
-check( 'B3b. the way from a row of the frames in the list of the pages to the editor of that frame is the address of the tab with the @: #themelab/@frames/<key>',
-	has( /router\.go\( 'themelab', \[ '@frames', frame\.key \] \)/ ) === true );
+check( 'B3b. the way from the row of a frame in the outline of a page to the editor of that frame is the address of the tab with the @: #themelab/@frames/header or footer',
+	has( /router\.go\( 'themelab', \[ '@frames', id === '@footer' \? 'footer' : 'header' \] \)/ ) === true );
 check( 'B4. the words of the two ways are in both languages and say what they do: "take over into own blocks", "open in Themelab"',
 	word( de, 'own/open' ).indexOf( 'Eigene Blocks' ) !== -1 && word( en, 'own/open' ).indexOf( 'Own blocks' ) !== -1 && word( de, 'own/edit' ).indexOf( 'Themelab' ) !== -1 && word( en, 'own/edit' ).indexOf( 'Themelab' ) !== -1 );
 
@@ -143,6 +143,9 @@ check( 'F299 T1. the button of a row of the tab of the header/footer says "Ausw�
 	word( de, 'frame/choose' ) === 'Auswählen' && word( en, 'frame/choose' ) === 'Choose' && word( de, 'frame/choose-of' ) === '%s auswählen' && word( en, 'frame/choose-of' ) === 'Choose %s'
 	&& word( de, 'frame/choose-title' ) === 'Kopf-/Fußbereich wählen' && word( en, 'frame/choose-title' ) === 'Choose header/footer'
 	&& has( /title\s*: word\('frame\/choose-title'\)/ ) === true && has( /Nino\.adminUi\.button\( word\('frame\/choose'\)/ ) === true );
+
+check( 'F326 e. a row of the tab "Header/footer" has no button "Edit in Themelab": no call, no word, no name of it - the tab chooses, Themelab is where a header and a footer are written',
+	has( /frame\/themelab|\[ '@frames', frame\.key \]/ ) === false && word( de, 'frame/themelab' ) === '' && word( en, 'frame/themelab' ) === '' && word( de, 'frame/themelab-of' ) === '' && word( en, 'frame/themelab-of' ) === '' );
 
 console.log( '\nF312. The pane of the pages' );
 
