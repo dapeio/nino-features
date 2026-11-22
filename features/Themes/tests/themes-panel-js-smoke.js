@@ -348,6 +348,7 @@ function world( options ) {
 	const requests = [];
 	const timers = [];
 	const dialogs = [];
+	const posted = [];
 	const asked = [];
 	const dirtyAnswers = [];
 	const state = { hash : '', pushed : [], confirm : true, saved : [], discarded : 0 };
@@ -370,6 +371,10 @@ function world( options ) {
 	doc.activeElement = null;
 	doc.createElement = function( tag ) {
 		const created = element( tag );
+
+		if( tag === 'form' )
+			created.submit = function() { posted.push( created ) };
+
 		// A box as wide and as high as the room the test gives it
 		created.getBoundingClientRect = function() { return { width : options.room, height : 600 } };
 		if( tag === 'dialog' ) {
@@ -474,6 +479,9 @@ function world( options ) {
 	const w = {
 		Nino : Nino, context : context, ui : Nino.adminUi, doc : doc, app : app, list : list, theme : theme, requests : requests, timers : timers, dialogs : dialogs, asked : asked, state : state, router : router, dirty : dirty, dirtyAnswers : dirtyAnswers,
 		panel : Nino.admin.themes,
+		posted : posted,
+		exportRefused : null,
+		importTaken : false,
 
 		/** What was answered, in the order of the answers */
 		actions : [],
@@ -529,6 +537,18 @@ function world( options ) {
 					w.bump();
 					w.current = { theme : made.key, name : payload.name, origin : {} };
 					w.answer( 200, { saved : true, theme : made.key, applied : true, stamp : w.stamp, brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, current : w.current, active : w.activeState() } );
+				}
+				else if( request.action === 'themes/export' && w.exportRefused !== null )
+					w.answer( 400, w.exportRefused );
+				else if( request.action === 'themes/export' )
+					w.answer( 200, { file : payload.theme.slice( 4 )+ '-1.0.0.tar.gz', size : 4096, files : 7 } );
+				else if( request.action === 'themes/upload-own' && payload.name === '' && w.importTaken === true )
+					w.answer( 409, { error : 'an own theme of that name is there', code : 'themes_name_taken', params : [ 'Second look' ], field : 'name' } );
+				else if( request.action === 'themes/upload-own' ) {
+					const made = { key : 'own:'+ ( payload.name === '' ? 'second-look' : payload.name.toLowerCase().replace( /[^a-z0-9]+/g, '-' ) ), name : payload.name === '' ? 'Second look' : payload.name };
+					w.copies.push( made );
+					w.bump();
+					w.answer( 200, { saved : true, theme : made.key, applied : false, stamp : w.stamp, brandStamp : w.brandStamp, state : w.stateStamp, canRestore : w.canRestore, active : w.activeState() } );
 				}
 				else if( request.action === 'themes/duplicate' && payload.theme.indexOf('own:') === 0 && payload.base !== w.stamp )
 					w.answer( 409, { error : 'the theme was changed since it was opened', code : 'themes_changed', params : [ 'Lindner' ], field : 'theme' } );
@@ -4507,6 +4527,159 @@ function nameField( w ) {
 
 	check( 'T2. a note with a group that is null, a text or says nothing is not an error of the panel: the settings are drawn - the buttons are there - and the hint says what the whole entries say',
 		byId( w.theme, 'themes-keep' ) !== undefined && byId( w.theme, 'themes-restore' ) !== undefined && byId( w.theme, 'themes-duplicate' ) !== undefined && w.text( byId( w.theme, 'themes-keep-hint' ) ) === Wp( 'hint/keep-from', Wp( 'msg/made-of', 'Section', 'Craft 1.0.0' ) ) );
+}
+
+// --- AG. an own theme as a package, and a package as an own theme ---------------------------------------------------------------------
+
+{
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes/craft/settings' );
+
+	check( 'U1. a theme of a package has no button to export: the package is the one it came from', byId( w.theme, 'themes-export' ) === undefined );
+
+	const own = world( { active : 'nino' } );
+
+	own.at( '#themes/own.lindner/settings' );
+
+	const button = byId( own.theme, 'themes-export' );
+	const checks = own.sent.filter( function( request ) { return request.action === 'themes/export' } );
+
+	check( 'U1. the settings of an own theme have the button to export it, and the check of the package is asked of the server for the theme - the key and the question, nothing of the draft - and the hint says what the file is',
+		button !== undefined && w.text( button ) === W('label/export') && checks.length === 1 && JSON.stringify( checks[0].payload ) === '{"theme":"own:lindner","check":true}' && button.disabled === false && own.text( byId( own.theme, 'themes-export-hint' ) ) === W('hint/export')
+		&& button.getAttribute( 'aria-describedby' ) === 'themes-export-hint' );
+
+	type( byId( own.theme, 'themes-theme-name' ), 'Lindner x' );
+
+	check( 'U1. what the draft holds is not in the folder: with a change that is not saved the button cannot be pressed and the hint says to save or reset first',
+		byId( own.theme, 'themes-export' ).disabled === true && own.text( byId( own.theme, 'themes-export-hint' ) ).indexOf( W('hint/restore-dirty') ) !== -1 );
+
+	fire( own.button( own.bar(), W('label/reset') ), 'click' );
+	own.serve();
+
+	check( 'U1. ...and it can be as soon as the change is gone', byId( own.theme, 'themes-export' ).disabled === false );
+
+	// a saved theme is another folder: the check is asked again for it, and the button waits for the answer
+	type( byId( own.theme, 'themes-theme-name' ), 'Lindner y' );
+	own.sent.length = 0;
+	fire( own.button( own.bar(), W('label/save') ), 'click' );
+	own.serve();
+
+	check( 'U1. after a save the check is asked again - the folder is another one - and the button is on for it', own.sent.filter( function( request ) { return request.action === 'themes/export' } ).length === 1 && byId( own.theme, 'themes-export' ).disabled === false );
+
+	own.sent.length = 0;
+	fire( byId( own.theme, 'themes-export' ), 'click' );
+	own.serve();
+
+	const form = own.posted[0];
+	const fields = form === undefined ? {} : Object.fromEntries( findAll( form, function( node ) { return node.tagName === 'INPUT' } ).map( function( node ) { return [ node.name, node.value ] } ) );
+
+	check( 'U1. the file is asked for after the check is answered again, by a form that posts into a frame nobody sees - the action, the key of the theme and no "check" - and the line says which file is saved',
+		own.sent.filter( function( request ) { return request.action === 'themes/export' } ).length === 1 && form !== undefined && form.method === 'post' && form.target === 'themes-download' && fields.action === 'themes/export' && fields.data === '{"theme":"own:lindner"}'
+		&& own.text( own.theme ).indexOf( Wp( 'msg/exported', 'lindner-1.0.0.tar.gz' ) ) !== -1 );
+}
+
+{
+	// a theme the kernel would refuse as a package: the button is off, and the hint says why - "not exportable: the reason"
+	const w = world( { active : 'nino' } );
+
+	w.exportRefused = { error : 'x', code : 'themes_upload_package_css', params : [ 'parts/button/part.css' ], field : 'theme' };
+	w.at( '#themes/own.lindner/settings' );
+
+	const reason = Wp( 'api/themes_upload_package_css', 'parts/button/part.css' );
+
+	check( 'U2. a theme that cannot be exported has the button off, and the hint says "not exportable" and the reason in the words of the panel for the code of the check - which is the sentence of the upload',
+		byId( w.theme, 'themes-export' ).disabled === true && w.text( byId( w.theme, 'themes-export-hint' ) ) === Wp( 'hint/export-not', reason ) && reason.indexOf( 'parts/button/part.css' ) !== -1 );
+
+	fire( byId( w.theme, 'themes-export' ), 'click' );
+	w.serve();
+
+	check( 'U2. a button that cannot be pressed sends no question and no file', w.posted.length === 0 );
+
+	// the theme was made good, or made worse, since the check: the question before the file says it
+	const later = world( { active : 'nino' } );
+
+	later.at( '#themes/own.lindner/settings' );
+	later.exportRefused = { error : 'x', code : 'themes_upload_package_not_allowed', params : [ 'notes.txt' ], field : 'theme' };
+	fire( byId( later.theme, 'themes-export' ), 'click' );
+	later.serve();
+
+	check( 'U2. a theme whose folder was changed since the check is asked again before the file: the refusal is said at the button, and no file is asked for',
+		later.posted.length === 0 && byId( later.theme, 'themes-export' ).disabled === true && later.text( byId( later.theme, 'themes-export-hint' ) ) === Wp( 'hint/export-not', Wp( 'api/themes_upload_package_not_allowed', 'notes.txt' ) ) );
+}
+
+{
+	// a package that was shown, copied as an own theme
+	const w = world( { active : 'nino' } );
+
+	w.at( '#themes' );
+
+	const dialog = previewDialog( w, previewOfTheme() );
+
+	check( 'U3. the preview of a package has the button to copy it as an own theme, beside the one to install it',
+		findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim() === W('upload/own') } ).length === 1 && findAll( dialog, function( node ) { return node.tagName === 'BUTTON' && node.textContent.trim() === W('upload/submit-replace') } ).length === 1 );
+
+	const blocked = world( { active : 'nino' } );
+
+	blocked.at( '#themes' );
+
+	const only = previewDialog( blocked, previewOfTheme( { canInstall : false } ) );
+
+	check( 'U3. where the package may not be installed there is still the way to copy it: the dialog has the button to close and the button to copy, and none to install',
+		findAll( only, function( node ) { return node.tagName === 'BUTTON' } ).map( function( node ) { return node.textContent.trim() } ).filter( function( label ) { return label === W('upload/close') || label === W('upload/own') || label === W('upload/submit') || label === W('upload/submit-replace') } ).join() === [ W('upload/close'), W('upload/own') ].join() );
+
+	w.sent.length = 0;
+	pressed( w, W('upload/own') );
+
+	const sent = w.requests.map( function( request ) { return request.action+ ' '+ JSON.stringify( request.payload ) } );
+
+	check( 'U3. the copy sends the key that holds the bytes and the language - no name, the package\'s is the name - and nothing of the package', sent.length === 1 && sent[0] === 'themes/upload-own {"id":"'+ 'a'.repeat( 32 )+ '","name":"","locale":""}' );
+
+	w.serve();
+
+	check( 'U3. the list is drawn again with the copy in it, the line says that it is copied and is not on the website yet, and the focus is on the card of the copy',
+		w.byTag( w.list, 'article' ).some( function( card ) { return card.dataset.theme === 'own:second-look' } ) && w.text( w.byClass( w.list, 'themes-say' )[0] ) === Wp( 'msg/imported', 'Second look' )
+		&& findAll( w.list, function( node ) { return node.dataset.edit === 'own:second-look' } )[0].focused === true && w.sent.filter( function( request ) { return request.action === 'themes/upload-drop' } ).length === 0 );
+}
+
+{
+	// a name that an own theme has: asked again, the bytes stay held until the person goes on or leaves
+	const w = world( { active : 'nino' } );
+
+	w.importTaken = true;
+	w.at( '#themes' );
+	previewDialog( w, previewOfTheme( { name : 'Second look' } ) );
+	pressed( w, W('upload/own') );
+	w.serve();
+
+	const again = w.dialogs[w.dialogs.length - 1];
+	const input = findAll( again, function( node ) { return node.tagName === 'INPUT' } )[0];
+
+	check( 'U4. a name that is taken is a 409 at the name: the dialog of the name asks for another, with the sentence at the field and the name of the package in it, and the bytes are not let go of',
+		again.open === true && input !== undefined && input.value === 'Second look' && w.text( again ).indexOf( Wp( 'api/themes_name_taken', 'Second look' ) ) !== -1 && w.text( again ).indexOf( W('upload/own-note') ) !== -1
+		&& w.sent.filter( function( request ) { return request.action === 'themes/upload-drop' } ).length === 0 && w.requests.length === 0 );
+
+	input.value = 'Second look 2';
+	pressedOn( w );
+
+	check( 'U4. the name that is given is sent with the same key of the bytes', w.requests.length === 1 && w.requests[0].action === 'themes/upload-own' && w.requests[0].payload.name === 'Second look 2' && w.requests[0].payload.id === 'a'.repeat( 32 ) );
+
+	w.serve();
+
+	check( 'U4. ...and the copy is in the list under it', w.byTag( w.list, 'article' ).some( function( card ) { return card.dataset.theme === 'own:second-look-2' } ) );
+
+	// leaving the dialog of the name lets go of the bytes
+	const gone = world( { active : 'nino' } );
+
+	gone.importTaken = true;
+	gone.at( '#themes' );
+	previewDialog( gone, previewOfTheme() );
+	pressed( gone, W('upload/own') );
+	gone.serve();
+	pressed( gone, CANCEL );
+
+	check( 'U4. a person who leaves the dialog of the name lets go of the bytes that are held for the package, and nothing is copied',
+		gone.requests.length === 1 && gone.requests[0].action === 'themes/upload-drop' && gone.requests[0].payload.id === 'a'.repeat( 32 ) && gone.copies.length === 0 );
 }
 
 function Nino_format( text, ...params ) { return String( text ).replace( /%s/g, function() { return String( params.shift() ) } ) }

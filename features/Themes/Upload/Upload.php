@@ -47,7 +47,7 @@ namespace Nino\Modules\Themes {
 		private const array RESERVED = [ 'project', 'basis', 'own', 'themes', 'pack' ];
 
 		// The files a theme package may hold, as \Nino\Packages::check() says them - and nothing the check would refuse is asked of the reader
-		private const string ALLOWED = '~^(?:theme\.(?:json|css)|LICENSE\.txt|README\.md|preview\.webp|parts/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/part\.(?:json|css)|blocks/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/(?:block\.(?:json|tpl)|text/[a-z]{2}_[A-Z]{2}\.json|images/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)))$~D';
+		public const string ALLOWED = '~^(?:theme\.(?:json|css)|LICENSE\.txt|README\.md|preview\.webp|parts/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/part\.(?:json|css)|blocks/[a-z][a-z0-9]*(?:-[a-z0-9]+)*/(?:block\.(?:json|tpl)|text/[a-z]{2}_[A-Z]{2}\.json|images/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:svg|webp|png|jpg)))$~D';
 
 		// The longest text of a licence that a preview carries
 		private const int LICENCE = 65536;
@@ -81,7 +81,7 @@ namespace Nino\Modules\Themes {
 		 *
 		 *	@return 	array											'failure' => [ ... ]
 		 */
-		private static function _problem( array $problem ): array {
+		public static function problem( array $problem ): array {
 
 			$code = (string) ( $problem['code'] ?? '' );
 			$path = (string) ( $problem['path'] ?? '' );
@@ -161,6 +161,31 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	What this feature refuses of a theme package beyond what the kernel checks, as the failure of the panel: the suggestions for the brand are what the reader of the themes takes, and a
+		 *	name is drawn in a list, a card and a sentence - the length of a name of a block, and no character that turns a line round. Where a package is made - an export - it is held to the
+		 *	same, so that what leaves is what comes in
+		 *
+		 *	@param		array			$theme				The theme.json as a map
+		 *
+		 *	@return 	array|null								'failure' => [ ... ], or null
+		 */
+		public static function refuse( array $theme ): ?array {
+
+			$brand = Brand::suggestion( $theme['brand'] ?? [] );
+
+			// What the reader of the themes would refuse of the folder that is written, said before it is written
+			if( is_string( $brand ) === true )
+				return self::problem( [ 'code' => 'theme', 'path' => 'theme.json', 'params' => [ $brand ] ] );
+
+			foreach( [ 'name' => \Nino\Blocks::MAX_NAME, 'description' => \Nino\Blocks::MAX_DESCRIPTION ] as $field => $limit )
+				foreach( is_array( $theme[$field] ?? null ) === true ? $theme[$field] : [ $theme[$field] ?? '' ] as $text )
+					if( is_string( $text ) === false || mb_strlen( $text ) > $limit || preg_match( self::UNSAFE, $text ) === 1 )
+						return self::_fail( 400, 'package_words', [ $field, $limit ], 'file', 'the theme package is refused: "'. $field. '" is longer than '. $limit. ' characters or holds a control character' );
+
+			return null;
+		}
+
+		/**
 		 *	The files of a package that somebody gave, read and held to the rule of the catalogue's themes
 		 *
 		 *	@param		array 		&$appData
@@ -185,20 +210,14 @@ namespace Nino\Modules\Themes {
 			$problem = \Nino\Packages::check( $appData, \Nino\Packages::THEME, $files );
 
 			if( $problem !== null )
-				return self::_problem( $problem );
+				return self::problem( $problem );
 
 			$theme = (array) json_decode( (string) $files['theme.json'], true );
 			$brand = Brand::suggestion( $theme['brand'] ?? [] );
+			$refused = self::refuse( $theme );
 
-			// What the reader of the themes would refuse of the folder that is written, said before it is written
-			if( is_string( $brand ) === true )
-				return self::_problem( [ 'code' => 'theme', 'path' => 'theme.json', 'params' => [ $brand ] ] );
-
-			// A name is drawn in a list, a card and a sentence: the length of a name of a block, and no character that turns a line round
-			foreach( [ 'name' => \Nino\Blocks::MAX_NAME, 'description' => \Nino\Blocks::MAX_DESCRIPTION ] as $field => $limit )
-				foreach( is_array( $theme[$field] ?? null ) === true ? $theme[$field] : [ $theme[$field] ?? '' ] as $text )
-					if( is_string( $text ) === false || mb_strlen( $text ) > $limit || preg_match( self::UNSAFE, $text ) === 1 )
-						return self::_fail( 400, 'package_words', [ $field, $limit ], 'file', 'the theme package is refused: "'. $field. '" is longer than '. $limit. ' characters or holds a control character' );
+			if( $refused !== null )
+				return $refused;
 
 			return [ 'files' => $files, 'theme' => $theme, 'brand' => $brand ];
 		}
@@ -854,7 +873,7 @@ namespace Nino\Modules\Themes {
 				$placed = \Nino\Packages::place( $appData, \Nino\Packages::THEME, $key, $read['files'], $verify );
 
 				if( $placed !== true )
-					return self::_problem( $placed );
+					return self::problem( $placed );
 
 				$hash = self::_hash( \Nino\Packages::dir( $appData, \Nino\Packages::THEME, $key ) );
 
@@ -937,7 +956,7 @@ namespace Nino\Modules\Themes {
 					$gone = \Nino\Packages::remove( $appData, \Nino\Packages::THEME, $key );
 
 					if( $gone !== true )
-						return self::_problem( $gone );
+						return self::problem( $gone );
 
 					self::changeMarks( $appData, static function( array $marks ) use ( $key ): array {
 

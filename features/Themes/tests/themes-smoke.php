@@ -393,8 +393,8 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( dirnam
 check( 'no file of the feature names a glob flag that only some systems define'. ( $named === [] ? '' : ' - '. implode( ', ', $named ) ), $named === [] );
 
 $panels = \Nino\Admin\Admin::panels( $appData );
-check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its sixteen actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
-	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/thumb', 'themes/save', 'themes/save-as', 'themes/duplicate', 'themes/brand', 'themes/apply', 'themes/keep', 'themes/restore', 'themes/delete', 'themes/upload-check', 'themes/upload', 'themes/upload-drop', 'themes/remove' ]
+check( 'the API is a panel of the workbench, with the right /_admin/themes/manage, and its eighteen actions are the ones the workbench dispatches', isset( $panels['themes'] ) === true && $panels['themes']['class'] === \Nino\Modules\Themes\Admin::class
+	&& \Nino\Modules\Themes\Admin::perm() === '/_admin/themes/manage' && array_keys( \Nino\Modules\Themes\Admin::actions() ) === [ 'themes/list', 'themes/open', 'themes/preview', 'themes/thumb', 'themes/save', 'themes/save-as', 'themes/duplicate', 'themes/brand', 'themes/apply', 'themes/keep', 'themes/restore', 'themes/export', 'themes/delete', 'themes/upload-check', 'themes/upload', 'themes/upload-drop', 'themes/upload-own', 'themes/remove' ]
 	&& array_diff( array_keys( \Nino\Modules\Themes\Admin::actions() ), array_keys( \Nino\Admin\Admin::actions( $appData ) ) ) === [] );
 
 $source = (string) file_get_contents( $featureDir. '/Admin/Admin.php' ). (string) file_get_contents( $featureDir. '/Store/Store.php' );

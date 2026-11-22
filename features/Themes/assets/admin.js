@@ -117,6 +117,7 @@
 		blocked		: '',
 		leftFor		: '',
 		partSteps	: '',
+		exported	: null,
 	};
 
 	/**
@@ -1476,6 +1477,8 @@
 		const restoreHint = Nino.adminUi.hint('');
 		const keepButton = Nino.adminUi.button( word('label/keep'), function() { keepState( keepButton ) }, { className : 'nino-admin-btn--small', id : 'themes-keep' } );
 		const keepHint = Nino.adminUi.hint('');
+		const exportButton = own === true ? Nino.adminUi.button( word('label/export'), function() { exportOwn( exportButton ) }, { className : 'nino-admin-btn--small', id : 'themes-export' } ) : null;
+		const exportHint = Nino.adminUi.hint('');
 		const removeButton = own === true ? Nino.adminUi.button( word('label/delete'), function() { remove( removeButton ) }, { className : 'nino-admin-btn--small nino-admin-btn-danger', id : 'themes-delete' } ) : null;
 		const removeHint = Nino.adminUi.hint('');
 
@@ -1486,6 +1489,7 @@
 		restoreHint.id = 'themes-restore-hint';
 		keepHint.id = 'themes-keep-hint';
 		keepButton.setAttribute( 'aria-describedby', 'themes-keep-hint' );
+		exportHint.id = 'themes-export-hint';
 		removeHint.id = 'themes-delete-hint';
 		copyHint.id = 'themes-duplicate-hint';
 		restoreButton.setAttribute( 'aria-describedby', 'themes-restore-hint' );
@@ -1494,6 +1498,9 @@
 		if( removeButton !== null )
 			removeButton.setAttribute( 'aria-describedby', 'themes-delete-hint' );
 
+		if( exportButton !== null )
+			exportButton.setAttribute( 'aria-describedby', 'themes-export-hint' );
+
 		body.appendChild( field );
 		body.appendChild( hint );
 		body.appendChild( el( 'div', 'nino-admin-field-name themes-fieldname', word('label/mix') ) );
@@ -1501,6 +1508,10 @@
 		actions.appendChild( saveNew );
 		actions.appendChild( copyButton );
 		actions.appendChild( keepButton );
+
+		if( exportButton !== null )
+			actions.appendChild( exportButton );
+
 		actions.appendChild( restoreButton );
 
 		if( removeButton !== null )
@@ -1509,10 +1520,14 @@
 		body.appendChild( actions );
 		body.appendChild( copyHint );
 		body.appendChild( keepHint );
+
+		if( exportButton !== null )
+			body.appendChild( exportHint );
+
 		body.appendChild( restoreHint );
 		body.appendChild( removeHint );
 
-		S.view.one = { saveNew : saveNew, copy : copyButton, copyHint : copyHint, keep : keepButton, keepHint : keepHint, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
+		S.view.one = { saveNew : saveNew, copy : copyButton, copyHint : copyHint, keep : keepButton, keepHint : keepHint, export : exportButton, exportHint : exportHint, restore : restoreButton, restoreHint : restoreHint, remove : removeButton, removeHint : removeHint };
 		paintSettings();
 
 		return body;
@@ -1536,6 +1551,18 @@
 
 		one.keep.disabled = held === false || dirty === true;
 		one.keepHint.textContent = held === false ? word('hint/keep-none') : ( dirty === true ? word('hint/restore-dirty') : ( said === '' ? word('hint/keep-plain') : word( 'hint/keep-from', said ) ) );
+		if( one.export !== null ) {
+
+			const found = S.exported !== null && S.exported.key === S.key && S.exported.stamp === S.stamp ? S.exported : null;
+
+			// What can be exported is what the folder holds: the draft is not in it, and the check of the package is asked of the server for the folder as it is
+			one.export.disabled = dirty === true || found === null || found.ok !== true;
+			one.exportHint.textContent = dirty === true ? word('hint/restore-dirty') : ( found === null ? word('hint/export-wait') : ( found.ok === true ? word('hint/export') : word( 'hint/export-not', found.why ) ) );
+
+			if( found === null && dirty === false )
+				checkExport();
+		}
+
 		one.restore.disabled = S.canRestore !== true || dirty === true;
 		one.restoreHint.textContent = S.canRestore !== true ? word('hint/restore-none') : ( dirty === true ? word('hint/restore-dirty') : word( 'hint/restore', lastSaid() ) );
 
@@ -2412,6 +2439,90 @@
 		} );
 
 		return Object.keys( by ).map( function( source ) { return source.replace( '%s', function() { return by[source].join(', ') } ) } ).join(' \u00b7 ');
+	};
+
+	// The package of an own theme is asked of the server first - the whole check of the kernel - so that a theme that cannot be exported says why on its button, and the download that
+	// follows is the file. What was asked is kept for the theme and the stamp of its folder
+	const checkExport = function() {
+
+		if( S.theme === null || S.theme.kind !== 'own' || ( S.exported !== null && S.exported.key === S.key && S.exported.stamp === S.stamp ) )
+			return;
+
+		const asked = { key : S.key, stamp : S.stamp, ok : null, why : '' };
+
+		S.exported = asked;
+
+		Nino.admin.themes.call( 'export', { theme : S.key, check : true }, function( status, response ) {
+
+			asked.ok = status === 200;
+			asked.why = asked.ok === true ? '' : Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/export' );
+
+			if( S.exported === asked )
+				paintSettings();
+		} );
+	};
+
+	// The file is asked of the server by a form that posts into a frame nobody sees: a file that is saved does not load, so what loads there is the refusal
+	const download = function( body ) {
+
+		let frame = dc.getElementById('themes-download');
+
+		if( frame === null ) {
+			frame = dc.createElement('iframe');
+			frame.id = 'themes-download';
+			frame.name = 'themes-download';
+			frame.hidden = true;
+			frame.setAttribute( 'title', word('label/export') );
+			frame.setAttribute( 'tabindex', '-1' );
+			dc.body.appendChild( frame );
+		}
+
+		const fields = { action : 'themes/export', data : JSON.stringify( body ) };
+		const csrf = dc.querySelector( 'input[name="_csrf"]' );
+
+		if( csrf !== null )
+			fields._csrf = csrf.value;
+
+		const form = dc.createElement('form');
+
+		form.method = 'post';
+		form.action = ( typeof Nino.dir === 'string' ? Nino.dir : '' )+ '/_admin'+ '/';
+		form.target = 'themes-download';
+		form.hidden = true;
+
+		Object.keys( fields ).forEach( function( name ) {
+
+			const input = dc.createElement('input');
+
+			input.type = 'hidden';
+			input.name = name;
+			input.value = fields[name];
+			form.appendChild( input );
+		} );
+
+		dc.body.appendChild( form );
+		form.submit();
+		dc.body.removeChild( form );
+	};
+
+	const exportOwn = function( opener ) {
+
+		// Asked again for the folder as it is now, so that a refusal is said here and the file that follows is the one that was asked about
+		Nino.admin.themes.call( 'export', { theme : S.key, check : true }, function( status, response ) {
+
+			if( status !== 200 ) {
+
+				S.exported = { key : S.key, stamp : S.stamp, ok : false, why : Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/export' ) };
+				paintSettings();
+
+				return;
+			}
+
+			download( { theme : S.key } );
+
+			if( S.view !== null )
+				S.view.line.idle( word( 'msg/exported', response.file ) );
+		} );
 	};
 
 	/**
@@ -3868,6 +3979,50 @@
 		} );
 	};
 
+	// The package as it was shown, copied as an own theme under its name or - where that name is taken, or is none an own theme may have - under the one that is asked for
+	const copyUploaded = function( preview, theme, opener ) {
+
+		const about = { title : word('upload/own-title'), message : word('upload/own-note') };
+		const cancelled = function() {
+			Nino.admin.themes.call( 'upload-drop', { id : preview.id }, function() {} );
+			land( opener, null );
+		};
+
+		const send = function( name ) {
+
+			Nino.admin.themes.call( 'upload-own', { id : preview.id, name : name, locale : uploadLocale() }, function( status, response ) {
+
+				if( status === 200 ) {
+
+					refreshList( function() {
+						Nino.admin.themes.say( word( 'msg/imported', themeName( response.theme ) ) );
+
+						// The list was drawn again: the card of the copy is a new one, and its link is where the focus goes
+						land( dc.getElementById('themes-list').querySelector( '[data-edit="'+ response.theme+ '"]' ), null );
+					} );
+
+					return;
+				}
+
+				if( ( status === 400 || status === 409 ) && response !== null && typeof response === 'object' && response.field === 'name' ) {
+
+					askName( name !== '' ? name : localized( theme.name ), Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/upload' ), function( again ) {
+						if( again === null )
+							cancelled();
+						else
+							send( again );
+					}, about, opener );
+
+					return;
+				}
+
+				Nino.admin.themes.say( Nino.adminUi.api.errorText( status, response, '/_admin/themes/error/upload' ) );
+			} );
+		};
+
+		send('');
+	};
+
 	// The package as it was shown: put in place on Install, let go of on anything else
 	const askUploadPreview = function( preview, opener ) {
 
@@ -3876,7 +4031,10 @@
 		const replacing = theme.installed !== null && theme.installed.replace === true;
 		const choices = [ { value : 'cancel', label : theme.canInstall === true ? Nino.adminUi.text('/_admin/common/label/cancel') : word('upload/close'), kind : theme.canInstall === true ? 'secondary' : 'primary' } ];
 
-		// Where the package may not be put in, there is nothing to press: the preview says why
+		// A package is copied as an own theme where it may not be installed as well - the key of the own theme is its own - and nothing is installed or put on the website by it
+		choices.push( { value : 'own', label : word('upload/own'), kind : 'secondary' } );
+
+		// Where the package may not be put in, there is nothing more to press: the preview says why
 		if( theme.canInstall === true )
 			choices.push( { value : 'install', label : replacing === true ? word('upload/submit-replace') : word('upload/submit'), kind : 'primary' } );
 
@@ -3900,6 +4058,11 @@
 				return true;
 			},
 			onChoose	: function( value ) {
+
+				if( value === 'own' ) {
+					copyUploaded( preview, theme, opener );
+					return;
+				}
 
 				// A preview that is left lets go of the bytes that are held for it
 				if( value !== 'install' ) {

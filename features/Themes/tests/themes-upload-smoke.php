@@ -10,6 +10,7 @@ declare(strict_types=1);
  *														C. what may not come in: every archive, path, kind of package and text the rule refuses, and what is left out of what comes in is said
  *														D. the bytes that are held, the right and the token, and the picture of a block that a script is in
  *														E. away: not while the website shows it or an own theme takes parts from it; there and back through the existing way of applying
+ *														L. an own theme as a package, to save - after the whole check - and a package as an own theme: a copy of its folder, nothing installed, nothing applied
  *
  *	Usage: php features/Themes/tests/themes-upload-smoke.php
  *				 NINO_ROOT=../nino php features/Themes/tests/themes-upload-smoke.php
@@ -19,6 +20,14 @@ $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
 
+// What the feature reads from the disk is watched from the first request on: a function of the namespace of the feature that is called first is the one every later call finds
+$spy = sys_get_temp_dir(). '/themes-upload-spy-'. getmypid(). '.php';
+file_put_contents( $spy, "<?php\nnamespace Nino\\Modules\\Themes {\n\tfunction file_get_contents( string \$filename, bool \$use_include_path = false, \$context = null, int \$offset = 0, ?int \$length = null ): string|false {\n\t\t\$GLOBALS['spied'][] = \$filename;\n\t\treturn \\file_get_contents( \$filename, \$use_include_path, \$context, \$offset, \$length );\n\t}\n}\n" );
+require $spy;
+unlink( $spy );
+$spied = [];
+
+use Nino\Modules\Themes\Mix;
 use Nino\Modules\Themes\Upload;
 
 const UP_BUNDLE = '/.cache/style.css';
@@ -86,10 +95,10 @@ function upFiles( string $dir ): array {
 	return $out;
 }
 
-/** What a package could change of a project: the packages, the blocks, the stylesheet and the state of the themes - and not the log, the locks and the cache a request writes whatever it does */
+/** What a package could change of a project: the packages, the blocks, the stylesheet, the own themes and the state of the themes - and not the log, the locks and the cache a request writes whatever it does */
 function upWritten( array &$appData ): array {
 
-	return array_filter( upFiles( ninoSandboxDir( $appData ) ), static fn( string $path ): bool => preg_match( '~^/(?:private/packages|private/blocks|private/assets|assets|private/data/theme/(?:state|copies|uploads\.json))~', $path ) === 1, ARRAY_FILTER_USE_KEY );
+	return array_filter( upFiles( ninoSandboxDir( $appData ) ), static fn( string $path ): bool => preg_match( '~^/(?:private/packages|private/blocks|private/assets|assets|private/themes|private/data/theme/(?:current|previous|state|copies|uploads\.json))~', $path ) === 1, ARRAY_FILTER_USE_KEY );
 }
 
 /** An archive the way a tool that does not care writes it: ustar entries of [ name, bytes, type ], gzip over them */
@@ -979,10 +988,346 @@ $sayings = [ 'de_DE' => require dirname( __DIR__ ). '/text/de_DE.php', 'en_US' =
 $codes = array_merge(
 	array_map( static fn( string $code ): string => 'themes_upload_archive_'. str_replace( '-', '_', $code ), [ 'gzip', 'bomb', 'trailing', 'truncated', 'header', 'type', 'pax', 'path', 'depth', 'folder', 'duplicate', 'name', 'count', 'file-size', 'total-size', 'unsupported', 'refused' ] ),
 	array_map( static fn( string $code ): string => 'themes_upload_package_'. str_replace( '-', '_', $code ), [ 'empty', 'files-many', 'bytes-many', 'path', 'twice', 'not-allowed', 'missing', 'long', 'text', 'json', 'file-key', 'file-slug', 'file-version', 'file-words', 'file-markup', 'file-map', 'parts-many', 'part', 'part_values', 'css', 'theme_css', 'theme_css_any', 'block', 'preview', 'brand', 'words', 'block_loop', 'block_place', 'block_text', 'block_source', 'busy', 'unlockable', 'stage', 'swap', 'refused' ] ),
-	array_map( static fn( string $code ): string => 'themes_upload_'. $code, [ 'large', 'nofile', 'unknown', 'exists', 'taken_shipped', 'taken_catalogue', 'taken_project', 'not_uploaded', 'in_use_active', 'in_use_last', 'busy', 'key_reserved', 'key_like', 'not_newer_same', 'not_newer_older', 'replace_held_active', 'replace_held_last', 'too_many', 'block_displaces' ] )
+	array_map( static fn( string $code ): string => 'themes_upload_'. $code, [ 'large', 'nofile', 'unknown', 'exists', 'taken_shipped', 'taken_catalogue', 'taken_project', 'not_uploaded', 'in_use_active', 'in_use_last', 'busy', 'key_reserved', 'key_like', 'not_newer_same', 'not_newer_older', 'replace_held_active', 'replace_held_last', 'too_many', 'block_displaces' ] ),
+	[ 'themes_export_unknown', 'themes_export_rejected', 'themes_export_archive', 'themes_export_large', 'themes_import_name' ]
 );
 $unsaid = array_filter( $codes, static fn( string $code ): bool => isset( $sayings['de_DE']['[[/_admin/error/'. $code. ']]'], $sayings['en_US']['[[/_admin/error/'. $code. ']]'] ) === false );
 
-check( 'every refusal of the upload has its sentence in both languages - each code of the reader of archives, each of the rule of the packages, each of the rules of the panel - and each code is one the panel looks a sentence up by: letters, digits and underscores', $unsaid === [] && array_filter( $codes, static fn( string $code ): bool => preg_match( '/^[a-z][a-z0-9_]*$/D', $code ) !== 1 ) === [] );
+check( 'every refusal of the upload and of the export has its sentence in both languages - each code of the reader of archives, each of the rule of the packages, each of the rules of the panel, each of the export and of the copy as an own theme - and each code is one the panel looks a sentence up by: letters, digits and underscores', $unsaid === [] && array_filter( $codes, static fn( string $code ): bool => preg_match( '/^[a-z][a-z0-9_]*$/D', $code ) !== 1 ) === [] );
+
+echo "\nL. An own theme as a package, and a package as an own theme\n";
+
+$site = upSite();
+$_SESSION = [];
+$own = ninoSandboxDir( $site ). '/private/themes';
+$packages = ninoSandboxDir( $site ). '/private/packages';
+$each = max( \Nino\Blocks::MAX_PICTURE, \Nino\Packages::MAX_PREVIEW );
+
+/** A folder of an own theme written by hand: the files of a package, as they are */
+$put = static function( string $key, array $files ) use ( $own, &$site ): string {
+
+	$folder = $own. '/'. $key;
+	\Nino\Filesystem::removeDir( $folder );
+
+	foreach( $files as $path => $bytes ) {
+		@mkdir( dirname( $folder. '/'. $path ), 0755, true );
+		file_put_contents( $folder. '/'. $path, $bytes );
+	}
+
+	unset( $site['./nino/themes/own'] );
+
+	return $folder;
+};
+$read = static fn( string $bytes, string $folder ): array|string => \Nino\Archive::read( $bytes, $folder, 3 * $limits['files'], $each, $limits['bytes'] );
+
+// the folder of an own theme, packed
+$files = upFiles2( 'hand-made', '1.2.0' );
+$folder = $put( 'hand-made', $files );
+$folderBefore = upFiles( $folder );
+[ $status, $bytes, $request ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made' ] );
+$back = is_string( $bytes ) === true ? $read( $bytes, 'hand-made' ) : 'none';
+$header = $request['/nino/http/response']['header'] ?? [];
+
+check( 'an own theme is exported as a package of the form the catalogue holds a theme to: one folder named for its key, and in it every file of the folder of the theme - theme.json, the parts, the blocks, the picture, the licence and the readme - byte for byte, and nothing else',
+	$status === 200 && is_array( $back ) === true && $back == $files && array_diff( array_keys( $files ), array_keys( $back ) ) === [] );
+
+check( 'what is exported is what the kernel takes as a theme package, and nothing of the project is written by the export: the folder is as it was, and no file is made in the packages, in the state of the website or in the own themes',
+	is_array( $back ) === true && \Nino\Packages::check( $site, \Nino\Packages::THEME, $back ) === null && upFiles( $folder ) === $folderBefore && is_dir( $packages ) === false && upWritten( $site ) === array_filter( upWritten( $site ), static fn( string $path ): bool => str_starts_with( $path, '/private/themes/hand-made/' ), ARRAY_FILTER_USE_KEY ) );
+
+check( 'the download is a file the kernel answers as one (Http::download): the type of a gzip, an attachment named for the key and the version of the theme, no cache, no sniffing, the length of the bytes, and the bytes are a gzip stream',
+	( $header['Content-Type'] ?? '' ) === 'application/gzip' && ( $header['Content-Disposition'] ?? '' ) === 'attachment; filename="hand-made-1.2.0.tar.gz"' && ( $header['Cache-Control'] ?? '' ) === 'private, no-store'
+	&& ( $header['X-Content-Type-Options'] ?? '' ) === 'nosniff' && is_string( $bytes ) === true && str_starts_with( $bytes, "\x1f\x8b" ) === true && ( $header['Content-Length'] ?? '' ) === (string) strlen( $bytes )
+	&& ( $request['/nino/http/response']['raw'] ?? false ) === true );
+
+[ $came ] = upChoose( $site, (string) $bytes );
+upCall( $site, 'themes/upload-drop', [ 'id' => upHeld() ] );
+
+check( 'what is exported is what comes in: the package of an export is read by the check of the upload - the same rules of the words and of the brand - and shown, 200', $came === 200 );
+
+[ $dry, $said ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made', 'check' => true ] );
+
+check( 'a request that asks only whether it can be exported is answered with the name of the file, its size and the number of files - JSON, no file - and the size is the size of the file that follows',
+	$dry === 200 && is_array( $said ) === true && ( $said['file'] ?? '' ) === 'hand-made-1.2.0.tar.gz' && ( $said['size'] ?? 0 ) === strlen( (string) $bytes ) && ( $said['files'] ?? 0 ) === count( $files ) );
+
+// a theme that cannot be exported says why - each reason is a sentence of the panel - and no file is made of it
+$bad = [
+	'a part whose css the rule refuses'							=> [ [ 'parts/button/part.css' => "@import 'x.css';\n.nino-button { color: red; }\n" ], 'themes_upload_package_css' ],
+	'a theme.json that is no JSON'									=> [ [ 'theme.json' => '{ not json' ], 'themes_export_rejected' ],
+	'a file a package does not have'								=> [ [ 'notes.txt' => 'my notes' ], 'themes_upload_package_not_allowed' ],
+	'a file too large'															=> [ [ 'README.md' => str_repeat( 'x', 70000 ) ], 'themes_upload_package_long' ],
+	'a picture that is no webp'											=> [ [ 'preview.webp' => 'not a picture' ], 'themes_upload_package_preview' ],
+	'no theme.json'																	=> [ [ 'theme.json' => null ], 'themes_export_rejected' ],
+	'a description longer than a description may be'	=> [ [ 'theme.json' => json_encode( array_merge( json_decode( $files['theme.json'], true ), [ 'description' => str_repeat( 'd', \Nino\Blocks::MAX_DESCRIPTION + 1 ) ] ) ) ], 'themes_upload_package_words' ],
+	'a name with a control character'								=> [ [ 'theme.json' => json_encode( array_merge( json_decode( $files['theme.json'], true ), [ 'name' => "Two\nlines" ] ) ) ], 'themes_upload_package_words' ],
+	'a folder too deep'															=> [ [ 'blocks/a-block/images/deep/x.png' => 'x' ], 'themes_upload_package_path' ],
+];
+$told = [];
+
+foreach( $bad as $what => [ $change, $code ] ) {
+
+	$made = $files;
+
+	foreach( $change as $path => $bytes )
+		if( $bytes === null )
+			unset( $made[$path] );
+		else
+			$made[$path] = $bytes;
+
+	$folder = $put( 'hand-made', $made );
+	$before = upFiles( $folder );
+	[ $statusDry, $bodyDry ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made', 'check' => true ] );
+	[ $statusFile, $bodyFile ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made' ] );
+	$sentence = $sayings['en_US']['[[/_admin/error/'. ( $bodyDry['code'] ?? '' ). ']]'] ?? '';
+	$told[$what] = $statusDry === 400 && ( $bodyDry['code'] ?? '' ) === $code && $statusFile === 400 && is_array( $bodyFile ) === true && ( $bodyFile['code'] ?? '' ) === $code && $sentence !== '' && upFiles( $folder ) === $before;
+}
+
+check( 'a theme that the kernel would refuse as a package is not exported - the answer is a 400 with the reason, for the question and for the file, and no file is sent: '. implode( '; ', array_keys( $bad ) ), array_values( array_unique( $told ) ) === [ true ] && count( $told ) === count( $bad ) );
+
+// the limits of a package are those of the whole of it: what is more is said at once, with the words of the check, before another file is read
+$bigRead = static function( array $names ): int {
+
+	global $spied;
+
+	return count( array_filter( (array) $spied, static fn( string $path ): bool => in_array( basename( $path ), $names, true ) === true && str_contains( $path, '/themes/hand-made/' ) === true && filesize( $path ) >= 1000000 ) );
+};
+$sized = [];
+
+foreach( [
+	'a file of more than a package may be'	=> [ [ 'README.md' => str_repeat( 'x', 5000000 ) ], 'themes_upload_package_long', 0 ],
+	'files that are more together'					=> [ [ 'LICENSE.txt' => str_repeat( 'x', 2000000 ), 'README.md' => str_repeat( 'x', 2000000 ), 'preview.webp' => str_repeat( 'x', 2000000 ) ], 'themes_upload_package_bytes_many', 2 ],
+	'more files than a package may have'		=> [ array_combine( array_map( static fn( int $at ): string => 'notes-'. $at. '.txt', range( 1, 405 ) ), array_fill( 0, 405, 'x' ) ), 'themes_upload_package_files_many', 400 ],
+] as $what => [ $change, $code, $most ] ) {
+
+	$made = array_merge( $files, $change );
+	$folder = $put( 'hand-made', $made );
+	$spied = [];
+	[ $statusDry, $bodyDry ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made', 'check' => true ] );
+	[ $statusFile, $bodyFile ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made' ] );
+	$reads = $code === 'themes_upload_package_files_many' ? count( array_filter( $spied, static fn( string $path ): bool => str_contains( $path, '/themes/hand-made/notes-' ) === true ) ) / 2 : $bigRead( [ 'LICENSE.txt', 'README.md', 'preview.webp' ] ) / 2;
+	$sized[$what] = $statusDry === 400 && ( $bodyDry['code'] ?? '' ) === $code && $statusFile === 400 && ( $bodyFile['code'] ?? '' ) === $code && $reads <= $most && is_array( $bodyDry ) === true && preg_match( '/(?:more|longer) than \d+/', (string) ( $bodyDry['error'] ?? '' ) ) === 1;
+}
+
+check( 'a package is held to its limits as a whole while the folder is read: a file of more than a package may be is "too long" with its limit, files that are more together than a package may be are "more than" it - the third of three files of two megabytes is not read - and more files than a package may have end the reading at the limit; each an answer of 400 with the reason, never a 500: '. implode( '; ', array_keys( $sized ) ), array_values( array_unique( $sized ) ) === [ true ] );
+
+// a folder the reader refuses is no theme to export: the name of the folder and the key in its theme.json disagree
+$mismatch = $files;
+$mismatch['theme.json'] = json_encode( array_merge( json_decode( $files['theme.json'], true ), [ 'key' => 'ex-mismatch' ] ) );
+$put( 'ex-folder', $mismatch );
+[ $rejectedDry, $bodyRejected ] = upCall( $site, 'themes/export', [ 'theme' => 'own:ex-folder', 'check' => true ] );
+[ $rejectedFile, $bodyRejectedFile ] = upCall( $site, 'themes/export', [ 'theme' => 'own:ex-folder' ] );
+[ $mismatchKey ] = upCall( $site, 'themes/export', [ 'theme' => 'own:ex-mismatch' ] );
+
+check( 'a folder that the reader of the own themes refuses - its name is not the key in its theme.json - is not exported: 400 with the reason, for the question and for the file, no archive with a root that is not its key; the key in its theme.json is no own theme either: 404',
+	$rejectedDry === 400 && ( $bodyRejected['code'] ?? '' ) === 'themes_export_rejected' && $rejectedFile === 400 && is_array( $bodyRejectedFile ) === true && ( $bodyRejectedFile['code'] ?? '' ) === 'themes_export_rejected' && $mismatchKey === 404 );
+\Nino\Filesystem::removeDir( $own. '/ex-folder' );
+$folder = $put( 'hand-made', $files );
+
+// what a package may weigh as an archive: noise in the pictures of blocks does not pack smaller, and the archive that is more than a package may be is refused
+$noise = '';
+
+if( function_exists( 'imagecreatetruecolor' ) === true ) {
+
+	$picture = imagecreatetruecolor( 380, 380 );
+	mt_srand( 7 );
+
+	for( $y = 0; $y < 380; $y++ )
+		for( $x = 0; $x < 380; $x++ )
+			imagesetpixel( $picture, $x, $y, mt_rand( 0, 16777215 ) );
+
+	ob_start();
+	imagepng( $picture, null, 0 );
+	$noise = (string) ob_get_clean();
+}
+
+$heavy = $files;
+
+foreach( range( 1, 6 ) as $at ) {
+
+	foreach( [ 'block.json', 'block.tpl', 'text/de_DE.json', 'text/en_US.json' ] as $name )
+		$heavy['blocks/heavy-'. $at. '/'. $name] = (string) file_get_contents( $root. '/_nino/Nino/Modules/Basis/blocks/split-image-text/'. $name );
+
+	$heavy['blocks/heavy-'. $at. '/images/picture.png'] = $noise;
+}
+
+$put( 'hand-made', $heavy );
+[ $largeStatus, $largeBody ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made', 'check' => true ] );
+
+check( 'an archive that is more than a package may weigh is refused after it is packed: six pictures of noise in the blocks of the folder - each one a file the check takes - give an archive of more than two megabytes, 400 with the limit, no file',
+	$noise !== '' && strlen( $noise ) < \Nino\Blocks::MAX_PICTURE && $largeStatus === 400 && ( $largeBody['code'] ?? '' ) === 'themes_export_large' );
+$folder = $put( 'hand-made', $files );
+
+// a link in the folder is not followed and not packed
+$folder = $put( 'hand-made', $files );
+$secret = ninoSandboxDir( $site ). '/outside-secret.txt';
+file_put_contents( $secret, 'the secret of the project' );
+symlink( $secret, $folder. '/README.md.link' );
+unlink( $folder. '/README.md' );
+symlink( $secret, $folder. '/README.md' );
+[ $linked, $bodyLinked ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made' ] );
+
+check( 'a link in the folder of an own theme is not followed and not packed: the theme is not exported, with the reason of a path that is none, and what the link points at is not in any answer',
+	$linked === 400 && is_array( $bodyLinked ) === true && ( $bodyLinked['code'] ?? '' ) === 'themes_upload_package_path' && str_contains( json_encode( $bodyLinked ), 'the secret' ) === false && is_link( $folder. '/README.md' ) === true );
+
+unlink( $folder. '/README.md' );
+unlink( $folder. '/README.md.link' );
+$folder = $put( 'hand-made', $files );
+
+// what can be exported is an own theme: an installed theme, a key that is no key, a folder outside, and a theme that is not there
+upChoose( $site, upPack( upFiles2( 'second-look' ) ) );
+upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+$refused = [];
+
+foreach( [ 'an installed theme' => 'second-look', 'the theme of the shipped ones' => 'nino', 'an own theme that is not there' => 'own:not-there', 'a key that leaves the folder' => 'own:../themes/hand-made', 'a key of a slash' => 'own:hand-made/..', 'no key' => 'own:', 'nothing' => '' ] as $what => $theme ) {
+
+	[ $statusOne, $bodyOne ] = upCall( $site, 'themes/export', [ 'theme' => $theme ] );
+	[ $statusTwo ] = upCall( $site, 'themes/export', [ 'theme' => $theme, 'check' => true ] );
+	$refused[$what] = $statusOne === 404 && $statusTwo === 404 && is_array( $bodyOne ) === true && ( $bodyOne['code'] ?? '' ) === 'themes_export_unknown';
+}
+
+check( 'only an own theme is exported: an installed theme, the shipped one, an own theme that is not there, a key that leaves the folder and a key that is none are each a 404 and no file: '. implode( '; ', array_keys( $refused ) ), array_values( array_unique( $refused ) ) === [ true ] );
+
+// the token and the right
+$mine = upFiles( $folder );
+[ $noToken ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made' ], 403 );
+ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/features/manage' ] );
+[ $noRight ] = upCall( $site, 'themes/export', [ 'theme' => 'own:hand-made' ] );
+[ $noRightUpload ] = upCall( $site, 'themes/upload-own', [ 'id' => str_repeat( '0', 32 ) ] );
+[ $noRightDirect ] = ninoCall( $site, [ \Nino\Modules\Themes\Admin::class, 'apiExport' ], [ 'theme' => 'own:hand-made' ], null, 200 );
+ninoUser( $site, 'designer@example.com', [ \Nino\Modules\Themes::PERM ] );
+
+check( 'the export and the copy of a package are actions of the panel: a request that failed its token and an account that has other rights and not the right of the panel are refused, 403, and no file is sent',
+	$noToken === 403 && $noRight === 403 && $noRightUpload === 403 && $noRightDirect === 403 && upFiles( $folder ) === $mine );
+
+// any installed theme's part may be in a package: the parts of an installed theme under a licence that forbids copying are bundled as they are
+$licenced = upFiles2( 'under-licence', '2.0.0' );
+$licenced['LICENSE.txt'] = "All rights reserved. This theme may not be copied or handed on.\n";
+upChoose( $site, upPack( $licenced, 'under-licence' ) );
+upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+[ $copied, $copy ] = upCall( $site, 'themes/duplicate', [ 'theme' => 'under-licence', 'name' => 'My copy' ] );
+unset( $site['./nino/themes/own'] );
+[ $copyStatus, $copyBytes ] = upCall( $site, 'themes/export', [ 'theme' => 'own:my-copy' ] );
+$copyFiles = is_string( $copyBytes ) === true ? $read( $copyBytes, 'my-copy' ) : [];
+
+check( 'the parts of an installed theme are bundled freely: an own theme made of a theme that has a licence of its own is exported with the parts of that theme, byte for byte, whatever the licence says - no restriction is made on what is packed',
+	$copied === 200 && $copyStatus === 200 && is_array( $copyFiles ) === true && ( $copyFiles['parts/button/part.json'] ?? 'x' ) === $licenced['parts/button/part.json'] && ( $copyFiles['parts/button/part.css'] ?? 'x' ) === $licenced['parts/button/part.css']
+	&& \Nino\Packages::check( $site, \Nino\Packages::THEME, $copyFiles ) === null );
+
+// a package copied as an own theme
+$site = upSite();
+$_SESSION = [];
+$own = ninoSandboxDir( $site ). '/private/themes';
+$packages = ninoSandboxDir( $site ). '/private/packages';
+$files = upFiles2( 'second-look', '1.2.0' );
+$packed = upPack( $files );
+upChoose( $site, $packed );
+$id = upHeld();
+$before = upWritten( $site );
+[ $status, $done ] = upCall( $site, 'themes/upload-own', [ 'id' => $id ] );
+[ , $list ] = upCall( $site, 'themes/list' );
+$card = array_values( array_filter( $list['themes'] ?? [], static fn( array $one ): bool => $one['key'] === 'own:zweiter-blick' ) )[0] ?? [];
+$copyFolder = $own. '/zweiter-blick';
+$now = upFiles( $copyFolder );
+$wanted = array_map( static fn( string $bytes ): string => hash( 'sha256', $bytes ), array_diff_key( $files, [ 'theme.json' => 1 ] ) );
+$wanted = array_combine( array_map( static fn( string $path ): string => '/'. $path, array_keys( $wanted ) ), array_values( $wanted ) );
+ksort( $wanted );
+$theme = (array) json_decode( (string) @file_get_contents( $copyFolder. '/theme.json' ), true );
+$first = (array) json_decode( $files['theme.json'], true );
+
+check( 'a package that was shown is copied as an own theme: its folder is made in private/themes/ with every file of the package byte for byte, and the theme.json is the package\'s with nothing made over but the key of the folder, which is the one its name in the language of the site makes - the answer says which own theme it is, and it is in the list as one',
+	$status === 200 && ( $done['theme'] ?? '' ) === 'own:zweiter-blick' && array_diff_key( $now, [ '/theme.json' => 1 ] ) === $wanted && $theme === array_merge( $first, [ 'key' => 'zweiter-blick' ] ) && ( $card['kind'] ?? '' ) === 'own' && ( $card['active'] ?? true ) === false );
+
+$after = upWritten( $site );
+$changed = array_keys( array_diff_assoc( $after, $before ) + array_diff_assoc( $before, $after ) );
+
+check( 'only the folder of the own theme is written, and the website is not touched: nothing is installed - there is no package folder, no uploaded theme, no block of the project - nothing is applied, and the state of the website has no theme - only its record of the change is written; the bytes that were held are let go of',
+	$changed !== [] && array_filter( $changed, static fn( string $path ): bool => str_starts_with( $path, '/private/themes/zweiter-blick/' ) === false && $path !== '/private/data/theme/current/saved.json' ) === [] && is_dir( $packages ) === false
+	&& array_key_exists( 'active', $list ) === true && $list['active'] === null && ( \Nino\Modules\Themes\Store::read( $site )['active']['theme'] ?? '' ) === '' && isset( $_SESSION[Upload::SESSION] ) === false
+	&& array_filter( array_column( $list['themes'] ?? [], 'origin', 'key' ), static fn( string $origin ): bool => $origin === 'uploaded' ) === [] && is_file( ninoSandboxDir( $site ). '/private/data/theme/current/theme/theme.json' ) === false );
+
+// the folder is a theme the reader takes and the check takes, and it is exported as the package it came from
+[ $exportStatus, $exportBytes ] = upCall( $site, 'themes/export', [ 'theme' => 'own:zweiter-blick' ] );
+$again = is_string( $exportBytes ) === true ? $read( $exportBytes, 'zweiter-blick' ) : [];
+
+check( 'the copy is whole: the reader of the own themes takes it - with its parts - and exported it gives the package again, file for file',
+	$exportStatus === 200 && is_array( $again ) === true && array_diff_key( $again, [ 'theme.json' => 1 ] ) == array_diff_key( $files, [ 'theme.json' => 1 ] ) && ( (array) json_decode( $again['theme.json'] ?? '', true ) )['key'] === 'zweiter-blick' );
+check( '...and an own theme whose parts are the package\'s is one the panel can open: its card has the part of the package',
+	array_keys( $card['parts'] ?? [] ) === [ 'button' ] && ( $card['parts']['button']['ok'] ?? false ) === true );
+
+// the same package once more: its name is taken, and that is said at the name; the bytes stay held and nothing is written
+upChoose( $site, $packed );
+$id = upHeld();
+$before = upWritten( $site );
+[ $taken, $bodyTaken ] = upCall( $site, 'themes/upload-own', [ 'id' => $id ] );
+$stays = upHeld() === $id && upWritten( $site ) === $before;
+[ $other, $bodyOther ] = upCall( $site, 'themes/upload-own', [ 'id' => $id, 'name' => 'Another look' ] );
+$otherTheme = (array) json_decode( (string) @file_get_contents( $own. '/another-look/theme.json' ), true );
+
+check( 'a name that an own theme has is a 409 at the field "name", the bytes stay held and nothing is written; asked again under another name the folder has the key of that name, its theme.json has that key and that name, and the rest of the package is as it was',
+	$taken === 409 && ( $bodyTaken['code'] ?? '' ) === 'themes_name_taken' && ( $bodyTaken['field'] ?? '' ) === 'name' && $stays === true && $other === 200 && ( $bodyOther['theme'] ?? '' ) === 'own:another-look'
+	&& ( $otherTheme['key'] ?? '' ) === 'another-look' && ( $otherTheme['name'] ?? '' ) === 'Another look' && ( $otherTheme['description'] ?? '' ) === $first['description'] && ( $otherTheme['version'] ?? '' ) === '1.2.0'
+	&& array_diff_key( upFiles( $own. '/another-look' ), [ '/theme.json' => 1 ] ) === $wanted && isset( $_SESSION[Upload::SESSION] ) === false );
+
+// names that an own theme may not have, and a package that is not the one that was shown
+upChoose( $site, $packed );
+$id = upHeld();
+$before = upWritten( $site );
+$names = [];
+
+foreach( [ 'markup' => 'A <b>look</b>', 'a line break' => "Two\nlines", 'too long' => str_repeat( 'n', Mix::NAME_LENGTH + 1 ) ] as $what => $name ) {
+
+	[ $statusName, $bodyName ] = upCall( $site, 'themes/upload-own', [ 'id' => $id, 'name' => $name ] );
+	$names[$what] = $statusName === 400 && ( $bodyName['code'] ?? '' ) === 'themes_import_name' && ( $bodyName['field'] ?? '' ) === 'name';
+}
+
+[ $unknown ] = upCall( $site, 'themes/upload-own', [ 'id' => str_repeat( '0', 32 ), 'name' => 'Nothing' ] );
+[ $noTokenOwn ] = upCall( $site, 'themes/upload-own', [ 'id' => $id, 'name' => 'No token' ], 403 );
+// the action itself, past the dispatcher of the workbench: each guards itself
+$directly = static function( string $method, array $data, int $before ) use ( &$site ): int {
+	return ninoCall( $site, [ \Nino\Modules\Themes\Admin::class, $method ], $data, null, $before )[0];
+};
+$noTokenDirectOwn = $directly( 'apiUploadOwn', [ 'id' => $id, 'name' => 'No token' ], 403 );
+ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/features/manage' ] );
+[ $noRightOwn ] = upCall( $site, 'themes/upload-own', [ 'id' => $id, 'name' => 'No right' ] );
+$noRightDirectOwn = $directly( 'apiUploadOwn', [ 'id' => $id, 'name' => 'No right' ], 200 );
+ninoUser( $site, 'designer@example.com', [ \Nino\Modules\Themes::PERM ] );
+$_SESSION[Upload::SESSION]['bytes'] = $archives['a php file'] ?? 'x';
+[ $altered ] = upCall( $site, 'themes/upload-own', [ 'id' => $id, 'name' => 'Altered' ] );
+
+check( 'a name that has markup, a line break or more characters than a name may have is a 400 at the field "name" with its sentence, a key that is not held is a 403, held bytes that are not the ones that were held are a 403, a request without its token or without the right of the panel is a 403 - and nothing is written: '. implode( '; ', array_keys( $names ) ),
+	array_values( array_unique( $names ) ) === [ true ] && $unknown === 403 && $altered === 403 && $noTokenOwn === 403 && $noRightOwn === 403 && $noTokenDirectOwn === 403 && $noRightDirectOwn === 403 && upWritten( $site ) === $before );
+
+// where the key of the package is the key of an installed theme, the copy is still possible: the own theme has a key of its own
+$site = upSite();
+$_SESSION = [];
+$own = ninoSandboxDir( $site ). '/private/themes';
+upChoose( $site, $packed );
+upCall( $site, 'themes/upload', [ 'id' => upHeld() ] );
+upChoose( $site, $packed );
+[ $both ] = upCall( $site, 'themes/upload-own', [ 'id' => upHeld() ] );
+[ , $list ] = upCall( $site, 'themes/list' );
+
+check( 'a package whose key is the key of an installed theme is copied all the same - the own theme has its own key in its own folder, and the installed theme is as it was: both are in the list',
+	$both === 200 && is_dir( $own. '/zweiter-blick' ) === true && array_column( $list['themes'] ?? [], 'kind', 'key' ) === [ 'nino' => 'theme', 'second-look' => 'theme', 'own:zweiter-blick' => 'own' ] );
+
+// a theme that is written by hand: the files that are not of a package never get into the folder of an own theme
+$stray = \Nino\Modules\Themes\Mix::place( $site, 'stray', [ 'theme.json' => '{}', '../outside.php' => '<?php' ] );
+$strays = \Nino\Modules\Themes\Mix::place( $site, 'stray', [ 'theme.json' => '{}', 'parts/button/part.php' => '<?php' ] );
+
+check( 'a folder is written whole or not at all: files that a package does not have - a path that leaves the folder, a script - are refused and nothing is made',
+	is_string( $stray ) === true && is_string( $strays ) === true && file_exists( $own. '/stray' ) === false && file_exists( ninoSandboxDir( $site ). '/private/outside.php' ) === false && array_filter( (array) scandir( $own ), static fn( string $entry ): bool => str_starts_with( $entry, '.stray' ) ) === [] );
+
+// there is a limit to the own themes: where the folders are as many as there may be, the copy is refused and nothing is made
+for( $count = 1; $count <= \Nino\Modules\Themes\Store::MAX_OWN; $count++ )
+	@mkdir( $own. '/filler-'. $count, 0755, true );
+
+unset( $site['./nino/themes/own'] );
+$full = array_values( array_filter( (array) scandir( $own ), static fn( string $entry ): bool => $entry[0] !== '.' ) );
+upChoose( $site, $packed );
+$id = upHeld();
+[ $limited, $bodyLimited ] = upCall( $site, 'themes/upload-own', [ 'id' => $id, 'name' => 'One more' ] );
+
+check( 'where the own themes are as many as there may be, a package is not copied: a 409 with the number, the bytes stay held, and no folder is made',
+	$limited === 409 && ( $bodyLimited['code'] ?? '' ) === 'themes_limit' && upHeld() === $id && is_dir( $own. '/one-more' ) === false && array_values( array_filter( (array) scandir( $own ), static fn( string $entry ): bool => $entry[0] !== '.' ) ) === $full );
+
 
 ninoDone( $site );

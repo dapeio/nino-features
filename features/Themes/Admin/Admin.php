@@ -45,10 +45,12 @@ namespace Nino\Modules\Themes {
 				'themes/apply'		=> [ self::class, 'apiApply' ],
 				'themes/keep'		=> [ self::class, 'apiKeep' ],
 				'themes/restore'	=> [ self::class, 'apiRestore' ],
+				'themes/export'		=> [ self::class, 'apiExport' ],
 				'themes/delete'		=> [ self::class, 'apiDelete' ],
 				'themes/upload-check'	=> [ self::class, 'apiUploadCheck' ],
 				'themes/upload'		=> [ self::class, 'apiUpload' ],
 				'themes/upload-drop'	=> [ self::class, 'apiUploadDrop' ],
+				'themes/upload-own'	=> [ self::class, 'apiUploadOwn' ],
 				'themes/remove'		=> [ self::class, 'apiRemove' ],
 			];
 		}
@@ -97,6 +99,8 @@ namespace Nino\Modules\Themes {
 				'themes/restore'	=> 'Restore Last Theme State',
 				'themes/delete'		=> 'Delete Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				'themes/upload'		=> 'Upload Theme',
+				'themes/upload-own'	=> 'Copy Uploaded Theme As Own Theme',
+				'themes/export'		=> 'Export Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				'themes/remove'		=> 'Remove Theme '. self::_shown( \Nino\Admin\Admin::postString( $data, 'theme' ) ),
 				default						=> '',
 			};
@@ -680,6 +684,109 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	The package that was shown, copied as an own theme: read and held to the rule AGAIN from the bytes that are held, and made a folder of private/themes/ with its files as they are
+		 *	- only the key in its theme.json is the key of the folder, and its name is the one that is asked for, where one is. Nothing of the package is installed and nothing is
+		 *	applied: the theme is in the list afterwards, as any own theme is, and is put on the website where a person asks for that
+		 */
+		public static function apiUploadOwn( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$bytes = Upload::held( $appData, \Nino\Admin\Admin::postString( $data, 'id' ) );
+
+			if( $bytes === null ) {
+				self::_fail( $request, [ 403, 'there is no such package held for this session', 'themes_upload_unknown', [], 'id' ] );
+				return;
+			}
+
+			$read = Upload::read( $appData, $bytes );
+
+			if( isset( $read['failure'] ) === true ) {
+				self::_fail( $request, $read['failure'] );
+				return;
+			}
+
+			$asked = trim( \Nino\Admin\Admin::postString( $data, 'name' ) );
+			$theme = $read['theme'];
+			$files = $read['files'];
+
+			// Its name is the one the reader of the own themes will call it by - the name in the native language of the site, else English, else the first - which is what names are compared by
+			$name = $asked !== '' ? $asked : ( is_string( $theme['name'] ?? null ) === true ? $theme['name'] : (string) ( $theme['name'][\Nino\Locales::getNativeLocale( $appData )] ?? $theme['name']['en_US'] ?? reset( $theme['name'] ) ) );
+
+			// The name of an own theme is one line of at most the length the panel lets it have, and a package has no markup in it
+			if( mb_strlen( $name ) > Mix::NAME_LENGTH || preg_match( '/[\x00-\x1F\x7F<>]|\[\[/', $name ) === 1 ) {
+				self::_fail( $request, [ 400, 'the name is text of 1 to '. Mix::NAME_LENGTH. ' characters, in one line', 'themes_import_name', [ Mix::NAME_LENGTH ], 'name' ] );
+				return;
+			}
+
+			$made = '';
+			$failure = Store::commit( $appData, static function( array &$appData, string $next ) use ( &$made, $name, $asked, $theme, $files ): ?array {
+
+				$failure = self::_room( $appData, $name, $made );
+
+				if( $failure !== null )
+					return $failure;
+
+				// The folder is the package's; its theme.json is the one thing that is made over, for the key of the folder and the name that is asked for
+				$theme['key'] = $made;
+
+				if( $asked !== '' )
+					$theme['name'] = $asked;
+
+				$files['theme.json'] = json_encode( $theme, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ). "\n";
+				$problem = \Nino\Packages::check( $appData, \Nino\Packages::THEME, $files );
+
+				if( $problem !== null )
+					return Upload::problem( $problem )['failure'];
+
+				$done = Mix::place( $appData, $made, $files );
+
+				return is_string( $done ) === true ? [ 500, 'the theme could not be written: '. $done, 'themes_write', [ self::_shown( $done ) ], '' ] : null;
+			}, ( $data['force'] ?? false ) === true );
+
+			// The bytes are let go of once the theme is made; where it was refused - the name is taken, another change was at work - they stay, and the person asks again
+			if( $failure === null )
+				Upload::release();
+
+			self::_finish( $appData, $request, 'own:'. $made, $failure );
+		}
+
+		/**
+		 *	An own theme as a package, to save: its folder is packed after the whole check of the kernel - what the catalogue would not take is not handed out - and an answer that says it is made
+		 *	(`check`) is what the panel asks first and again where the state of the theme changes, so that a theme that cannot be exported is said so, with the reason, and the download
+		 *	that follows is the file. Nothing is written. The name of the file is the key and the version of the theme, which the check has seen
+		 */
+		public static function apiExport( array &$appData, array &$request ): void {
+
+			if( self::_gate( $appData, $request ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+			$theme = \Nino\Admin\Admin::postString( $data, 'theme' );
+
+			if( str_starts_with( $theme, 'own:' ) === false ) {
+				self::_fail( $request, [ 404, 'there is no such own theme', 'themes_export_unknown', [], 'theme' ] );
+				return;
+			}
+
+			$made = Package::export( $appData, substr( $theme, 4 ) );
+
+			if( isset( $made['failure'] ) === true ) {
+				self::_fail( $request, $made['failure'] );
+				return;
+			}
+
+			if( ( $data['check'] ?? false ) === true ) {
+				\Nino\Http::ok( $request, [ 'file' => $made['file'], 'size' => strlen( $made['bytes'] ), 'files' => $made['files'] ] );
+				return;
+			}
+
+			\Nino\Http::download( $request, $made['bytes'], $made['file'], 'application/gzip' );
+		}
+
+		/**
 		 *	A theme that was uploaded here, taken away
 		 */
 		public static function apiRemove( array &$appData, array &$request ): void {
@@ -920,6 +1027,51 @@ namespace Nino\Modules\Themes {
 		}
 
 		/**
+		 *	The room for a new own theme: its name is new, there is room for one more, and the key it is made under - the slug of its name, behind a letter where it has none, or the
+		 *	next free one - a key is taken by any entry of the folder, whatever it is: a folder the reader refuses, a link, a file
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					The name of the new theme
+		 *	@param		string		&$made				(reference) The key
+		 *
+		 *	@return 	array|null								The failure, or null
+		 */
+		private static function _room( array &$appData, string $name, string &$made ): ?array {
+
+			$names = self::_ownNames( $appData );
+
+			foreach( $names as $other )
+				if( self::_sameName( $name, $other ) === true )
+					return [ 409, 'an own theme of that name is there', 'themes_name_taken', [ $other ], 'name' ];
+
+			// A folder that the reader refuses is a folder all the same: there is no room for a theme where the folders are as many as there may be
+			$own = Reader::own( $appData, true );
+
+			if( count( $own['themes'] ) + count( $own['rejected'] ) >= Store::MAX_OWN )
+				return [ 409, 'there are as many own themes as there may be', 'themes_limit', [ Store::MAX_OWN ], '' ];
+
+			$base_key = \Nino\Feature::slug( $name, \Nino\Components::NAME_LENGTH );
+
+			if( $base_key === '' )
+				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
+
+			// A key begins with a letter: a name that begins with a digit - a year, a number - has the key of its slug behind a letter
+			if( preg_match( \Nino\Components::NAME, $base_key ) !== 1 )
+				$base_key = rtrim( substr( 't-'. $base_key, 0, \Nino\Components::NAME_LENGTH ), '-' );
+
+			if( preg_match( \Nino\Components::NAME, $base_key ) !== 1 )
+				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
+
+			$dir = Reader::ownDir( $appData );
+			$made = $base_key;
+
+			for( $count = 2; isset( $names[$made] ) === true || file_exists( $dir. '/'. $made ) === true || is_link( $dir. '/'. $made ) === true; $count++ )
+				$made = substr( $base_key, 0, \Nino\Components::NAME_LENGTH - strlen( '-'. $count ) ). '-'. $count;
+
+			return null;
+		}
+
+		/**
 		 *	Make a new own theme in a state being made: its name must be new, there must be room for it, and its key is the name's - or the next free one
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -932,36 +1084,10 @@ namespace Nino\Modules\Themes {
 		 */
 		private static function _create( array &$appData, string $next, array $prepared, ?array $base, string &$made ): ?array {
 
-			$names = self::_ownNames( $appData );
+			$failure = self::_room( $appData, (string) $prepared['mix']['name'], $made );
 
-			foreach( $names as $name )
-				if( self::_sameName( (string) $prepared['mix']['name'], $name ) === true )
-					return [ 409, 'an own theme of that name is there', 'themes_name_taken', [ $name ], 'name' ];
-
-			// A folder that the reader refuses is a folder all the same: there is no room for a theme where the folders are as many as there may be
-			$own = Reader::own( $appData, true );
-
-			if( count( $own['themes'] ) + count( $own['rejected'] ) >= Store::MAX_OWN )
-				return [ 409, 'there are as many own themes as there may be', 'themes_limit', [ Store::MAX_OWN ], '' ];
-
-			$base_key = \Nino\Feature::slug( (string) $prepared['mix']['name'], \Nino\Components::NAME_LENGTH );
-
-			if( $base_key === '' )
-				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
-
-			// A key begins with a letter: a name that begins with a digit - a year, a number - has the key of its slug behind a letter
-			if( preg_match( \Nino\Components::NAME, $base_key ) !== 1 )
-				$base_key = rtrim( substr( 't-'. $base_key, 0, \Nino\Components::NAME_LENGTH ), '-' );
-
-			if( preg_match( \Nino\Components::NAME, $base_key ) !== 1 )
-				return [ 400, 'the name has no letter or digit to make a key of', 'themes_name', [], 'name' ];
-
-			// A key is taken by any entry of the folder, whatever it is: a folder the reader refuses, a link, a file
-			$dir = Reader::ownDir( $appData );
-			$made = $base_key;
-
-			for( $count = 2; isset( $names[$made] ) === true || file_exists( $dir. '/'. $made ) === true || is_link( $dir. '/'. $made ) === true; $count++ )
-				$made = substr( $base_key, 0, \Nino\Components::NAME_LENGTH - strlen( '-'. $count ) ). '-'. $count;
+			if( $failure !== null )
+				return $failure;
 
 			return self::_write( $appData, $next, $made, $prepared, $base, false );
 		}

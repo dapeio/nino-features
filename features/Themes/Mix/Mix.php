@@ -309,6 +309,39 @@ namespace Nino\Modules\Themes {
 			if( is_string( $files ) === true )
 				return $files;
 
+			return self::_put( $appData, $key, $files, $base, $over, true );
+		}
+
+		/**
+		 *	Write the folder of a new own theme from the files of a package, as they are: the folder is the package's, byte for byte - what the caller has made of its theme.json is
+		 *	what is written. The folder is made as write() makes one: next to its place, then in it, with the journal written first
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The key of the theme, which is the key in its theme.json
+		 *	@param		array			$files				path => bytes
+		 *
+		 *	@return 	bool|string								true, or what is wrong
+		 */
+		public static function place( array &$appData, string $key, array $files ): bool|string {
+
+			if( preg_match( \Nino\Components::NAME, $key ) !== 1 || strlen( $key ) > \Nino\Components::NAME_LENGTH )
+				return 'the key of the theme is a slug';
+
+			// Only the files a package has, at the paths it has them: nothing that leaves the folder, nothing the reader of a theme does not know
+			foreach( $files as $path => $bytes )
+				if( is_string( $bytes ) === false || preg_match( Upload::ALLOWED, (string) $path ) !== 1 )
+					return 'a file is none a package has';
+
+			return self::_put( $appData, $key, $files, null, false, false );
+		}
+
+		/**
+		 *	The folder of an own theme made of files, in place and written down: what write() and place() have in common
+		 *
+		 *	@param		bool			$groups				Whether the folders of the groups the register has are the files' alone - what a mix writes - and not what the old folder had
+		 */
+		private static function _put( array &$appData, string $key, array $files, ?array $base, bool $over, bool $groups ): bool|string {
+
 			\Nino\Filesystem::forceDir( $appData, \Nino\Modules\Themes::OWN );
 
 			$dir = Reader::ownDir( $appData );
@@ -328,8 +361,9 @@ namespace Nino\Modules\Themes {
 
 			// What is carried of the folder of a group the register has is not carried: the part of such a group is what the mix says and the files that are written for it - a file in
 			// it that nobody named is none of the theme's. The parts of groups no feature here brings are the theme's to keep
-			foreach( array_merge( [ 'page' ], array_keys( \Nino\Components::groups( $appData ) ) ) as $group )
-				\Nino\Filesystem::removeDir( $new. '/parts/'. $group );
+			if( $groups === true )
+				foreach( array_merge( [ 'page' ], array_keys( \Nino\Components::groups( $appData ) ) ) as $group )
+					\Nino\Filesystem::removeDir( $new. '/parts/'. $group );
 
 			foreach( $files as $path => $text ) {
 

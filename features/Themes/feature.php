@@ -76,8 +76,8 @@ return [
 				'de_DE' => 'Der Bildschirm der Werkbank für die Themes: die Liste, und je Theme Gruppen, Marke, Einstellungen und eigenes CSS neben einer Vorschau des Entwurfs oder einer Demo; das Recht: /_admin/themes/manage.',
 			],
 			'Themes > Upload theme' => [
-				'en_US' => 'A theme package (.tar.gz) is checked and shown first; one uploaded here is replaced by a higher version and removed here, and blocks ask the right of the features too.',
-				'de_DE' => 'Ein Theme-Paket (.tar.gz) wird zuerst geprüft und gezeigt; ein hier hochgeladenes wird durch eine höhere Version ersetzt und hier entfernt, Blocks verlangen auch das Recht der Features.',
+				'en_US' => 'A theme package (.tar.gz) is checked and shown first; one uploaded here is replaced by a higher version, removed here or copied as an own theme; blocks ask the right of the features too.',
+				'de_DE' => 'Ein Theme-Paket (.tar.gz) wird zuerst geprüft und gezeigt; ein hochgeladenes wird ersetzt, entfernt oder als eigenes Theme kopiert; Blocks verlangen auch das Recht der Features.',
 			],
 			'Themes > Fonts' => [
 				'en_US' => 'The fonts of public/fonts/ with their licence and their place in the brand, and the signed list of the repository, loaded on the button alone, to install a family from.',
@@ -116,8 +116,8 @@ return [
 				'de_DE' => 'Der Stand der Website - die Kopie ihres Themes, die Marke, das Stylesheet - und der davor sowie die Schlüssel hochgeladener Themes; das Backup nimmt sie mit und ein Update ändert sie nicht.',
 			],
 			'private/themes/<key>/' => [
-				'en_US' => 'An own theme: a folder in the form of a theme package that the panel writes whole; a package folder copied in by hand is one as well.',
-				'de_DE' => 'Ein eigenes Theme: ein Ordner in der Form eines Theme-Pakets, den das Panel ganz schreibt; ein von Hand hineinkopierter Paketordner ist ebenfalls eines.',
+				'en_US' => 'An own theme: a folder in the form of a theme package that the panel writes whole and can pack as a .tar.gz; a package folder copied in by hand is one as well.',
+				'de_DE' => 'Ein eigenes Theme: ein Ordner in der Form eines Theme-Pakets, den das Panel ganz schreibt und als .tar.gz packt; ein von Hand kopierter Paketordner ist ebenfalls eines.',
 			],
 			'public/fonts/<slug>/' => [
 				'en_US' => 'A family installed from the repository: .woff2 files, LICENSE.txt and font.json, checked against the signed list and moved into place whole; a folder put there by hand is not replaced.',
