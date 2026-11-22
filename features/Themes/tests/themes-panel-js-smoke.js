@@ -4359,11 +4359,11 @@ function nameField( w ) {
 	en.state.hash = '#themes';
 	check( 'T4. every card has a button to edit with the word Edit, beside the link of the card, and it leads to the address the link has', pressed.length === 4 && pressed.every( function( one ) { return one === true } ) && words.de['/_admin/themes/card/edit'] === 'Bearbeiten' );
 
-	const select = en.byTag( en.list, 'select' ).find( function( one ) { return one.parentNode !== null && classes( one.parentNode ).indexOf('themes-from') !== -1 } );
+	const select = en.byTag( en.list, 'select' ).find( function( one ) { return classes( one ).indexOf('themes-from') !== -1 || ( one.parentNode !== null && classes( one.parentNode ).indexOf('themes-from') !== -1 ) } );
 	const bar = en.byClass( en.list, 'nino-admin-filterbar' )[0];
 
 	check( 'T5. a choice of the origin stands over the list at the left of the search, in the bar of the filter, with the origins the site has - all, own, uploaded, catalogue, shipped - and none of the others; all is the one that is chosen',
-		select !== undefined && select.children.map( function( option ) { return option.value } ).join() === 'all,own,uploaded,catalogue,shipped' && select.value === 'all' && bar.children[0] === select.parentNode
+		select !== undefined && select.children.map( function( option ) { return option.value } ).join() === 'all,own,uploaded,catalogue,shipped' && select.value === 'all' && bar.children[0] === ( classes( select ).indexOf('themes-from') !== -1 ? select : select.parentNode )
 		&& select.children.map( function( option ) { return option.textContent } ).join() === 'All,Own themes,Uploaded themes,Catalogue themes,Shipped' && shown( en ) === 'nino,rest,craft,own:lindner' );
 
 	const asked = en.requests.length;
@@ -4482,6 +4482,58 @@ function nameField( w ) {
 	w.serve();
 
 	check( 'F330 d. where the kernel gives no codes - the answer has none - the sentences of the kernel are said as they are', w.text( byId( w.theme, 'themes-css-problem' ) ) === Nino_format( words.en['/_admin/error/themes_css_rule'], w.cssRule.join('; ') ) );
+}
+
+{
+	// The choice of the origin is drawn by the bar of the workbench where that has a select of its own, and by a select field put in front of the search where it has not: one list of options for
+	// both, tried with a bar that is made to be the one or the other
+	const way = function( bar ) {
+
+		const w = world( { active : 'nino' } );
+		const calls = [];
+		const original = w.ui.filterBar;
+
+		w.ui.filterBar = function( options ) {
+
+			calls.push( options );
+
+			const made = original.call( this, Object.assign( {}, options, { filter : undefined } ) );
+
+			if( bar === 'with' )
+				made.select = w.doc.createElement('select');
+			else
+				delete made.select;
+
+			return made;
+		};
+
+		w.at( '#themes' );
+
+		const fields = findAll( w.list, function( node ) { return node.tagName === 'SELECT' && node.dataset.key === 'themes-from' } );
+		const filter = calls.map( function( options ) { return options.filter } ).filter( function( one ) { return one !== undefined } )[0];
+
+		return { w : w, calls : calls, fields : fields, filter : filter, drawn : calls.length };
+	};
+	const withBar = way('with');
+	const withoutBar = way('without');
+	const cardsOf = function( w ) { return w.byTag( w.list, 'article' ).filter( function( one ) { return one.hidden !== true } ).map( function( one ) { return one.dataset.theme } ).join() };
+	const listed = function( one ) { return one.filter.options.map( function( option ) { return option.value } ).join()+ '|'+ one.filter.value+ '|'+ one.filter.label };
+
+	check( 'F333 b. where the bar of the workbench has a select of its own it is given the choice of the origin - the origins the site has, the one that is chosen and its name for a screen reader - and one bar is made, with no select field of the panel',
+		listed( withBar ) === 'all,own,uploaded,catalogue,shipped|all|'+ W('list/filter') && withBar.drawn === 1 && withBar.fields.length === 0 && typeof withBar.filter.onChange === 'function' && withBar.calls[0].search.id === 'themes-search' );
+
+	check( 'F333 b. ...and where it has none the same options, the same one chosen and the same name are a select field of the panel, the first in the bar, once - and a choice in it sets the origin as a choice in the bar does',
+		withoutBar.drawn === 1 && withoutBar.fields.length === 1 && findAll( withoutBar.fields[0], function( node ) { return node.tagName === 'OPTION' } ).map( function( node ) { return node.value } ).join() === 'all,own,uploaded,catalogue,shipped'
+		&& withoutBar.fields[0].value === 'all' && withoutBar.w.byClass( withoutBar.w.list, 'nino-admin-filterbar' )[0].children[0] === withoutBar.fields[0].parentNode );
+
+	const asked = withBar.w.requests.length;
+
+	withBar.filter.onChange( 'own' );
+	withoutBar.fields[0].value = 'own';
+	fire( withoutBar.fields[0], 'change' );
+
+	check( 'F333 b. a choice in the bar and one in the field are one act: the same cards are left, the address is the same, and nothing is asked of the server',
+		cardsOf( withBar.w ) === cardsOf( withoutBar.w ) && cardsOf( withBar.w ) === 'own:lindner' && withBar.w.state.hash === withoutBar.w.state.hash && withBar.w.requests.length === asked );
 }
 
 // --- AE. an own theme is a folder: where its parts come from is what the server finds in the files ---------------------------------------

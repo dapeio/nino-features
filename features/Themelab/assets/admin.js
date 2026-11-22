@@ -717,13 +717,25 @@
 
 		if( rows.length === 0 ) {
 
-			holder.appendChild( chooser( data, null ) );
+			// With no row there is no table: the bar of the choice stands alone over the sentence
+			if( barHasSelect() === true ) {
+
+				const bar = Nino.adminUi.filterBar( { filter : choice( data ) } );
+
+				named( bar.select );
+				holder.appendChild( bar.el );
+			}
+			else
+				holder.appendChild( chooser( data ) );
+
 			holder.appendChild( Nino.adminUi.emptyState( word( own === true || N.from === 'all' ? 'msg/none-project' : 'msg/none-theme' ) ) );
 		}
 		else {
 
-			const table = Nino.adminUi.table( {
+			const inBar = barHasSelect();
+			Nino.adminUi.table( {
 				mount			: holder,
+				filter		: inBar === true ? choice( data ) : undefined,
 				rowKey		: 'key',
 				columns		: [
 					{ key : 'tile', label : word('list/preview'), type : 'string', render : tileCell, sortable : false },
@@ -752,7 +764,15 @@
 				},
 			} );
 
-			holder.querySelector('.nino-admin-table-toolbar').insertBefore( chooser( data, table ), holder.querySelector('.nino-admin-table-search') );
+			if( inBar === true ) {
+
+				const drawn = holder.querySelector('.nino-admin-table-toolbar').querySelector('select');
+
+				if( drawn !== null )
+					named( drawn );
+			}
+			else
+				holder.querySelector('.nino-admin-table-toolbar').insertBefore( chooser( data ), holder.querySelector('.nino-admin-table-search') );
 		}
 
 		N.button = null;
@@ -776,18 +796,42 @@
 		return source === undefined ? origin : localized( source.label );
 	};
 
-	// The choice of the blocks to show, beside the search: all, the own ones, and one entry for each source the site has blocks of - by its name. It filters at once
-	const chooser = function( data, table ) {
+	// The choice of the blocks to show, beside the search: all, the own ones, and one entry for each source the site has blocks of - by its name. It filters at once. The options and what a
+	// choice does are one thing, drawn by the table of the workbench where it has a select of its own (a bar that says so by the select it gives back), else by a select field put in front of the search
+	const choice = function( data ) {
 
 		const options = [ { value : 'all', label : word('source/all') }, { value : 'own', label : word('tab/project') } ].concat( data.sources.map( function( source ) { return { value : source.key, label : source.theme === true ? word( 'tab/theme', localized( source.label ) ) : localized( source.label ) } } ) );
-		const field = Nino.adminUi.selectField( { key : 'themelab-from', label : word('source/label'), options : options, value : N.from, onChange : function( value ) {
+
+		return { id : 'themelab-from', label : word('source/label'), options : options, value : N.from, onChange : function( value ) {
 
 			if( value !== N.from ) {
 
 				N.from = kept( value );
 				Nino.admin.themelab.go( tabParts( 'blocks' ) );
 			}
-		} } );
+		} };
+	};
+
+	// Whether the bar of the workbench draws a select of its own: asked of it, as it answers with the select - a bar without one answers with the field of the search alone
+	const barHasSelect = function() {
+
+		const probe = typeof Nino.adminUi.filterBar === 'function' ? Nino.adminUi.filterBar( { filter : { options : [], label : '' } } ) : null;
+
+		return probe !== null && probe.select !== undefined && probe.select !== null;
+	};
+
+	// The select the bar of the workbench drew is the select of the choice as the field's is: by its key and its class
+	const named = function( select ) {
+
+		select.dataset.key = 'themelab-from';
+		select.classList.add('themelab-from');
+	};
+
+	// The choice as a field in front of the search, for a workbench whose bar has no select
+	const chooser = function( data ) {
+
+		const wanted = choice( data );
+		const field = Nino.adminUi.selectField( { key : 'themelab-from', label : wanted.label, options : wanted.options, value : wanted.value, onChange : wanted.onChange } );
 
 		field.classList.add('themelab-from');
 
@@ -2549,7 +2593,7 @@
 				if( redraw === true ) {
 
 					render( N.data );
-					Nino.adminUi.showLevel( 'themelab-list', { focus : dc.getElementById('themelab-list').querySelector('.themelab-from select') ?? false } );
+					Nino.adminUi.showLevel( 'themelab-list', { focus : dc.getElementById('themelab-list').querySelector('.themelab-from select, select.themelab-from') ?? false } );
 
 					return;
 				}

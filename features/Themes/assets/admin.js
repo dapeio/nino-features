@@ -4785,24 +4785,36 @@
 
 		if( data.themes.length > 0 ) {
 
-			const choice = Nino.adminUi.selectField( { key : 'themes-from', label : word('list/filter'), options : origins.map( function( origin ) { return { value : origin, label : word( 'list/from/'+ origin ) } } ), value : S.from, onChange : function( value ) {
+			// The options of the choice are one list, drawn by the bar of the workbench where it has a select of its own, else by a select field put in front of the search
+			const filter = { label : word('list/filter'), options : origins.map( function( origin ) { return { value : origin, label : word( 'list/from/'+ origin ) } } ), value : S.from, onChange : function( value ) {
 				S.from = value;
 				keptFrom( value );
 				Nino.admin.router.set( 'themes', listParts() );
 				S.applyFilter();
-			} } );
-
-			// The name of the choice is for a screen reader: the choice stands at the left of the search with no caption over it
-			choice.classList.add('themes-from');
-			choice.querySelectorAll( ':scope > span' ).forEach( function( caption ) { caption.classList.add('nino-admin-sr-only') } );
-
-			const filters = Nino.adminUi.filterBar( { search : { value : S.find, label : word('list/search'), placeholder : word('list/search'), id : 'themes-search', onInput : function( value ) {
+			} };
+			const search = { value : S.find, label : word('list/search'), placeholder : word('list/search'), id : 'themes-search', onInput : function( value ) {
 				S.find = value;
 				S.applyFilter();
-			} }, items : [ Nino.adminUi.fieldHelp( data.active === null ? word('hint/list-none') : word('hint/list'), { name : word('help/list-name') } ) ] } );
+			} };
+			const help = Nino.adminUi.fieldHelp( data.active === null ? word('hint/list-none') : word('hint/list'), { name : word('help/list-name') } );
+			const drawn = Nino.adminUi.filterBar( { filter : filter, search : search, items : [ help ] } );
 
-			filters.el.insertBefore( choice, filters.el.firstChild );
-			mount.appendChild( filters.el );
+			if( drawn.select !== undefined && drawn.select !== null ) {
+
+				drawn.select.dataset.key = 'themes-from';
+				drawn.select.classList.add('themes-from');
+			}
+			else {
+
+				const choice = Nino.adminUi.selectField( { key : 'themes-from', label : filter.label, options : filter.options, value : filter.value, onChange : filter.onChange } );
+
+				// The name of the choice is for a screen reader: the choice stands at the left of the search with no caption over it
+				choice.classList.add('themes-from');
+				choice.querySelectorAll( ':scope > span' ).forEach( function( caption ) { caption.classList.add('nino-admin-sr-only') } );
+				drawn.el.insertBefore( choice, drawn.el.firstChild );
+			}
+
+			mount.appendChild( drawn.el );
 		}
 
 		if( data.foreign === true )

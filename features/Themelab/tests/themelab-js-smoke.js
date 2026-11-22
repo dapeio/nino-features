@@ -2326,6 +2326,70 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 }
 
 {
+	// The choice of where the blocks come from is drawn by the bar of the workbench where that has a select of its own, and by a select field put in front of the search where it has not: the options
+	// are one list for both, and the way it is asked for is the same - both ways are tried with a bar that is made to be the one or the other
+	const way = function( bar, list ) {
+
+		const w = opened();
+		const calls = [];
+		const tables = [];
+		const original = w.ui.filterBar;
+		const table = w.ui.table;
+
+		w.ui.filterBar = function( options ) {
+
+			calls.push( options );
+
+			const made = original.call( this, Object.assign( {}, options, { filter : undefined } ) );
+
+			// A bar of the workbench with a select of its own answers with the select; one that has none answers with its field of the search alone
+			if( bar === 'with' )
+				made.select = element('select');
+			else
+				delete made.select;
+
+			return made;
+		};
+		w.ui.table = function( options ) { tables.push( options ); return table.call( this, options ) };
+
+		w.state.hash = '#themelab';
+		w.panel.showCurrent();
+		w.requests.shift().callback( { status : 200, responseJSON : list ?? LIST(), getAllResponseHeaders : function() { return 'x' } } );
+
+		const fields = findAll( w.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } );
+		const asked = tables.map( function( options ) { return options.filter } ).filter( function( filter ) { return filter !== undefined && filter !== null } )[0];
+		const barred = calls.map( function( options ) { return options.filter } ).filter( function( filter ) { return filter !== undefined && filter !== null && filter.options.length > 0 } )[0];
+		const names = function( filter ) { return filter === undefined ? '' : filter.options.map( function( option ) { return option.value } ).join()+ '|'+ filter.value+ '|'+ filter.label };
+
+		return { w : w, fields : fields, asked : asked, barred : barred, names : names };
+	};
+	const withBar = way('with');
+	const withoutBar = way('without');
+	const choices = 'all,own,nino|own|'+ W('source/label');
+
+	check( 'F333 a. where the bar of the workbench has a select of its own the table is given the choice - the options, the one that is chosen and its name for a screen reader - and no select field is put in front of the search',
+		withBar.names( withBar.asked ) === choices && withBar.fields.length === 0 && typeof withBar.asked.onChange === 'function' );
+
+	check( 'F333 a. ...and where it has none the table is given no choice and the select field with the same options, the same one chosen and the same name stands in front of the search, once',
+		withoutBar.asked === undefined && withoutBar.fields.length === 1 && findAll( withoutBar.fields[0], function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value } ).join() === 'all,own,nino' && withoutBar.fields[0].value === 'own'
+		&& withoutBar.fields[0].parentNode.classList.contains('themelab-from') === true );
+
+	const noRows = LIST( { blocks : [] } );
+	const emptyWith = way( 'with', noRows );
+	const emptyWithout = way( 'without', noRows );
+
+	check( 'F333 a. a list with no block has the choice alone: in the bar where the workbench has a select, in a select field where it has none - with the options of the list that has blocks',
+		emptyWith.names( emptyWith.barred ) === choices && emptyWith.fields.length === 0 && emptyWithout.fields.length === 1 && emptyWithout.barred === undefined );
+
+	withBar.asked.onChange( 'all' );
+	withoutBar.fields[0].value = 'all';
+	fire( withoutBar.fields[0], 'change' );
+
+	check( 'F333 a. a choice made in the bar and one made in the field are the same act: the address of the list is the same, and the choice is the one the list is drawn for',
+		withBar.w.state.hash === withoutBar.w.state.hash && withBar.w.requests.length === withoutBar.w.requests.length );
+}
+
+{
 	// The word for the head and the foot of a page: in German "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich", in English "header" and "footer" and "header/footer" - the old words are in no text of the
 	// panel and in no line of its manual - a technical name, as frame-header or [frame ...], is no word of it. The exceptions are named by their text, each with its reason
 	const readWords = function( file, locale ) {

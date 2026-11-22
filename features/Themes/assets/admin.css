@@ -45,7 +45,7 @@
 }
 
 /* The choice of the origin, at the left of the search: the select takes the room of its words and the search the rest */
-#themes-app .themes-from {
+#themes-app .nino-admin-field.themes-from {
 	flex: 0 0 auto;
 	min-width: 11rem;
 	margin: 0;
