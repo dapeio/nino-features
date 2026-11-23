@@ -68,12 +68,27 @@ features/<Name>/
 ├── <Name>.php               the runtime class \Nino\Modules\<Name>
 ├── Admin/Admin.php          the panel, when there is one
 ├── assets/ install/ text/ templates/   when the feature needs them
-└── tests/<key>-smoke.php    a test, when you want one
+└── tests/                   <key>-smoke.php, a test, when you want one; catalogue.php, what the shared tests of this repository need to know of the feature
 ```
 
 Required are `feature.php` and `<Name>.php`. The manifest's `manual` is the documentation: a `section => handle => line` map - shortcodes, markup, routes, panel, callbacks, install - with the handle as somebody types it and a line in German and English beside it. A test is welcome and never required. The rules that stay, because tests check them, are in [AGENTS.md](AGENTS.md): no markup in PHP, English in code, escaping, the text key grammar, and a section of the privacy policy for a feature that processes personal data. A stylesheet answers to the width in one way: three steps - a phone under 768 px, a tablet from 768 px, a desktop from 1024 px -, four thresholds - 640, 768, 1024 and 1280 px - and always `min-width`, so that a rule is the phone's until a wider step sets it otherwise.
 
-`category` is one of `content`, `ui`, `communication`, `marketing`, `security` or `system`, and no two features carry the same `name` in any locale; `bin/build.php` refuses both.
+`category` is one of the kernel's `\Nino\Features::CATEGORIES` - `bin/build.php` asks the Nino checkout it runs against, so the list is that kernel's - and no two features carry the same `name` in any locale; `bin/build.php` refuses both.
+
+The tests under `tests/` that go over every feature read what a feature tells them about itself from the feature: `features/<Name>/tests/catalogue.php` returns an array, and a new feature changes no file the others share. It stays in `tests/`, so no package carries it, and `bin/check.sh` does not start it. Every key is there only where it applies; this is the whole file of a feature that brings a section of the privacy policy and a page of its own:
+
+<!-- catalogue-example -->
+```php
+<?php
+declare(strict_types=1);
+
+return [
+	'legal' => [ 500, 599 ],
+	'pages' => [ '/hello' => 'Hello.php' ],
+];
+```
+
+`legal` is the first and the last position of the sections in `install/elements/privacy.php`: the range in which a section of that kind stands - cookies and consent 400-499, contact, forms and mail 500-599, statistics 600-699, embedded content 700-799, further features 800-899 - even where another feature has it already, and a position no other feature has. `pages` names each page that the unit gives words to under `/_nino/webpage<uri>/...` and the file of the feature in which its route is made: the test looks in the code of that php file - a comment is none, and neither `feature.php` nor anything under `tests/` is the file that makes a route - for `'uri' => '/hello'`. An address that is built names the constant that holds the Element-URI itself, defined there with `const`, `[ 'Posts.php', 'INDEX_URI' ]`, or with a format and the constant that fills it, `[ 'Posts.php', 'INDEX_URI', [ 'Sections/Sections.php', 'DEFAULT_KEY' ] ]`; a file outside the folder of the feature is refused. A panel that is a work surface or only reads can say `'surface' => 'the reason'` or `'reading' => 'the reason'`, and is let off the rules of its look or of its success message only where `tests/panels-smoke.php` has released the feature. A missing or a wrong entry is red, and the sentence names the file. The words of a mail or a pdf the unit keeps in `install/templates/mail/` or `install/templates/pdf/` are `/template/mail-<name>/...` and `/template/pdf-<name>/...`, and no other feature has a template of that name; the unit names such a template under `templates` (`'templates' => [ 'mail/welcome.tpl' ]`), since the kernel copies only what the unit names. A section of the privacy policy has the id of the feature or the key and a name, and the form that section 4c of AGENTS.md gives; the `name` of a feature is the name of no other feature in any language. A script that a class of the feature hands to `\Nino\Admin\Panels::relative()` is held to the panel rules like `assets/admin.js`.
 
 ## Write an application
 

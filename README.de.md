@@ -68,12 +68,27 @@ features/<Name>/
 ├── <Name>.php               die Laufzeitklasse \Nino\Modules\<Name>
 ├── Admin/Admin.php          das Panel, wenn es eines gibt
 ├── assets/ install/ text/ templates/   wenn das Feature sie braucht
-└── tests/<key>-smoke.php    ein Test, wenn du einen willst
+└── tests/                   <key>-smoke.php, ein Test, wenn du einen willst; catalogue.php, was die gemeinsamen Tests dieses Repositorys über das Feature wissen müssen
 ```
 
 Verlangt sind `feature.php` und `<Name>.php`. Das `manual` des Manifests ist die Dokumentation: eine Map `section => handle => zeile` – Shortcodes, Markup, Routen, Panel, Callbacks, Install – mit dem Handle so, wie man ihn eintippt, und daneben einer Zeile auf Deutsch und Englisch. Ein Test ist willkommen und nie verlangt. Die Regeln, die bleiben, weil Tests sie prüfen, stehen in [AGENTS.md](AGENTS.md): kein Markup in PHP, Englisch im Code, Escaping, die Grammatik der Textschlüssel und ein Abschnitt der Datenschutzerklärung für ein Feature, das personenbezogene Daten verarbeitet. Ein Stylesheet antwortet auf die Breite auf eine Weise: drei Stufen – ein Telefon unter 768 px, ein Tablet ab 768 px, ein Desktop ab 1024 px –, vier Schwellen – 640, 768, 1024 und 1280 px – und immer `min-width`, damit eine Regel die des Telefons ist, bis eine breitere Stufe sie anders setzt.
 
-`category` ist eine von `content`, `ui`, `communication`, `marketing`, `security` oder `system`, und kein Name kommt in irgendeiner Sprache bei zwei Features vor; `bin/build.php` weist beides ab.
+`category` ist eine der `\Nino\Features::CATEGORIES` des Kerns – `bin/build.php` fragt den Nino-Checkout, gegen den es läuft, die Liste ist also die dieses Kerns –, und kein Name kommt in irgendeiner Sprache bei zwei Features vor; `bin/build.php` weist beides ab.
+
+Die Tests unter `tests/`, die über alle Features gehen, lesen vom Feature selbst, was es über sich sagt: `features/<Name>/tests/catalogue.php` liefert ein Array, und ein neues Feature ändert keine Datei, die die anderen teilen. Die Datei bleibt in `tests/`, also trägt kein Paket sie, und `bin/check.sh` startet sie nicht. Jeder Schlüssel steht nur dort, wo er zutrifft; das ist die ganze Datei eines Features, das einen Abschnitt der Datenschutzerklärung und eine eigene Seite bringt:
+
+<!-- catalogue-example -->
+```php
+<?php
+declare(strict_types=1);
+
+return [
+	'legal' => [ 500, 599 ],
+	'pages' => [ '/hello' => 'Hello.php' ],
+];
+```
+
+`legal` sind die erste und die letzte Position der Abschnitte in `install/elements/privacy.php`: der Bereich, in den ein Abschnitt dieser Art gehört – Cookies und Einwilligung 400–499, Kontakt, Formulare und Mail 500–599, Statistik 600–699, eingebettete Inhalte 700–799, weitere Features 800–899 –, auch wenn ihn ein anderes Feature schon hat, und eine Position, die kein anderes Feature hat. `pages` nennt jede Seite, der die Einheit unter `/_nino/webpage<uri>/...` Worte gibt, und die Datei des Features, in der ihre Route entsteht: der Test sucht im Code dieser PHP-Datei – ein Kommentar zählt nicht, und weder `feature.php` noch etwas unter `tests/` ist die Datei, die eine Route anmeldet – nach `'uri' => '/hello'`. Eine Adresse, die gebaut wird, nennt die Konstante, die die Element-URI selbst hält und dort mit `const` definiert ist, `[ 'Posts.php', 'INDEX_URI' ]`, oder mit einem Format und der Konstante, die es füllt, `[ 'Posts.php', 'INDEX_URI', [ 'Sections/Sections.php', 'DEFAULT_KEY' ] ]`; eine Datei außerhalb des Ordners des Features wird abgewiesen. Ein Panel, das eine Arbeitsfläche ist oder nur liest, kann `'surface' => 'der Grund'` oder `'reading' => 'der Grund'` sagen und ist von den Regeln seiner Gestalt oder seiner Erfolgsmeldung nur befreit, wo `tests/panels-smoke.php` das Feature freigegeben hat. Eine fehlende oder falsche Angabe ist rot, und der Satz nennt die Datei. Die Worte einer Mail- oder PDF-Vorlage, die die Einheit in `install/templates/mail/` oder `install/templates/pdf/` hält, sind `/template/mail-<name>/...` und `/template/pdf-<name>/...`, und kein anderes Feature hat eine Vorlage dieses Namens; die Einheit nennt eine solche Vorlage unter `templates` (`'templates' => [ 'mail/welcome.tpl' ]`), denn der Kernel kopiert nur, was die Einheit nennt. Ein Abschnitt der Datenschutzerklärung hat die Id des Features oder Schlüssel und Namen und die Form aus Abschnitt 4c von AGENTS.md; der `name` eines Features ist in keiner Sprache der eines anderen. Ein Skript, das eine Klasse des Features an `\Nino\Admin\Panels::relative()` gibt, unterliegt den Panel-Regeln wie `assets/admin.js`.
 
 ## Eine Anwendung schreiben
 

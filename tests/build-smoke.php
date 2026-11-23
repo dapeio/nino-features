@@ -161,6 +161,9 @@ function makeTree( string $dest ): void {
 	copyTree( $repo. '/features/Basis', $dest. '/features/Basis', [ 'tests' ] );
 	copyTree( $repo. '/features/Themes', $dest. '/features/Themes', [ 'tests' ] );
 	copyTree( $repo. '/features/Collections', $dest. '/features/Collections', [ 'tests' ] );
+	// What a feature tells the tests of the catalogue lies in its tests/, which no archive carries: this one is there to be left out
+	mkdir( $dest. '/features/Collections/tests' );
+	copy( $repo. '/features/Hello/tests/catalogue.php', $dest. '/features/Collections/tests/catalogue.php' );
 	copyTree( $repo. '/features/Themes/tests/fixtures/themes/craft-probe', $dest. '/themes/craft-probe' );
 	file_put_contents( $dest. '/themes/craft-probe/preview.webp', $webp );
 	mkdir( $dest. '/themes/craft-probe/parts/collection' );
@@ -376,6 +379,27 @@ foreach( $cases as [ $name, $path, $change ] ) {
 	if( $status !== 1 || str_contains( $stderr, $path ) === false || $written !== [] )
 		$notRefused[] = $name. ' ('. $status. ( str_contains( $stderr, $path ) === true ? '' : ', no path' ). ( $written === [] ? '' : ', wrote '. implode( ' ', array_keys( $written ) ) ). ')';
 }
+
+// The categories are the kernel's own list, never a list of this repository: a feature is built under a category the kernel names - the last of them, and business where it has it -
+// and refused under one it does not, with a sentence that lists the kernel's
+$under = static fn( string $category ): callable => static function( string $tree ) use ( $category ): void {
+
+	$file = $tree. '/features/Collections/feature.php';
+
+	file_put_contents( $file, (string) preg_replace( "/'category'(\\s*)=>(\\s*)'[a-z-]+'/", "'category'\$1=>\$2'". $category. "'", (string) file_get_contents( $file ), 1 ) );
+};
+$named = \Nino\Features::CATEGORIES;
+$known = [];
+
+foreach( [ end( $named ), 'business', 'not-a-category' ] as $category ) {
+
+	[ $status, $stderr, $written ] = $refusal( $under( $category ) );
+	$expected = in_array( $category, $named, true ) === true;
+
+	$known[] = $expected === true ? ( $status === 0 && $written !== [] ) : ( $status === 1 && str_contains( $stderr, 'features/Collections' ) === true && str_contains( $stderr, implode( ', ', $named ) ) === true && $written === [] );
+}
+
+check( 'a feature is filed under the categories the kernel names - whichever the kernel has, business among them or not - and under no other, and the refusal lists the kernel\'s'. ( $known === [ true, true, true ] ? '' : ' - '. json_encode( $known ) ), $known === [ true, true, true ] );
 
 check( 'each of '. count( $cases ). ' cases stops the build with exit 1 and a sentence that names the file - '. implode( '; ', array_column( $cases, 0 ) ). ' - and no file is written, not an archive and not the index'. ( $notRefused === [] ? '' : ' - NOT: '. implode( ', ', $notRefused ) ), $notRefused === [] );
 
