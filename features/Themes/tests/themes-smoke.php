@@ -3157,7 +3157,7 @@ $view = static function( string $query ) use ( &$thumb ): string {
 check( 'M. a page asked with the token of a thumbnail is drawn with the stylesheet of that theme - and with a token that the session no longer holds, it is drawn as the website has it', str_contains( $view( $fresh['query'] ), '.thumb-marker' ) === true && str_contains( $view( $fresh['query'] ), 'data-nino-theme-preview' ) === true
 	&& ( $_SESSION[$thumb['./nino/uid']]['/nino/preview/themes-pictures'] = [] ) === [] && str_contains( $view( $fresh['query'] ), 'data-nino-theme-preview' ) === false );
 
-// -- a theme may be called fonts or settings: the tabs of the pane have addresses of their own, #themes-fonts and #themes-settings
+// -- a theme may be called fonts or settings: the tabs of the pane have addresses of their own, #themes/fonts and #themes/settings, and a theme is at #themes/themes/<key>
 $sandbox = ninoSandboxDir( $thumb ). '/themes';
 $why = [];
 
@@ -3170,7 +3170,7 @@ foreach( [ 'fonts', 'settings' ] as $key ) {
 
 unset( $thumb['./nino/themes/read'] );
 $listed = themesCall( $thumb, 'themes/list' )[1];
-check( 'M. a theme may be called fonts or settings - the tabs of the pane are no addresses below #themes - and the reader keeps no name for the panel: the two folders are themes of the list, none of them refused, and each opens',
+check( 'M. a theme may be called fonts or settings - the tabs of the pane are no addresses of a theme - and the reader keeps no name for the panel: the two folders are themes of the list, none of them refused, and each opens',
 	is_array( $why['fonts'] ) === true && is_array( $why['settings'] ) === true && ( new \ReflectionClass( \Nino\Modules\Themes\Reader::class ) )->hasConstant( 'RESERVED' ) === false
 	&& count( array_intersect( [ 'fonts', 'settings' ], array_column( $listed['themes'], 'key' ) ) ) === 2 && array_filter( $listed['rejected'], static fn( array $row ): bool => in_array( $row['folder'], [ 'fonts', 'settings' ], true ) ) === []
 	&& themesCall( $thumb, 'themes/open', [ 'theme' => 'fonts' ] )[0] === 200 && themesCall( $thumb, 'themes/open', [ 'theme' => 'settings' ] )[0] === 200 );

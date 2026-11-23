@@ -23,7 +23,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = path.resolve( process.env.NINO_ROOT || path.join( __dirname, '..', '..', '..' ) );
-const { check, done, element, documentOf, findAll, fire, fills, load } = require( path.join( root, 'tests', 'harness.js' ) );
+const { check, done, element, documentOf, findAll, fire, fills, load, shellRouter } = require( path.join( root, 'tests', 'harness.js' ) );
 
 const source = fs.readFileSync( path.join( __dirname, '..', 'assets', 'admin.js' ), 'utf8' );
 
@@ -57,7 +57,7 @@ function typeRow( options ) {
  *	The panel, drawn into the two elements the shell hands it
  *
  *	@param		{Object}	options		{ types, probe, at, dirty } - types: what search/list answers, probe: what search/probe answers,
- *																at: the address the router stands at (the parts after #search), dirty: the shell's registry
+ *																at: the address the router stands at (a hash, #search/search/@types), dirty: the shell's registry
  */
 function panel( options ) {
 
@@ -117,8 +117,15 @@ function panel( options ) {
 	};
 
 	// The shell: the registry of unsaved input, the address of the workbench and the working language - what the panel reads of it
-	const router = { at : { panel : 'search', parts : options.at || [] }, set : function( name, parts ) { router.at = { panel : name, parts : parts } }, go : function( name, parts ) { router.set( name, parts ) },
-		current : function() { return router.at }, href : function( name, parts ) { return '#'+ [ name ].concat( parts ).join('/') } };
+	// The router of the workbench itself, over the panes this panel has: what the panel writes is read back by it
+	const codec = shellRouter( { search : [ [ 'search', 'search' ], [ 'search-settings', 'settings' ] ] } );
+	const router = codec.stub( {
+		hash : options.at || '#search',
+		current : function() { return codec.read( router.hash ) },
+		isActive : function() { return true },
+		go : function( name, parts ) { router.hash = codec.check( name, parts ) },
+		set : function( name, parts ) { router.hash = codec.check( name, parts ) },
+	} );
 	const followers = [];
 
 	Nino.admin = {
@@ -141,7 +148,7 @@ function panel( options ) {
 	const found = function( rootEl, predicate ) { return findAll( rootEl, predicate )[0] || null };
 
 	return {
-		said : said, list : list, type : type, calls : calls, panel : Nino.admin.search, router : router, followers : followers, workLocale : Nino.admin.workLocale,
+		codec : codec, said : said, list : list, type : type, calls : calls, panel : Nino.admin.search, router : router, followers : followers, workLocale : Nino.admin.workLocale,
 		hidden : function( el ) { return el.classList.contains('admin-hidden') },
 		tabs : function() { return withClass( list, 'nino-admin-tab' ) },
 		asked : function( action ) { return calls.filter( function( call ) { return call.action === action } ) },
@@ -200,10 +207,10 @@ check( 'Rebuild all asks for every index, and the list is asked for again after 
 
 const types = panel( {} );
 fire( types.tabs()[1], 'click' );
-check( 'the Types tab sets the address of the tab', JSON.stringify( types.router.at.parts ) === '["types"]' );
+check( 'the Types tab sets the address of the tab', types.router.hash === '#search/search/@types' );
 fire( types.button( types.row( '/products', types.pane('search-types') ), WORDS['/_admin/search/label/edit'] ), 'click' );
 check( 'Edit opens the fields of the type as a level of its own, at an address of its own, with the way back to the tab and the name of the type',
-	JSON.stringify( types.router.at.parts ) === '["types","products"]' && types.hidden( types.type ) === false && types.hidden( types.list ) === true
+	types.router.hash === '#search/search/@types/products' && types.hidden( types.type ) === false && types.hidden( types.list ) === true
 	&& withClass( types.type, 'nino-admin-back-link' )[0].textContent === 'Back to '+ WORDS['/_admin/search/tab/types'] && withTag( types.type, 'H3' )[0].textContent === 'Products' );
 
 const view = editing( {} );
@@ -265,7 +272,7 @@ guarded.tick( guarded.boxes()[3], true );
 check( 'a field ticked is unsaved input, and a field let go again is none', shell.isDirty( [ 'search' ] ) === true && ( guarded.tick( guarded.boxes()[3], false ), shell.isDirty( [ 'search' ] ) === false ) );
 guarded.tick( guarded.boxes()[3], true );
 fire( withClass( guarded.type, 'nino-admin-back-link' )[0], 'click' );
-check( 'the way back asks the registry first, and the view is left where it answers to proceed', shell.asked.length === 1 && JSON.stringify( guarded.router.at.parts ) === '["types"]' );
+check( 'the way back asks the registry first, and the view is left where it answers to proceed', shell.asked.length === 1 && guarded.router.hash === '#search/search/@types' );
 
 
 // --- The probe: the working language of the workbench -----------------------------------------------------------------------
@@ -280,5 +287,24 @@ check( 'the probe posts what was typed, the types that are ticked and the workin
 	JSON.stringify( probing.asked('search/probe')[0].data ) === '{"query":"alpha","types":["/products"],"locale":"en_US"}' && withClass( probing.list, 'nino-admin-locale-select' ).length === 0 );
 check( 'what it found is drawn as text in the table, and a change of the working language puts it away: it was found in the other one',
 	textOf( probing.list ).indexOf( 'Alpha <b>' ) !== -1 && withTag( probing.list, 'B' ).length === 0 && probing.followers.length === 1 && ( probing.followers[0].handler( 'de_DE' ), textOf( probing.list ).indexOf( 'Alpha <b>' ) === -1 ) );
+
+// --- The address: a word or a key ------------------------------------------------------------------------------------------
+
+// What the router reads of an address is what the panel shows: the word @types is the tab, a type that is called types is a type, and every address the panel wrote was read back
+{
+	const typed = panel( { at : '#search/search/@types/products' } );
+	check( 'an address with the word @types and the name of a type opens the fields of that type', typed.hidden( typed.type ) === false && typed.router.hash === '#search/search/@types/products' );
+
+	const key = panel( { at : '#search/search/types/products' } );
+	check( 'the same without the at sign is no word: a key opens nothing of this panel, and the panel starts as the index', key.hidden( key.type ) === true && key.router.hash === '#search' );
+
+	const probe = panel( { at : '#search/search/@probe' } );
+	check( 'the word @probe is the tab of the probe', probe.router.hash === '#search/search/@probe' && probe.hidden( probe.list ) === false );
+
+	const none = panel( { at : '#search/search/@types/%40products' } );
+	check( 'a type whose name is a word, written as a key, is no type that is there: the tab of the types stands', none.hidden( none.type ) === true && none.router.hash === '#search/search/@types' );
+
+	check( 'every address the panel wrote was read back by the router as the same screen and the same parts', [ typed, key, probe, none, types, guarded ].every( page => page.codec.mismatches.length === 0 ) && types.codec.written.some( written => typeof written.parts[0] === 'object' ) );
+}
 
 done();

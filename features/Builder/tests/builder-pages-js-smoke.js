@@ -6,7 +6,7 @@
  *														A. the list: a table of the workbench with its search over the whole width - which reads the address and the file of the
  *														   template -, the columns, the sign of a page that lacks something, the row that opens, the frames as a short list, the one
  *														   main button in the bar of the list, the box of a list that has no page
- *														B. the view #builder/@new: the way back that names where it leads, a row for each language with the language as a badge, the
+ *														B. the view #builder/builder/@new: the way back that names where it leads, a row for each language with the language as a badge, the
  *														   fields with their help behind the (?), the menus as boxes, the block to start with, the one main button; no dialog
  *														C. making a page: what is wrong is said at the field and in the line, nothing is sent for it, what the server refuses is said at
  *														   the field it names, the page that is made is opened and the toast says so; unsaved input is asked about, and the address of
@@ -33,7 +33,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, fire, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, fire, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const scriptPath = path.join( featureDir, 'assets/admin.js' );
@@ -151,19 +151,14 @@ function world( options ) {
 		return created;
 	};
 
-	const parse = function() {
-		const raw = state.hash.replace( /^#/, '' );
-		const parts = raw === '' ? [] : raw.split('/').map( decodeURIComponent );
-		return { panel : parts[0] ?? '', parts : parts.slice( 1 ) };
-	};
-
-	const router = {
-		current : parse,
-		href : function( panel, parts ) { return '#'+ [ panel ].concat( parts ?? [] ).map( function( part ) { return encodeURIComponent( part ).replace( /%40/g, '@' ) } ).join('/') },
-		go : function( panel, parts ) { const hash = router.href( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
-		set : function( panel, parts ) { state.hash = router.href( panel, parts ) },
+	// The router of the workbench itself, over the panes of the panel: what the panel writes is read back by it
+	const codec = shellRouter( { builder : [ [ 'builder', 'builder' ], [ 'builder-frames', 'frames' ], [ 'builder-settings', 'settings' ] ] } );
+	const router = codec.stub( {
+		current : function() { return codec.read( state.hash ) },
+		go : function( panel, parts ) { const hash = codec.check( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
+		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
 		leave : function( names, leaving, proceed, resync ) { leaving === true && dirty.isDirty( names ) === true ? dirty.guard( names, proceed, resync ) : proceed() },
-	};
+	} );
 
 	// The registry of the shell as far as the panel uses it: a watched form is dirty when it differs from what was last taken, a question is answered from a queue
 	const entries = {};
@@ -242,7 +237,7 @@ function world( options ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, frames : frames, form : form, requests : requests, dialogs : dialogs, said : said, touched : touched, questions : questions, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, frames : frames, form : form, requests : requests, dialogs : dialogs, said : said, touched : touched, questions : questions, answers : answers, state : state, codec : codec, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -333,7 +328,7 @@ function world( options ) {
 
 	check( 'A. a row opens its page and says where it came from: the list', ( function() {
 		fire( w.rows()[1], 'click' );
-		return w.state.hash === '#builder/contact';
+		return w.state.hash === '#builder/builder/contact';
 	} )() );
 
 	w.open('#builder');
@@ -347,9 +342,9 @@ function world( options ) {
 		const rest = findAll( w.list, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-btn') !== -1 && bar.children.indexOf( el ) === -1 && el.className.indexOf('nino-admin-btn-icon') === -1 } );
 		return bar !== null && buttons.length === 1 && buttons[0].classList.contains('nino-admin-btn-primary') && textOf( buttons[0] ) === W('page/open') && rest.length === 0 && buttons[0].classList.contains('nino-admin-btn--small') === false;
 	} )() );
-	check( 'A. the main button leads to #builder/@new', ( function() {
+	check( 'A. the main button leads to #builder/builder/@new', ( function() {
 		fire( bar.querySelector('button'), 'click' );
-		return w.state.hash === '#builder/@new';
+		return w.state.hash === '#builder/builder/@new';
 	} )() );
 
 	const poor = world( { list : answer( { create : false } ) } );
@@ -376,18 +371,18 @@ function world( options ) {
 {
 	const w = world();
 
-	w.open('#builder/@new');
+	w.open('#builder/builder/@new');
 
 	const level = w.form;
 	const form = level.querySelector('form');
 	const bar = form.querySelector('.nino-admin-actionbar');
 
-	check( 'B. the address #builder/@new shows the view that makes a page - and the list is behind it', w.shown( level ) === true && w.shown( w.list ) === false && w.state.hash === '#builder/@new' );
+	check( 'B. the address #builder/builder/@new shows the view that makes a page - and the list is behind it', w.shown( level ) === true && w.shown( w.list ) === false && w.state.hash === '#builder/builder/@new' );
 	check( 'B. the way back is the one back link of the context bar, says where it leads, and goes to the list', ( function() {
 		const links = findAll( level, function( el ) { return el.className.indexOf('nino-admin-back-link') !== -1 } );
 		fire( links[0], 'click' );
 		const back = w.state.hash === '#builder';
-		w.open('#builder/@new');
+		w.open('#builder/builder/@new');
 		return links.length === 1 && level.querySelector('.nino-admin-contextbar') !== null && textOf( links[0] ) === workbench['/_admin/common/label/back-to'].replace( '%s', W('label/pages') ) && links[0].href === '#builder' && back === true;
 	} )() );
 
@@ -435,7 +430,7 @@ function world( options ) {
 	{
 		const w = world();
 
-		w.open('#builder/@new');
+		w.open('#builder/builder/@new');
 		w.type( 'name-de_DE', 'Team' );
 		w.submit();
 
@@ -458,13 +453,13 @@ function world( options ) {
 		w.open('#builder');
 		fire( w.rows()[3], 'click' );
 
-		check( 'C. a page whose address is new is a page: it opens from the list as the page, and the view that makes one has an address no page can have', w.state.hash === '#builder/new' && w.requests[0].action === 'builder/open' && w.requests[0].payload.template === 'page-new' && w.shown( w.form ) === false );
+		check( 'C. a page whose address is new is a page: it opens from the list as the page, and the view that makes one has an address no page can have', w.state.hash === '#builder/builder/new' && w.requests[0].action === 'builder/open' && w.requests[0].payload.template === 'page-new' && w.shown( w.form ) === false );
 	}
 
 	{
 		const w = world();
 
-		w.open('#builder/@new');
+		w.open('#builder/builder/@new');
 		fill( w );
 		w.form.querySelector('[data-key="menu-footer"]').checked = true;
 		w.form.querySelector('select').value = 'hero-full';
@@ -485,7 +480,7 @@ function world( options ) {
 	{
 		const w = world();
 
-		w.open('#builder/@new');
+		w.open('#builder/builder/@new');
 		fill( w );
 		w.submit();
 		w.reply( 200, { template : 'page-team', slug : 'team' } );
@@ -494,13 +489,13 @@ function world( options ) {
 
 		w.serve();
 
-		check( 'C. the page that was made is said as a toast with its name, the list is asked for again and the page is opened - and the view of the list is not shown on the way', toast.join() === W('page/made', 'Team') && w.state.hash === '#builder/team' && w.requests.every( function( request ) { return request.action !== 'builder/create' } ) );
+		check( 'C. the page that was made is said as a toast with its name, the list is asked for again and the page is opened - and the view of the list is not shown on the way', toast.join() === W('page/made', 'Team') && w.state.hash === '#builder/builder/team' && w.requests.every( function( request ) { return request.action !== 'builder/create' } ) );
 	}
 
 	{
 		const w = world();
 
-		w.open('#builder/@new');
+		w.open('#builder/builder/@new');
 		fill( w );
 
 		check( 'C. what is typed is unsaved input of the panel: the shell is asked about it, and a leaving that is turned down keeps the view as it was', ( function() {
@@ -513,27 +508,27 @@ function world( options ) {
 			w.answers.push( 'discard' );
 			fire( findAll( w.form, function( el ) { return el.className.indexOf('nino-admin-back-link') !== -1 } )[0], 'click' );
 			const left = w.state.hash === '#builder' && w.shown( w.list ) === true;
-			w.state.hash = '#builder/@new';
+			w.state.hash = '#builder/builder/@new';
 			w.panel.follow();
 			const asked = w.dirty.asked;
 			fire( findAll( w.form, function( el ) { return el.className.indexOf('nino-admin-back-link') !== -1 } )[0], 'click' );
 			return left === true && w.dirty.asked === asked && w.state.hash === '#builder';
 		} )() );
 		check( 'C. the address of the view in a step of the history, with input that is not saved, asks as the back link does', ( function() {
-			w.state.hash = '#builder/@new';
+			w.state.hash = '#builder/builder/@new';
 			w.panel.follow();
 			w.type( 'name-de_DE', 'Anders' );
 			w.state.hash = '#builder';
 			w.answers.push( 'cancel' );
 			w.panel.showCurrent();
-			return w.dirty.asked === 3 && w.state.hash === '#builder/@new' && w.shown( w.form ) === true;
+			return w.dirty.asked === 3 && w.state.hash === '#builder/builder/@new' && w.shown( w.form ) === true;
 		} )() );
 	}
 
 	{
 		const w = world( { list : answer( { create : false } ) } );
 
-		w.open('#builder/@new');
+		w.open('#builder/builder/@new');
 
 		check( 'C. the account that may not make a page is taken to the list by the address of the view', w.state.hash === '#builder' && w.shown( w.list ) === true && w.shown( w.form ) === false );
 	}
@@ -544,7 +539,7 @@ function world( options ) {
 {
 	const w = world( { list : answer( { navs : [ 'main', 'odd' ] } ) } );
 
-	w.open('#builder/@new');
+	w.open('#builder/builder/@new');
 
 	check( 'D. the view opens with the focus on the name of the panel, its heading - not in a field', w.title.focused === true && w.inputOf('name-de_DE').focused !== true );
 	check( 'D. the language is a quiet word in front of the field, no badge with a frame, and the rows are one grid of two columns', ( function() {
@@ -583,7 +578,7 @@ function world( options ) {
 {
 	const w = world();
 
-	w.open('#builder/@new');
+	w.open('#builder/builder/@new');
 	w.type( 'name-de_DE', 'Team' );
 	w.type( 'name-en_US', 'Team EN' );
 	w.Nino.admin.workLocale.current = 'en_US';
@@ -706,7 +701,7 @@ function world( options ) {
 		w.open('#builder');
 		fire( buttonsOf( w, 1 )[1], 'click' );
 		w.serve( { uses : { status : 409, body : { error : 'x', code : 'routes_remove_shared', params : [], field : 'template' } } } );
-		w.state.hash = '#builder/contact';
+		w.state.hash = '#builder/builder/contact';
 		w.panel.follow();
 		w.serve();
 		w.state.hash = '#builder';
@@ -773,14 +768,14 @@ function world( options ) {
 		w.open('#builder');
 		copyOf( w, 2 );
 
-		check( 'F. the button of a row leads to the view of the copy, whose address names the page - and the panel asks the server what the form starts from', w.state.hash === '#builder/@new/about' && w.requests.length === 1 && w.requests[0].action === 'builder/copyof' && w.requests[0].payload.template === 'page-about' );
+		check( 'F. the button of a row leads to the view of the copy, whose address names the page - and the panel asks the server what the form starts from', w.state.hash === '#builder/builder/@new/about' && w.requests.length === 1 && w.requests[0].action === 'builder/copyof' && w.requests[0].payload.template === 'page-about' );
 
 		w.serve();
 
 		const form = w.form.querySelector('form');
 
 		check( 'F. the form starts from what the server said: the name and the address of each language, the menus of the page ticked and no other - and the page is the one the address names', w.shown( w.form ) === true && w.inputOf('name-de_DE').value === ORIGIN.names.de_DE && w.inputOf('name-en_US').value === ORIGIN.names.en_US
-			&& w.inputOf('address-de_DE').value === ORIGIN.addresses.de_DE && w.inputOf('address-en_US').value === ORIGIN.addresses.en_US && w.form.querySelector('[data-key="menu-footer"]').checked === true && w.form.querySelector('[data-key="menu-main"]').checked === false && w.state.hash === '#builder/@new/about' );
+			&& w.inputOf('address-de_DE').value === ORIGIN.addresses.de_DE && w.inputOf('address-en_US').value === ORIGIN.addresses.en_US && w.form.querySelector('[data-key="menu-footer"]').checked === true && w.form.querySelector('[data-key="menu-main"]').checked === false && w.state.hash === '#builder/builder/@new/about' );
 		check( 'F. the choice of the block to start with is not there - the page it is made from stands in its place - and no list of blocks is asked for', form.querySelector('select') === null && textOf( form ).indexOf( W( 'page/copy-of', 'About us' ) ) !== -1 && w.requests.length === 0 );
 		check( 'F. what the server proposed is no input that is not saved: the view is left without a question, and a name that is changed is', ( function() {
 			const clean = w.dirty.isDirty( [ 'builder' ] ) === false;
@@ -798,13 +793,13 @@ function world( options ) {
 		w.reply( 200, { template : 'page-about-2', slug : 'about-2', copied : { texts : 3, slots : 0, files : 0 } } );
 		w.serve();
 
-		check( 'F. the copy is opened as a page that was made: the toast, the shell told what was written and the address of the copy', w.said.length === 1 && w.state.hash === '#builder/about-2' && w.touched.length > 0 );
+		check( 'F. the copy is opened as a page that was made: the toast, the shell told what was written and the address of the copy', w.said.length === 1 && w.state.hash === '#builder/builder/about-2' && w.touched.length > 0 );
 	}
 
 	{
 		const w = world();
 
-		w.open('#builder/@new/about');
+		w.open('#builder/builder/@new/about');
 		w.serve();
 		w.submit();
 		w.reply( 409, { error : 'x', code : 'routes_http_uri_taken', params : [ '/about-2' ], field : 'httpUri-en_US' } );
@@ -818,7 +813,7 @@ function world( options ) {
 		const w = world();
 
 		w.open('#builder');
-		w.state.hash = '#builder/@new/nothing';
+		w.state.hash = '#builder/builder/@new/nothing';
 		w.panel.showCurrent();
 		w.serve( { copyof : { status : 404, body : { error : 'x', code : 'builder_unknown', params : [ 'page-nothing' ], field : 'template' } } } );
 
@@ -828,26 +823,26 @@ function world( options ) {
 	{
 		const w = world();
 
-		w.open('#builder/@new/about');
+		w.open('#builder/builder/@new/about');
 		w.serve();
 		w.type( 'name-de_DE', 'Anders' );
 		w.answers.push( 'cancel' );
-		w.state.hash = '#builder/@new';
+		w.state.hash = '#builder/builder/@new';
 		w.panel.showCurrent();
 
-		check( 'F. the view of another copy, or of a new page, is another view: what was typed is asked about first, and a turned-down question keeps the form and its address', w.dirty.asked === 1 && w.state.hash === '#builder/@new/about' && w.inputOf('name-de_DE').value === 'Anders' );
+		check( 'F. the view of another copy, or of a new page, is another view: what was typed is asked about first, and a turned-down question keeps the form and its address', w.dirty.asked === 1 && w.state.hash === '#builder/builder/@new/about' && w.inputOf('name-de_DE').value === 'Anders' );
 	}
 
 	{
 		const w = world( { list : answer( { create : false } ) } );
 
-		w.open('#builder/@new/about');
+		w.open('#builder/builder/@new/about');
 
 		check( 'F. the account that may not make a page is taken to the list by the address of a copy as well, and nothing is asked', w.state.hash === '#builder' && w.shown( w.list ) === true && w.requests.length === 0 );
 	}
 }
 
-// --- the pane has the tab of the frames beside the pages: the old address leads to it, and a page called "frames" is a page ----------------------------------
+// --- the pane has the tab of the frames beside the pages, and a page called "frames" is a page ----------------------------------
 
 {
 	const named = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 3, stamp : 'aa', last : 0, undo : false },
@@ -861,44 +856,26 @@ function world( options ) {
 	check( 'T. the list of the pages has no strip of tabs of its own and no frames in its mount: the pages are in the list and the frames are not - the tab of the frames draws them itself, from its own list',
 		w.rows().length === 3 && findAll( w.list, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'header-landing' ) } ).length === 0 && w.frames.children.length === 0 );
 
-	const again = world( { list : answer( { frames : named, bridge : true } ) } );
-
-	again.open('#builder/@frames');
-
-	while( again.timers.length > 0 )
-		again.timers.shift()();
-
-	check( 'T. the address #builder/@frames of before leads to the tab: it goes to #builder-frames and the entry of the address of before is replaced', again.state.hash === '#builder-frames' );
-
-	// a page called "frames" is a page, for the one who designs too: the @ is what no key of a page has
+	// the frames are the tab #builder/frames of the pane, and a page called "frames" is a page, for the one who designs too: the word @frames is none of the panel's
 	const framesPage = world( { list : answer( { frames : named, bridge : true } ) } );
 
-	framesPage.open('#builder/frames');
+	framesPage.open('#builder/builder/frames');
 	framesPage.panel.follow();
 
-	check( 'T. a page whose address is "frames" is opened by #builder/frames, as any page - the address of the tab of before is #builder/@frames - and the list of the pages is not replaced by the frames',
+	check( 'T. a page whose address is "frames" is opened by #builder/builder/frames, as any page - and the list of the pages is not replaced by the frames',
 		framesPage.requests.some( function( entry ) { return entry.action === 'builder/open' && entry.payload.template === 'page-frames' } ) === true && findAll( framesPage.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'footer' } ).length === 0 );
+
+	const word = world( { list : answer( { frames : named, bridge : true } ) } );
+
+	word.open('#builder/builder/@frames');
+
+	check( 'T. the word @frames is none of the panel\'s: the list of the pages stands, written #builder, and no page is asked for', word.state.hash === '#builder' && word.requests.every( function( entry ) { return entry.action !== 'builder/open' } ) );
 
 	const none = world( { list : answer( { frames : [] } ) } );
 
 	none.open('#builder');
 
 	check( 'T. where the answer has no frames - the account that only writes the content has no tab - nothing is drawn for it: no row, no sentence', none.frames.children.length === 0 && textOf( none.frames ) === '' );
-
-	// the address of the tab of before: the account that designs is led to the tab, the one that has no frames - and no tab - is led quietly to the pages
-	const designer = world( { list : answer( { frames : named, bridge : true } ) } );
-	const writer = world( { list : answer( { frames : [] } ) } );
-
-	designer.open('#builder/@frames');
-	writer.open('#builder/@frames');
-
-	while( designer.timers.length > 0 )
-		designer.timers.shift()();
-
-	while( writer.timers.length > 0 )
-		writer.timers.shift()();
-
-	check( 'T. #builder/@frames leads the account that designs to #builder-frames and the one that only writes the content to #builder - the pages -, quietly', designer.state.hash === '#builder-frames' && writer.state.hash === '#builder' );
 }
 
 // --- the lightbox "Frames of this page": the block of the workbench for tiles, and the same tiles where the workbench has none ---------------------------------------
@@ -960,6 +937,34 @@ function world( options ) {
 
 			return JSON.stringify( model.frameValues( handle, odd, { header : 'gone', footer : 'default' } ) ) === '{"header":"gone"}' && JSON.stringify( model.frameValues( model.frameTileChoice( groups ), groups, { header : 'landing', footer : 'default' } ) ) === '{"header":"landing"}';
 		} )() );
+}
+
+// --- the address says a word or a key: a page may be called new ----------------------------------------------------------------------------
+
+{
+	const w = world();
+
+	w.open('#builder/builder/new');
+	w.panel.follow();
+
+	check( 'W. the key new is the page of that name, and the word @new - read at the same place - is the view that makes one: the router tells them apart before it decodes', w.requests.some( function( entry ) { return entry.action === 'builder/open' && entry.payload.template === 'page-new' } ) === true && w.shown( w.form ) === false );
+
+	const made = world();
+
+	made.open('#builder/builder/@new');
+	check( 'W. @new is the view that makes a page, with no page asked for', made.shown( made.form ) === true && made.requests.every( function( entry ) { return entry.action !== 'builder/open' } ) );
+
+	const key = world();
+
+	key.open('#builder/builder/%40new');
+	check( 'W. the key @new is no page - a template is made of letters, digits and hyphens - and no view that makes one: the list stands, written #builder', key.state.hash === '#builder' && key.shown( key.form ) === false );
+
+	const copy = world();
+
+	copy.open('#builder/builder/@new/%40new');
+	check( 'W. the copy of a page whose key is a word is none: the word is read as a key, and no template is that', copy.state.hash === '#builder' );
+
+	check( 'W. every address the panel wrote or drew was read back by the router as the same screen and the same parts', [ w, made, key, copy ].every( function( one ) { return one.codec.mismatches.length === 0 } ) );
 }
 
 done();

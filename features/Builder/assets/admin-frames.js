@@ -8,8 +8,8 @@
  *										the list, the forms and the questions that stand round it. Everything it shows is the answer of the API (see Modules\Builder\Admin and Frames); the step of the
  *										account - what it may write in a frame - is the server's, and the editor reads it from the answer.
  *
- *										The address is #builder-frames (the list) and #builder-frames/<frame> (one frame in the editor): header, footer, header-landing - the word of the side and, for a named
- *										frame, its word. The way back from the editor is the list; the old address #builder/@frames leads to the tab.
+ *										The address is #builder/frames (the list) and #builder/frames/<frame> (one frame in the editor): header, footer, header-landing - the name of the side and, for a named
+ *										frame, its name; a frame is a key. The way back from the editor is the list.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>

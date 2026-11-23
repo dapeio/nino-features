@@ -29,7 +29,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, fire, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, fire, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const scriptPath = path.join( featureDir, 'assets/admin.js' );
@@ -159,19 +159,14 @@ function world( options ) {
 		return created;
 	};
 
-	const parse = function() {
-		const raw = state.hash.replace( /^#/, '' );
-		const parts = raw === '' ? [] : raw.split('/').map( decodeURIComponent );
-		return { panel : parts[0] ?? '', parts : parts.slice( 1 ) };
-	};
-
-	const router = {
-		current : parse,
-		href : function( panel, parts ) { return '#'+ [ panel ].concat( parts ?? [] ).map( function( part ) { return encodeURIComponent( part ).replace( /%40/g, '@' ) } ).join('/') },
-		go : function( panel, parts ) { const hash = router.href( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
-		set : function( panel, parts ) { state.hash = router.href( panel, parts ) },
+	// The router of the workbench itself, over the panes of the panel: what the panel writes is read back by it
+	const codec = shellRouter( { builder : [ [ 'builder', 'builder' ], [ 'builder-frames', 'frames' ], [ 'builder-settings', 'settings' ] ] } );
+	const router = codec.stub( {
+		current : function() { return codec.read( state.hash ) },
+		go : function( panel, parts ) { const hash = codec.check( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
+		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
 		leave : function( names, leaving, proceed, resync ) { leaving === true && dirty.isDirty( names ) === true ? dirty.guard( names, proceed, resync ) : proceed() },
-	};
+	} );
 
 	// The registry of the shell as far as the panel uses it: a watched form is dirty when it differs from what was last taken, a question is answered from a queue
 	const entries = {};
@@ -247,7 +242,7 @@ function world( options ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, served : options.page, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, served : options.page, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, dialogs : dialogs, said : said, answers : answers, state : state, codec : codec, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -313,7 +308,7 @@ const opened = function( options ) {
 	const w = world( options );
 
 	w.title.textContent = 'Builder';
-	w.open('#builder/home');
+	w.open('#builder/builder/home');
 
 	return w;
 };
@@ -411,7 +406,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		marks = options;
 		return { highlight : function( keys ) { seen.push( keys ) }, refresh : function() {}, stop : function() {} };
 	};
-	w.open('#builder/home');
+	w.open('#builder/builder/home');
 
 	const model = w.panel.model;
 	const over = function( id ) { rowOf( w, id ).dispatchEvent( { type : 'pointerover', bubbles : true } ) };
@@ -1046,7 +1041,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 	const first = regions();
 
-	w.open('#builder/home');
+	w.open('#builder/builder/home');
 
 	const during = w.view.children.length > 0;
 
@@ -1071,7 +1066,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 			return { highlight : function( keys, extra ) { marksSeen.push( [ keys, extra ] ) }, refresh : function() {}, stop : function() {} };
 		};
 		// The tree view is the view of a sheet of a block - the editor of the blocks brings one - and no view of a page: the sheet is opened with an adapter of its own
-		w.open('#builder/home');
+		w.open('#builder/builder/home');
 		w.serve();
 
 		const adapter = {
@@ -1864,7 +1859,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const asked = {};
 
 		x.title.textContent = 'Builder';
-		x.open('#builder/home');
+		x.open('#builder/builder/home');
 
 		[ '@header', '@footer' ].forEach( function( id ) {
 

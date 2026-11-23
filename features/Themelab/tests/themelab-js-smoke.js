@@ -26,7 +26,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, fire, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, fire, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const builderDir = path.join( featureDir, '../Builder' );
@@ -170,19 +170,14 @@ function world( options ) {
 		return created;
 	};
 
-	const parse = function() {
-		const raw = state.hash.replace( /^#/, '' );
-		const parts = raw === '' ? [] : raw.split('/').map( decodeURIComponent );
-		return { panel : parts[0] ?? '', parts : parts.slice( 1 ) };
-	};
-
-	const router = {
-		current : parse,
-		href : function( panel, parts ) { return '#'+ [ panel ].concat( parts ?? [] ).map( function( part ) { return encodeURIComponent( part ).replace( /%40/g, '@' ) } ).join('/') },
-		go : function( panel, parts ) { const hash = router.href( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
-		set : function( panel, parts ) { state.hash = router.href( panel, parts ) },
+	// The router of the workbench itself, over the panes of the panels that are loaded: what they write is read back by it
+	const codec = shellRouter( { themelab : [ [ 'themelab', 'themelab' ] ], builder : [ [ 'builder', 'builder' ], [ 'builder-frames', 'frames' ], [ 'builder-settings', 'settings' ] ] } );
+	const router = codec.stub( {
+		current : function() { return codec.read( state.hash ) },
+		go : function( panel, parts ) { const hash = codec.check( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
+		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
 		leave : function( names, leaving, proceed, resync ) { leaving === true && dirty.isDirty( names ) === true ? dirty.guard( names, proceed, resync ) : proceed() },
-	};
+	} );
 
 	// The registry of the shell as far as the panel uses it: a watched form is dirty when it differs from what was last taken, a question is answered from a queue
 	const entries = {};
@@ -272,7 +267,7 @@ function world( options ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, observers : observers, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, posted : posted, dialogs : dialogs, said : said, answers : answers, state : state, dirty : dirty,
+		Nino : Nino, observers : observers, view : view, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, form : form, requests : requests, posted : posted, dialogs : dialogs, said : said, answers : answers, state : state, codec : codec, dirty : dirty,
 		panel : Nino.admin.builder,
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -413,7 +408,7 @@ const typed = function( dialog, values ) {
 			&& optionsOf( choiceOf( w ) ) === 'all='+ W('source/all')+ ',own='+ W('tab/project')+ ',nino='+ W( 'tab/theme', 'Nino' ) && choiceOf( w ).value === 'own' && optionsOf( choiceOf( none ) ) === 'all='+ W('source/all')+ ',own='+ W('tab/project');
 	} )() );
 	check( 'A. the third tab is the theme in use and only reads: its name, version and origin, how many blocks and frames the project has, and what a theme package will hold - with a (?) that says export and import follow, and no button, no field, no bar of actions', ( function() {
-		const x = shown( '#themelab/@theme', LIST( { tab : 'info' } ) );
+		const x = shown( '#themelab/themelab/@theme', LIST( { tab : 'info' } ) );
 		const page = textOf( x.w.page );
 		const view = findAll( x.w.page, function( el ) { return String( el.className ).split(' ').indexOf('themelab-info') !== -1 } )[0];
 		const writing = view === undefined ? [ 'none' ] : findAll( view, function( el ) { return /^(INPUT|SELECT|TEXTAREA)$/.test( el.tagName ) || ( el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-help') === -1 && el.attributes['aria-expanded'] === undefined ) } );
@@ -421,7 +416,7 @@ const typed = function( dialog, values ) {
 		return x.asked.payload.tab === 'info' && page.indexOf('1.2.0') !== -1 && page.indexOf( W('info/origin-package') ) !== -1 && page.indexOf( W('info/package-design') ) !== -1 && writing.length === 0 && page.indexOf( W('new/button') ) === -1;
 	} )() );
 	check( 'A. a block of the project has three things to do in its row - duplicate, rename, delete - and each is named for the block; one of the theme has one: copy it as a block of the project', ( function() {
-		const theme = shown( '#themelab/@blocks/nino', THEME() ).w;
+		const theme = shown( '#themelab/themelab/@blocks/nino', THEME() ).w;
 		const mine = labelsOf( rowsOfList( w )[0] );
 		const theirs = labelsOf( rowsOfList( theme )[0] );
 
@@ -429,7 +424,7 @@ const typed = function( dialog, values ) {
 	} )() );
 	check( 'F294 T1. the choice of the source stands at the left of the search - before it in the toolbar - and filters at once with the search: all shows the own rows with their actions and those of the theme with the way to open and copy and the source named in the row, one source only its own rows; the choice is in the address and is kept - none of the tools of the own blocks is there for the rows of a theme', ( function() {
 		const mixed = function() { return LIST( { blocks : LIST().blocks.concat( THEME().blocks.map( function( block ) { return Object.assign( {}, block, { key : 't-'+ block.key } ) } ) ) } ) };
-		const all = shown( '#themelab/@blocks/all', mixed() ).w;
+		const all = shown( '#themelab/themelab/@blocks/all', mixed() ).w;
 		const bar = findAll( all.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' || el.tagName === 'INPUT' && /nino-admin-(table-)?search|search/.test( String( el.className )+ String( el.attributes['aria-label'] ?? '' )+ String( el.attributes.placeholder ?? '' ) ) } );
 		const rowsAll = rowsOfList( all );
 		const ownTools = rowsAll.filter( function( row ) { return labelsOf( row ).length === 3 } ).length;
@@ -442,8 +437,8 @@ const typed = function( dialog, values ) {
 		select.value = 'nino';
 		fire( select, 'change' );
 
-		const redrawn = own.state.hash === '#themelab/@blocks/nino';
-		const theme = shown( '#themelab/@blocks/nino', mixed() ).w;
+		const redrawn = own.state.hash === '#themelab/themelab/@blocks/nino';
+		const theme = shown( '#themelab/themelab/@blocks/nino', mixed() ).w;
 		const selects = findAll( theme.page, function( el ) { return el.tagName === 'INPUT' && el.attributes.type === 'checkbox' } ).length;
 		const toolbar = findAll( theme.page, function( el ) { return el.tagName === 'BUTTON' && ( textOf( el ).indexOf( W('new/button') ) !== -1 || textOf( el ).indexOf( W('export/button') ) !== -1 ) } ).length;
 
@@ -451,7 +446,7 @@ const typed = function( dialog, values ) {
 	} )() );
 	check( 'A. a list with no block says so - the project and the theme each in its words - and has the button of a new block', ( function() {
 		const empty = shown( '#themelab', LIST( { blocks : [] } ) ).w;
-		const none = shown( '#themelab/@blocks/nino', THEME( { blocks : [] } ) ).w;
+		const none = shown( '#themelab/themelab/@blocks/nino', THEME( { blocks : [] } ) ).w;
 
 		return textOf( empty.page ).indexOf( W('msg/none-project') ) !== -1 && textOf( none.page ).indexOf( W('msg/none-theme') ) !== -1 && findAll( empty.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ) === W('new/button') } ).length === 1;
 	} )() );
@@ -460,7 +455,7 @@ const typed = function( dialog, values ) {
 			const refused = [ { key : 'alt-kopf', why : 'category', category : 'frame', side : '' }, { key : 'quer-kopf', why : 'side', category : 'footer', side : 'header' }, { key : 'kaputt', why : 'other', category : '', side : '' }, { key : 'alt-fuss', why : 'category', category : 'frame', side : '' } ];
 			const page = shown( '#themelab', LIST( { refused : refused } ) ).w.page;
 			const notices = findAll( page, function( el ) { return String( el.className ).indexOf('nino-admin-notice') !== -1 } );
-			const theme = textOf( shown( '#themelab/@blocks/nino', THEME( { refused : refused } ) ).w.page );
+			const theme = textOf( shown( '#themelab/themelab/@blocks/nino', THEME( { refused : refused } ) ).w.page );
 
 			return notices.length === 1 && textOf( notices[0] ) === W( 'msg/refused', [ W( 'msg/refused-category', [ W( 'msg/refused-item', 'alt-kopf', 'frame' ), W( 'msg/refused-item', 'alt-fuss', 'frame' ) ].join( ', ' ) ), W( 'msg/refused-side', W( 'msg/refused-item-side', 'quer-kopf', 'footer', W('cat/header') ) ), W( 'msg/refused-other', W( 'msg/refused-key', 'kaputt' ) ) ].join( ' ' ) ) && theme.indexOf( 'alt-kopf' ) === -1;
 		} )() );
@@ -469,7 +464,7 @@ const typed = function( dialog, values ) {
 
 		fire( rowsOfList( x.w )[0], 'click' );
 
-		const opened = x.w.state.hash === '#themelab/karten' && request( x.w, 'themelab/open' ) !== undefined && request( x.w, 'themelab/open' ).payload.key === 'karten';
+		const opened = x.w.state.hash === '#themelab/themelab/karten' && request( x.w, 'themelab/open' ) !== undefined && request( x.w, 'themelab/open' ).payload.key === 'karten';
 		const theme = shown('#themelab');
 
 		const select = findAll( theme.w.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0];
@@ -477,7 +472,7 @@ const typed = function( dialog, values ) {
 		select.value = 'nino';
 		fire( select, 'change' );
 
-		return opened === true && theme.w.state.hash === '#themelab/@blocks/nino';
+		return opened === true && theme.w.state.hash === '#themelab/themelab/@blocks/nino';
 	} )() );
 }
 
@@ -552,7 +547,7 @@ const typed = function( dialog, values ) {
 		return said.indexOf( W( 'delete/message', 'Cards' ) ) !== -1 && removal !== undefined && removal.payload.key === 'karten';
 	} )() );
 
-	const theme = shown( '#themelab/@blocks/nino', THEME() ).w;
+	const theme = shown( '#themelab/themelab/@blocks/nino', THEME() ).w;
 
 	fire( findAll( rowsOfList( theme )[0], function( el ) { return el.tagName === 'BUTTON' } )[0], 'click' );
 	typed( dialogOf( theme ), [ 'Eigen', 'Own' ] );
@@ -594,7 +589,7 @@ const sheetOf = function( hash, extra ) {
 };
 
 {
-	const w = sheetOf('#themelab/karten');
+	const w = sheetOf('#themelab/themelab/karten');
 	const sheet = w.builder.editor.state();
 	const back = findAll( w.page.querySelector('#themelab-sheet') ?? w.page, function( el ) { return String( el.className ).indexOf('nino-admin-back-link') !== -1 } )[0];
 	const saveas = sheet.view === null ? undefined : sheet.view.buttons.saveas;
@@ -628,13 +623,13 @@ const sheetOf = function( hash, extra ) {
 
 		answerOf( sent, 200, { key : 'neu' } );
 
-		return saveas !== undefined && sent !== undefined && sent.payload.name.de_DE === 'Neu' && Array.isArray( sent.payload.tree ) === true && typeof sent.payload.texts === 'object' && typeof sent.payload.pictures === 'object' && sent.payload.key === 'karten' && w.state.hash === '#themelab/neu';
+		return saveas !== undefined && sent !== undefined && sent.payload.name.de_DE === 'Neu' && Array.isArray( sent.payload.tree ) === true && typeof sent.payload.texts === 'object' && typeof sent.payload.pictures === 'object' && sent.payload.key === 'karten' && w.state.hash === '#themelab/themelab/neu';
 	} )() );
 }
 
 {
 	const choice = { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'dark' ], optionLabels : null, responsive : false };
-	const w = sheetOf( '#themelab/@theme-blocks/karten', { editable : false, schemas : Object.assign( {}, pageAnswer().schemas, { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : choice } } ) } ) } );
+	const w = sheetOf( '#themelab/themelab/@theme-blocks/karten', { editable : false, schemas : Object.assign( {}, pageAnswer().schemas, { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : choice } } ) } ) } );
 	const sheet = w.builder.editor.state();
 	const model = w.builder.model;
 	const before = JSON.stringify( sheet.top );
@@ -657,13 +652,13 @@ const sheetOf = function( hash, extra ) {
 
 			return badge !== undefined && badge.dataset.state === 'muted' && badge.title === W('readonly/reason') && textOf( badge ).indexOf( W('readonly/badge') ) !== -1 && String( badge.className ).indexOf('nino-admin-badge') !== -1 && textOf( sheet.view.buttons.saveas ).trim() === W('saveas/button-theme');
 		} )() && sheet.view.bar.save.hidden === true && sheet.view.buttons.saveas !== undefined && JSON.stringify( sheet.top ) === before && sheet.undo.length === 0
-		&& controls.length > 0 && controls.every( function( control ) { return control.disabled === true } ) && ( function( link ) { return link.attributes.href ?? link.href } )( findAll( w.page, function( el ) { return String( el.className ).indexOf('nino-admin-back-link') !== -1 } )[0] ) === '#themelab/@theme-blocks' );
+		&& controls.length > 0 && controls.every( function( control ) { return control.disabled === true } ) && ( function( link ) { return link.attributes.href ?? link.href } )( findAll( w.page, function( el ) { return String( el.className ).indexOf('nino-admin-back-link') !== -1 } )[0] ) === '#themelab/themelab/@theme-blocks' );
 }
 
 // --- C2. the properties of a component in the column beside the preview ---------------------------------------------------------
 
 {
-	const w = sheetOf('#themelab/karten');
+	const w = sheetOf('#themelab/themelab/karten');
 	const sheet = w.builder.editor.state();
 	const rootAt = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
 	const model = w.builder.model;
@@ -757,7 +752,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 // A narrow window shows the column or the preview: with the properties open a strip of the preview stands over the column, a press on it goes to the preview, and it is gone with the column
 {
-	const w = sheetOf('#themelab/karten');
+	const w = sheetOf('#themelab/themelab/karten');
 	const sheet = w.builder.editor.state();
 	const rootAt = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
 	const peeks = function() { return findAll( sheet.view.split.preview, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('builder-props-peek') !== -1 } ) };
@@ -780,7 +775,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 // The working language moves while the properties are open in the column: the block is drawn anew in the new language and the same component is open again - held by the panel
 {
-	const w = sheetOf('#themelab/karten');
+	const w = sheetOf('#themelab/themelab/karten');
 	const rootAt = w.builder.editor.state().top.findIndex( function( node ) { return node.n === 'section-wrap' } );
 
 	w.builder.editor.properties( rootAt, '1', element('button'), function() {} );
@@ -972,7 +967,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 // What a sheet that is only looked at does: nothing - a key, a button of the tree, a call of the model - and it says nothing that is not so
 {
-	const w = sheetOf( '#themelab/@theme-blocks/karten', { editable : false } );
+	const w = sheetOf( '#themelab/themelab/@theme-blocks/karten', { editable : false } );
 	const sheet = w.builder.editor.state();
 	const model = w.builder.model;
 	const before = JSON.stringify( sheet.top );
@@ -995,7 +990,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 // The working language that is changed while a block is open is the business of this panel: the Builder, whose editor it is, opens no page for it - there is none
 {
-	const w = sheetOf('#themelab/karten');
+	const w = sheetOf('#themelab/themelab/karten');
 
 	w.requests.length = 0;
 	w.Nino.admin.workLocale.set('en_US');
@@ -1020,7 +1015,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 {
 	const dialogOfSave = function( hash ) {
 
-		const w = sheetOf( hash, hash === '#themelab/@theme-blocks/karten' ? { editable : false } : undefined );
+		const w = sheetOf( hash, hash === '#themelab/themelab/@theme-blocks/karten' ? { editable : false } : undefined );
 
 		fire( w.builder.editor.state().view.buttons.saveas, 'click' );
 
@@ -1029,8 +1024,8 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 		return { title : textOf( dialog.querySelector('.nino-admin-dialog-title') ), submit : findAll( dialog, function( el ) { return el.tagName === 'BUTTON' } ).map( function( el ) { return textOf( el ).trim() } ), paragraphs : message.map( textOf ).join(' '), help : findAll( dialog, function( el ) { return String( el.className ).indexOf('nino-admin-help-button') !== -1 } ).length };
 	};
-	const mine = dialogOfSave('#themelab/karten');
-	const theirs = dialogOfSave('#themelab/@theme-blocks/karten');
+	const mine = dialogOfSave('#themelab/themelab/karten');
+	const theirs = dialogOfSave('#themelab/themelab/@theme-blocks/karten');
 
 	check( 'D. "Save as" of an own block is called so and has its sentence behind a (?) at the name; of a block of the theme it is "Save to own blocks" - the title and the button - and with no (?) of its own; neither dialog has a paragraph above its field, and the name is the one field',
 		mine.title === W('saveas/title') && mine.submit.indexOf( W('saveas/submit') ) !== -1 && mine.help === 1 && mine.paragraphs.indexOf( W('saveas/help') ) === -1 && theirs.title === W('saveas/title-theme') && theirs.submit.indexOf( W('saveas/submit-theme') ) !== -1 && theirs.help === 0 && theirs.paragraphs === '' );
@@ -1038,7 +1033,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 // The title of the editor is the NAME of the block, with its key quietly behind it - and not the kind of the root and the key
 {
-	const w = sheetOf('#themelab/karten');
+	const w = sheetOf('#themelab/themelab/karten');
 	const context = findAll( w.page, function( el ) { return String( el.className ).indexOf('nino-admin-context') !== -1 } ).map( textOf ).join(' ');
 
 	check( 'D. the title of the editor of a block is the name of the block in the language of the workbench - with its key quietly behind it - and not "Section" and a key', context.indexOf('Cards') !== -1 && context.indexOf('karten') !== -1 && context.indexOf( 'Section ·' ) === -1 );
@@ -1046,7 +1041,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 // The dialog of a source says "block" where the sheet is a block: the lightbox names the text and the picture of the block, and the dialog offers to choose and to make - nothing else
 {
-	const w = sheetOf('#themelab/karten', { texts : { '/template/page-home/karten/title' : { de_DE : 'Karten', en_US : 'Cards' } }, sources : [ { key : '/template/page-home/karten/title', kind : 'text', name : 'title' } ] } );
+	const w = sheetOf('#themelab/themelab/karten', { texts : { '/template/page-home/karten/title' : { de_DE : 'Karten', en_US : 'Cards' } }, sources : [ { key : '/template/page-home/karten/title', kind : 'text', name : 'title' } ] } );
 	const sheet = w.builder.editor.state();
 	const root = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
 
@@ -1118,7 +1113,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 	delete sheet.texts['/template/page-home/karten/other'];
 
 	// a picture place: its id, the size of its picture, what the page shows until one is chosen - and no source
-	const pic = sheetOf( '#themelab/karten', {
+	const pic = sheetOf( '#themelab/themelab/karten', {
 		tree : [ FRAME_HEAD, { t : '\n' }, block( 'karten', [ { n : 'image', s : '~bild', a : {}, c : null }, { t : '\n' } ] ), { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
 		schemas : Object.assign( {}, pageAnswer().schemas, { image : schema( 'Image', 'image', 'image', {} ) } ),
 		details : { names : { de_DE : 'Karten', en_US : 'Cards' }, descriptions : { de_DE : 'D', en_US : 'D' }, category : 'content', rank : 900, images : { bild : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'B', en_US : 'P' }, used : true } }, placeholders : [ '/nino/placeholder/mark', '/nino/placeholder/landscape' ] },
@@ -1221,7 +1216,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 			details : { names : { de_DE : 'Karten', en_US : 'Cards' }, descriptions : { de_DE : 'D', en_US : 'D' }, category : 'content', rank : 900, images : { picture : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'B', en_US : 'P' }, used : true }, spare : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'S', en_US : 'S' }, used : false } }, locales : [ 'de_DE', 'en_US' ], placeholders : [ '/nino/placeholder/landscape', '/nino/placeholder/mark' ] },
 		}, extra ?? {} );
 	};
-	const w = sheetOf( '#themelab/karten', VARIED() );
+	const w = sheetOf( '#themelab/themelab/karten', VARIED() );
 	const sheet = w.builder.editor.state();
 	const model = w.builder.model;
 	const root = sheet.top.findIndex( function( node ) { return node.n === 'section-wrap' } );
@@ -1243,7 +1238,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 
 	// The root of the block is the one the schemas the server sent say is of the side page - a root of another name has its variants as well
 	const other = JSON.parse( JSON.stringify( SHEET( VARIED() ) ).split( 'section-wrap' ).join( 'probe-top' ) );
-	const otherSheet = sheetOf( '#themelab/karten', other ).builder.editor.state();
+	const otherSheet = sheetOf( '#themelab/themelab/karten', other ).builder.editor.state();
 	const otherCanon = otherSheet.adapter.canon( otherSheet.top, otherSheet.extra );
 
 	check( 'E. the sets of the variants stand on the calls of a block whose root has a name of its own: the root is the call whose schema says the page, never a name',
@@ -1475,7 +1470,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 }
 
 {
-	const w = sheetOf( '#themelab/@theme-blocks/karten', { editable : false, alternatives : [ { name : 'standard', label : { en_US : 'Standard' }, set : {} }, { name : 'right', label : { en_US : 'Right' }, set : {} } ] } );
+	const w = sheetOf( '#themelab/themelab/@theme-blocks/karten', { editable : false, alternatives : [ { name : 'standard', label : { en_US : 'Standard' }, set : {} }, { name : 'right', label : { en_US : 'Right' }, set : {} } ] } );
 	const sheet = w.builder.editor.state();
 	const buttons = Object.keys( sheet.view.bar.buttons );
 
@@ -1484,7 +1479,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 }
 
 {
-	const w = sheetOf( '#themelab/karten', { details : { names : { de_DE : 'Karten', en_US : 'Cards' }, descriptions : { de_DE : 'D', en_US : 'D' }, category : 'content', rank : 900, images : { picture : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'B', en_US : 'P' }, used : true }, spare : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'S', en_US : 'S' }, used : false } }, locales : [ 'de_DE', 'en_US' ], placeholders : [ '/nino/placeholder/landscape', '/nino/placeholder/mark' ] }, alternatives : [ { name : 'standard', label : { de_DE : 'Standard', en_US : 'Standard' }, set : {} } ] } );
+	const w = sheetOf( '#themelab/themelab/karten', { details : { names : { de_DE : 'Karten', en_US : 'Cards' }, descriptions : { de_DE : 'D', en_US : 'D' }, category : 'content', rank : 900, images : { picture : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'B', en_US : 'P' }, used : true }, spare : { placeholder : '/nino/placeholder/mark', width : 800, height : 600, label : { de_DE : 'S', en_US : 'S' }, used : false } }, locales : [ 'de_DE', 'en_US' ], placeholders : [ '/nino/placeholder/landscape', '/nino/placeholder/mark' ] }, alternatives : [ { name : 'standard', label : { de_DE : 'Standard', en_US : 'Standard' }, set : {} } ] } );
 	const sheet = w.builder.editor.state();
 	const model = w.builder.model;
 
@@ -1583,7 +1578,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 	const boxes = rowBoxes( w.page );
 	const button = function( id ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && el.id === id } )[0] };
 	const importBar = button('themelab-import');
-	const on = shown( '#themelab/@blocks/nino', THEME() ).w;
+	const on = shown( '#themelab/themelab/@blocks/nino', THEME() ).w;
 	const barButton = function( label ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === label } ).filter( function( el ) { return String( el.className ).indexOf('nino-admin-btn') !== -1 && el.id === '' } )[0] };
 
 	check( 'F. the list of the own blocks is chosen by the workbench\'s table: a box at each row, named for its block, and a quiet button of the import beside "New block" - no button of the export of its own; the theme\'s list has no box and no import',
@@ -1803,7 +1798,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	fire( head, 'click' );
 
 	check( 'H. a press on the row of the block of a frame opens it in the editor of the blocks - as the row of any own block does - and not its details: the address is the block\'s',
-		w.state.hash === '#themelab/mein-kopf' && request( w, 'themelab/open' ) !== undefined && request( w, 'themelab/open' ).payload.key === 'mein-kopf' && w.dialogs.length === 0 );
+		w.state.hash === '#themelab/themelab/mein-kopf' && request( w, 'themelab/open' ) !== undefined && request( w, 'themelab/open' ).payload.key === 'mein-kopf' && w.dialogs.length === 0 );
 
 	const again = shown( '#themelab', list ).w;
 	const pencil = findAll( again.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'row/details', 'My head' ) } )[0];
@@ -1825,7 +1820,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 
 // The tab of the theme counts the own blocks of the frames besides the blocks and the frames
 {
-	const { w } = shown( '#themelab/info', LIST( { tab : 'info', counts : { blocks : 2, frames : 2, frameBlocks : 3 } } ) );
+	const { w } = shown( '#themelab/themelab/@theme', LIST( { tab : 'info', counts : { blocks : 2, frames : 2, frameBlocks : 3 } } ) );
 
 	check( 'H. the tab of the theme counts the own blocks of the frames', textOf( w.page ).indexOf( W('info/frame-blocks') ) !== -1 && /3/.test( textOf( w.page ).slice( textOf( w.page ).indexOf( W('info/frame-blocks') ) ) ) );
 }
@@ -1834,13 +1829,13 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 // header or of a footer, and for nobody else
 {
 	const link = function( now ) { return findAll( now.page, function( el ) { return el.tagName === 'A' && el.dataset.key === 'frames-at' } ) };
-	const info = shown( '#themelab/info', LIST( { tab : 'info', framesAt : true } ) ).w;
-	const plain = shown( '#themelab/info', LIST( { tab : 'info', framesAt : false } ) ).w;
+	const info = shown( '#themelab/themelab/@theme', LIST( { tab : 'info', framesAt : true } ) ).w;
+	const plain = shown( '#themelab/themelab/@theme', LIST( { tab : 'info', framesAt : false } ) ).w;
 	const headed = LIST( { framesAt : true, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'header', group : 'header', variants : 0, rank : 0, frame : true, template : 'frame-header', origin : 'project', own : true, openable : true } ] ) } );
 	const blocks = shown( '#themelab', headed ).w;
 
-	check( 'H. the way to the frames of the site is a link to the tab Header/footer of the pages - #builder-frames - on the tab of the theme for the account the list says may go there, and none for another',
-		link( info ).length === 1 && link( info )[0].href === '#builder-frames' && textOf( link( info )[0] ) === W('frames-at/link') && textOf( info.page ).indexOf( W('frames-at/note') ) !== -1 && link( plain ).length === 0 && textOf( plain.page ).indexOf( W('frames-at/note') ) === -1 );
+	check( 'H. the way to the frames of the site is a link to the tab Header/footer of the pages - #builder/frames - on the tab of the theme for the account the list says may go there, and none for another',
+		link( info ).length === 1 && link( info )[0].href === '#builder/frames' && textOf( link( info )[0] ) === W('frames-at/link') && textOf( info.page ).indexOf( W('frames-at/note') ) !== -1 && link( plain ).length === 0 && textOf( plain.page ).indexOf( W('frames-at/note') ) === -1 );
 
 	const category = findAll( blocks.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-category' } )[0];
 
@@ -1850,58 +1845,57 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	check( 'H. under the list of the blocks of a header or of a footer the same link stands - and under no other list of blocks', link( blocks ).length === 1 && link( shown( '#themelab', LIST( { framesAt : true, blocks : headed.blocks } ) ).w ).length === 0 );
 }
 
-// The fixed addresses have the @ that no key of a block has: a block whose key is "frames", "theme" or "theme-blocks" opens its editor by its address, the tabs go by their @ address, and
-// the address of before, without the @, is the block where the project has one of that key and else the tab
+// The fixed addresses are words: a block whose key is "frames", "theme" or "theme-blocks" opens its editor by its key, the tabs go by their words, a word the panel has not is the list - and
+// the same names without the at sign are keys: blocks, whatever the project has
 {
 	[ 'frames', 'theme', 'theme-blocks' ].forEach( function( key ) {
 
-		const own = shown( '#themelab/'+ key, LIST( { ownKeys : [ 'karten', key ] } ) ).w;
+		const own = shown( '#themelab/themelab/'+ key, LIST( { ownKeys : [ 'karten', key ] } ) ).w;
 		const opened = request( own, 'themelab/open' );
 
-		check( 'K. the block "'+ key+ '" of the project opens its editor by #themelab/'+ key, opened !== undefined && opened.payload.key === key && own.state.hash === '#themelab/'+ key );
+		check( 'K. the block "'+ key+ '" of the project opens its editor by its key, #themelab/themelab/'+ key, opened !== undefined && opened.payload.key === key && own.state.hash === '#themelab/themelab/'+ key );
 	} );
 
-	const tabs = [ [ '@frames', 'blocks', '' ], [ '@frames/header', 'blocks', '' ], [ '@theme', 'info', '@theme' ], [ '@theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( pair ) {
+	const tabs = [ [ '@frames', 'blocks', '' ], [ '@frames/header', 'blocks', '' ], [ '@theme', 'info', '@theme' ], [ '@theme-blocks', 'blocks', '@blocks/nino' ], [ '@zzz', 'blocks', '' ] ].map( function( pair ) {
 
-		const w = shown( '#themelab/'+ pair[0], LIST( { tab : pair[1], frames : [], ownKeys : [ 'karten', 'frames', 'theme', 'theme-blocks' ] } ) ).w;
+		const w = shown( '#themelab/themelab/'+ pair[0], LIST( { tab : pair[1], frames : [], ownKeys : [ 'karten', 'frames', 'theme', 'theme-blocks' ] } ) ).w;
 
-		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab'+ ( pair[2] === '' ? '' : '/'+ pair[2] );
+		return request( w, 'themelab/open' ) === undefined && w.state.hash === ( pair[2] === '' ? '#themelab' : '#themelab/themelab/'+ pair[2] );
 	} );
 
-	check( 'K. the theme is at #themelab/@theme, the theme\'s blocks at #themelab/@blocks/nino - the address #themelab/@theme-blocks of before is written so - and the address of the tab of the frames, which this panel has no more, is the list of the blocks: #themelab/@frames and #themelab/@frames/header are written #themelab - whatever blocks the project has: no editor opens', tabs.join() === 'true,true,true,true' );
+	check( 'K. the theme is at the word @theme, the theme\'s blocks at @blocks/nino - the word @theme-blocks is written so - and a word the panel has not, @frames among them, is the list of the blocks: written #themelab - whatever blocks the project has: no editor opens', tabs.join() === 'true,true,true,true,true' );
 
-	const old = [ [ 'frames', 'blocks', '' ], [ 'theme', 'info', '@theme' ], [ 'theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( triple ) {
+	const keys = [ 'frames', 'theme', 'theme-blocks' ].map( function( key ) {
 
-		const w = shown( '#themelab/'+ triple[0], LIST( { tab : triple[1], frames : [], ownKeys : [ 'karten' ] } ) ).w;
+		const w = shown( '#themelab/themelab/'+ key, LIST( { tab : 'blocks', frames : [], ownKeys : [ 'karten' ] } ) ).w;
+		const asked = request( w, 'themelab/open' );
 
-		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab'+ ( triple[2] === '' ? '' : '/'+ triple[2] );
+		return asked !== undefined && asked.payload.key === key;
 	} );
 
-	check( 'K. the addresses of before, without the @, open the tab where no block of that key is: and are written with the @', old.join() === 'true,true,true' );
+	check( 'K. the same names without the at sign are keys of blocks: the panel asks for the block of that key, and no tab is shown instead', keys.join() === 'true,true,true' );
 }
 
-// The address names a block by its key and a tab or a source by a part with the @, which no key has: a block called "blocks" opens as the block, and a theme called "theme" is a source of
-// the list and not the theme in use - that is what the address of before, #themelab/@theme-blocks, stands for
+// The address names a block by its key and a tab or a source by a word, which no key is: a block called "blocks" opens as the block, and a theme called "theme" is a source of
+// the list and not the theme in use - that is what the word @theme-blocks stands for
 {
-	const blocks = shown( '#themelab/blocks', LIST( { ownKeys : [ 'karten', 'blocks' ] } ) ).w;
+	const blocks = shown( '#themelab/themelab/blocks', LIST( { ownKeys : [ 'karten', 'blocks' ] } ) ).w;
 	const opened = request( blocks, 'themelab/open' );
 
-	check( 'K2. the block "blocks" of the project opens its editor by #themelab/blocks - the part of the tab of the blocks is @blocks, which no key has',
-		opened !== undefined && opened.payload.key === 'blocks' && blocks.state.hash === '#themelab/blocks' );
+	check( 'K2. the block "blocks" of the project opens its editor by #themelab/themelab/blocks - the part of the tab of the blocks is the word @blocks, which no key is',
+		opened !== undefined && opened.payload.key === 'blocks' && blocks.state.hash === '#themelab/themelab/blocks' );
 
 	const sources = [ { key : 'theme', label : { en_US : 'Theme', de_DE : 'Theme' }, theme : false }, { key : 'nino', label : { en_US : 'Nino', de_DE : 'Nino' }, theme : true } ];
 	const rows = THEME().blocks.map( function( block, at ) { return Object.assign( {}, block, { origin : at === 0 ? 'theme' : 'nino' } ) } );
-	const named = shown( '#themelab/@blocks/theme', LIST( { sources : sources, blocks : rows } ) ).w;
+	const named = shown( '#themelab/themelab/@blocks/theme', LIST( { sources : sources, blocks : rows } ) ).w;
 	const select = findAll( named.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0];
-	const old = shown( '#themelab/@theme-blocks', LIST( { sources : sources, blocks : rows } ) ).w;
+	const old = shown( '#themelab/themelab/@theme-blocks', LIST( { sources : sources, blocks : rows } ) ).w;
 	const oldSelect = findAll( old.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0];
 
-	check( 'K2. a theme whose key is "theme" is the source #themelab/@blocks/theme - its blocks - and the address of before, #themelab/@theme-blocks, is the theme in use, written as its own source',
-		select.value === 'theme' && rowsOfList( named ).length === 1 && named.state.hash === '#themelab/@blocks/theme' && oldSelect.value === 'nino' && old.state.hash === '#themelab/@blocks/nino' );
+	check( 'K2. a theme whose key is "theme" is the source @blocks/theme - its blocks - and the word @theme-blocks is the theme in use, written as its own source',
+		select.value === 'theme' && rowsOfList( named ).length === 1 && named.state.hash === '#themelab/themelab/@blocks/theme' && oldSelect.value === 'nino' && old.state.hash === '#themelab/themelab/@blocks/nino' );
 
-	check( 'K2. the resolution of an address is fixed by structure: every fixed part has the @ that no key of a block has - the key of a block is of the form [a-z][a-z0-9-]* - and the theme in use has a name of its own, not the key "theme"',
-		/const FIXED = \{ '@theme-blocks' : 'theme', '@frames' : 'frames', '@theme' : 'info', '@blocks' : 'blocks' \};/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true && /const IN_USE = '@in-use';/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true
-		&& /\^\[a-z\]\[a-z0-9-\]\{0,63\}\$/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true );
+	check( 'K2. a source that is called as a word is a key: @blocks/%40theme is the key @theme, which no source has - the own blocks stand', shown( '#themelab/themelab/@blocks/%40theme', LIST( { sources : sources, blocks : rows } ) ).w.state.hash === '#themelab' );
 }
 
 // A block that is made with the key of a fixed address - "frames" - opens as the block: the key is a key of the project from the moment the server has made it
@@ -1918,14 +1912,14 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	answerOf( request( w, 'themelab/create' ), 200, { key : 'frames' } );
 	fire( dialog, 'close' );
 
-	check( 'K. a new block whose key is "frames" is opened as that block, at #themelab/frames - not read as the tab of the frames', w.state.hash === '#themelab/frames' && request( w, 'themelab/open' ) !== undefined && request( w, 'themelab/open' ).payload.key === 'frames' );
+	check( 'K. a new block whose key is "frames" is opened as that block, at #themelab/themelab/frames - not read as a word', w.state.hash === '#themelab/themelab/frames' && request( w, 'themelab/open' ) !== undefined && request( w, 'themelab/open' ).payload.key === 'frames' );
 }
 
 // The block of a header in the editor of the blocks: the root is the header, there are no variants and no category, the details say what the block reads of the site, and the dialog of a source says
 // which text is the block's own and which the website's
 {
 	const head = { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'button', s : '~button', a : {}, c : null }, { t : '\n\t' }, { n : 'button', s : '/project/company/general/name', a : {}, c : null }, { t : '\n' } ] };
-	const w = sheetOf( '#themelab/mein-kopf', {
+	const w = sheetOf( '#themelab/themelab/mein-kopf', {
 		key : 'mein-kopf', side : 'header', stamp : 'f1', filled : [ { locale : 'en_US', parts : [ '[button]' ] } ], name : { de_DE : 'Mein Kopf', en_US : 'My head' },
 		tree : [ FRAME_HEAD, { t : '\n' }, head, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
 		texts : { '/template/page-home/header/button' : { de_DE : 'Hallo', en_US : 'Hello' } },
@@ -1936,7 +1930,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	const sheet = w.builder.editor.state();
 
 	check( 'M. the block of a header is opened as a sheet of the editor of the blocks - its address is the block\'s - and has no variant: the bar has the details and no button of a variant',
-		w.state.hash === '#themelab/mein-kopf' && sheet.sheet === 'block' && sheet.adapter.panel === 'themelab' && sheet.adapter.frameBlock === true && sheet.view.bar.buttons.details !== undefined && sheet.view.bar.buttons.variant === undefined );
+		w.state.hash === '#themelab/themelab/mein-kopf' && sheet.sheet === 'block' && sheet.adapter.panel === 'themelab' && sheet.adapter.frameBlock === true && sheet.view.bar.buttons.details !== undefined && sheet.view.bar.buttons.variant === undefined );
 
 	check( 'M. the quiet place the picture of the block of a frame has next to it says it is the page - and a block of a page keeps its sentence', sheet.adapter.base().hint === W('preview/page') && W('preview/page') !== W('preview/place') );
 
@@ -1978,7 +1972,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	const choice = { type : 'choice', label : 'Menu button', hint : '', default : 'auto', options : [ 'auto', 'always' ], labels : { auto : 'Automatic', always : 'Always' } };
 	const pick = function( label, fallback, options, extra ) { return Object.assign( { type : 'choice', label : label, hint : '', default : fallback, options : options, optionLabels : null, responsive : false, min : null, max : null, class : true }, extra ?? {} ) };
 	const flag = function( label ) { return { type : 'bool', label : label, hint : '', default : false, options : null, optionLabels : null, responsive : false, min : null, max : null, class : true } };
-	const w = sheetOf( '#themelab/mein-kopf', {
+	const w = sheetOf( '#themelab/themelab/mein-kopf', {
 		key : 'mein-kopf', side : 'header', stamp : 'f1', name : { de_DE : 'Mein Kopf', en_US : 'My head' },
 		tree : [ FRAME_HEAD, { t : '\n' }, { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'section-row', s : '', a : {}, c : [ { t : '\n\t\t' }, { n : 'section-col', s : '', a : { size : 'fill' }, c : [ { t : '\n\t\t\t' }, { n : 'header-nav', s : '', a : {}, c : [] }, { t : '\n\t\t' } ] }, { t : '\n\t' } ] }, { t : '\n' } ] }, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
 		known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, 'section-row' : { label : 'Row', icon : 'rows-2', id : '', source : 'none' }, 'section-col' : { label : 'Column', icon : 'columns-3', id : '', source : 'none' }, 'header-nav' : { label : 'Menu', icon : 'menu', id : '', source : 'none' } },
@@ -2050,7 +2044,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 		lists( x.w ) === 0 && ( x.w.panel.follow(), lists( x.w ) === 1 ) );
 
 	// a first address that names a block uses the mark up: the list of the next address is asked for
-	const block = shown( '#themelab/karten', LIST( { ownKeys : [ 'karten' ] } ) ).w;
+	const block = shown( '#themelab/themelab/karten', LIST( { ownKeys : [ 'karten' ] } ) ).w;
 
 	block.requests.length = 0;
 	block.state.hash = '#themelab';
@@ -2082,7 +2076,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 // A page that is open in the pane of the pages has its view in the level builder-page. The sheet of a block of this panel is drawn with the same editor and takes that level for itself: the pane of the
 // pages shows its list when it is shown next, and no empty page
 {
-	const x = shown( '#themelab/karten' );
+	const x = shown( '#themelab/themelab/karten' );
 	const w = x.w;
 	const levels = function( id ) { return findAll( w.page, function( el ) { return el.id === id } )[0] };
 	const pageLevel = levels('builder-page');
@@ -2102,7 +2096,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 // The editor is the pane of the pages' as well: a page opened there while a sheet of this panel is open takes the sheet - the level of the sheet is emptied - and the list that was unloaded for the
 // sheet is drawn by nobody else. The panel that is shown next asks for its list again and shows it, and the level of the sheet that is gone is not the one that shows
 {
-	const x = shown('#themelab/karten');
+	const x = shown('#themelab/themelab/karten');
 	const w = x.w;
 	const levels = function( id ) { return findAll( w.page, function( el ) { return el.id === id } )[0] };
 	const list = levels('themelab-list');
@@ -2237,7 +2231,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	choose( w, 'all' );
 
 	const one = shown( '#themelab', LIST( { blocks : LIST().blocks.map( function( block ) { return Object.assign( {}, block, { category : 'content', group : 'content' } ) } ) } ) ).w;
-	const theirs = shown( '#themelab/@blocks/nino', THEME() ).w;
+	const theirs = shown( '#themelab/themelab/@blocks/nino', THEME() ).w;
 
 	// a category that the list now drawn has no block of is no choice: it is "all", and the list is not empty for it
 	const stale = shown('#themelab').w;
@@ -2290,6 +2284,20 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 
 	check( 'F296. the words of Themelab say "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich" in German and "header", "footer" and "header/footer" in English: no text of the panel and no line of its manual has "Rahmen", "Header" or "Footer" in German or "frame" in English for the head and the foot of a page, but the exceptions that are named here - and both languages have the same keys',
 		offending('de_DE').length === 0 && offending('en_US').length === 0 && keysOf('de_DE') === keysOf('en_US') && /Kopf-\/Fußbereich/.test( fs.readFileSync( path.join( featureDir, 'text/de_DE.php' ), 'utf8' ) ) === true );
+}
+
+// Every address the panel wrote or drew is read back by the router as the same screen and the same parts - the words as words, the keys as keys
+{
+	const w = shown( '#themelab', LIST( { ownKeys : [ 'karten', 'theme', 'blocks' ] } ) ).w;
+	const read = function( hash ) { return w.codec.read( hash ) };
+
+	[ [ [], '#themelab' ], [ [ w.codec.word('blocks'), 'nino' ], '#themelab/themelab/@blocks/nino' ], [ [ w.codec.word('theme-blocks'), 'karten' ], '#themelab/themelab/@theme-blocks/karten' ], [ [ w.codec.word('theme') ], '#themelab/themelab/@theme' ], [ [ 'theme' ], '#themelab/themelab/theme' ], [ [ 'blocks' ], '#themelab/themelab/blocks' ] ].forEach( function( pair ) {
+
+		w.codec.check( 'themelab', pair[0] );
+		check( 'L. '+ pair[1]+ ' is what the router writes for it and reads back as the same parts', w.codec.href( 'themelab', pair[0] ) === pair[1] && read( pair[1] ).panel === 'themelab' && read( pair[1] ).parts.length === pair[0].length );
+	} );
+
+	check( 'L. every address the panel wrote or drew in this suite was read back by the router as the same screen and the same parts', w.codec.written.length > 5 && w.codec.mismatches.length === 0 );
 }
 
 done();

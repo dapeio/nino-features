@@ -24,7 +24,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const relative = path.relative( root, path.join( featureDir, 'assets/admin.js' ) );
@@ -70,12 +70,6 @@ function world( extra ) {
 	doc.activeElement = null;
 	doc.createElement = function( tag ) { return element( tag ) };
 
-	const parse = function() {
-		const raw = state.hash.replace( /^#/, '' );
-		const parts = raw === '' ? [] : raw.split('/').map( decodeURIComponent );
-		return { panel : parts[0] ?? '', parts : parts.slice( 1 ) };
-	};
-
 	const entries = {};
 	const dirty = {
 		entries : entries,
@@ -85,14 +79,14 @@ function world( extra ) {
 		guard : function( names, proceed ) { proceed() },
 	};
 
-	const router = {
-		current : parse,
-		href : function( panel, parts ) { return '#'+ [ panel ].concat( parts ?? [] ).map( encodeURIComponent ).join('/') },
+	// The router of the workbench itself, over the panes this panel has: what the panel writes is read back by it
+	const codec = shellRouter( { forms : [ [ 'forms', 'forms' ], [ 'forms-settings', 'settings' ] ] } );
+	const router = codec.stub( {
+		current : function() { return codec.read( state.hash ) },
 		isActive : function() { return true },
-		go : function( panel, parts ) { state.hash = router.href( panel, parts ) },
-		set : function( panel, parts ) { state.hash = router.href( panel, parts ) },
-		leave : function( names, leaving, proceed ) { proceed() },
-	};
+		go : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+	} );
 
 	const Nino = {
 		dir : '/site',
@@ -127,6 +121,11 @@ function world( extra ) {
 			state.hash = router.href( 'forms', parts );
 			w.panel.showCurrent();
 		},
+		at : function( hash ) {
+			state.hash = hash;
+			w.panel.showCurrent();
+		},
+		codec : codec,
 	};
 
 	return w;
@@ -153,16 +152,16 @@ const named = function( root, name ) { return buttons( root ).filter( function( 
 
 	named( w.list, W('label/new') )[0].click();
 
-	check( 'A. New form is an address of its own and shows a form with no field yet, which is said', w.state.hash === '#forms/new/fields' && rowsOf( w.form ).length === 0 && text( w.form ).indexOf( W('empty/fields') ) !== -1 );
+	check( 'A. New form is an address of its own and shows a form with no field yet, which is said', w.state.hash === '#forms/forms/@new/@fields' && rowsOf( w.form ).length === 0 && text( w.form ).indexOf( W('empty/fields') ) !== -1 );
 }
 
 {
 	const w = world();
 
 	w.open();
-	w.go( [ 'new', 'delivery' ] );
+	w.go( [ w.codec.word('new'), w.codec.word('delivery') ] );
 
-	check( 'A. the address of a new form keeps its tab: opened again at #forms/new/delivery it is the new form at that tab, not the directory', w.state.hash === '#forms/new/delivery' && findAll( w.form, function( node ) { return node.tagName === 'FORM' } ).length === 1 );
+	check( 'A. the address of a new form keeps its tab: opened again at #forms/forms/@new/@delivery it is the new form at that tab, not the directory', w.state.hash === '#forms/forms/@new/@delivery' && findAll( w.form, function( node ) { return node.tagName === 'FORM' } ).length === 1 );
 
 	const kernelForm = world( { default : true } );
 
@@ -178,7 +177,7 @@ const opened = function() {
 	const w = world();
 
 	w.open();
-	w.go( [ 'contact', 'fields' ] );
+	w.go( [ 'contact', w.codec.word('fields') ] );
 
 	return w;
 };
@@ -189,7 +188,7 @@ const opened = function() {
 	const rows = rowsOf( w.form );
 	const main = buttons( w.form ).filter( function( button ) { return button.getAttribute('type') === 'submit' || button.type === 'submit' } );
 
-	check( 'B. a form has the tabs Fields, Delivery and Protection, and its address says the tab', tabs.map( function( tab ) { return tab.textContent } ).join() === [ W('tab/fields'), W('tab/delivery'), W('tab/protection') ].join() && w.state.hash === '#forms/contact/fields' );
+	check( 'B. a form has the tabs Fields, Delivery and Protection, and its address says the tab', tabs.map( function( tab ) { return tab.textContent } ).join() === [ W('tab/fields'), W('tab/delivery'), W('tab/protection') ].join() && w.state.hash === '#forms/forms/contact/@fields' );
 	check( 'B. one main button, in the bar; the form is one that the script of the kernel does not check for us: novalidate', main.length === 1 && findAll( w.form, function( node ) { return node.tagName === 'FORM' } )[0].noValidate === true );
 	check( 'B. the cluster is a child of the row of the list and no part of the part that opens the field: a press on it would else land on the overlay that opens the dialog', rows.every( function( row ) {
 		const cluster = findAll( row, function( node ) { return node.className === 'nino-admin-move' } )[0];
@@ -201,7 +200,7 @@ const opened = function() {
 
 		forms[0].fields[1].options = [ 'S' ];
 		again.open();
-		again.go( [ 'contact', 'fields' ] );
+		again.go( [ 'contact', again.codec.word('fields') ] );
 
 		const row = text( rowsOf( again.form )[1] );
 
@@ -215,7 +214,39 @@ const opened = function() {
 {
 	const w = opened();
 
-	check( 'B. the way to the settings is a link, not a button', findAll( w.form, function( node ) { return node.tagName === 'A' && node.href === '#forms-settings' } ).length === 1 && buttons( w.form ).filter( function( button ) { return button.textContent === workbench['/_admin/features/tab/settings'] || button.textContent === 'Settings' } ).length === 0 );
+	check( 'B. the way to the settings is a link, not a button', findAll( w.form, function( node ) { return node.tagName === 'A' && node.href === '#forms/settings' } ).length === 1 && buttons( w.form ).filter( function( button ) { return button.textContent === workbench['/_admin/features/tab/settings'] || button.textContent === 'Settings' } ).length === 0 );
+}
+
+// --- A2. the address says a word or a key: a form may be called new ------------------------------------------------------------
+
+{
+	const forms = JSON.parse( JSON.stringify( FORMS ) );
+	const called = JSON.parse( JSON.stringify( FORMS[0] ) );
+
+	called.key = 'new';
+	called.name = 'The form called new';
+	forms.push( called );
+
+	const w = world( { forms : forms } );
+
+	w.open();
+
+	const draft = function() { return findAll( w.form, function( node ) { return node.tagName === 'INPUT' && node.dataset.key === 'name' } )[0].value };
+
+	w.at( '#forms/forms/@new/@fields' );
+	check( 'A2. the word @new is the form that makes one, whatever forms there are: it starts empty', draft() === '' && w.state.hash === '#forms/forms/@new/@fields' );
+
+	w.at( '#forms/forms/new/@fields' );
+	check( 'A2. the key new is the form of that key, a form that is there: it holds its name, and the address stays the key', draft() === 'The form called new' && w.state.hash === '#forms/forms/new/@fields' );
+
+	w.at( '#forms/forms/%40new/@fields' );
+	check( 'A2. the key @new, which no form has, is the directory - and the address says so', w.state.hash === '#forms' );
+
+	w.at( '#forms/forms/new/protection' );
+	check( 'A2. a tab that is no word is the first tab: protection without its at sign is no tab', w.state.hash === '#forms/forms/new/@fields' );
+
+	check( 'A2. every address the panel wrote or drew was read back by the router as the same screen and the same parts', w.codec.written.length > 3 && w.codec.mismatches.length === 0
+		&& w.codec.written.some( written => written.parts.length === 2 && typeof written.parts[0] === 'object' ) && w.codec.written.some( written => written.parts[0] === 'new' ) );
 }
 
 // --- C. an order, a removal, what is saved -----------------------------------------------------------------------

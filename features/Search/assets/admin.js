@@ -6,8 +6,10 @@
  *							file). Built from the blocks of the workbench: panel(), tabs(), table(),
  *							checklist(), contextBar(), actionBar().
  *
- *							The addresses are #search (the index), #search/types (the types), #search/types/<type>
- *							(the fields of one type, a view of its own) and #search/probe (the probe).
+ *							The addresses are #search (the index), #search/search/@types (the types),
+ *							#search/search/@types/<type> (the fields of one type, a view of its own) and
+ *							#search/search/@probe (the probe). The types and the probe are words of the panel;
+ *							a type is a key.
  */
 
 ( function(wn,dc) {
@@ -27,8 +29,14 @@
 	let bar = null;
 	let list = null;
 
-	// The address of each tab: the part after #search/
-	const PARTS = { index : [], types : [ 'types' ], probe : [ 'probe' ] };
+	// The address of each tab: the parts after the name of the screen, and of the fields of a type (its name without the slash in front)
+	const partsOf = function( tab, type ) {
+
+		if( tab === 'index' )
+			return [];
+
+		return type === undefined ? [ Nino.admin.router.word( tab ) ] : [ Nino.admin.router.word( tab ), type ];
+	};
 
 	// The address of a type is its name without the slash in front
 	const slugOf = function( type ) { return type.replace( /^\//, '' ) };
@@ -293,11 +301,11 @@
 			],
 			actions	: function( row ) {
 
-				const edit = Nino.adminUi.button( t('/_admin/search/label/edit'), function() { go( [ 'types', slugOf( row.type ) ] ) }, { small : true } );
+				const edit = Nino.adminUi.button( t('/_admin/search/label/edit'), function() { go( partsOf( 'types', slugOf( row.type ) ) ) }, { small : true } );
 
 				return [ edit ];
 			},
-			onRowClick : function( row ) { go( [ 'types', slugOf( row.type ) ] ) },
+			onRowClick : function( row ) { go( partsOf( 'types', slugOf( row.type ) ) ) },
 		} );
 
 		return pane;
@@ -426,7 +434,7 @@
 		const view = el( 'div' );
 
 		view.appendChild( Nino.adminUi.contextBar( {
-			back	: { to : t('/_admin/search/tab/types'), href : Nino.admin.router.href( 'search', PARTS.types ), onClick : function() { leave( function() { S.editing = null; go( PARTS.types ) } ) } },
+			back	: { to : t('/_admin/search/tab/types'), href : Nino.admin.router.href( 'search', partsOf( 'types' ) ), onClick : function() { leave( function() { S.editing = null; go( partsOf( 'types' ) ) } ) } },
 			title	: nameOf( row ),
 			code	: row.type,
 		} ) );
@@ -631,7 +639,7 @@
 			active	: S.tab,
 			id			: 'search-tabs',
 			label		: t('/_admin/nav/search'),
-			onSelect	: function( key ) { S.tab = key; Nino.admin.router.go( 'search', PARTS[key] ) },
+			onSelect	: function( key ) { S.tab = key; Nino.admin.router.go( 'search', partsOf( key ) ) },
 		} );
 
 		list.appendChild( tabs.el );
@@ -682,7 +690,8 @@
 
 			const at = Nino.admin.router.current();
 			const parts = at.panel === 'search' ? at.parts : [];
-			const row = parts[0] === 'types' && typeof parts[1] === 'string' ? S.types.find( function( found ) { return slugOf( found.type ) === parts[1] } ) : undefined;
+			const router = Nino.admin.router;
+			const row = router.isWord( parts, 0, 'types' ) === true && parts[1] !== undefined && router.wordOf( parts, 1 ) === '' ? S.types.find( function( found ) { return slugOf( found.type ) === parts[1] } ) : undefined;
 
 			if( row !== undefined ) {
 
@@ -691,18 +700,18 @@
 
 				typeView( row );
 				Nino.adminUi.showLevel( 'search-type', { focus : same === true ? false : true } );
-				Nino.admin.router.set( 'search', [ 'types', parts[1] ] );
+				Nino.admin.router.set( 'search', partsOf( 'types', parts[1] ) );
 				return;
 			}
 
 			S.editing = null;
-			S.tab = parts[0] === 'types' ? 'types' : ( parts[0] === 'probe' ? 'probe' : 'index' );
+			S.tab = router.isWord( parts, 0, 'types' ) === true ? 'types' : ( router.isWord( parts, 0, 'probe' ) === true ? 'probe' : 'index' );
 
 			if( tabs !== null )
 				tabs.select( S.tab );
 
 			Nino.adminUi.showLevel( 'search-list', { focus : false } );
-			Nino.admin.router.set( 'search', PARTS[S.tab] );
+			Nino.admin.router.set( 'search', partsOf( S.tab ) );
 		},
 	} );
 

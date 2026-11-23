@@ -64,12 +64,12 @@ return [
 				'de_DE' => 'In der Lightbox des Blocks, für alle, die das Recht von Themelab haben: der Block wird als Block des Projekts abgelegt, die Seite bleibt, wie sie ist; gelöscht wird er im Panel Blocks.',
 			],
 			'New page …' => [
-				'en_US' => 'In the view #builder/@new, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',
-				'de_DE' => 'In der Ansicht #builder/@new, für alle, die gestalten und Routen schreiben dürfen: Namen, Adressen, Menüs und ein erster Block machen Vorlage, Routen, Menüeintrag und Texte in einem Schritt.',
+				'en_US' => 'In the view #builder/builder/@new, for whoever designs and may write routes: names, addresses, menus and a first block make the template, routes, menu entry and words in one step.',
+				'de_DE' => 'In der Ansicht #builder/builder/@new, für alle, die gestalten und Routen schreiben dürfen: Namen, Adressen, Menüs und ein erster Block machen Vorlage, Routen, Menüeintrag und Texte in einem Schritt.',
 			],
 			'Duplicate (row)' => [
-				'en_US' => 'In a row of the table, for the same accounts: the view #builder/@new/<page> makes a copy of the page with its texts and pictures, from names and addresses that are free.',
-				'de_DE' => 'In einer Zeile der Tabelle, für dieselben Konten: die Ansicht #builder/@new/<Seite> macht eine Kopie der Seite mit ihren Texten und Bildern, aus freien Namen und Adressen.',
+				'en_US' => 'In a row of the table, for the same accounts: the view #builder/builder/@new/<page> makes a copy of the page with its texts and pictures, from names and addresses that are free.',
+				'de_DE' => 'In einer Zeile der Tabelle, für dieselben Konten: die Ansicht #builder/builder/@new/<Seite> macht eine Kopie der Seite mit ihren Texten und Bildern, aus freien Namen und Adressen.',
 			],
 			'Delete (row)' => [
 				'en_US' => 'In a row of the table, for the same accounts: one question names the page, the texts that stay because others read them and the pages that link to it, and a yes takes the page away whole.',

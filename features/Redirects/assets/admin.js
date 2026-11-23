@@ -6,8 +6,8 @@
  *							Modules\Redirects\Admin beside this file). Built from the blocks of the
  *							workbench: panel(), tabs(), table(), formDialog(), confirm(), actionBar().
  *
- *							The addresses are #redirects (the rules), #redirects/missing (the
- *							addresses nothing answered) and #redirects/probe (the probe).
+ *							The addresses are #redirects (the rules), #redirects/redirects/@missing (the
+ *							addresses nothing answered) and #redirects/redirects/@probe (the probe).
  */
 
 ( function(wn,dc) {
@@ -22,8 +22,6 @@
 
 	let tabs = null;
 
-	// The address of each tab and of the probe: the part after #redirects/
-	const PARTS = { rules : [], missing : [ 'missing' ], probe : [ 'probe' ] };
 
 	// A time the way the workbench writes a date: the German way round in German, the year first in any other language, no seconds
 	const dateOf = function( value ) {
@@ -36,7 +34,8 @@
 		return ( String( dc.documentElement.lang ).slice( 0, 2 ) === 'de' ? parts[3]+ '.'+ parts[2]+ '.'+ parts[1] : parts[1]+ '-'+ parts[2]+ '-'+ parts[3] )+ ', '+ parts[4];
 	};
 
-	const tabParts = function( key ) { return PARTS[key] };
+	// The address of each tab and of the probe: the rules are the screen as it starts, the others are words
+	const tabParts = function( key ) { return key === 'rules' ? [] : [ Nino.admin.router.word( key ) ] };
 
 	// --- one rule, in a dialog ------------------------------------------------------------------------------------------------------
 
@@ -346,7 +345,7 @@
 
 		// Remembering is off, so nothing new comes in: a state that stays until the setting is turned on, with the way to it
 		if( S.recording === false )
-			pane.appendChild( Nino.adminUi.notice( t('/_admin/redirects/hint/off'), { href : '#redirects-settings', label : t('/_admin/common/split/settings') } ) );
+			pane.appendChild( Nino.adminUi.notice( t('/_admin/redirects/hint/off'), { href : Nino.admin.router.href( 'redirects-settings', [] ), label : t('/_admin/common/split/settings') } ) );
 
 		pane.appendChild( mount );
 
@@ -419,7 +418,7 @@
 		result.setAttribute( 'aria-live', 'polite' );
 
 		view.appendChild( Nino.adminUi.contextBar( {
-			back	: { to : mount, href : Nino.admin.router.href( 'redirects', PARTS.rules ), onClick : function() { go( 'rules' ) } },
+			back	: { to : mount, href : Nino.admin.router.href( 'redirects', tabParts( 'rules' ) ), onClick : function() { go( 'rules' ) } },
 			title	: t('/_admin/redirects/label/probe'),
 		} ) );
 
@@ -543,13 +542,13 @@
 			const at = Nino.admin.router.current();
 			const parts = at.panel === 'redirects' ? at.parts : [];
 
-			if( parts[0] === 'probe' ) {
+			if( Nino.admin.router.isWord( parts, 0, 'probe' ) === true ) {
 				Nino.adminUi.showLevel( 'redirects-probe' );
-				Nino.admin.router.set( 'redirects', PARTS.probe );
+				Nino.admin.router.set( 'redirects', tabParts( 'probe' ) );
 				return;
 			}
 
-			S.tab = parts[0] === 'missing' ? 'missing' : 'rules';
+			S.tab = Nino.admin.router.isWord( parts, 0, 'missing' ) === true ? 'missing' : 'rules';
 
 			if( tabs !== null )
 				tabs.select( S.tab );

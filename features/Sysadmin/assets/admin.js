@@ -151,7 +151,7 @@
 			mount.innerHTML = '';
 
 			if( data.recipients.length === 0 )
-				mount.appendChild( Nino.adminUi.notice( word('hint/none'), { href : '#sysadmin-settings', label : word('label/settings') } ) );
+				mount.appendChild( Nino.adminUi.notice( word('hint/none'), { href : Nino.admin.router.href( 'sysadmin-settings', [] ), label : word('label/settings') } ) );
 
 			mount.appendChild( facts( data ) );
 			mount.appendChild( findings( data.findings ) );

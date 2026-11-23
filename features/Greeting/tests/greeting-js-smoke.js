@@ -22,7 +22,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, findAll, element, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, findAll, element, documentOf, fire, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 /** A file of the feature the way load() and fills() want it: from the root of the checkout */
 function own( relative ) {
@@ -41,10 +41,13 @@ const page = documentOf( mount );
 const found = page.getElementById;
 page.getElementById = function( id ) { return id === 'dashboard-list' ? wrap : found( id ) };
 
+const codec = shellRouter( { greeting : [ [ 'greeting', 'greeting' ], [ 'greeting-settings', 'settings' ] ] } );
+
 const stub = {
 	content : { getText : function( key ) { return words[key] ?? '' } },
 	events : { bindCallback : function() {} },
-	admin : { router : { set : function() {} } },
+	// The router of the workbench itself: the way to the settings is an address it writes and reads
+	admin : { router : codec.stub( { set : function() {} } ) },
 };
 const storage = {
 	getItem : function( key ) { return Object.prototype.hasOwnProperty.call( stored, key ) ? stored[key] : null },
@@ -124,5 +127,8 @@ stub.admin.greeting.showCurrent();
 answer( 200, { show : { hello : false, sentence : false, facts : false }, name : 'Ada' } );
 const empty = findAll( mount, el => el.className.includes('nino-admin-empty') );
 check( 'with all three lines off it says so in an empty state with a button to the settings, and no card', empty.length === 1 && findAll( mount, el => el.tagName === 'BUTTON' ).length === 1 && findAll( mount, el => el.className.includes('greeting-card') ).length === 0 );
+
+fire( findAll( mount, el => el.tagName === 'BUTTON' )[0], 'click' );
+check( 'the button to the settings moves to the tab of the settings: the address the router writes, and reads back as that tab', context.window.location.hash === '#greeting/settings' && codec.read( context.window.location.hash ).panel === 'greeting-settings' );
 
 done();

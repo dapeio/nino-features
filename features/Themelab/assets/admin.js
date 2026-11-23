@@ -7,8 +7,9 @@
  *										that says where the requests of the sheet go (blocks/...), where back leads, what the panel is called, and the list, the forms and the questions
  *										that stand round it. Everything it shows is the answer of the API (see Modules\Themelab\Admin).
  *
- *										The address is #themelab (the blocks of the project), #themelab/<key> (one of them in the editor), #themelab/@theme-blocks (the blocks of the theme in use) and
- *										#themelab/@theme-blocks/<key> (one of them, shown and not changed). The list opens first; a click on a row opens the block.
+ *										The address is #themelab (the blocks of the project), #themelab/themelab/<key> (one of them in the editor), #themelab/themelab/@blocks/<source> (the blocks of
+ *										a source), #themelab/themelab/@theme-blocks (the blocks of the theme in use), #themelab/themelab/@theme-blocks/<key> (one of them, shown and not changed) and
+ *										#themelab/themelab/@theme (the theme itself). The list opens first; a click on a row opens the block.
  *
  *	@package					Dape/Nino
  *	@author						David Perchermeier <mail@dape.io>
@@ -73,8 +74,8 @@
 		return value;
 	};
 
-	// What the address of before, #themelab/@theme-blocks, means as the source of a list: the theme in use. It has the @ that no key of a source has - a theme may be called "theme" -, and the
-	// sources "all" and "own" are the choices of the list, which a theme of that key would share
+	// What the word @theme-blocks means as the source of a list: the theme in use. It is no key of a source - a theme may be called "theme", and the sources "all" and "own" are
+	// the choices of the list, which a theme of that key would share -, and is never written as one: the list of the theme in use is the address @theme-blocks
 	const IN_USE = '@in-use';
 
 	const N = {
@@ -93,9 +94,16 @@
 	};
 
 	// The address of the list of a tab, and of a block in it: the first tab is the blocks - 'project' for the own ones, 'theme' for those of the theme in use, a switch inside the
-	// tab -, the second 'info' - the theme itself, which has an address of its own and no block in it
+	// tab -, the second 'info' - the theme itself, which has an address of its own and no block in it. They are words of the panel (@blocks, @theme-blocks, @theme), and a block, a source
+	// or a theme is a key: a block that is called theme is the block of that key, and @theme the theme
 	const tabParts = function( tab ) {
-		return tab === 'blocks' ? ( N.from === 'own' ? [] : [ '@blocks', N.from ] ) : ( tab === 'theme' ? [ '@theme-blocks' ] : ( tab === 'info' ? [ '@theme' ] : [] ) );
+
+		const fixed = function( name ) { return Nino.admin.router.word( name ) };
+
+		if( tab === 'blocks' )
+			return N.from === 'own' ? [] : ( N.from === IN_USE ? [ fixed( 'theme-blocks' ) ] : [ fixed( 'blocks' ), N.from ] );
+
+		return tab === 'theme' ? [ fixed( 'theme-blocks' ) ] : ( tab === 'info' ? [ fixed( 'theme' ) ] : [] );
 	};
 
 	const partsOf = function( tab, key ) {
@@ -107,40 +115,35 @@
 		return tabParts( tab ).concat( [ key ] );
 	};
 
-	// What the address names: the tab and the key of the block, '' for the list
+	// What the address names: the tab and the key of the block, '' for the list; null for an address that names none. A word the panel has not is none
 	const targetOf = function( parts ) {
 
-		// The fixed addresses have the @ that no key of a block has: #themelab/@frames, #themelab/@theme, #themelab/@theme-blocks. The addresses of before, without it, name what they most
-		// likely mean: with a key behind them they are the tab; alone they are the block of that key where the project has one, else the tab
-		// The frames of the site are no tab of this panel: the address of the tab they had leads to the blocks
-		const FIXED = { '@theme-blocks' : 'theme', '@frames' : 'frames', '@theme' : 'info', '@blocks' : 'blocks' };
-		const OLD = { 'theme-blocks' : 'theme', 'frames' : 'frames', 'theme' : 'info' };
-		const first = parts[0] ?? '';
-		const fixed = FIXED[first] ?? ( OLD[first] !== undefined && ( parts.length > 1 || ( N.ownKeys ?? [] ).indexOf( first ) === -1 ) ? OLD[first] : undefined );
-		const tab = fixed ?? 'project';
-		const rest = tab === 'project' ? parts : parts.slice( 1 );
+		const router = Nino.admin.router;
 
-		// An address of the tab that is gone - #themelab/@frames, #themelab/@frames/header - is the list of the blocks, where a header and a footer are found by the choice of the category
-		if( tab === 'frames' )
+		// The list of the blocks of the project, or of the source the person chose last
+		if( parts.length === 0 )
 			return { tab : 'blocks', key : '', from : N.from };
 
-		// The list of the blocks has the choice of where they come from in its address: #themelab/@blocks/<source>; the own blocks are the address of the list without more, and the choice the
-		// person made last is the one it shows. The address of before, #themelab/@theme-blocks, is the list of the theme's blocks
-		if( tab === 'blocks' )
-			return rest.length <= 1 && /^[a-z0-9_-]{0,64}$/i.test( rest[0] ?? '' ) === true ? { tab : 'blocks', key : '', from : rest[0] ?? N.from } : null;
+		// A key is a block of the project: any key of the form of a key
+		if( router.wordOf( parts, 0 ) === '' )
+			return parts.length === 1 && /^[a-z][a-z0-9-]{0,63}$/.test( parts[0] ) === true ? { tab : 'project', key : parts[0] } : null;
 
-		if( tab === 'theme' && rest.length === 0 )
-			return { tab : 'blocks', key : '', from : IN_USE };
+		// The list of the blocks has the choice of where they come from in its address: @blocks/<source>; the own blocks are the address of the list without more, and the choice the
+		// person made last is the one it shows
+		if( router.isWord( parts, 0, 'blocks' ) === true )
+			return parts.length <= 2 && /^[a-z0-9_-]{0,64}$/i.test( parts[1] ?? '' ) === true ? { tab : 'blocks', key : '', from : parts[1] ?? N.from } : null;
 
-		if( rest.length === 0 )
-			return { tab : tab === 'project' ? 'blocks' : tab, key : '', from : N.from };
+		// The blocks of the theme in use, and one of them shown and not changed
+		if( router.isWord( parts, 0, 'theme-blocks' ) === true ) {
+
+			if( parts.length === 1 )
+				return { tab : 'blocks', key : '', from : IN_USE };
+
+			return parts.length === 2 && router.wordOf( parts, 1 ) === '' && /^[a-z][a-z0-9-]{0,63}$/.test( parts[1] ) === true ? { tab : 'theme', key : parts[1] } : null;
+		}
 
 		// The theme has one page and no block in it
-		if( tab === 'info' )
-			return null;
-
-		// A block is any key of the form of a key
-		return rest.length === 1 && /^[a-z][a-z0-9-]{0,63}$/.test( rest[0] ) === true ? { tab : tab, key : rest[0] } : null;
+		return router.isWord( parts, 0, 'theme' ) === true && parts.length === 1 ? { tab : 'info', key : '', from : N.from } : null;
 	};
 
 	const sheetOpen = function() {
@@ -608,7 +611,7 @@
 		N.ownKeys = Array.isArray( data.ownKeys ) === true ? data.ownKeys : N.ownKeys;
 		N.tab = data.tab;
 
-		// The choice of where the blocks come from: IN_USE - the address of before - is the theme in use, and a source the site no longer has is the own blocks
+		// The choice of where the blocks come from: IN_USE - the address @theme-blocks - is the theme in use, and a source the site no longer has is the own blocks
 		if( data.tab === 'blocks' ) {
 
 			if( N.from === IN_USE ) {

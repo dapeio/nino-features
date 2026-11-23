@@ -8,8 +8,9 @@
  *							of the workbench: panel(), tabs(), table(), cards(), fileField(), formDialog(),
  *							confirm(), actionBar() (see Modules\Gallery\Admin beside this file).
  *
- *							The addresses are #gallery (the albums), #gallery/<key> (the pictures of an
- *							album) and #gallery/<key>/settings (its name and sizes).
+ *							The addresses are #gallery (the albums), #gallery/gallery/<key> (the pictures of an
+ *							album) and #gallery/gallery/<key>/@settings (its name and sizes). An album may be
+ *							called settings: that is its key, and @settings is the word of the tab.
  */
 
 ( function(wn,dc) {
@@ -67,6 +68,11 @@
 
 	const countText = function( album ) {
 		return Nino.adminUi.format( t( album.images.length === 1 ? '/_admin/gallery/label/count-one' : '/_admin/gallery/label/count' ), album.images.length );
+	};
+
+	// The parts of an address: the key of an album, and the word of its settings where that part is open
+	const partsOf = function( key, tab ) {
+		return tab === 'settings' ? [ key, Nino.admin.router.word('settings') ] : [ key ];
 	};
 
 	// A move of the person inside the panel: the address is a new entry, and the screen follows it
@@ -633,7 +639,7 @@
 			active	: S.tab,
 			id			: 'gallery-tabs',
 			label		: t('/_admin/gallery/label/parts'),
-			onSelect	: function( tab ) { S.tab = tab; Nino.admin.router.go( 'gallery', tab === 'settings' ? [ key, 'settings' ] : [ key ] ) },
+			onSelect	: function( tab ) { S.tab = tab; Nino.admin.router.go( 'gallery', partsOf( key, tab ) ) },
 		} );
 
 		view.appendChild( tabs.el );
@@ -687,10 +693,10 @@
 
 			if( key !== '' && albumOf( key ) !== null ) {
 
-				S.tab = parts[1] === 'settings' ? 'settings' : 'images';
+				S.tab = Nino.admin.router.isWord( parts, 1, 'settings' ) === true ? 'settings' : 'images';
 				drawAlbum( key );
 				Nino.adminUi.showLevel( 'gallery-album', options );
-				Nino.admin.router.set( 'gallery', S.tab === 'settings' ? [ key, 'settings' ] : [ key ] );
+				Nino.admin.router.set( 'gallery', partsOf( key, S.tab ) );
 				return;
 			}
 

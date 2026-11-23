@@ -7,8 +7,9 @@
  *							blocks of the workbench: panel(), table(), tabs(), list(), formDialog(),
  *							the question dialog, contextBar() and actionBar().
  *
- *							The addresses are #forms (the directory), #forms/new (a new form) and
- *							#forms/<key>/<tab> (a form, its tab: fields, delivery or protection).
+ *							The addresses are #forms (the directory), #forms/forms/@new/<tab> (a new form) and
+ *							#forms/forms/<key>/<tab> (a form, its tab: the words @fields, @delivery or @protection).
+ *							A form may be called new: its key is a key, and @new is the word that makes one.
  *
  *							Admin/Admin.php beside this file does the reading and writing. A refusal comes
  *							back as a code, which the workbench says in the session language, and - for a
@@ -214,16 +215,16 @@
 			],
 			actions	: function( row ) {
 
-				const edit = Nino.adminUi.button( w('label/edit'), function() { go( [ row.key, 'fields' ] ) }, { small : true } );
+				const edit = Nino.adminUi.button( w('label/edit'), function() { go( row.key, 'fields' ) }, { small : true } );
 				const drop = Nino.adminUi.button( t('/_admin/common/label/delete'), function() { removeForm( row, drop ) }, { small : true, kind : 'danger' } );
 
 				// The form the kernel falls back to is no definition yet: there is nothing to delete
 				return S.isDefault === true ? [ edit ] : [ edit, drop ];
 			},
-			onRowClick : function( row ) { go( [ row.key, 'fields' ] ) },
+			onRowClick : function( row ) { go( row.key, 'fields' ) },
 		} );
 
-		const make = Nino.adminUi.button( w('label/new'), function() { go( [ 'new', 'fields' ] ) }, { kind : 'primary' } );
+		const make = Nino.adminUi.button( w('label/new'), function() { go( '', 'fields' ) }, { kind : 'primary' } );
 		const kept = Nino.adminUi.button( w('label/submissions'), function() { openSubmissions( kept ) }, { kind : 'secondary' } );
 
 		mount.appendChild( Nino.adminUi.actionBar( { list : true, secondary : [ kept ], primary : make } ).el );
@@ -455,7 +456,7 @@
 		// What is set where, and the way there: a link, since the settings are another tab of the panel
 		const settings = el( 'a', 'nino-admin-linkbutton', t('/_admin/common/split/settings') );
 
-		settings.href = '#forms-settings';
+		settings.href = Nino.admin.router.href( 'forms-settings', [] );
 
 		pane.appendChild( Nino.adminUi.hint( w('hint/settings') ) );
 		pane.appendChild( settings );
@@ -614,7 +615,7 @@
 					showForm( saved, saved.key, tab, { focus : false } );
 					S.view.bar.line.saved();
 					Nino.adminUi.say( t('/_admin/common/msg/saved') );
-					Nino.admin.router.set( 'forms', [ saved.key, tab ] );
+					Nino.admin.router.set( 'forms', partsOf( saved.key, tab ) );
 				}
 
 				if( typeof Nino.admin.dirty === 'object' )
@@ -653,14 +654,14 @@
 
 		const mount = dc.getElementById('forms-form');
 		const draft = copy( form );
-		const view = { draft : draft, was : was, tab : tab, controls : {}, form : null, bar : null, fieldsMount : null, fieldsError : null, saved : '', address : was === '' ? 'new' : was };
+		const view = { draft : draft, was : was, tab : tab, controls : {}, form : null, bar : null, fieldsMount : null, fieldsError : null, saved : '' };
 
 		S.view = view;
 		mount.innerHTML = '';
 
 		view.changed = function() { if( typeof Nino.admin.dirty === 'object' ) Nino.admin.dirty.refresh() };
 
-		const back = { to : mount, href : Nino.admin.router.href( 'forms', [] ), onClick : function() { go( [] ) } };
+		const back = { to : mount, href : Nino.admin.router.href( 'forms', [] ), onClick : function() { go( null ) } };
 
 		mount.appendChild( Nino.adminUi.contextBar( { back : back, title : was === '' ? w('label/new') : form.name } ) );
 
@@ -722,7 +723,7 @@
 			active		: tab,
 			id				: 'forms-tabs',
 			label			: w('label/title'),
-			onSelect	: function( key ) { view.tab = key; Nino.admin.router.set( 'forms', [ view.address, key ] ) },
+			onSelect	: function( key ) { view.tab = key; Nino.admin.router.set( 'forms', partsOf( view.was, key ) ) },
 		} );
 
 		tabs.current = function() { return view.tab };
@@ -753,53 +754,70 @@
 
 	// --- the address --------------------------------------------------------------------------------------------------------------------
 
-	const go = function( parts ) {
+	// The parts of an address: the form - the word @new for one that is not saved yet, else its key - and its tab, a word; none for the directory
+	const partsOf = function( was, tab ) {
+		return was === null ? [] : [ was === '' ? Nino.admin.router.word('new') : was, Nino.admin.router.word( tab ) ];
+	};
+
+	// Move to a form and its tab: '' for the form that is not saved yet, null for the directory
+	const go = function( was, tab ) {
 
 		const proceed = function() {
-			Nino.admin.router.go( 'forms', parts );
+			Nino.admin.router.go( 'forms', partsOf( was, tab ) );
 			follow( {} );
 		};
 
-		if( S.view !== null && ( parts[0] !== S.view.address ) && typeof Nino.admin.dirty === 'object' )
+		if( S.view !== null && S.view.was !== was && typeof Nino.admin.dirty === 'object' )
 			return Nino.admin.dirty.guard( [ 'forms' ], proceed, function() {} );
 
 		proceed();
+	};
+
+	// What an address names of the panel: the form - '' for @new, null where it names none - and the tab it asks for
+	const targetOf = function( parts ) {
+
+		const router = Nino.admin.router;
+		const tab = TABS.find( function( name ) { return router.isWord( parts, 1, name ) } ) ?? 'fields';
+
+		if( router.isWord( parts, 0, 'new' ) === true )
+			return { was : '', tab : tab };
+
+		// Any other word is none of this panel's; a key is the form of that name
+		return { was : parts.length === 0 || router.wordOf( parts, 0 ) !== '' ? null : parts[0], tab : tab };
 	};
 
 	// Show what the address names: the directory, a new form or the form of a key at its tab
 	const follow = function( focus ) {
 
 		const at = Nino.admin.router.current();
-		const parts = at.panel === 'forms' ? at.parts : [];
-		const key = parts[0] === undefined ? '' : String( parts[0] );
-		const tab = TABS.indexOf( parts[1] ) === -1 ? 'fields' : parts[1];
+		const target = targetOf( at.panel === 'forms' ? at.parts : [] );
+		const tab = target.tab;
+		const form = target.was === null || target.was === '' ? undefined : S.forms.find( function( row ) { return row.key === target.was } );
 
-		const form = key === '' ? undefined : S.forms.find( function( row ) { return row.key === key } );
+		// The word @new is the form that is not saved yet, at any of its tabs: a form that is called new is a form of that key
+		if( target.was === '' ) {
 
-		// A form that does not exist yet has the address of the panel's own word "new", at any of its tabs; a form a site of Nino 1 has under that key is its own
-		if( key === 'new' && form === undefined ) {
-
-			if( S.view === null || S.view.address !== 'new' )
+			if( S.view === null || S.view.was !== '' )
 				showForm( blank(), '', tab, focus.focus === false ? { focus : false } : undefined );
 			else if( S.view.tab !== tab && tabs !== null ) {
 				tabs.select( tab );
 				S.view.tab = tab;
 			}
 
-			Nino.admin.router.set( 'forms', [ 'new', S.view.tab ] );
+			Nino.admin.router.set( 'forms', partsOf( '', S.view.tab ) );
 			return;
 		}
 
 		if( form !== undefined ) {
 
-			if( S.view === null || S.view.address !== key )
-				showForm( form, key, tab, focus.focus === false ? { focus : false } : undefined );
+			if( S.view === null || S.view.was !== form.key )
+				showForm( form, form.key, tab, focus.focus === false ? { focus : false } : undefined );
 			else if( S.view.tab !== tab && tabs !== null ) {
 				tabs.select( tab );
 				S.view.tab = tab;
 			}
 
-			Nino.admin.router.set( 'forms', [ key, S.view.tab ] );
+			Nino.admin.router.set( 'forms', partsOf( form.key, S.view.tab ) );
 			return;
 		}
 
@@ -809,7 +827,7 @@
 		Nino.admin.router.set( 'forms', [] );
 	};
 
-	const addressOf = function() { return S.view === null ? [] : ( [ S.view.address, S.view.tab ] ) };
+	const addressOf = function() { return S.view === null ? [] : partsOf( S.view.was, S.view.tab ) };
 
 	Nino.admin.forms = Nino.adminUi.panel( {
 		uri			: 'forms',
@@ -864,7 +882,7 @@
 				return;
 			}
 
-			const leaving = S.view !== null && ( at.parts.length === 0 || String( at.parts[0] ) !== S.view.address );
+			const leaving = S.view !== null && targetOf( at.panel === 'forms' ? at.parts : [] ).was !== S.view.was;
 
 			Nino.admin.router.leave( [ 'forms' ], leaving, proceed, function() {
 				Nino.admin.router.set( 'forms', addressOf() );

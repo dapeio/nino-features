@@ -11,7 +11,7 @@
  *															C. a new frame: the form, the side in the source, the block that is chosen after it, what the server refuses at its field, the editor on the new frame
  *															D. renamed and taken away: the name in each language, the question, the pages that choose a frame said by number and by name and no button that deletes
  *															E. kept as a block: only where the account holds the right that writes one; the key follows the name, the question first, the languages without a text
- *															F. the editor and the address: #builder-frames/<frame>, every request of the sheet the action of a frame, the way back to the list, the unsaved work, the
+ *															F. the editor and the address: #builder/frames/<frame>, every request of the sheet the action of a frame, the way back to the list, the unsaved work, the
  *															   address that is none, the way into the editor from the list and back, and the language of the workbench
  *
  *	Usage: node features/Builder/tests/builder-frames-js-smoke.js
@@ -27,7 +27,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, fire, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, fire, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 
@@ -75,7 +75,7 @@ const entry = function( key, source, kind, label, extra ) {
  */
 function world( options ) {
 
-	options = Object.assign( { lang : 'en-US', list : answer(), hash : '#builder-frames' }, options ?? {} );
+	options = Object.assign( { lang : 'en-US', list : answer(), hash : '#builder/frames' }, options ?? {} );
 
 	const page = element('div');
 	const app = element('div');
@@ -129,11 +129,8 @@ function world( options ) {
 		return created;
 	};
 
-	const parse = function() {
-		const raw = state.hash.replace( /^#/, '' );
-		const parts = raw === '' ? [] : raw.split('/').map( decodeURIComponent );
-		return { panel : parts[0] ?? '', parts : parts.slice( 1 ) };
-	};
+	// The router of the workbench itself, over the panes of the panel: what the tab writes is read back by it
+	const codec = shellRouter( { builder : [ [ 'builder', 'builder' ], [ 'builder-frames', 'frames' ], [ 'builder-settings', 'settings' ] ] } );
 
 	const entries = {};
 	const dirty = {
@@ -161,13 +158,12 @@ function world( options ) {
 		},
 	};
 
-	const router = {
-		current : parse,
-		href : function( panel, parts ) { return '#'+ [ panel ].concat( parts ?? [] ).map( function( part ) { return encodeURIComponent( part ).replace( /%40/g, '@' ) } ).join('/') },
-		go : function( panel, parts ) { const hash = router.href( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
-		set : function( panel, parts ) { state.hash = router.href( panel, parts ) },
+	const router = codec.stub( {
+		current : function() { return codec.read( state.hash ) },
+		go : function( panel, parts ) { const hash = codec.check( panel, parts ); if( hash !== state.hash ) { state.hash = hash; state.pushed.push( hash ) } },
+		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
 		leave : function( names, leaving, proceed, resync ) { leaving === true && dirty.isDirty( names ) === true ? dirty.guard( names, proceed, resync ) : proceed() },
-	};
+	} );
 
 	const locale = { current : 'de_DE', native : 'de_DE', followed : {}, follow : function( name, fn ) { locale.followed[name] = fn }, set : function( code ) { locale.current = code } };
 
@@ -220,7 +216,7 @@ function world( options ) {
 	load( path.relative( root, path.join( featureDir, 'assets/admin-frames.js' ) ), context );
 
 	const w = {
-		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, page : page, list : list, sheet : sheet, requests : requests, dialogs : dialogs, said : said, questions : questions, answers : answers, state : state, dirty : dirty, open : open, locale : locale, editor : editor,
+		Nino : Nino, title : title, timers : timers, ui : Nino.adminUi, doc : doc, codec : codec, page : page, list : list, sheet : sheet, requests : requests, dialogs : dialogs, said : said, questions : questions, answers : answers, state : state, dirty : dirty, open : open, locale : locale, editor : editor,
 		tab : Nino.admin['builder-frames'],
 
 		/** Answer the oldest request that waits, and say which it was */
@@ -282,7 +278,7 @@ function world( options ) {
 {
 	const w = world();
 
-	w.show('#builder-frames');
+	w.show('#builder/frames');
 
 	const table = w.table();
 	const heads = findAll( table, function( el ) { return el.tagName === 'TH' } );
@@ -335,7 +331,7 @@ function world( options ) {
 	// a pane as narrow as a phone: the pencil is the only button that stands in a row, everything else is behind "More actions" - the name and the heads have the room
 	const phone = world( { narrow : { matches : true } } );
 
-	phone.show('#builder-frames');
+	phone.show('#builder/frames');
 
 	const actionsOf = function( x, key ) { return findAll( x.row( key ), function( el ) { return String( el.className ).split(' ').indexOf('nino-admin-row-actions') !== -1 } )[0] };
 	const stands = function( x, key ) { return ( actionsOf( x, key ).children ?? [] ).filter( function( el ) { return el.tagName === 'BUTTON' } ).map( function( el ) { return el.attributes['aria-label'] ?? textOf( el ) } ) };
@@ -355,7 +351,7 @@ function world( options ) {
 	const turn = { matches : true };
 	const turning = world( { narrow : turn } );
 
-	turning.show('#builder-frames');
+	turning.show('#builder/frames');
 	turn.matches = false;
 	turn.change();
 
@@ -375,7 +371,7 @@ function world( options ) {
 
 	const bare = world( { list : answer( { frames : [] } ) } );
 
-	bare.show('#builder-frames');
+	bare.show('#builder/frames');
 
 	check( 'A. a site with no frame has the box that says so, and no table', textOf( bare.list ).indexOf( W('frame/none-listed') ) !== -1 || bare.table() !== null );
 
@@ -392,7 +388,7 @@ function world( options ) {
 {
 	const w = world();
 
-	w.show('#builder-frames');
+	w.show('#builder/frames');
 
 	fire( w.named( w.row('header'), W('frame/choose-header') ), 'click' );
 
@@ -435,7 +431,7 @@ function world( options ) {
 	// a named frame has its name in the question
 	const named = world();
 
-	named.show('#builder-frames');
+	named.show('#builder/frames');
 	fire( named.named( named.row('header-landing'), W( 'frame/choose-of-header', 'Landing' ) ), 'click' );
 	named.asked('builder/framechoices')[0].callback( { status : 200, responseJSON : { blocks : [ entry( 'mine', 'project', 'project', 'Project' ) ], categories : [] }, getAllResponseHeaders : function() { return 'x' } } );
 	fire( findAll( named.dialog(), function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-pick-item') !== -1 } )[0], 'click' );
@@ -447,7 +443,7 @@ function world( options ) {
 	const lockedList = answer( { frames : FRAMES.map( function( frame ) { return Object.assign( {}, frame, { locked : frame.key === 'header-shop' } ) } ) } );
 	const shut = world( { list : lockedList } );
 
-	shut.show('#builder-frames');
+	shut.show('#builder/frames');
 
 	const askedFor = function( x, key, label ) {
 
@@ -490,7 +486,7 @@ function world( options ) {
 	// the last choice is taken back by the button of the row that has one, with the stamp the list saw
 	const undo = world();
 
-	undo.show('#builder-frames');
+	undo.show('#builder/frames');
 	fire( undo.named( undo.row('footer'), W('frame/undo-footer') ), 'click' );
 
 	const back = undo.asked('builder/framerestore')[0];
@@ -508,7 +504,7 @@ function world( options ) {
 {
 	const w = world();
 
-	w.show('#builder-frames');
+	w.show('#builder/frames');
 	fire( w.named( w.list, W('frame/new') ), 'click' );
 
 	const dialog = w.dialog();
@@ -535,12 +531,12 @@ function world( options ) {
 
 	w.reply( 200, { key : 'footer-fuss-der-landung', template : 'frame-footer-fuss-der-landung', side : 'footer' } );
 
-	check( 'C. the frame that was made is told in the word of its side and is open in the editor by its address', w.said.indexOf( W( 'frame/created-footer', 'Fuß der Landung' ) ) !== -1 && w.state.hash === '#builder-frames/footer-fuss-der-landung' );
+	check( 'C. the frame that was made is told in the word of its side and is open in the editor by its address', w.said.indexOf( W( 'frame/created-footer', 'Fuß der Landung' ) ) !== -1 && w.state.hash === '#builder/frames/footer-fuss-der-landung' );
 
 	// a refusal is said at its field and the dialog stays
 	const again = world();
 
-	again.show('#builder-frames');
+	again.show('#builder/frames');
 	fire( again.named( again.list, W('frame/new') ), 'click' );
 
 	const form = again.dialog();
@@ -551,7 +547,7 @@ function world( options ) {
 	fire( form.querySelector('form'), 'submit' );
 	again.reply( 409, { error : 'x', code : 'builder_frames_taken', params : [ 'shop' ], field : 'word' } );
 
-	check( 'C. a word that is taken is refused by the server and said at the field of the word, in the words of the server - and nothing is opened', textOf( form ).indexOf( 'shop' ) !== -1 && again.state.opened.length === 0 && again.state.hash === '#builder-frames' );
+	check( 'C. a word that is taken is refused by the server and said at the field of the word, in the words of the server - and nothing is opened', textOf( form ).indexOf( 'shop' ) !== -1 && again.state.opened.length === 0 && again.state.hash === '#builder/frames' );
 
 	// the form stays open after the refusal with everything as it was typed: the name, the word and what the frame is made of - and the refusal is said at the field of the word
 	const fieldOf = function( x, dialog, key ) { return findAll( dialog, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === key && ( key !== 'name' || el.dataset.locale === 'de_DE' ) } )[0] };
@@ -565,7 +561,7 @@ function world( options ) {
 	// made of a block: the form is closed for the dialog of the blocks, which applies at once; the block is the source and the frame has no other
 	const block = world();
 
-	block.show('#builder-frames');
+	block.show('#builder/frames');
 	fire( block.named( block.list, W('frame/new') ), 'click' );
 
 	const bform = block.dialog();
@@ -606,7 +602,7 @@ function world( options ) {
 	// where one side is chosen the form offers the sources of that side only
 	const footer = world();
 
-	footer.show('#builder-frames');
+	footer.show('#builder/frames');
 	footer.side('footer');
 	fire( footer.named( footer.list, W('frame/new-footer') ), 'click' );
 
@@ -619,7 +615,7 @@ function world( options ) {
 {
 	const w = world();
 
-	w.show('#builder-frames');
+	w.show('#builder/frames');
 
 	// the buttons behind "more" are pressed through the menu of the row
 	const press = function( world, key, text ) {
@@ -653,7 +649,7 @@ function world( options ) {
 	// a refusal of the rename: the dialog stays open with the name as it was typed, and the refusal is said at the field
 	const refusing = world();
 
-	refusing.show('#builder-frames');
+	refusing.show('#builder/frames');
 	press( refusing, 'header-landing', W( 'frame/rename-of-header', 'Landing' ) );
 
 	const askedDialog = refusing.dialog();
@@ -675,7 +671,7 @@ function world( options ) {
 
 	const removing = world();
 
-	removing.show('#builder-frames');
+	removing.show('#builder/frames');
 
 	// a frame that pages choose is not asked about: the dialog names the number and the pages, says what to do and has no button that deletes - the one button is "Understood"
 	press( removing, 'header-landing', W( 'frame/remove-of-header', 'Landing' ) );
@@ -688,7 +684,7 @@ function world( options ) {
 
 	const more = world( { list : answer( { frames : FRAMES.map( function( frame ) { return frame.key === 'header-landing' ? Object.assign( {}, frame, { uses : 5, pages : [ 'A', 'B', 'C' ] } ) : frame } ) } ) } );
 
-	more.show('#builder-frames');
+	more.show('#builder/frames');
 	press( more, 'header-landing', W( 'frame/remove-of-header', 'Landing' ) );
 
 	check( 'D. where more pages choose it than the list names, the rest is counted: three by name and "and 2 more"', textOf( more.dialog() ).indexOf( 'A, B, C '+ W( 'frame/remove-more', '2' ) ) !== -1 && textOf( more.dialog() ).indexOf( '5' ) !== -1 );
@@ -710,7 +706,7 @@ function world( options ) {
 	// the server refuses a frame that a page chose meanwhile: said above the table, in the words of the server
 	const refused = world();
 
-	refused.show('#builder-frames');
+	refused.show('#builder/frames');
 	press( refused, 'header-shop', W( 'frame/remove-of-header', 'shop' ) );
 	refused.questions[refused.questions.length - 1].options.onChoose( true );
 	refused.reply( 409, { error : 'x', code : 'builder_frames_used', params : [ 2, 'Home (/home), Contact (/contact)' ], field : 'template' } );
@@ -723,7 +719,7 @@ function world( options ) {
 {
 	const w = world();
 
-	w.show('#builder-frames');
+	w.show('#builder/frames');
 
 	const adopt = w.named( w.row('header'), W('frame/adopt-header') );
 
@@ -731,7 +727,7 @@ function world( options ) {
 
 	const plain = world( { list : answer( { bridge : false } ) } );
 
-	plain.show('#builder-frames');
+	plain.show('#builder/frames');
 
 	check( 'E. for the account that holds no such right the row has no button for it - not shut, not there: neither the word of the button nor its name stands anywhere in the list, not in a menu either',
 		textOf( plain.list ).indexOf( W('frame/adopt') ) === -1 && findAll( plain.list, function( el ) { return [ W('frame/adopt-header'), W('frame/adopt-footer'), W( 'frame/adopt-of-header', 'Landing' ) ].indexOf( el.attributes['aria-label'] ) !== -1 } ).length === 0 && w.named( w.row('header'), W('frame/adopt-header') ) !== undefined );
@@ -778,7 +774,7 @@ function world( options ) {
 	// a key that is taken is refused at the field and the dialog stays
 	const taken = world();
 
-	taken.show('#builder-frames');
+	taken.show('#builder/frames');
 	fire( taken.named( taken.row('footer'), W('frame/adopt-footer') ), 'click' );
 	fire( taken.dialog().querySelector('form'), 'submit' );
 	taken.reply( 409, { error : 'x', code : 'themelab_taken', params : [ 'fusszeile-der-website' ], field : 'key' } );
@@ -788,7 +784,7 @@ function world( options ) {
 	// a language that lacks a text is said before anything is written
 	const gaps = world();
 
-	gaps.show('#builder-frames');
+	gaps.show('#builder/frames');
 	fire( gaps.named( gaps.row('header'), W('frame/adopt-header') ), 'click' );
 	fire( gaps.dialog().querySelector('form'), 'submit' );
 	gaps.reply( 200, { gaps : [ { locale : 'en_US', parts : [ '[button' ] } ] } );
@@ -810,13 +806,13 @@ function world( options ) {
 {
 	const w = world();
 
-	w.show('#builder-frames/header-landing');
+	w.show('#builder/frames/header-landing');
 
 	const opened = w.state.opened.slice();
 	const adapter = w.open.adapter;
 
-	check( 'F. the address #builder-frames/header-landing opens that frame: the server is asked for its template, the list is asked for too - the account may keep it as a block is the list\'s to say - and the editor of the sheets has the sheet with the adapter of the frame',
-		opened.join() === 'frame-header-landing' && w.state.hash === '#builder-frames/header-landing' && adapter !== null && adapter.frame === true && adapter.template === 'frame-header-landing' && adapter.panel === 'builder-frames' && adapter.level === 'builder-frames-sheet' );
+	check( 'F. the address #builder/frames/header-landing opens that frame: the server is asked for its template, the list is asked for too - the account may keep it as a block is the list\'s to say - and the editor of the sheets has the sheet with the adapter of the frame',
+		opened.join() === 'frame-header-landing' && w.state.hash === '#builder/frames/header-landing' && adapter !== null && adapter.frame === true && adapter.template === 'frame-header-landing' && adapter.panel === 'builder-frames' && adapter.level === 'builder-frames-sheet' );
 
 	// every request of the sheet is the action of a frame: builder/frame-<action>
 	const log = [];
@@ -827,8 +823,8 @@ function world( options ) {
 	check( 'F. every request of the sheet is the action of a frame - builder/frame-<action> - of the panel of the pages, and names the frame; the base of a request is its template and the language the sheet is worked in',
 		log.length === 13 && log.every( function( entry ) { return /^frame-[a-z]+$/.test( entry[0] ) === true && entry[1] === 'frame-header-landing' } ) && adapter.base().template === 'frame-header-landing' && adapter.base().locale === 'de_DE' && adapter.restore === true && adapter.props === 'panel' && adapter.sources === 'block' );
 
-	check( 'F. the way back is the list of the tab - "Back to Header/footer", at the address #builder-frames - and the address of the sheet is the frame\'s own',
-		adapter.back().name === W('tab/frames') && adapter.back().parts.length === 0 && adapter.href( [] ) === '#builder-frames' && adapter.href( [ 'header-landing' ] ) === '#builder-frames/header-landing' );
+	check( 'F. the way back is the list of the tab - "Back to Header/footer", at the address #builder/frames - and the address of the sheet is the frame\'s own',
+		adapter.back().name === W('tab/frames') && adapter.back().parts.length === 0 && adapter.href( [] ) === '#builder/frames' && adapter.href( [ 'header-landing' ] ) === '#builder/frames/header-landing' );
 
 	check( 'F. the sheet has the button that replaces the frame by a block in the word of its side, and - where the account holds the right that writes an own block - the button that keeps it as one',
 		adapter.buttons.map( function( button ) { return button.key } ).join() === 'frameblock,frameadopt' && adapter.buttons[0].label === W('frame/insert-header') && adapter.buttons[1].label === W('frame/adopt') && adapter.buttons[0].name === W( 'frame/insert-of-header', 'Landing' ) && adapter.buttons[1].name === W( 'frame/adopt-of-header', 'Landing' ) );
@@ -836,20 +832,20 @@ function world( options ) {
 	// the footer says its own word
 	const foot = world();
 
-	foot.show('#builder-frames/footer');
+	foot.show('#builder/frames/footer');
 
 	check( 'F. the standard footer has the words of the footer: the button says "Replace footer" and the sheet is named by the word of the side', foot.open.adapter.buttons[0].label === W('frame/insert-footer') && foot.open.adapter.name === W('frame/footer') );
 
 	const plain = world( { list : answer( { bridge : false } ) } );
 
-	plain.show('#builder-frames/header');
+	plain.show('#builder/frames/header');
 
 	check( 'F. an account that holds no right that writes an own block has no button that keeps the frame as one', plain.open.adapter.buttons.map( function( button ) { return button.key } ).join() === 'frameblock' );
 
 	// the side of a frame is the server's word: the answer of the open says it, the key of the address does not
 	const odd = world();
 
-	odd.state.hash = '#builder-frames/header-landing';
+	odd.state.hash = '#builder/frames/header-landing';
 	odd.tab.showCurrent();
 	odd.serve( { 'builder/frame-open' : { status : 200, body : { template : 'frame-header-landing', frame : true, side : 'footer', tree : [], contentLocale : 'de_DE', dir : '', stamp : 'aa', level : 2 } } } );
 
@@ -858,65 +854,65 @@ function world( options ) {
 	// an address that names no frame is the list
 	const bad = world();
 
-	bad.show('#builder-frames/Header');
+	bad.show('#builder/frames/Header');
 	const upper = bad.state.hash;
 	const none = world();
-	none.show('#builder-frames/header/extra');
+	none.show('#builder/frames/header/extra');
 
 	check( 'F. an address that names no frame - a capital, more than one part - is the list: the list is asked for, no sheet is opened, and the address is the list\'s',
-		upper === '#builder-frames' && none.state.hash === '#builder-frames' && bad.state.opened.length === 0 && none.state.opened.length === 0 && bad.table() !== null );
+		upper === '#builder/frames' && none.state.hash === '#builder/frames' && bad.state.opened.length === 0 && none.state.opened.length === 0 && bad.table() !== null );
 
 	// the way in from the list, and the way out
 	const go = world();
 
-	go.show('#builder-frames');
+	go.show('#builder/frames');
 	fire( go.buttons( go.row('header-shop') )[0], 'click' );
 	go.serve();
 
 	const reached = go.state.hash;
 	const openedNow = go.state.opened.join();
 
-	check( 'F. the pencil of a row opens the frame in the editor: the address is the frame\'s, the sheet is the sheet of that frame, and the list is given up - nothing of it stays in its mount', reached === '#builder-frames/header-shop' && openedNow === 'frame-header-shop' && go.list.children.length === 0 );
+	check( 'F. the pencil of a row opens the frame in the editor: the address is the frame\'s, the sheet is the sheet of that frame, and the list is given up - nothing of it stays in its mount', reached === '#builder/frames/header-shop' && openedNow === 'frame-header-shop' && go.list.children.length === 0 );
 
-	go.state.hash = '#builder-frames';
+	go.state.hash = '#builder/frames';
 	go.tab.showCurrent();
 	go.serve();
 
-	check( 'F. the way back leads to the list: the sheet is closed and the list is drawn again from the server', go.state.closed >= 1 && go.table() !== null && go.state.hash === '#builder-frames' );
+	check( 'F. the way back leads to the list: the sheet is closed and the list is drawn again from the server', go.state.closed >= 1 && go.table() !== null && go.state.hash === '#builder/frames' );
 
 	// unsaved work is asked about before another address is shown
 	const keep = world();
 
-	keep.show('#builder-frames/header');
+	keep.show('#builder/frames/header');
 	keep.dirty.register( 'builder-frames', { isDirty : function() { return true } } );
-	keep.state.hash = '#builder-frames';
+	keep.state.hash = '#builder/frames';
 	keep.tab.showCurrent();
 
 	check( 'F. unsaved work in the sheet is asked about before the list is shown, and the answer cancel keeps the sheet and its address',
-		keep.dirty.asked === 1 && keep.state.hash === '#builder-frames/header' && keep.state.opened.length === 1 );
+		keep.dirty.asked === 1 && keep.state.hash === '#builder/frames/header' && keep.state.opened.length === 1 );
 
 	// the way back of the sheet itself is asked about unsaved work too: the question, and the answer discard goes to the list
 	const leave = world();
 
-	leave.show('#builder-frames/header');
+	leave.show('#builder/frames/header');
 	leave.dirty.register( 'builder-frames', { isDirty : function() { return true } } );
 	// the way back of the sheet - where there is a sheet to go back from: a script that lost it says so in the pin and not by a crash
 	const goBack = function( x ) { if( x.open.adapter !== null ) x.open.adapter.go( [] ) };
 
 	goBack( leave );
 
-	const stayed = leave.state.hash === '#builder-frames/header' && leave.dirty.asked === 1 && leave.open.adapter !== null;
+	const stayed = leave.state.hash === '#builder/frames/header' && leave.dirty.asked === 1 && leave.open.adapter !== null;
 
 	leave.answers.push( 'discard' );
 	goBack( leave );
 
 	check( 'F. the way back from the sheet asks about unsaved work before it leads anywhere: cancel keeps the sheet and its address, discard goes to the list',
-		stayed === true && leave.dirty.asked === 2 && leave.state.hash === '#builder-frames' );
+		stayed === true && leave.dirty.asked === 2 && leave.state.hash === '#builder/frames' );
 
 	// the language of the workbench follows: the sheet is held and asked for again, or the choice is taken back
 	const lang = world();
 
-	lang.show('#builder-frames/header');
+	lang.show('#builder/frames/header');
 	lang.state.opened.length = 0;
 	lang.locale.followed['builder-frames']();
 	lang.serve();
@@ -933,7 +929,7 @@ function world( options ) {
 	click.serve();
 
 	check( 'F. a click on the tab asks for the list of the frames although the address is still the one of the tab before: the table is drawn and the address is the tab\'s',
-		firstAsk === 1 && click.table() !== null && click.rows().length === 4 && click.state.hash === '#builder-frames' );
+		firstAsk === 1 && click.table() !== null && click.rows().length === 4 && click.state.hash === '#builder/frames' );
 
 	const rounds = [];
 
@@ -942,7 +938,7 @@ function world( options ) {
 		click.tab.showCurrent();
 		rounds.push( click.asked('builder/frame-list').length );
 		click.serve();
-		rounds.push( click.table() !== null && click.state.hash === '#builder-frames' );
+		rounds.push( click.table() !== null && click.state.hash === '#builder/frames' );
 	} );
 
 	check( 'F. Pages, Header/footer, Settings, Header/footer: the list is asked for at every show of the tab and is on screen with the address of the tab each time', rounds.join() === '1,true,1,true,1,true' );
@@ -950,12 +946,31 @@ function world( options ) {
 	// another panel is shown while a sheet is open: the tab asks nothing and keeps the sheet
 	const away = world();
 
-	away.show('#builder-frames/header');
+	away.show('#builder/frames/header');
 	away.requests.length = 0;
 	away.state.hash = '#themelab';
 	away.tab.showCurrent();
 
 	check( 'F. the tab asks for nothing while a sheet is open and another address is the one that is shown: the sheet is not given up', away.requests.length === 0 && away.state.sheet === true );
+}
+
+// --- the address: the tab is #builder/frames, a frame is a key -----------------------------------------------------------------------------
+
+{
+	const w = world( { hash : '#builder/frames/header-landing' } );
+
+	w.show('#builder/frames/header-landing');
+
+	const key = world();
+
+	key.show('#builder/frames/%40header');
+
+	const word = world();
+
+	word.show('#builder/frames/@header');
+
+	check( 'G. a frame is a key: the key @header and the word @header are no frame of this tab, the list stands, written #builder/frames', key.state.hash === '#builder/frames' && word.state.hash === '#builder/frames' && key.state.opened.length === 0 && word.state.opened.length === 0 );
+	check( 'G. every address the tab wrote or drew was read back by the router as the same screen and the same parts', [ w, key, word ].every( function( one ) { return one.codec.mismatches.length === 0 } ) && [ w, key, word ].some( function( one ) { return one.codec.written.length > 0 } ) );
 }
 
 done();

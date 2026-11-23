@@ -23,7 +23,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const script = fs.readFileSync( path.join( featureDir, 'assets/admin.js' ), 'utf8' );
@@ -190,7 +190,10 @@ const chosen = [];
 const written = [];
 let answer = 'save';
 
-context.window = { setTimeout : function() {}, Nino : { admin : { router : { href : function( panel, parts ) { return '#'+ panel+ '/'+ parts.join('/') }, go : function( panel, parts ) { went.parts = parts }, set : function() {}, current : function() { return { panel : 'builder', parts : went.parts } } }, dirty : { guard : function( keys, run, cancel ) { questions.push( keys.join() ); answer === 'cancel' ? cancel() : run() } }, workLocale : { current : 'de_DE', follow : function( name, handler ) { followers.push( { name : name, handler : handler } ) }, set : function( locale ) { chosen.push( locale ) } }, sessionLocale : { set current( locale ) { written.push( locale ) } } }, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, iconButton : function() { return { dataset : {}, setAttribute : function() {}, classList : { toggle : function() {} }, addEventListener : function() {} } }, hint : function() { return {} }, emptyState : function() { return {} }, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className, text ) { const attributes = {}; const listeners = {}; const element = { tag : tag, className : className, text : text, attributes : attributes, listeners : listeners, dataset : {}, addEventListener : function( type, run ) { listeners[type] = run }, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} }; made.push( element ); return element } }, content : { getText : function() { return '' } } }, document : context.document };
+// The router of the workbench itself: what the panel writes is read back by it
+const codec = shellRouter( { builder : [ [ 'builder', 'builder' ], [ 'builder-frames', 'frames' ], [ 'builder-settings', 'settings' ] ] } );
+
+context.window = { setTimeout : function() {}, Nino : { admin : { router : codec.stub( { go : function( panel, parts ) { codec.check( panel, parts ); went.parts = parts }, set : function() {}, current : function() { return { panel : 'builder', parts : went.parts } } } ), dirty : { guard : function( keys, run, cancel ) { questions.push( keys.join() ); answer === 'cancel' ? cancel() : run() } }, workLocale : { current : 'de_DE', follow : function( name, handler ) { followers.push( { name : name, handler : handler } ) }, set : function( locale ) { chosen.push( locale ) } }, sessionLocale : { set current( locale ) { written.push( locale ) } } }, adminUi : { panel : function( spec ) { return spec }, format : function( text ) { return text }, scaleFrame : function() {}, iconButton : function() { return { dataset : {}, setAttribute : function() {}, classList : { toggle : function() {} }, addEventListener : function() {} } }, hint : function() { return {} }, emptyState : function() { return {} }, button : function() { return { dataset : {}, addEventListener : function() {}, classList : { add : function() {} }, setAttribute : function() {}, appendChild : function() {}, disabled : false } }, el : function( tag, className, text ) { const attributes = {}; const listeners = {}; const element = { tag : tag, className : className, text : text, attributes : attributes, listeners : listeners, dataset : {}, addEventListener : function( type, run ) { listeners[type] = run }, classList : { add : function() {} }, setAttribute : function( name, value ) { attributes[name] = value }, appendChild : function() {} }; made.push( element ); return element } }, content : { getText : function() { return '' } } }, document : context.document };
 context.Nino = context.window.Nino;
 vm.createContext( context );
 vm.runInContext( script, context );
@@ -296,7 +299,7 @@ check( 'B. a fresh page is not changed, a change is, and the undo goes back no f
 
 	return clean === true && S.undo.length <= 200;
 } )() );
-check( 'B. the address of a page is its template without page-, a frame has the name of its side but is no address of this panel, and a name that is none is no template', builder.addressOf( 'page-home' ) === 'home' && builder.addressOf( 'frame-footer' ) === '@footer' && builder.templateOf( '@header' ) === '' && builder.templateOf( 'home' ) === 'page-home' && builder.templateOf( '../x' ) === '' );
+check( 'B. the address of a page is its template without page-, a word is no page, and a name that is none is no template', builder.addressOf( 'page-home' ) === 'home' && builder.templateOf( '@header' ) === '' && builder.templateOf( 'home' ) === 'page-home' && builder.templateOf( '../x' ) === '' );
 
 check( 'B. a block is named by its kind and the first text it shows - in the language of the view -, the call of a frame is a line of its own, and the locked pieces that stand one after the other are one row', ( function() {
 	fresh();
@@ -589,13 +592,15 @@ const extended = function() {
 };
 
 check( 'C. an address names the page, and for the old address of the extended view - #builder/<page>/<block> - the block that is marked where the page opens: there is no extended view of a page, a frame is no address of this panel, and what is none is no page', ( function() {
-	const at = function( parts ) { return builder.targetOf( parts ) };
-	const old = at( [ 'home', 'hero' ] );
-	const more = at( [ 'home', 'hero', '1.1', 'look' ] );
-	const header = at( [ 'home', '@header' ] );
+	// What the router reads of an address is what the panel is asked about
+	const at = function( hash ) { return builder.targetOf( codec.read( hash ).parts ) };
+	const old = at( '#builder/builder/home/hero' );
+	const more = at( '#builder/builder/home/hero/1.1/look' );
+	const header = at( '#builder/builder/home/@header' );
 
 	return old.mode === 'basic' && old.template === 'page-home' && old.block === 'hero' && more.mode === 'basic' && more.block === 'hero' && header.block === '@header' && header.template === 'page-home'
-		&& at( [ '@header' ] ) === null && at( [ 'contact', '@header', '1' ] ).template === 'page-contact' && at( [ 'home', 'Not A Block' ] ).block === '' && at( [ 'no_page' ] ) === null;
+		&& at( '#builder/builder/@header' ) === null && at( '#builder/builder/contact/@header/1' ).template === 'page-contact' && at( '#builder/builder/home/Not%20A%20Block' ).block === '' && at( '#builder/builder/no_page' ) === null
+		&& at( '#builder/builder/home/%40header' ).block === '' && at( '#builder/builder/%40new' ) === null;
 } )() );
 
 check( 'C. the tree of a block is its components with their kind and first words, a locked entry for free markup, and the id of an entry is its place in the block', ( function() {

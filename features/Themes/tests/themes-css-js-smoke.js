@@ -24,7 +24,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, fire, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, fire, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const viewsScript = path.relative( root, path.join( featureDir, 'assets/admin-css.js' ) );
@@ -97,20 +97,14 @@ function world( options ) {
 		return created;
 	};
 
-	const parse = function() {
-		const raw = state.hash.replace( /^#/, '' );
-		const parts = raw === '' ? [] : raw.split('/').map( decodeURIComponent );
-		return { panel : parts[0] ?? '', parts : parts.slice( 1 ) };
-	};
-
-	const router = {
-		current : parse,
-		href : function( panel, parts ) { return '#'+ [ panel ].concat( parts ?? [] ).map( encodeURIComponent ).join('/') },
+	// The router of the workbench itself, over the panes of the panel: what the tab writes is read back by it
+	const codec = shellRouter( { themes : [ [ 'themes', 'themes' ], [ 'themes-fonts', 'fonts' ], [ 'themes-css', 'css' ], [ 'themes-settings', 'settings' ] ] } );
+	const router = codec.stub( {
+		current : function() { return codec.read( state.hash ) },
 		isActive : function() { return true },
-		go : function( panel, parts ) { state.hash = router.href( panel, parts ) },
-		set : function( panel, parts ) { state.hash = router.href( panel, parts ) },
-		leave : function( names, leaving, proceed ) { proceed() },
-	};
+		go : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+	} );
 
 	const entries = {};
 	const dirty = { register : function( name, entry ) { entries[name] = entry }, isDirty : function() { return false }, refresh : function() {}, guard : function( names, proceed ) { proceed() } };
@@ -163,7 +157,7 @@ function world( options ) {
 
 		/** The tab is shown, as the workbench shows it */
 		show : function() {
-			state.hash = '#themes-css';
+			state.hash = '#themes/css';
 			w.tab.showCurrent();
 		},
 

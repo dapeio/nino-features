@@ -197,7 +197,7 @@
 
 		const link = el( 'a', 'nino-admin-btn-primary themes-fonts-link-button', text );
 
-		link.href = '#themes-settings';
+		link.href = Nino.admin.router.href( 'themes-settings', [] );
 
 		return link;
 	};

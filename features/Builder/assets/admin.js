@@ -5,10 +5,10 @@
  *										it shows is the answer of the API (see Modules\Builder\Admin): the page as it is saved from open, the draft from preview. A change
  *										is a change of the working state - the tree of the template and the words of its namespace - and nothing is written before Save.
  *
- *										The address is #builder (the list), #builder/<page> (a page: its template without page-), #builder/@new (the view that makes one; with a page behind it,
- *										#builder/@new/<page>, the view that makes a copy of that page) and #builder/@header or #builder/@footer
- *										(a frame of the site). The extended view of a block is #builder/<page>/<block> - the tree of its components - and the frames are the same
- *										views at #builder/<page>/@header and #builder/<page>/@footer. They are for the account that may design. The properties of a component have no address
+ *										The address is #builder (the list), #builder/builder/<page> (a page: its template without page-), #builder/builder/@new (the view that makes one; with a page behind it,
+ *										#builder/builder/@new/<page>, the view that makes a copy of that page). The header and the footer of the site are the tab #builder/frames. The extended view of a
+ *										block is #builder/builder/<page>/<block> - the tree of its components - and the frames of a page are the same views at #builder/builder/<page>/@header and
+ *										#builder/builder/<page>/@footer: the words for the call of the head and of the foot, which every page has; a block is a key. They are for the account that may design. The properties of a component have no address
  *										of their own: they are the lightbox that the pencil at the component, the row of the tree and the row of the outline open.
  *
  *										A block is put in with "Insert block": between the blocks of the page, at its end and in the outline. The dialog lists what the
@@ -50,9 +50,8 @@
 	// The rows of a section that have a button of their own in its bar
 	const ROW_BUTTONS	= 6;
 
-	// The longest word an address is made a name of a template of - what the server takes - and the address of the view that makes a page: no word of a page can start with @, as the frames' neither
+	// The longest word an address is made a name of a template of - what the server takes
 	const MAX_SLUG	= 60;
-	const NEW				= '@new';
 
 	// How long a text typed in the page may be, in characters: the server keeps 20000 bytes of what a format makes of it
 	const MAX_TEXT	= 5000;
@@ -5444,19 +5443,6 @@
 		paint();
 	};
 
-	// The address of the header and the footer of the site is the tab of the pane, #builder-frames; the address of the tab before, #builder/@frames - the @ is what no key of a page has, so that a page
-	// called "frames" is a page, like #builder/@new and the @header of a frame - leads there
-	const FRAMES_TAB = '@frames';
-
-	const isFramesTab = function( parts ) {
-		return parts.length === 1 && parts[0] === FRAMES_TAB;
-	};
-
-	// Where the address of the tab of before leads: to the tab of the pane for the account that has frames in the answer - the one that designs -, quietly to the pages for the others, who have no tab
-	const framesTabFor = function( list ) {
-		return list !== null && list.frames.length > 0 ? 'builder-frames' : 'builder';
-	};
-
 	// The address of the list: the pages
 	const tabParts = function() {
 		return [];
@@ -5469,7 +5455,7 @@
 
 	const addressOf = function( template ) {
 
-		return template === 'frame-header' ? '@header' : ( template === 'frame-footer' ? '@footer' : template.replace( /^page-/, '' ) );
+		return template.replace( /^page-/, '' );
 	};
 
 	/**
@@ -5680,6 +5666,17 @@
 	 *	@param		{Array}			parts				[ page, block ]
 	 *
 	 */
+	const blockOf = function( parts ) {
+
+		const router = Nino.admin.router;
+
+		// The call of the head and of the foot of the page are words; any other block is a key
+		if( router.isWord( parts, 1, 'header' ) === true || router.isWord( parts, 1, 'footer' ) === true )
+			return parts[1];
+
+		return router.wordOf( parts, 1 ) === '' && /^[a-z][a-z0-9-]*$/.test( parts[1] ?? '' ) === true ? parts[1] : '';
+	};
+
 	const targetOf = function( parts ) {
 
 		const template = templateOf( parts[0] ?? '' );
@@ -5687,7 +5684,7 @@
 		if( template === '' )
 			return null;
 
-		return { mode : 'basic', template : template, page : '', slug : addressOf( template ), block : /^(?:@(?:header|footer)|[a-z][a-z0-9-]*)$/.test( parts[1] ?? '' ) === true ? parts[1] : '' };
+		return { mode : 'basic', template : template, page : '', slug : addressOf( template ), block : blockOf( parts ) };
 	};
 
 	/**
@@ -7952,12 +7949,16 @@
 
 	// Whether an address is the one of the view that makes a page: #builder/@new - or, with the word of a page behind it, the one that makes the copy of that page
 	const isNew = function( parts ) {
-		return parts[0] === NEW && ( parts.length === 1 || ( parts.length === 2 && templateOf( parts[1] ) !== '' && parts[1][0] !== '@' ) );
+
+		// A word a panel made is an object (router.word()), one the router read is a part that says it is one
+		const word = typeof parts[0] === 'object' && parts[0] !== null ? parts[0].word === '@new' : Nino.admin.router.isWord( parts, 0, 'new' );
+
+		return word === true && ( parts.length === 1 || ( parts.length === 2 && templateOf( parts[1] ) !== '' ) );
 	};
 
 	// The address of the view that is open: that of a copy names the page it is made from
 	const newParts = function() {
-		return N.source === '' ? [ NEW ] : [ NEW, N.source ];
+		return N.source === '' ? [ Nino.admin.router.word('new') ] : [ Nino.admin.router.word('new'), N.source ];
 	};
 
 	// The page a view that makes a copy is about: the word behind #builder/@new, '' for the view that makes a new page
@@ -10582,7 +10583,7 @@
 		view.buttons.redo.disabled = S.redo.length === 0;
 
 		if( rootAt() === -1 ) {
-			S.adapter.go( [ S.frame === true ? addressOf( S.template ) : S.adv.slug ] );
+			S.adapter.go( S.frame === true ? [] : [ S.adv.slug ] );
 			return;
 		}
 
@@ -10675,7 +10676,7 @@
 
 	// The button that makes a page: the one main button of the bar of the list
 	const makeButton = function( id ) {
-		return Nino.adminUi.button( word('page/open'), function() { Nino.admin.builder.go( [ NEW ] ) }, { kind : 'primary', id : id } );
+		return Nino.adminUi.button( word('page/open'), function() { Nino.admin.builder.go( [ Nino.admin.router.word('new') ] ) }, { kind : 'primary', id : id } );
 	};
 
 	// What a row of the table says of a page: the name with its template quietly under it, and a sign where a language lacks its name or its address
@@ -10976,7 +10977,7 @@
 	const rowButtons = function( row ) {
 
 		// A page that the website serves itself is no page to copy, and the two it never takes away are no pages to delete
-		const copy = Nino.adminUi.iconButton( 'copy', word( 'list/duplicate', row.name ), function() { Nino.admin.builder.go( [ NEW, addressOf( row.template ) ], { origin : [] } ) }, { small : true, disabled : row.locked === 'runtime' } );
+		const copy = Nino.adminUi.iconButton( 'copy', word( 'list/duplicate', row.name ), function() { Nino.admin.builder.go( [ Nino.admin.router.word('new'), addressOf( row.template ) ], { origin : [] } ) }, { small : true, disabled : row.locked === 'runtime' } );
 		const drop = Nino.adminUi.iconButton( 'trash-2', word( 'list/delete', row.name ), function() { askDelete( row, drop ) }, { small : true, danger : true, disabled : row.locked !== '' } );
 
 		if( row.locked === '' )
@@ -11153,13 +11154,6 @@
 			N.open = false;
 			N.source = '';
 
-			// The address of the tab of before leads to the tab of the pane
-			if( isFramesTab( parts ) === true ) {
-				// Another panel is shown by the address alone: it replaces the entry of the address of before, so that Back does not lead into it again
-				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( framesTabFor( S.list ), [] ) ) }, 0 );
-				return;
-			}
-
 			if( parts.length === 0 ) {
 
 				leaveView();
@@ -11197,14 +11191,6 @@
 
 			if( Nino.admin.builder.ready === true && at.panel !== 'builder' )
 				return;
-
-			// The address of the tab of before is the address of the tab of the pane
-			// - after the workbench has settled the address it was given: it writes its own over it where it is asked inside the move
-			if( at.panel === 'builder' && isFramesTab( at.parts ) === true && S.list !== null ) {
-				wn.setTimeout( function() { wn.location.replace( Nino.admin.router.href( framesTabFor( S.list ), [] ) ) }, 0 );
-				return;
-			}
-
 
 			const proceed = function() { Nino.admin.builder.follow() };
 

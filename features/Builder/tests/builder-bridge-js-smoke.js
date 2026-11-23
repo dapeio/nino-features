@@ -45,7 +45,7 @@ console.log( '\nA. The page' );
 check( 'A1. the page has no extended view and no frame view: no button "Advanced", no way into one, no choice of the two frames, no frame in an address of the panel',
 	has( /openExtended|openFrames|advancedParts|(?<!#)builder-frames(?!-list|')|label\/advanced|label\/frames|ACTION_ICONS\.advanced/ ) === false && has( /actions\.push\( \{ key : 'advanced'/ ) === false );
 check( 'A2. the old address #builder/<page>/<block> opens the page with the block marked - and tells where the block is gone - and a frame is no address of the panel',
-	/block : \/\^\(\?:@\(\?:header\|footer\)\|\[a-z\]\[a-z0-9-\]\*\)\$\/\.test\( parts\[1\]/.test( script ) === true && has( /if\( atOf\( target\.block \) !== -1 \)\s*selectBlock\( target\.block, true \)/ ) === true && has( /msg\/no-block/ ) === true
+	has( /block : blockOf\( parts \)/ ) === true && has( /router\.isWord\( parts, 1, 'header' \) === true \|\| router\.isWord\( parts, 1, 'footer' \) === true/ ) === true && has( /if\( atOf\( target\.block \) !== -1 \)\s*selectBlock\( target\.block, true \)/ ) === true && has( /msg\/no-block/ ) === true
 	&& has( /if\( part === '@header' \)\s*return 'frame-header'/ ) === false );
 check( 'A3. the dialog "Insert block" has no button that takes a block of the project away, and the panel asks for no action that takes one: dead code, dead texts, dead actions are gone',
 	has( /blockdrop|askDrop|builder-tile-drop|insert\/drop|confirm\/drop/ ) === false && sheet.indexOf( 'builder-tile-drop' ) === -1 && /builder\/(blocksave|blockdrop|offer|notation)/.test( panelPhp ) === false
@@ -194,10 +194,10 @@ check( 'F312 b. "Kopf-/Fußbereich" / "Header/footer" is a tab of the pane, a ta
 	/public static function tabs\(\): array \{\s*return \[ FramesTab::class \];/.test( panelPhp ) === true && /return \[ 'builder-frames', '\/_admin\/builder\/tab\/frames', \d+ \];/.test( tabPhp ) === true && /public static function perm\(\): string \{[\s\S]*?\\Nino\\Modules\\Builder::DESIGN : Admin::perm\(\);/.test( tabPhp ) === true && /public static function scope\(\): string \{\s*return \\Nino\\Modules\\Builder::SCOPE;/.test( tabPhp ) === true
 	&& /admin-frames\.js/.test( tabPhp ) === true && /public static function template\(\): string \{[\s\S]*?templates\/frames/.test( tabPhp ) === true && /public static function actions\(\): array \{\s*return \[\];/.test( tabPhp ) === true && /public static function text\(\): string \{\s*return Admin::text\(\);/.test( tabPhp ) === true
 	&& word( de, 'tab/frames' ) === 'Kopf-/Fußbereich' && word( en, 'tab/frames' ) === 'Header/footer' && /wn\.Nino\.admin\[TAB\] = \{/.test( tabScript ) === true && /const TAB = 'builder-frames';/.test( tabScript ) === true );
-check( 'F312 c. the list of the pages has no strip of tabs of its own - none is made, none has a style, no word - and the frames are drawn by the tab itself, into its own mount, from the list of its own (builder/frame-list), not from the answer of the pages; the address of before, #builder/@frames, leads to #builder-frames',
+check( 'F312 c. the list of the pages has no strip of tabs of its own - none is made, none has a style, no word - and the frames are drawn by the tab itself, into its own mount, from the list of its own (builder/frame-list), not from the answer of the pages; the frames are the tab #builder/frames',
 	has( /Nino\.adminUi\.tabs\(/ ) === false && has( /builder-tabs/ ) === false && sheet.indexOf( 'builder-tabs' ) === -1 && word( de, 'tab/label' ) === '' && word( en, 'tab/label' ) === ''
 	&& has( /drawFrames|framesList/ ) === false && /call\( 'frame-list', \{\}/.test( tabScript ) === true && /dc\.getElementById\('builder-frames-list'\)/.test( tabScript ) === true
-	&& has( /wn\.location\.replace\( Nino\.admin\.router\.href\( framesTabFor\( S\.list \), \[\] \) \)/ ) === true && has( /return list !== null && list\.frames\.length > 0 \? 'builder-frames' : 'builder';/ ) === true && word( de, 'frame/empty' ) === '' && word( en, 'frame/empty' ) === '' && has( /const isFramesTab = function\( parts \) \{\s*return parts\.length === 1 && parts\[0\] === FRAMES_TAB;/ ) === true );
+	&& has( /framesTabFor|isFramesTab|FRAMES_TAB/ ) === false && word( de, 'frame/empty' ) === '' && word( en, 'frame/empty' ) === '' );
 
 console.log( '\nF304. The dialog Source' );
 

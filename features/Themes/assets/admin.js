@@ -8,12 +8,14 @@
  *										once the hand has rested (Nino.adminUi.previewFrame()), and the page in the frame is loaded once more with the token the answer
  *										gives. Nothing is written before Save.
  *
- *										The address is #themes (the list: the first view of the panel, which has a strip of tabs where there is a second one -
- *										#themes/<view>), #themes/<theme>/<section> (the first level of a theme: groups, settings or css, the one that is open),
- *										#themes/<theme>/<group>/<component> (the settings of a group, one component open), for the page <group> is page and the
- *										section a set of its knobs, and #themes/<theme>/brand/<section> (the brand of the project: colours, type, mode, logo).
+ *										The address is #themes (the list: the first view of the panel; the word of an origin - #themes/themes/@own - narrows it),
+ *										#themes/themes/<theme>/<section> (the first level of a theme: groups, settings or css, the one that is open),
+ *										#themes/themes/<theme>/<group>/<component> (the settings of a group, one component open), for the page <group> is page and the
+ *										section a set of its knobs, and #themes/themes/<theme>/brand/<section> (the brand of the project: colours, type, mode, logo).
  *										The accordions close: a level whose address names no section is a level with every section closed, and the way in -
- *										a row, a link, the address a page is loaded on - opens the first one. The key of an own theme is own.<key> in the address.
+ *										a row, a link, the address a page is loaded on - opens the first one. The words of the address are the origins of the list; the
+ *										theme, the group and the sections are keys - groups, brand, settings and css are kept from the register, so that no group has one -
+ *										and the key of an own theme, own:<key>, is one segment like any other.
  *
  *										The preview shows the page that is chosen for the theme - "Automatically" first: the demo of the group that is open, where
  *										the register has one, else the start page - and a thumbnail on each card of the list shows the start page of that theme.
@@ -218,32 +220,12 @@
 		return parent;
 	};
 
-	/**
-	 *	The address of a theme: the key of an own theme is own:<key> for the API and own.<key> in the address, a form with nothing to be written
-	 *	as a code in it; no theme of a package can have a dot in its key, so that the two kinds of key cannot meet
-	 *
-	 *	@param		{Array}		parts				[ theme, group, component ] with the key of the API
-	 *
-	 *	@return		{Array}									The same with the theme as the address says it
-	 */
-	const addressOf = function( parts ) {
-
-		if( parts.length === 0 || parts[0].indexOf('own:') !== 0 )
-			return parts;
-
-		return [ 'own.'+ parts[0].slice( 4 ) ].concat( parts.slice( 1 ) );
-	};
-
-	// The address of the window, with the key of the API for the theme
+	// The address of the window: the panel and its parts, whose keys are the keys of the API - the key of an own theme is own:<key>, which the router writes as one segment
 	const here = function() {
 
 		const at = Nino.admin.router.current();
-		const parts = at.parts.slice();
 
-		if( parts.length > 0 && parts[0].indexOf('own.') === 0 )
-			parts[0] = 'own:'+ parts[0].slice( 4 );
-
-		return { panel : at.panel, parts : parts };
+		return { panel : at.panel, parts : at.parts };
 	};
 
 	// Whether a node is the root or stands below it
@@ -1131,7 +1113,7 @@
 				id			: 'themes-acc',
 				level		: 4,
 				collapsible	: true,
-				address		: { panel : 'themes', parts : addressOf( [ S.key, group ] ) },
+				address		: { panel : 'themes', parts : [ S.key, group ] },
 				open		: open === null ? [] : ( keys.indexOf( open ) === -1 ? keys[0] : open ),
 				sections	: sections.map( function( section ) {
 					return { key : section.key, label : section.label, summary : summaryOf( group, section ), badge : changedIn( group, section ) === true ? word('state/changed-mark') : '', content : function() { return bodyOf( group, section ) } };
@@ -1203,7 +1185,7 @@
 			const entry		= described( group );
 			const edited	= groupChanged( group );
 
-			link.href = Nino.admin.router.href( 'themes', addressOf( [ S.key, group ] ) );
+			link.href = Nino.admin.router.href( 'themes', [ S.key, group ] );
 			link.dataset.group = group;
 			link.addEventListener( 'click', function( event ) {
 				event.preventDefault();
@@ -1241,7 +1223,7 @@
 			id			: 'themes-groups',
 			level		: 4,
 			collapsible	: true,
-			address		: { panel : 'themes', parts : addressOf( [ S.key ] ) },
+			address		: { panel : 'themes', parts : [ S.key ] },
 			open		: open === null ? [] : ( LEVEL_ONE.indexOf( open ) === -1 ? 'groups' : open ),
 			sections	: [
 				{ key : 'groups', label : word('label/groups'), help : word('hint/groups'), summary : word( 'msg/groups', groupKeys().length + 1 ), content : function() { const box = el('div'); box.appendChild( list ); reservedNotes( box ); return box } },
@@ -2084,7 +2066,7 @@
 
 		const back = el( 'a', 'nino-admin-back-link', word('label/back-groups') );
 
-		back.href = Nino.admin.router.href( 'themes', addressOf( [ S.key ] ) );
+		back.href = Nino.admin.router.href( 'themes', [ S.key ] );
 		back.id = 'themes-back-groups';
 		back.setAttribute( 'data-keep-draft', '' );
 		back.addEventListener( 'click', function( event ) {
@@ -2120,7 +2102,7 @@
 			id			: 'themes-acc',
 			level		: 4,
 			collapsible	: true,
-			address		: { panel : 'themes', parts : addressOf( [ S.key, 'brand' ] ) },
+			address		: { panel : 'themes', parts : [ S.key, 'brand' ] },
 			open		: open === null ? [] : ( keys.indexOf( open ) === -1 ? keys[0] : open ),
 			sections	: keys.map( function( key ) {
 				return { key : key, label : word( 'word/'+ key ), help : key === 'colours' ? word('hint/colour') : '', summary : brandSummary( key ), badge : brandChangedIn( key ) === true ? word('state/changed-mark') : '', content : function() { return brandSection( key ) } };
@@ -2141,7 +2123,7 @@
 		const copy = el( 'span', 'nino-admin-list-copy' );
 		const source = el( 'span', 'themes-source', word('word/project') );
 
-		link.href = Nino.admin.router.href( 'themes', addressOf( [ S.key, 'brand' ] ) );
+		link.href = Nino.admin.router.href( 'themes', [ S.key, 'brand' ] );
 		link.dataset.group = 'brand';
 		link.addEventListener( 'click', function( event ) {
 			event.preventDefault();
@@ -3418,7 +3400,7 @@
 		refreshList( function() {
 
 			if( moved === true ) {
-				Nino.admin.router.go( 'themes', addressOf( at ) );
+				Nino.admin.router.go( 'themes', at );
 				open( key, function() {
 					show( at, { focus : false } );
 					S.view.line.saved();
@@ -3958,7 +3940,7 @@
 
 		// The address says what is open: the section, or the level itself where there is none
 		S.at = [ S.key ].concat( known === true ? [ group ] : [], S.view.accordion !== null ? S.view.accordion.get() : [] );
-		Nino.admin.router.set( 'themes', addressOf( S.at ) );
+		Nino.admin.router.set( 'themes', S.at );
 
 		Nino.adminUi.showLevel( 'themes-theme', { focus : false } );
 		thumbsAway();
@@ -4752,9 +4734,9 @@
 		return value;
 	};
 
-	// The address of the list: the choice of the origin when it is not the first one - '@own' - and nothing for all themes
+	// The address of the list: the choice of the origin when it is not the first one - the word @own - and nothing for all themes
 	const listParts = function() {
-		return S.from === 'all' ? [] : [ '@'+ S.from ];
+		return S.from === 'all' ? [] : [ Nino.admin.router.word( S.from ) ];
 	};
 
 	// The list: the themes that come with a package, then the own ones, and what the website shows
@@ -4937,7 +4919,7 @@
 			const leaves = S.ready === true && ( parts.length === 0 || parts[0] !== S.key );
 
 			Nino.admin.dirty.guard( leaves === true ? [ 'themes' ] : [], function() {
-				Nino.admin.router.go( 'themes', addressOf( parts ) );
+				Nino.admin.router.go( 'themes', parts );
 				Nino.admin.themes.follow( options );
 			} );
 		},
@@ -4954,10 +4936,10 @@
 			const parts = here().panel === 'themes' ? here().parts : [];
 
 			// The list, with the choice of the origin the address names - or the one that was kept
-			if( parts.length === 0 || parts[0].charAt(0) === '@' ) {
+			if( parts.length === 0 || Nino.admin.router.wordOf( parts, 0 ) !== '' ) {
 				S.ready = false;
 				S.view = null;
-				S.from = parts.length === 0 ? keptFrom() : parts[0].slice( 1 );
+				S.from = parts.length === 0 ? keptFrom() : Nino.admin.router.wordOf( parts, 0 ).slice( 1 );
 
 				if( S.list !== null && S.list.themes.some( function( theme ) { return originOf( theme ) === S.from } ) === false )
 					S.from = 'all';
@@ -4967,7 +4949,7 @@
 
 				// The choice of an address that was followed is the choice on screen
 				if( S.applyFilter !== null ) {
-					const select = dc.getElementById('themes-list').querySelector('.themes-from select');
+					const select = dc.getElementById('themes-list').querySelector('.themes-from select, select.themes-from');
 
 					if( select !== null )
 						select.value = S.from;
@@ -5000,7 +4982,7 @@
 			// The address names another panel - a tab of the pane was chosen, and the shell has not written its own yet: what is on screen stays, and
 			// the address says it, so that a reload shows the same level
 			if( Nino.admin.themes.ready === true && at.panel !== 'themes' ) {
-				Nino.admin.router.set( 'themes', S.ready === true ? addressOf( S.at ) : [] );
+				Nino.admin.router.set( 'themes', S.ready === true ? S.at : [] );
 				return;
 			}
 
@@ -5016,7 +4998,7 @@
 			const leaving = S.ready === true && ( at.parts.length === 0 || at.parts[0] !== S.key );
 
 			Nino.admin.router.leave( [ 'themes' ], leaving, proceed, function() {
-				Nino.admin.router.set( 'themes', S.ready === true ? addressOf( S.at ) : [] );
+				Nino.admin.router.set( 'themes', S.ready === true ? S.at : [] );
 			} );
 		},
 	} );

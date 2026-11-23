@@ -10,7 +10,8 @@
  *							editor of the kernel. Built from the blocks of the workbench: panel(), table(), list(),
  *							formDialog(), pickDialog(), the question dialog, contextBar() and actionBar().
  *
- *							The addresses are #menu (the table), #menu/<key> (a menu) and #menu/<key>/<entry>.
+ *							The addresses are #menu (the table), #menu/menu/<key> (a menu) and #menu/menu/<key>/<entry>. A menu
+ *							and an entry are keys, whatever they are called: the panel has no word.
  *							An entry that is not saved yet, and a menu that is not, are their working copy: the
  *							address of one that does not exist when the page loads is the table.
  *
@@ -1320,13 +1321,18 @@
 		Nino.admin.router.set( 'menu', [] );
 	};
 
+	// The key a part of an address is: '' where there is none, or where the part is a word - a menu and an entry are keys, and the panel has no word
+	const keyAt = function( parts, at ) {
+		return parts[at] === undefined || Nino.admin.router.wordOf( parts, at ) !== '' ? '' : String( parts[at] );
+	};
+
 	// Show what the address names: the table, a menu, or an entry of a menu
 	const follow = function( focus ) {
 
 		const at = Nino.admin.router.current();
 		const parts = at.panel === 'menu' ? at.parts : [];
-		const key = parts[0] === undefined ? '' : String( parts[0] );
-		const id = parts[1] === undefined ? '' : String( parts[1] );
+		const key = keyAt( parts, 0 );
+		const id = key === '' ? '' : keyAt( parts, 1 );
 
 		if( key === '' )
 			return showTable();
@@ -1433,7 +1439,7 @@
 				return;
 			}
 
-			const leaving = S.view !== null && ( at.parts.length === 0 || String( at.parts[0] ) !== S.view.key );
+			const leaving = S.view !== null && keyAt( at.parts, 0 ) !== S.view.key;
 
 			Nino.admin.router.leave( [ 'menu' ], leaving, function() { S.view = null; follow( { focus : false } ) }, function() {
 				Nino.admin.router.set( 'menu', addressOfView() );

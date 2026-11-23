@@ -28,7 +28,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, fire, documentOf } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, fire, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const panelScript = path.relative( root, path.join( featureDir, 'assets/admin.js' ) );
@@ -113,20 +113,14 @@ function world( options ) {
 		return created;
 	};
 
-	const parse = function() {
-		const raw = state.hash.replace( /^#/, '' );
-		const parts = raw === '' ? [] : raw.split('/').map( decodeURIComponent );
-		return { panel : parts[0] ?? '', parts : parts.slice( 1 ) };
-	};
-
-	const router = {
-		current : parse,
-		href : function( panel, parts ) { return '#'+ [ panel ].concat( parts ?? [] ).map( encodeURIComponent ).join('/') },
+	// The router of the workbench itself, over the panes of the panel: what the tab writes is read back by it
+	const codec = shellRouter( { themes : [ [ 'themes', 'themes' ], [ 'themes-fonts', 'fonts' ], [ 'themes-css', 'css' ], [ 'themes-settings', 'settings' ] ] } );
+	const router = codec.stub( {
+		current : function() { return codec.read( state.hash ) },
 		isActive : function() { return true },
-		go : function( panel, parts ) { state.hash = router.href( panel, parts ) },
-		set : function( panel, parts ) { state.hash = router.href( panel, parts ) },
-		leave : function( names, leaving, proceed ) { proceed() },
-	};
+		go : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+	} );
 
 	const dirty = { register : function() {}, isDirty : function() { return false }, refresh : function() {}, guard : function( names, proceed ) { proceed() } };
 
@@ -187,7 +181,7 @@ function world( options ) {
 				w.answer( 200, { themes : [], rejected : [], groups : [], fonts : FONTS.slice(), limits : { css : 1000, name : 60 }, pages : [], active : null, foreign : false, unreadable : false, canRestore : false, last : null, state : '', brandStamp : 'x' } );
 			}
 
-			state.hash = '#themes-fonts';
+			state.hash = '#themes/fonts';
 			w.tab.showCurrent();
 		},
 
@@ -368,7 +362,7 @@ function world( options ) {
 		const link = w.byTag( w.box(), 'a' )[0];
 
 		check( 'C. a repository that is '+ state+ ' has no button that loads and no list: the half says why, in its own sentence, and leads to the settings of the workbench', notice !== null && w.text( notice ) === W( 'available/'+ state ) && W( 'available/'+ state ) !== 'undefined'
-			&& w.doc.getElementById('themes-fonts-load') === null && link !== undefined && link.href === '#themes-settings' && w.text( link ) === W('available/settings') );
+			&& w.doc.getElementById('themes-fonts-load') === null && link !== undefined && link.href === '#themes/settings' && w.text( link ) === W('available/settings') );
 	} );
 
 	const denied = world();
@@ -578,7 +572,7 @@ function world( options ) {
 	w.show();
 	w.answer( 200, view( { repository : { state : 'badkey', host : 'fonts.example.test', ownKey : true, settings : true }, installed : [ installed( 'inter', 'Inter' ) ] } ) );
 
-	const link = w.byTag( w.box(), 'a' ).find( function( one ) { return one.href === '#themes-settings' } );
+	const link = w.byTag( w.box(), 'a' ).find( function( one ) { return one.href === '#themes/settings' } );
 
 	check( 'F. the settings stand in one place, the tab the workbench draws from the manifest: this tab leads there by its address and holds no field of them - no input, no text area, no form',
 		link !== undefined && w.byTag( w.box(), 'input' ).length === 0 && w.byTag( w.box(), 'textarea' ).length === 0 && w.byTag( w.box(), 'form' ).length === 0 && /fontsUrl|fontsKey|features\/settings/.test( script ) === false );
