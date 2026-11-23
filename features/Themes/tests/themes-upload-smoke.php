@@ -32,7 +32,7 @@ use Nino\Modules\Themes\Upload;
 
 const UP_BUNDLE = '/.cache/style.css';
 
-/** The folder of the blocks of Basis, where the kernel says Basis stands: the folder it delivers it in, or below features/ */
+/** The folder of the blocks of Basis, where the kernel says Basis stands: below features/ */
 function upBasisBlocks(): string {
 
 	$probe = [];

@@ -38,13 +38,18 @@ if( fs.existsSync( path.join( checkout, '_nino/Nino.php' ) ) === false || fs.exi
 	process.exit( 2 );
 }
 
+if( fs.existsSync( path.join( checkout, '_nino/Nino/Modules/Basis' ) ) === true ) {
+	console.error( 'The Nino checkout at '+ checkout+ ' carries a Basis of its own (_nino/Nino/Modules/Basis): this catalogue needs a Nino without a Basis of its own' );
+	process.exit( 2 );
+}
+
 const { check, done, element, findAll } = require( path.join( checkout, 'tests/harness.js' ) );
 
-// Basis stands where the kernel says: the folder it delivers it in, or below the features/ of the checkout
+// Basis stands where the kernel says: below the features/ of the checkout
 const basisDir = require( 'child_process' ).execFileSync( 'php', [ '-r', 'define( "NINO_FEATURES_DIR", $argv[1]. "/features" ); require $argv[1]. "/_nino/Nino.php"; $app = []; echo \\Nino\\Features::get( $app, "basis" )["dir"] ?? "";', checkout ], { encoding : 'utf8' } ).trim();
 
 if( basisDir === '' || fs.existsSync( path.join( basisDir, 'assets/header-nav.js' ) ) === false ) {
-	console.error( 'No Basis at '+ checkout+ ': the kernel does not deliver it and there is no features/Basis - copy the folder there (bin/check.sh does) to run the suite by hand' );
+	console.error( 'No Basis at '+ checkout+ ': there is no features/Basis - copy the folder there (bin/check.sh does) to run the suite by hand' );
 	process.exit( 2 );
 }
 

@@ -12,6 +12,10 @@ return [
 	],
 	'manual'			=> [
 		'shortcodes' => [
+			'[consent inline]' => [
+				'en_US' => 'The consent banner, drawn by the page itself and written by no one; a theme chooses its look as a bar, a box or a dialog, and inline shows it where it stands, for a preview.',
+				'de_DE' => 'Das Einwilligungs-Banner, von der Seite selbst gezeichnet und von niemandem geschrieben; ein Theme wählt es als Leiste, Kasten oder Dialog, und inline zeigt es dort, wo es steht, als Vorschau.',
+			],
 			'[consent-settings]' => [
 				'en_US' => 'A button that opens the choice again, for a privacy page or a footer column.',
 				'de_DE' => 'Ein Knopf, der die Wahl erneut öffnet, etwa auf der Datenschutzseite oder in einer Fußspalte.',

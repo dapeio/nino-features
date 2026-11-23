@@ -36,7 +36,7 @@ require $root. '/tests/harness.php';
 require __DIR__. '/support.php';
 
 $ignored = ninoWarnings();
-[ $basisDir, $delivered ] = basisUnderTest();
+$basisDir = basisUnderTest();
 
 /**
  *	A project with basis on, as \Nino\init() registers it, and the calls the templates of a page make that are no component
@@ -251,8 +251,7 @@ $features = \Nino\Features::all( $appData );
 check( 'a block of basis is listed with the origin basis and the label of its origin: the name of the feature', ( $all['hero-full']['origin'] ?? '' ) === 'basis' && $all['hero-full']['label'] === $features['basis']['name'] );
 check( 'the blocks that name variants say them: hero-full has some, and three-columns has none', $all['hero-full']['alternatives'] !== [] && $all['three-columns']['alternatives'] === [] );
 
-// What decides between two blocks of one key: where the kernel delivers Basis, Basis, the project, the other features by their keys; where Basis is a feature, the project, then the
-// features, each after the one it requires - the two of the test require Basis, so Basis stands before them
+// What decides between two blocks of one key: the project, then the features, each after the one it requires - the two of the test require Basis, so Basis stands before them
 blocksWrite( NINO_FEATURES_DIR. '/Aaa/blocks', 'hero-full', blocksParts() );
 blocksWrite( NINO_FEATURES_DIR. '/Zzz/blocks', 'pricing', blocksParts() );
 blocksWrite( $own, 'pricing', blocksParts() );
@@ -261,8 +260,8 @@ blocksRequest( $appData );
 $all = \Nino\Blocks::all( $appData );
 $rejected = \Nino\Blocks::rejected( $appData );
 ninoWarnings();
-check( 'the order of the roots is Basis, the project, the other features by key - the project first where Basis is a feature -: a block of the project is not put out by a feature that comes later, and none that requires Basis puts out one of Basis, and what is put out says by whom',
-	array_column( \Nino\Blocks::roots( $appData ), 'origin' ) === ( $delivered === true ? [ 'basis', 'project', 'aaa', 'zzz' ] : [ 'project', 'basis', 'aaa', 'zzz' ] ) && $all['hero-full']['origin'] === 'basis' && $all['pricing']['origin'] === 'project'
+check( 'the order of the roots is the project, Basis, the other features that require it: a block of the project is not put out by a feature that comes later, and none that requires Basis puts out one of Basis, and what is put out says by whom',
+	array_column( \Nino\Blocks::roots( $appData ), 'origin' ) === [ 'project', 'basis', 'aaa', 'zzz' ] && $all['hero-full']['origin'] === 'basis' && $all['pricing']['origin'] === 'project'
 	&& str_contains( (string) ( $rejected['aaa/hero-full'] ?? '' ), '"basis"' ) && str_contains( (string) ( $rejected['zzz/pricing'] ?? '' ), '"project"' ) );
 
 $containers = \Nino\Components::containers( $appData );

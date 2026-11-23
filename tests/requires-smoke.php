@@ -8,8 +8,15 @@ declare(strict_types=1);
  *											be in and no list of names is kept by hand: its components (the names of the folder), the classes its parts and templates write, with the
  *											modifiers of a component (<name>--<word>), and the tokens its parts declare - those of the page and of the brand are the kernel's and
  *											stand outside. A use is a call of a component in a template (read by the parser of the kernel), a call in a string of a class or a script
- *											([name ...] or a quoted name with a hyphen), a class of Basis in a template or a stylesheet, and a token of Basis in a stylesheet or a script.
- *											What a feature calls of a feature that stands elsewhere is none of this test's.
+ *											([name ...] or a quoted name with a hyphen), a class of Basis - one with a hyphen, a modifier <name>--<word>, or the bare name of a
+ *											component such as button - in the class list of a template (with placeholders in it, in either kind of quotes), as a selector in a
+ *											stylesheet, and in code where it is a class (an .html file of a feature is read like a template): in class="...", 'class' => '...', className and classList, or a selector in a string
+ *											('.header-nav-toggle'), and a token of Basis in a stylesheet or a script. Comments are read as no code: a call named in a comment is
+ *											none. What a feature calls of a feature that stands elsewhere is none of this test's.
+ *
+ *											Two alarms are false and stay, since a name written in a string is what a call looks like: a quoted name with a hyphen that is a
+ *											word of the script and no component ('footer-nav' as a key of a map), and a Basis class in a string that no class context holds - the
+ *											test cannot tell it from a call. A feature that says so requires Basis or is changed.
  *
  *	Usage: php tests/requires-smoke.php
  *	       NINO_ROOT=/path/to/nino php tests/requires-smoke.php
@@ -30,7 +37,7 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'requires' );
 $appData[\Nino\Html::TREES_SWITCH] = false;
 
-// Every feature of this repository by the key of its manifest, read as the file says it - the kernel refuses the folder of a feature it delivers
+// Every feature of this repository by the key of its manifest
 $features = [];
 
 foreach( (array) scandir( $repo. '/features' ) as $directory ) {
@@ -75,6 +82,8 @@ foreach( glob( $basis. '/groups/*/group.php' ) ?: [] as $file )
 	foreach( (array) ( include $file )['knobs'] as $knob )
 		$tokens[] = (string) $knob['token'];
 
+// A component without a hyphen is a class of the same name where a page is drawn - button, image, spacer, text, html: a stylesheet that styles .button styles Basis's
+$bare = array_values( array_filter( $names, static fn( string $name ): bool => str_contains( $name, '-' ) === false ) );
 $classes = array_values( array_unique( array_merge( $classes, array_filter( $names, static fn( string $name ): bool => str_contains( $name, '-' ) === true ) ) ) );
 $tokens = array_values( array_unique( array_filter( $tokens, static fn( string $token ): bool => preg_match( '/^--(?:page|brand)-/', $token ) !== 1 ) ) );
 
@@ -103,9 +112,40 @@ function requiresCalls( array $nodes ): array {
 	return $called;
 }
 
+/**
+ *	Whether a list of classes holds one of Basis: a class with a hyphen it writes, a modifier of a component (<name>--<word>) or the bare name of a component. A placeholder
+ *	of the template ([[extra]]) in the list is no class
+ *
+ *	@param		string		$list					The classes, as they stand in an attribute
+ *
+ *	@return 	bool
+ */
+function requiresClassList( string $list ): bool {
+
+	global $classes, $names, $bare;
+
+	foreach( preg_split( '/[\s\\\\]+/', trim( (string) preg_replace( '/\[\[[^\]]*\]\]/', ' ', $list ) ) ) ?: [] as $token )
+		if( $token !== '' && ( in_array( $token, $classes, true ) === true || in_array( $token, $bare, true ) === true || preg_match( '/^(?:'. implode( '|', array_map( 'preg_quote', $names ) ). ')--[a-z0-9]/', $token ) === 1 ) )
+			return true;
+
+	return false;
+}
+
+/**
+ *	A source without its comments: the blocks, and a line that starts with // or #
+ */
+function requiresUncommented( string $text ): string {
+
+	return (string) preg_replace( [ '~/\*.*?\*/~s', '~^[ \t]*(?://|#)[^\n]*~m' ], '', $text );
+}
+
 $callPattern = '/(?<![\[\\\\])\[\/?(?:'. implode( '|', array_map( 'preg_quote', $names ) ). ')(?=[\s\]\/=])/';
 $quotedPattern = '/[\'"](?:'. implode( '|', array_map( 'preg_quote', array_filter( $names, static fn( string $name ): bool => str_contains( $name, '-' ) === true ) ) ). ')[\'"]/';
-$classPattern = '/(?<![\w-])(?:'. implode( '|', array_map( 'preg_quote', $classes ) ). ')(?![\w-])|(?<![\w-])(?:'. implode( '|', array_map( 'preg_quote', $names ) ). ')--[a-z0-9]/';
+// A selector in a string of code, '.header-nav-toggle': the whole string is a selector and holds a class of Basis with a hyphen. A bare name is no selector there ('.html' is an ending)
+$literalPattern = '/\'((?:[^\'\\\\\n]|\\\\.)*)\'|"((?:[^"\\\\\n]|\\\\.)*)"|`([^`\n]*)`/';
+$selectorClasses = '/\.((?:'. implode( '|', array_map( 'preg_quote', $classes ) ). ')(?![\w-])|(?:'. implode( '|', array_map( 'preg_quote', $names ) ). ')--[a-z0-9])/';
+// A class context in code: class="...", class='...', 'class' => '...', className, classList
+$contextPattern = '/(?:\bclass\s*=\s*\\\\?["\']|[\'"]class[\'"]\s*=>\s*[\'"]|\bclassName\s*[+]?=\s*[\'"]|\bclassList\.(?:add|toggle|contains|remove|replace)\(\s*[\'"])([^\'"\n]*)/';
 $tokenPattern = '/'. implode( '|', array_map( static fn( string $token ): string => preg_quote( $token ). '(?![\w-])', $tokens ) ). '/';
 
 $uses = [];
@@ -123,30 +163,51 @@ foreach( $features as $key => $feature ) {
 		$relative = substr( $file->getPathname(), strlen( $base ) + 1 );
 		$extension = $file->getExtension();
 
-		if( str_starts_with( $relative, 'tests/' ) === true || in_array( $extension, [ 'tpl', 'css', 'js', 'php' ], true ) === false )
+		if( str_starts_with( $relative, 'tests/' ) === true || in_array( $extension, [ 'tpl', 'html', 'css', 'js', 'php' ], true ) === false )
 			continue;
 
 		$text = (string) file_get_contents( $file->getPathname() );
 
-		if( $extension === 'tpl' ) {
+		if( $extension === 'tpl' || $extension === 'html' ) {
 
 			foreach( array_keys( requiresCalls( \Nino\Markup::parse( $text, $containers ) ) ) as $name )
 				if( in_array( $name, $names, true ) === true )
 					$uses[$key]['a call in a template'][$relative] = $name;
 
-			// A class an element of the template carries
-			preg_match_all( '/class="([^"\[]*)"/', $text, $found );
+			// A class an element of the template carries: a list with a placeholder in it as well, in either kind of quotes
+			preg_match_all( '/\bclass\s*=\s*(?:"([^"]*)"|\'([^\']*)\')/', $text, $found );
 
-			if( preg_match( $classPattern, implode( ' ', $found[1] ) ) === 1 )
-				$uses[$key]['a class in a template'][$relative] = true;
+			foreach( array_merge( $found[1], $found[2] ) as $list )
+				if( requiresClassList( $list ) === true )
+					$uses[$key]['a class in a template'][$relative] = true;
 		}
 		elseif( $extension === 'css' ) {
 
-			if( preg_match( $classPattern, (string) preg_replace( '~/\*.*?\*/~s', '', $text ) ) === 1 )
+			// A class as a selector; what a comment says is none
+			preg_match_all( '/\.([a-z][a-z0-9_-]*)/i', (string) preg_replace( '~/\*.*?\*/~s', '', $text ), $found );
+
+			if( requiresClassList( implode( ' ', $found[1] ) ) === true )
 				$uses[$key]['a class in a stylesheet'][$relative] = true;
 		}
-		elseif( preg_match( $callPattern, $text ) === 1 || preg_match( $quotedPattern, $text ) === 1 )
-			$uses[$key]['a call or a name in code'][$relative] = true;
+		else {
+
+			$code = requiresUncommented( $text );
+
+			if( preg_match( $callPattern, $code ) === 1 || preg_match( $quotedPattern, $code ) === 1 )
+				$uses[$key]['a call or a name in code'][$relative] = true;
+
+			preg_match_all( $literalPattern, $code, $literals );
+
+			foreach( array_merge( $literals[1], $literals[2], $literals[3] ) as $literal )
+				if( preg_match( '/^[\w\s>+~,.#*:()\[\]="-]+$/', $literal ) === 1 && preg_match( $selectorClasses, $literal ) === 1 )
+					$uses[$key]['a class as a selector in code'][$relative] = true;
+
+			preg_match_all( $contextPattern, $code, $found );
+
+			foreach( $found[1] as $list )
+				if( requiresClassList( $list ) === true )
+					$uses[$key]['a class in a class context of code'][$relative] = true;
+		}
 
 		if( $tokens !== [] && preg_match( $tokenPattern, $text ) === 1 )
 			$uses[$key]['a token of a part'][$relative] = true;

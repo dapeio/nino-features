@@ -25,7 +25,6 @@ if( is_file( $root. '/tests/harness.php' ) === false ) {
 
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', $repo. '/features' );
 require $root. '/tests/harness.php';
-require $repo. '/bin/delivered.php';
 
 /*	The features that offer a component and bring no block, by the key of their manifest, and why. A name on this list that has a block,
 	or no component that is offered anywhere, fails the test, so the list cannot outlive what it was for	*/
@@ -36,10 +35,7 @@ const COMPONENTS_WITHOUT_BLOCK = [
 
 $appData = ninoSandbox( 'components' );
 $appData[\Nino\Html::TREES_SWITCH] = false;
-// The modules the kernel delivers itself are on - the copy below features/ of a feature it delivers rests, and a feature of this repository that requires it stands on those
-$appData['/nino/modules'] = array_map( static fn( string $directory ): string => '\\Nino\\Modules\\'. $directory, array_values( deliveredFeatures() ) );
-
-// The folder of every feature of this repository by the key its feature.php names - read as the file says it, since the kernel refuses the folder of a feature it delivers
+// The folder of every feature of this repository by the key its feature.php names
 $folders = [];
 
 foreach( (array) scandir( NINO_FEATURES_DIR ) as $directory )

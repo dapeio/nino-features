@@ -20,15 +20,15 @@ declare(strict_types=1);
  *	the Setup step of the kernel, with Basis switched on as a project does in the Features panel. The files are never recorded again: a page that
  *	differs is a change of the drawing, to be found and told.
  *
- *	The pages are the same in both cases the kernel can be in - it delivers Basis as a module, or Basis is the feature below features/ - and each is compared with the
- *	one file. What differs is a path: the version of a bundle is made of the paths of its files, and the files of Basis are below /_nino/Nino/Modules/ in the one case and
- *	below /features/ in the other, so that the version of a bundle differs.
- *	A bundle is a file of the pages, and where Basis is a feature the files of it are read from the features directory of the run, with the time they have there, which no run sets: the version
- *	of the style bundle and of the script bundle is not held to the byte but read as '?v=<bundle>', in the fixture and in the drawing alike - nothing else of a page may differ.
+ *	The features directory of the run is one of its own, at one path, holding a copy of Basis whose files have one time: the version of a bundle is made of the path, the size and the
+ *	time of each of its files, so the version a page names is the one the fixtures have, and is held to the byte like the rest of the page.
  *
  *	Usage: php features/Basis/tests/basis-pages-smoke.php
  *				 NINO_ROOT=../nino php features/Basis/tests/basis-pages-smoke.php
  */
+
+// The features directory of this run: the same path in every run, since the path goes into the version of a bundle
+$featuresDir = sys_get_temp_dir(). '/nino-markup-pages-features';
 
 require __DIR__. '/prepare.php';
 
@@ -42,11 +42,12 @@ if( $pagesLock === false || flock( $pagesLock, LOCK_EX ) === false ) {
 	exit( 1 );
 }
 
+// Basis as a feature below the features directory of the run
+$basisDir = $root. '/features/Basis';
+basisFeaturesDir( $featuresDir, 1767225600 );
+
 require $root. '/tests/harness.php';
 require $root. '/_admin/install/Install.php';
-require __DIR__. '/support.php';
-
-[ $basisDir, $delivered ] = basisUnderTest();
 
 /**
  *	The directory the site of the pages is built in: the path goes into the version of a bundle, so it is one
@@ -243,18 +244,15 @@ function pagesSite( bool $tools ): string {
 	] as $name => $template )
 		\Nino\Filesystem::putFileContent( $appData, '/templates/'. $name. '.tpl', $template );
 
-	// The tools of the workbench live in their own folders; the sandbox finds them below its own root - and Basis, where it is a feature, below its features/
+	// The tools of the workbench live in their own folders; the sandbox finds them below its own root - and Basis below its features/
 	if( $tools === true ) {
 
 		foreach( [ '_admin', '_nino' ] as $dir )
 			exec( 'cp -a '. escapeshellarg( $GLOBALS['root']. '/'. $dir ). ' '. escapeshellarg( $sandbox. '/'. $dir ) );
 
-		if( $GLOBALS['delivered'] === false ) {
-
-			mkdir( $sandbox. '/features', 0777, true );
-			\Nino\Filesystem::copyDir( $GLOBALS['basisDir'], $sandbox. '/features/Basis' );
-			\Nino\Filesystem::removeDir( $sandbox. '/features/Basis/tests' );
-		}
+		mkdir( $sandbox. '/features', 0777, true );
+		\Nino\Filesystem::copyDir( $GLOBALS['basisDir'], $sandbox. '/features/Basis' );
+		\Nino\Filesystem::removeDir( $sandbox. '/features/Basis/tests' );
 	}
 
 	// One time for every file: the version of a bundle and the stamp of the favicons are made of file times
@@ -560,9 +558,6 @@ function pagesWorkbench( string $sandbox ): string {
 
 $dir = __DIR__. '/fixtures/basis/starter/drawn';
 
-// The version of a bundle that holds a file of Basis is made of the path of it, and the path is not the same in the two cases
-$bundle = static fn( string $page ): string => (string) preg_replace( '/\?v=[0-9a-f]{12}(?![0-9a-f])/', '?v=<bundle>', $page );
-
 /**
  *	The trees kept of the templates of a site: how many files the folder holds
  *
@@ -604,7 +599,7 @@ check( 'the fixtures are the files of the outputs, no more and no fewer', array_
 foreach( $names as $name ) {
 
 	$expected = (string) @file_get_contents( $dir. '/'. $name );
-	$same = $expected === $outputs[$name] || ( $delivered === false && $bundle( $expected ) === $bundle( $outputs[$name] ) );
+	$same = $expected === $outputs[$name];
 
 	check( $name. ' ('. strlen( $outputs[$name] ). ' bytes) is as the fixture has it', $same );
 

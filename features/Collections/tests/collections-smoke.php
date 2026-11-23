@@ -387,7 +387,7 @@ check( 'the manifest validates with no warning: key collections, Basis as its on
 check( 'the manifest names no component and no stack: those are the folders\'', is_array( $manifest ) === true && ( $manifest['components'] ?? [] ) === [] && ( $manifest['stacks'] ?? [] ) === [] );
 $all = \Nino\Features::all( $appData );
 check( 'the feature is listed, off by default, with its class the module of its directory and no problem', isset( $all['collections'] ) === true && $all['collections']['module'] === '\\Nino\\Modules\\Collections'
-	&& $all['collections']['problems'] === [] && $all['collections']['shipped'] === false && is_dir( $featureDir. '/components' ) === true );
+	&& $all['collections']['problems'] === [] && is_dir( $featureDir. '/components' ) === true );
 
 // --- B. The loop -----------------------------------------------------------------------------------------
 

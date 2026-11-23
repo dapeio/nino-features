@@ -3,18 +3,15 @@ declare(strict_types=1);
 
 /**
  *	Nino features
- *	applications-smoke.php	What the kernel does with the applications of this catalogue, in whichever of the two cases the kernel it runs against is -
- *													it delivers Basis as a module of its own, or it does not -: each application is set up in a project of its own, a feature
+ *	applications-smoke.php	What the kernel does with the applications of this catalogue: each application is set up in a project of its own, a feature
  *													after the other in the order the file lists them, by \Nino\Applications::place() against an index of this run's own, signed
  *													with a key of this run's own and served by the stub of the client, so that nothing leaves the machine. The archives are the
  *													folders of the features as they are here, without their tests; the entries say what the manifests say.
  *
- *														A. the application is offered: every feature of it is in the index at a version this kernel can run - Basis among them, which the
- *														   kernel delivers or does not - and what Basis offers is a state of the kernel's: "current" where it delivers it and "available"
- *														   where it does not, never a version to update to
- *														B. set up, in the order of the file: Basis is placed where the kernel does not deliver it and left alone where it does - its archive
- *														   is not asked for, no second copy of it is in the project's features/, the kernel names no directory it refused - and every
- *														   other feature is placed and switched on, the application is applied and the Features panel has Basis once
+ *														A. the application is offered: every feature of it is in the index at a version this kernel can run - Basis among them, which is
+ *														   a feature of the catalogue like the others and is offered as available
+ *														B. set up, in the order of the file: Basis is placed first, its archive asked for once, and every other feature is placed and
+ *														   switched on, the application is applied and the Features panel has Basis once
  *														C. a second round places and switches on nothing
  *
  *	Usage: php tests/applications-smoke.php
@@ -35,14 +32,10 @@ mkdir( $work. '/project-features', 0700, true );
 
 define( 'NINO_FEATURES_DIR', $work. '/project-features' );
 require $root. '/tests/harness.php';
-require dirname( __DIR__ ). '/bin/delivered.php';
 
 register_shutdown_function( static fn() => \Nino\Filesystem::removeDir( $work ) );
 
 $repo			= dirname( __DIR__ );
-$delivers	= deliveredFeatures() !== [];
-
-echo 'Kernel '. \Nino\VERSION. ( $delivers === true ? ' delivers Basis itself' : ' delivers no Basis' ). "\n\n";
 
 // --- The index: the features of the applications as they are in this repository --------------------------------
 
@@ -113,7 +106,7 @@ $wanted = array_values( array_unique( $wanted ) );
 $remote = [];
 $entries = [];
 
-// The key of a feature is the one its feature.php says, read as the file says it - the kernel refuses the folder of a feature it delivers, whatever the file says
+// The key of a feature is the one its feature.php says
 foreach( glob( $repo. '/features/*', GLOB_ONLYDIR ) ?: [] as $folder ) {
 
 	$manifest = (array) ( static fn( string $path ): mixed => include $path )( $folder. '/feature.php' );
@@ -184,9 +177,8 @@ foreach( $applications as $application ) {
 	$offered = array_column( \Nino\Catalogue::applications( $app, $catalogue ), 'key' );
 	$offer = \Nino\Catalogue::offers( $app, $catalogue, \Nino\Packages::FEATURE )['basis'] ?? [];
 
-	check( 'it is offered, with Basis among its features, and what the kernel offers of Basis is "current" where it delivers it and "available" where it does not - never an update',
-		in_array( $application['key'], $offered, true ) === true && in_array( 'basis', $application['features'], true ) === true && ( $offer['state'] ?? '' ) === ( $delivers === true ? 'current' : 'available' )
-		&& ( $offer['shipped'] ?? null ) === $delivers );
+	check( 'it is offered, with Basis among its features, and what the kernel offers of Basis is "available": it is a feature of the catalogue like the others',
+		in_array( $application['key'], $offered, true ) === true && in_array( 'basis', $application['features'], true ) === true && ( $offer['state'] ?? '' ) === 'available' );
 
 	// B. set up
 	$results = [];
@@ -198,9 +190,8 @@ foreach( $applications as $application ) {
 	$others = array_filter( $results, static fn( string $key ): bool => $key !== 'basis', ARRAY_FILTER_USE_KEY );
 	$asked = array_filter( $requests, static fn( string $url ): bool => str_contains( $url, '/basis-' ) );
 
-	check( 'Basis is placed where the kernel does not deliver it - its archive asked for, its folder below features/ - and switched on, and where the kernel delivers it nothing is fetched and no second folder is made',
-		( $basis['status'] ?? 0 ) === 200 && ( $basis['activated'] ?? false ) === true && ( $basis['placed'] ?? null ) === ( $delivers === false ) && count( $asked ) === ( $delivers === true ? 0 : 1 )
-		&& is_dir( NINO_FEATURES_DIR. '/Basis' ) === ( $delivers === false ) );
+	check( 'Basis is placed first - its archive asked for once, its folder below features/ - and switched on',
+		( $basis['status'] ?? 0 ) === 200 && ( $basis['activated'] ?? false ) === true && ( $basis['placed'] ?? null ) === true && count( $asked ) === 1 && is_dir( NINO_FEATURES_DIR. '/Basis' ) === true );
 	check( 'every other feature of it is placed and switched on, each with the answer 200 and no reason',
 		count( $others ) === count( $application['features'] ) - 1 && array_filter( $others, static fn( array $result ): bool => $result !== [ 'placed' => true, 'activated' => true, 'reason' => '', 'status' => 200 ] ) === [] );
 
@@ -210,7 +201,7 @@ foreach( $applications as $application ) {
 
 	check( 'the application is applied, the Features panel has Basis once and every feature of the project has nothing against it, and the kernel refused no folder',
 		\Nino\Applications::isApplied( $app, $application ) === true && isset( $features['basis'] ) === true && count( array_filter( $features, static fn( array $feature ): bool => $feature['key'] === 'basis' ) ) === 1
-		&& $features['basis']['shipped'] === $delivers && $problems === [] && \Nino\Features::rejected( $app ) === [] && ninoWarnings() === [] );
+		&& $problems === [] && \Nino\Features::rejected( $app ) === [] && ninoWarnings() === [] );
 
 	// C. a second round
 	$again = [];

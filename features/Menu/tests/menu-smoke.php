@@ -32,7 +32,7 @@ $appData['/nino/modules'] = [ '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Menu' 
 \Nino\Features::registerParts( $appData );
 \Nino\Admin\Admin::init( $appData );
 
-// Where the words of the menus are written is the kernel's to say for Basis: below /module/ where it delivers it, below /feature/ where it is a feature
+// Where the words of the menus are written is the kernel's to say for a feature: below /feature/basis/
 $basisWords = \Nino\Features::textRoot( $appData, 'basis' ). 'navigation/';
 
 // The words of the site, as the Text panel writes them: a page's name, a menu's titles, links and an entry's name
@@ -263,7 +263,7 @@ check( 'the nav and the button are named by the words of Basis - the main naviga
 	$x->query( '//nav[@class="menu"]' )->item( 0 )?->getAttribute( 'aria-label' ) === 'Main' && $x->query( '//summary[@class="menu-burger"]' )->item( 0 )?->getAttribute( 'aria-label' ) === 'Menu'
 	&& $footing->query( '//nav' )->item( 0 )?->getAttribute( 'aria-label' ) === 'Foot' );
 
-// A project that was set up while the kernel delivered Basis keeps the words of the menus below /module/basis/: where Basis is a feature with none of its own they are read there
+// A project that was set up while Basis was a module of the kernel keeps the words of the menus below /module/basis/: where Basis is a feature with none of its own they are read there
 $legacy = ninoSandbox( 'menu-legacy' );
 $legacy['./nino/filesystem/path'] = $root;
 $legacy['/nino/modules'] = [ '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Menu' ];

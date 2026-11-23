@@ -124,8 +124,7 @@ namespace Nino\Modules {
 
 		/**
 		 *	A word of the feature for what a menu is called: the text <the words of the feature>navigation/<word>, in the language of the
-		 *	page. The words of a feature are /module/<name>/ where the kernel delivers it and /feature/<key>/ where it stands
-		 *	below features/ (\Nino\Features::textRoot()), so that the same file is read in both places
+		 *	page. The words of a feature are /feature/<key>/ (\Nino\Features::textRoot())
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$word					primary, menu or footer
@@ -137,7 +136,7 @@ namespace Nino\Modules {
 			$root = \Nino\Features::textRoot( $appData, 'basis' );
 			$text = (string) ( \Nino\Html::resolveTextfill( $appData, $root. 'navigation/'. $word ) ?? '' );
 
-			// A project that was set up while the kernel delivered Basis keeps its words below /module/basis/: where the feature has none of its own they are read there
+			// A project that was set up while Basis was a module of the kernel keeps its words below /module/basis/: where the feature has none of its own they are read there
 			if( $text === '' && $root !== '/module/basis/' )
 				$text = (string) ( \Nino\Html::resolveTextfill( $appData, '/module/basis/navigation/'. $word ) ?? '' );
 

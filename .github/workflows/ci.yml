@@ -59,20 +59,12 @@ jobs:
           for name in $names; do
             cp -R "features/$name" "nino/features/$name"
           done
-          # A feature the checkout delivers itself (bin/delivered.php) is not
-          # copied - the checkout refuses the directory - and only its tests go
-          # in, into a hidden directory the checkout's own suites do not read as
-          # a feature, so that they run against the one the checkout has
-          for name in $(php bin/applicable.php nino --delivered); do
-            mkdir "nino/features/.delivered-$name"
-            cp -R "features/$name/tests" "nino/features/.delivered-$name/tests"
-          done
 
       - name: Validate every manifest
         run: php bin/catalogue.php nino > catalogue.json && cat catalogue.json
 
       - name: Run every feature's own smoke tests
-        run: for test in nino/features/*/tests/*-smoke.php nino/features/.delivered-*/tests/*-smoke.php; do [ -e "$test" ] || continue; php "$test" || exit 1; done
+        run: for test in nino/features/*/tests/*-smoke.php; do [ -e "$test" ] || continue; php "$test" || exit 1; done
 
       # Every test of this repository's own, against the same checkout: each
       # test's header says what it holds

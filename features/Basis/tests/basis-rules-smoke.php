@@ -23,7 +23,7 @@ require $root. '/tests/harness.php';
 require __DIR__. '/support.php';
 
 $ignored = ninoWarnings();
-[ $basisDir ] = basisUnderTest();
+$basisDir = basisUnderTest();
 
 /**
  *	A project with basis on, the menus the templates name, the shortcodes they call and, where $own, the components of the
@@ -150,7 +150,7 @@ $notes = [];
 $once = \Nino\Components::offer( $appData, [ 'header-wrap' ], \Nino\Markup::parse( '[header-logo][header-nav /]', \Nino\Components::containers( $appData ), $notes ) );
 check( 'a component that is once in a container is offered no more where one stands, and the others still are', $once['header-logo'] === 'once' && $once['header-nav'] === 'once' && $once['header-actions'] === true );
 
-// What the kernel delivers and what the feature brings: the templates of the starter site of the kernel, of the fixtures and of Legal, the demos of Basis, the fixture page of the notation
+// What the kernel has and what the feature brings: the templates of the starter site of the kernel, of the fixtures and of Legal, the demos of Basis, the fixture page of the notation
 $files = array_merge(
 	glob( $root. '/_admin/install/library/*/templates/*.tpl' ) ?: [],
 	glob( $root. '/_admin/install/library/pages/*/templates/*.tpl' ) ?: [],

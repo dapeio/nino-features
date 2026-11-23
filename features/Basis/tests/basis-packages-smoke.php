@@ -3,10 +3,9 @@ declare(strict_types=1);
 
 /**
  *	Nino features
- *	basis-packages-smoke.php	Contract test for what \Nino\Blocks::roots() and \Nino\Packages say of the feature Basis: where the kernel delivers it
- *														its blocks are the first root, before the project and the packages, and where it is a feature they are one root like
+ *	basis-packages-smoke.php	Contract test for what \Nino\Blocks::roots() and \Nino\Packages say of the feature Basis: its blocks are one root like
  *														those of any feature, after the project and the packages; a package that is named like it has an origin of its own
- *														and takes nothing from it, in both. What a package is, and where it lies, is tests/packages-smoke.php of Nino.
+ *														and takes nothing from it. What a package is, and where it lies, is tests/packages-smoke.php of Nino.
  *
  *	Usage: php features/Basis/tests/basis-packages-smoke.php
  *				 NINO_ROOT=../nino php features/Basis/tests/basis-packages-smoke.php
@@ -25,7 +24,7 @@ require $root. '/tests/harness.php';
 require __DIR__. '/support.php';
 
 $ignored = ninoWarnings();
-[ , $delivered ] = basisUnderTest();
+basisUnderTest();
 
 $webp = (string) base64_decode( 'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==' );
 $png = (string) base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' );
@@ -87,7 +86,7 @@ $app = basisPackagesSite();
 \Nino\Packages::place( $app, 'blocks', 'probe-pack', basisPackagesPack( 'probe-pack', $svg, $png, $webp ) );
 $ignored = ninoWarnings();
 $origins = array_column( \Nino\Blocks::roots( $app ), 'origin' );
-check( 'the roots are Basis, the project, the packages, the other features - in that order - where the kernel delivers Basis, and the project, the packages, Basis where it is a feature', array_slice( $origins, 0, 3 ) === ( $delivered === true ? [ 'basis', 'project', 'pack:probe-pack' ] : [ 'project', 'pack:probe-pack', 'basis' ] ) );
+check( 'the roots are the project, the packages, Basis', array_slice( $origins, 0, 3 ) === [ 'project', 'pack:probe-pack', 'basis' ] );
 
 $other = basisPackagesSite();
 \Nino\Packages::place( $other, 'blocks', 'basis', basisPackagesPack( 'basis', $svg, $png, $webp ) );

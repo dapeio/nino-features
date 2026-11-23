@@ -6,8 +6,8 @@ declare(strict_types=1);
  *	basis-standalone-smoke.php	A suite of Basis started by hand, as its Usage line says - php features/Basis/tests/<suite>.php with NINO_ROOT naming a checkout - does
  *															what it does under bin/check.sh, or says in a sentence why not and ends with 2: never a stack of the language. Held on the suite of the
  *															demo and on the script suite over a checkout of this run's own (the kernel's _nino, _admin and tests/ and a features/ of its own):
- *															where the kernel delivers Basis they run without a folder of Basis in features/, where it does not they say that the folder has to be
- *															there - and run once it is; a root that is no checkout is said so.
+ *															they say that the folder of Basis has to be below features/ - and run once it is; a root that is no checkout is said so, and so is a
+ *															kernel that carries a Basis of its own.
  *
  *	Usage: php tests/basis-standalone-smoke.php
  *	       NINO_ROOT=/path/to/nino php tests/basis-standalone-smoke.php
@@ -27,13 +27,10 @@ mkdir( $work. '/features', 0700, true );
 
 define( 'NINO_FEATURES_DIR', $work. '/features' );
 require $root. '/tests/harness.php';
-require $repo. '/bin/delivered.php';
 
 register_shutdown_function( static fn() => \Nino\Filesystem::removeDir( $work ) );
 
-$delivers = deliveredFeatures() !== [];
-
-echo 'Kernel '. \Nino\VERSION. ( $delivers === true ? ' delivers Basis itself' : ' delivers no Basis' ). "\n\n";
+echo 'Kernel '. \Nino\VERSION. "\n\n";
 
 mkdir( $work. '/checkout/features', 0755, true );
 
@@ -69,9 +66,8 @@ foreach( $suites as [ $tool, $suite ] ) {
 
 	[ $status, $err, $last ] = $start( $tool, $suite, $work. '/checkout' );
 
-	check( $suite. ': where the kernel delivers Basis it runs and passes, and where it does not it ends with 2 and says that Basis has to be below features/ of the checkout',
-		$delivers === true ? ( $status === 0 && str_contains( $last, ' 0 failed' ) === true )
-			: ( $status === 2 && str_contains( $err, 'features/Basis' ) === true && str_contains( $err, 'Stack trace' ) === false && str_contains( $err, 'Fatal' ) === false ) );
+	check( $suite. ': it ends with 2 and says that Basis has to be below features/ of the checkout',
+		$status === 2 && str_contains( $err, 'features/Basis' ) === true && str_contains( $err, 'Stack trace' ) === false && str_contains( $err, 'Fatal' ) === false );
 }
 
 echo "\nThe folder of Basis below features/ of the checkout\n";
@@ -85,20 +81,41 @@ $copy = static function( string $from, string $to ) use ( &$copy ): void {
 			is_dir( $from. '/'. $entry ) === true ? $copy( $from. '/'. $entry, $to. '/'. $entry ) : copy( $from. '/'. $entry, $to. '/'. $entry );
 };
 
-// Where the kernel delivers Basis a folder of that name is the one the kernel refuses, so only where it does not
-if( $delivers === false ) {
+$copy( $repo. '/features/Basis', $work. '/checkout/features/Basis' );
 
-	$copy( $repo. '/features/Basis', $work. '/checkout/features/Basis' );
+foreach( $suites as [ $tool, $suite ] ) {
 
-	foreach( $suites as [ $tool, $suite ] ) {
+	[ $status, , $last ] = $start( $tool, $suite, $work. '/checkout' );
 
-		[ $status, , $last ] = $start( $tool, $suite, $work. '/checkout' );
-
-		check( $suite. ': with the folder below features/ of the checkout it runs and passes', $status === 0 && str_contains( $last, ' 0 failed' ) === true );
-	}
+	check( $suite. ': with the folder below features/ of the checkout it runs and passes', $status === 0 && str_contains( $last, ' 0 failed' ) === true );
 }
-else
-	echo "  skipped - the kernel delivers Basis: a folder of that name below features/ is the one the kernel refuses\n";
+
+echo "\nA kernel with a Basis of its own\n";
+
+mkdir( $work. '/own/_nino/Nino/Modules/Basis', 0755, true );
+mkdir( $work. '/own/features', 0755 );
+
+foreach( [ '_admin', 'tests' ] as $folder )
+	symlink( $root. '/'. $folder, $work. '/own/'. $folder );
+
+foreach( [ 'Nino' ] as $folder )
+	foreach( array_diff( scandir( $root. '/_nino' ) ?: [], [ '.', '..', 'Nino' ] ) as $entry )
+		symlink( $root. '/_nino/'. $entry, $work. '/own/_nino/'. $entry );
+
+foreach( array_diff( scandir( $root. '/_nino/Nino' ) ?: [], [ '.', '..', 'Modules' ] ) as $entry )
+	symlink( $root. '/_nino/Nino/'. $entry, $work. '/own/_nino/Nino/'. $entry );
+
+foreach( array_diff( scandir( $root. '/_nino/Nino/Modules' ) ?: [], [ '.', '..', 'Basis' ] ) as $entry )
+	symlink( $root. '/_nino/Nino/Modules/'. $entry, $work. '/own/_nino/Nino/Modules/'. $entry );
+
+$copy( $repo. '/features/Basis', $work. '/own/features/Basis' );
+
+foreach( $suites as [ $tool, $suite ] ) {
+
+	[ $status, $err ] = $start( $tool, $suite, $work. '/own' );
+
+	check( $suite. ': ends with 2 and says that this catalogue needs a Nino without a Basis of its own', $status === 2 && str_contains( $err, 'without a Basis of its own' ) === true && str_contains( $err, 'Stack trace' ) === false );
+}
 
 $empty = [];
 ninoDone( $empty );

@@ -21,9 +21,8 @@ declare(strict_types=1);
  *										   byte for byte with tests/fixtures/basis/page.<locale>.html
  *										G. the words of the feature, the activation, the sizes, the cost of a page of seven sections
  *
- *									Runs against an isolated sandbox directory; the kernel is the checkout's own, and the feature is the one the checkout has: the folder
- *									the kernel delivers (_nino/Nino/Modules/Basis) or the feature below features/ - the line "Basis under test" says which. The four
- *									checks that read what the docs of the kernel say of Basis are those of the kernel while it carries them.
+ *									Runs against an isolated sandbox directory; the kernel is the checkout's own, and the feature is the folder features/Basis of the
+ *									checkout. What the docs of the kernel said of Basis is the manual of its feature.php (see tests/manual-smoke.php).
  *
  *	Usage: php features/Basis/tests/basis-smoke.php
  *				 NINO_ROOT=../nino php features/Basis/tests/basis-smoke.php
@@ -43,7 +42,7 @@ require $root. '/tests/harness.php';
 require __DIR__. '/support.php';
 
 $notes			= [];
-[ $basisDir, $delivered ] = basisUnderTest();
+$basisDir = basisUnderTest();
 $basisUri		= substr( $basisDir, strlen( $root ) );
 $probe			= [];
 $textRoot		= \Nino\Features::textRoot( $probe, 'basis' );
@@ -75,8 +74,7 @@ function basisSite( string $locale = 'de_DE', bool $on = true ): array {
 	$GLOBALS['basisSandboxes'][] = ninoSandboxDir( $appData );
 	$appData['./nino/locales/current'] = $locale;
 
-	// The root of the site is the checkout: the standard parts are files below it (/_nino/Nino/Modules/Basis/... where the kernel delivers Basis, /features/Basis/... where it is
-	// a feature), which the hook of the parts is told to be there. Private and public stay in the sandbox
+	// The root of the site is the checkout: the standard parts are files below it (/features/Basis/...), which the hook of the parts is told to be there. Private and public stay in the sandbox
 	$appData['./nino/filesystem/path'] = $GLOBALS['root'];
 	$appData['/nino/modules'] = $on === true ? [ '\\Nino\\Modules\\Basis' ] : [];
 	$appData['/nino/html/navs'] = [ 'main', 'footer', 'empty' ];
@@ -534,10 +532,10 @@ $renderers = array_keys( (array) $appData[\Nino\Components::RENDERERS] );
 sort( $renderers );
 check( 'twelve of the twenty have a renderer, the ones that compute; the others are drawn from their template alone', $renderers === [ 'button', 'footer-legal', 'footer-logo', 'footer-nav', 'footer-wrap', 'header-logo', 'header-nav', 'header-wrap', 'html', 'image', 'section-title', 'section-wrap' ] );
 
-// the feature: delivered, listed, off, with one script, and nothing of the kernel names it
+// the feature: listed, off, with one script, and nothing of the kernel names it
 $manifestWarnings = ninoWarnings();
 $all = \Nino\Features::all( $appData );
-check( 'the feature is listed: shipped where the kernel delivers it and not where it does not, off, its class the module of its directory, its manifest read with no warning', isset( $all['basis'] ) === true && $all['basis']['shipped'] === $delivered
+check( 'the feature is listed: off, its class the module of its directory, its manifest read with no warning', isset( $all['basis'] ) === true
 	&& $all['basis']['module'] === '\\Nino\\Modules\\Basis' && $all['basis']['dir'] === $basisDir && $all['basis']['problems'] === [] && $manifestWarnings === [] );
 $fresh = ninoSandbox( 'basis-fresh' );
 check( 'it is off on a fresh project, and the wizard does not list it', in_array( '\\Nino\\Modules\\Basis', \Nino\AppData::DEFAULTS['/nino/modules'] ?? [], true ) === false
@@ -973,8 +971,7 @@ $looseAt = array_search( '[data-nino-preview="loose"] .header-wrap--sticky', $he
 check( 'the sticky header is static under the mark the preview of the workbench sets on its page, by a rule that stands after the one that sticks it - and nothing else of the part reads the mark'
 	, $looseAt !== false && $looseAt > array_search( '.header-wrap--sticky', $headerSelectors, true ) && trim( basisBody( basisRules( $partOf( 'header' ) ), '[data-nino-preview="loose"] .header-wrap--sticky' ) ) === 'position: static;'
 	&& substr_count( $partOf( 'header' ), 'data-nino-preview' ) === 1 );
-// the knobs of basis are the ones the group.php files hold, seventeen of them: a token and a ladder each. (Where the kernel carries a manual, docs/development.md lists them; what a
-// manual says of Basis is held by the kernel while it has the folder, and the manual of the feature is the manual of feature.php)
+// the knobs of basis are the ones the group.php files hold, seventeen of them: a token and a ladder each
 $rows = [];
 
 foreach( glob( $basisDir. '/groups/*/group.php' ) as $groupFile )
@@ -1863,10 +1860,7 @@ $en = (array) \Nino\Filesystem::getFileContent( $project, '/text/en_US.php', [] 
 check( 'it is switched on in the Features panel: the class is listed, the version recorded, the three words are in the Text of both languages', $result === true && in_array( '\\Nino\\Modules\\Basis', (array) ( $config['/nino/modules'] ?? [] ), true ) === true
 	&& ( $config['/nino/features']['basis']['version'] ?? '' ) === '1.0.0' && ( $de['[['. $textRoot. 'navigation/primary]]'] ?? '' ) === 'Hauptnavigation' && ( $en['[['. $textRoot. 'navigation/menu]]'] ?? '' ) === 'Menu' && count( $de ) === 3 && count( $en ) === 3 );
 unset( $project['./nino/features/all'] );
-if( $delivered === false )
-	echo "  skipped - the kernel delivers no Basis: remove() takes the folder below features/ of the run away, which the suites after this one read\n";
-
-check( 'it has nothing to remove where the kernel delivers it - Remove is refused for a feature of the kernel - and switching it off lists it off again', ( $delivered === false || is_string( \Nino\Features::remove( $project, 'basis' ) ) === true ) && \Nino\Features::deactivate( $project, 'basis' ) === true
+check( 'switching it off lists it off again', \Nino\Features::deactivate( $project, 'basis' ) === true
 	&& in_array( '\\Nino\\Modules\\Basis', (array) \Nino\Filesystem::getFileContent( $project, '/config.php', [] )['/nino/modules'], true ) === false );
 ninoWarnings();
 \Nino\Filesystem::removeDir( ninoSandboxDir( $project ) );
@@ -1919,7 +1913,8 @@ check( 'the six standard parts are 32 KB together at most ('. $total. ' bytes: '
 
 $listing = [];
 foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $basisDir, \FilesystemIterator::SKIP_DOTS ) ) as $file )
-	if( str_starts_with( $file->getPathname(), $basisDir. '/tests/' ) === false )
+	// The mark bin/check.sh writes into a folder it copies is none of the feature's files
+	if( str_starts_with( $file->getPathname(), $basisDir. '/tests/' ) === false && $file->getFilename() !== '.check-sh-mark' )
 		$listing[] = $file->getExtension();
 check( 'the feature brings one script, and its parts no font or image: a file of css, php, json, a template and that script, and nothing else', array_diff( array_unique( $listing ), [ 'php', 'tpl', 'css', 'json', 'js' ] ) === [] && count( array_filter( $listing, static fn( string $extension ): bool => $extension === 'js' ) ) === 1 );
 

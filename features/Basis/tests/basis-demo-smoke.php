@@ -20,7 +20,7 @@ require $root. '/tests/harness.php';
 require __DIR__. '/support.php';
 
 $ignored = ninoWarnings();
-[ $basisDir ] = basisUnderTest();
+$basisDir = basisUnderTest();
 
 // The names a demo may call of the features its feature stands on: the components of the folder of Basis
 $builtOn = \Nino\Features::componentNames( $basisDir );

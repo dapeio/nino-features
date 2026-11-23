@@ -321,7 +321,7 @@ check( 'another key is nobody\'s', sent.defaultPrevented === false );
 // --- the two scripts of the page: the panels (menu.js) and the page behind an overlay (header-nav.js of the kernel) -------------------------------------------------
 // Both listen to Escape on the document. A kernel that has the mark data-header-menu holds a menu of this feature as it holds its own; one that has not leaves it alone and the panels are what they were
 
-// Basis is required by the feature and stands where the kernel says: the folder it delivers it in, or below features/
+// Basis is required by the feature and stands where the kernel says: below features/
 const basisDir = require( 'child_process' ).execFileSync( 'php', [ '-r', 'require $argv[1]. "/_nino/Nino.php"; $app = []; echo \\Nino\\Features::get( $app, "basis" )["dir"] ?? "";', checkout ], { encoding : 'utf8' } ).trim();
 const headerSource = fs.readFileSync( path.join( basisDir, 'assets/header-nav.js' ), 'utf8' );
 const { matches } = require( path.join( checkout, 'tests/harness.js' ) );

@@ -2215,7 +2215,7 @@ check( 'every knob of the page turns one way: its steps grow from the first to t
 $planned = Compiler::plan( $site, Mix::of( $site, 'nino' ), [] )['groups'];
 $standards = [];
 
-// Basis stands where the kernel says: the folder it delivers it in, or below features/
+// Basis stands where the kernel says: below features/
 foreach( glob( ( \Nino\Features::get( $site, 'basis' )['dir'] ?? '' ). '/groups/*/part/part.css' ) ?: [] as $file ) {
 
 	preg_match( '/:root \{(.*?)\n\}/s', (string) file_get_contents( $file ), $standard );

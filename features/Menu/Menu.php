@@ -571,7 +571,7 @@ namespace Nino\Modules {
 			$footer = self::_side( $appData, $root ) === 'footer' || self::_side( $appData, $place ) === 'footer';
 			$inRow = $footer === false && self::_side( $appData, $root ) === 'header' && $place !== $root;
 			$args['class'] .= $footer === true ? ' menu--footer' : ( $inRow === true ? ' menu--in-row' : '' );
-			// The words of the menus are Basis's, and where they are written is the kernel's to say: below /module/ where it delivers Basis, below /feature/ where it is a feature
+			// The words of the menus are Basis's, below the root the kernel names for the words of a feature
 			$name = $args['label'] !== '' ? $args['label'] : self::_text( \Nino\Html::renderTextfill( $appData, self::_basisWord( $appData, $footer === true ? 'footer' : 'primary' ) ) );
 
 			return \Nino\Components::fill( $appData, 'menu', $args, $content, [
@@ -585,8 +585,8 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The key of a word of Basis for what a menu is called: below the root the kernel names for the words of Basis - /module/basis/ where it delivers Basis, /feature/basis/ where
-		 *	it is a feature - and, where the feature has no text of its own for it, below /module/basis/, which is where a project that was set up while the kernel delivered Basis keeps it
+		 *	The key of a word of Basis for what a menu is called: below the root the kernel names for the words of Basis, /feature/basis/ and, where the feature has no text of its own for it,
+		 *	below /module/basis/, which is where a project that was set up while Basis was a module of the kernel keeps it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$word					primary, menu or footer

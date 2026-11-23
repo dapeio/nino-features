@@ -3,11 +3,9 @@ declare(strict_types=1);
 
 /**
  *	Nino features
- *	basis-owners-smoke.php	Test of what the kernel lets a feature do with the names and the blocks of Basis, in whichever case the kernel is in. A demo of a feature
- *													that requires Basis may call its components, where Basis is on and where it is off - where the kernel delivers Basis a feature that does
- *													not require it may as well, and where Basis is a feature it may not, since nobody owns the name then. A block of the project with the key of
- *													a block of Basis puts it out where Basis is a feature, and does not where the kernel delivers it: the features the kernel delivers stand in
- *													front of the project.
+ *	basis-owners-smoke.php	Test of what the kernel lets a feature do with the names and the blocks of Basis. A demo of a feature that requires Basis may call its components,
+ *													where Basis is on and where it is off; a feature that does not require it may not, since nobody owns the name then. A block of the project with the key
+ *													of a block of Basis puts it out: the project stands in front of the features.
  *
  *	Usage: php features/Basis/tests/basis-owners-smoke.php
  *				 NINO_ROOT=../nino php features/Basis/tests/basis-owners-smoke.php
@@ -23,7 +21,7 @@ require $root. '/tests/harness.php';
 require __DIR__. '/support.php';
 
 $ignored = ninoWarnings();
-[ $basisDir, $delivered ] = basisUnderTest();
+$basisDir = basisUnderTest();
 
 // Two features of this test with one component and a demo that calls components of Basis: Plain requires nothing, Needy requires Basis
 foreach( [ 'Plain' => [], 'Needy' => [ 'basis' ] ] as $name => $requires ) {
@@ -60,12 +58,8 @@ $plainOn = $boot( [ '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Plain' ] );
 $plainOff = $boot( [ '\\Nino\\Modules\\Plain' ] );
 ninoWarnings();
 
-if( $delivered === true )
-	check( 'where the kernel delivers Basis a feature that does not require it calls its components as well, whether it is on or off - where nobody owns the name',
-		( \Nino\Components::groups( $plainOn )['plain']['demo'] ?? '' ) !== '' && ( \Nino\Components::groups( $plainOff )['plain']['demo'] ?? '' ) !== '' && isset( $plainOff[\Nino\Components::OWNERS]['names']['section-wrap'] ) === false );
-else
-	check( 'where Basis is a feature, a feature that does not require it may not call its components in a demo: the demo is left out, with Basis on and with Basis off',
-		( \Nino\Components::groups( $plainOn )['plain']['demo'] ?? 'x' ) === '' && ( \Nino\Components::groups( $plainOff )['plain']['demo'] ?? 'x' ) === '' );
+check( 'a feature that does not require Basis may not call its components in a demo: the demo is left out, with Basis on and with Basis off',
+	( \Nino\Components::groups( $plainOn )['plain']['demo'] ?? 'x' ) === '' && ( \Nino\Components::groups( $plainOff )['plain']['demo'] ?? 'x' ) === '' );
 
 echo "\nThe blocks of Basis against a block of the project\n";
 
@@ -77,8 +71,7 @@ $json['name'] = [ 'de_DE' => 'PROJECT', 'en_US' => 'PROJECT' ];
 file_put_contents( $copy. '/block.json', json_encode( $json ) );
 $project = $boot( [ '\\Nino\\Modules\\Basis' ], $project );
 ninoWarnings();
-check( 'a block of the project with the key of a block of Basis puts it out where Basis is a feature, and does not where the kernel delivers it - the features the kernel delivers stand in front of the project',
-	( \Nino\Blocks::all( $project )['hero-full']['origin'] ?? '' ) === ( $delivered === true ? 'basis' : 'project' )
-	&& array_column( \Nino\Blocks::roots( $project ), 'origin' ) === ( $delivered === true ? [ 'basis', 'project' ] : [ 'project', 'basis' ] ) );
+check( 'a block of the project with the key of a block of Basis puts it out, and the roots are the project and then Basis',
+	( \Nino\Blocks::all( $project )['hero-full']['origin'] ?? '' ) === 'project' && array_column( \Nino\Blocks::roots( $project ), 'origin' ) === [ 'project', 'basis' ] );
 
 ninoDone( $project );

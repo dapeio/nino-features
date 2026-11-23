@@ -37,11 +37,9 @@ declare(strict_types=1);
  *								author is to see what is left of the picture - and a group of
  *								a part that no feature of the repository brings.
  *
- *								A feature the kernel delivers itself (bin/delivered.php) is not
- *								read from here: the kernel refuses its directory, and what the
- *								catalogue lists of it is what the kernel has. readFeatures()
- *								names it, and packageRegister() puts the kernel's module where
- *								the copy of the repository would stand.
+ *								Basis is a feature of this repository like the others. A kernel
+ *								that carries a Basis of its own is not one the catalogue is
+ *								read with: kernelBasisProblem() says so in a sentence.
  *
  *								Nothing here exits or prints: a function answers its problems
  *								as sentences that name the file, and the script that required
@@ -50,7 +48,20 @@ declare(strict_types=1);
  *								Not run by itself.
  */
 
-require_once __DIR__. '/delivered.php';
+/**
+ *	What is wrong with the kernel the scripts run against: a Basis of its own (_nino/Nino/Modules/Basis). Basis is a feature of this catalogue, and a kernel that
+ *	carries it as a module serves that one before anything below features/ and refuses a directory of the name
+ *
+ *	@param		string		$root			The checkout, as the script was given it
+ *
+ *	@return 	string										A sentence, '' where there is nothing wrong
+ */
+function kernelBasisProblem( string $root ): string {
+
+	return is_dir( $root. '/_nino/Nino/Modules/Basis' ) === true
+		? 'The Nino at '. $root. ' ('. \Nino\VERSION. ') carries a Basis of its own (_nino/Nino/Modules/Basis): this catalogue needs a Nino without a Basis of its own, because Basis is a feature here'
+		: '';
+}
 
 // Left out of every archive: what git, an editor or a desktop leaves behind. A pattern is matched against every path segment
 const PACKAGES_EXCLUDED			= [ '.git*', '.DS_Store', 'Thumbs.db', '.idea', '.vscode', '*~', '*.swp', '*.swo', '*.swx', '.#*', '#*#', '*.orig', '*.rej', '*.bak' ];
@@ -168,7 +179,7 @@ function sharedName( array|string $one, array|string $other ): string {
  *
  *	@param		string		$directory		This repository's features/
  *
- *	@return 	array										[ key => manifest, problems, the features the kernel delivers: key => directory ]
+ *	@return 	array										[ key => manifest, problems ]
  */
 function readFeatures( string $directory ): array {
 
@@ -184,12 +195,11 @@ function readFeatures( string $directory ): array {
 	} );
 
 	$features		= [];
-	$delivered	= deliveredFeatures();
-	$problems		= deliveredProblems();
+	$problems		= [];
 
 	foreach( scandir( $directory ) ?: [] as $entry ) {
 
-		if( $entry[0] === '.' || is_dir( $directory. '/'. $entry ) === false || in_array( $entry, $delivered, true ) === true )
+		if( $entry[0] === '.' || is_dir( $directory. '/'. $entry ) === false )
 			continue;
 
 		$manifest = \Nino\Features::manifest( $directory. '/'. $entry );
@@ -222,11 +232,11 @@ function readFeatures( string $directory ): array {
 
 	ksort( $features );
 
-	// What a feature requires is a feature of this repository or one the kernel delivers: a key that is neither is a typo, or a feature that is not published
+	// What a feature requires is a feature of this repository: a key that is neither is a typo, or a feature that is not published
 	foreach( $features as $manifest )
 		foreach( $manifest['requires'] as $required )
-			if( isset( $features[$required] ) === false && isset( $delivered[$required] ) === false )
-				$problems[] = 'features/'. basename( $manifest['dir'] ). ' requires the feature "'. $required. '", which neither this repository nor the kernel has';
+			if( isset( $features[$required] ) === false )
+				$problems[] = 'features/'. basename( $manifest['dir'] ). ' requires the feature "'. $required. '", which this repository does not have';
 
 	// The name is what a row in the Features panel says - the key is never on screen there, and neither is the directory - so two features carrying one
 	// name are two rows a person cannot tell apart, in a list they are choosing from. Refused here, where it is one line to fix and nothing is published
@@ -243,7 +253,7 @@ function readFeatures( string $directory ): array {
 				$problems[] = 'features/'. basename( $manifest['dir'] ). ' and features/'. basename( $other['dir'] ). ' are both named "'. $shared. '" - a feature is shown by its name, so no two may carry one';
 		}
 
-	return [ $features, $problems, $delivered ];
+	return [ $features, $problems ];
 }
 
 /**
@@ -251,13 +261,12 @@ function readFeatures( string $directory ): array {
  *	and every group there is to be found in the catalogue. Nothing is written - the cache of the register is off
  *
  *	@param		array			$features			key => manifest, as readFeatures() answers
- *	@param		array			$delivered		key => directory of the features the kernel delivers, as readFeatures() answers: their modules are the kernel's
  *
  *	@return 	array										[ app data, problems ]
  */
-function packageRegister( array $features, array $delivered = [] ): array {
+function packageRegister( array $features ): array {
 
-	$appData	= [ \Nino\Html::TREES_SWITCH => false, '/nino/modules' => array_map( static fn( string $directory ): string => '\\Nino\\Modules\\'. $directory, array_values( $delivered ) ) ];
+	$appData	= [ \Nino\Html::TREES_SWITCH => false, '/nino/modules' => [] ];
 	$warnings	= [];
 
 	foreach( $features as $manifest )
@@ -556,7 +565,7 @@ function packageEntry( array &$appData, string $kind, string $key, array $files,
 	sort( $required );
 
 	foreach( $required as $feature )
-		if( isset( $features[$feature] ) === false && isset( deliveredFeatures()[$feature] ) === false && \Nino\Features::get( $appData, $feature ) === null )
+		if( isset( $features[$feature] ) === false && \Nino\Features::get( $appData, $feature ) === null )
 			$problems[] = $label. ': requires the feature "'. $feature. '", which neither this repository nor the kernel has';
 
 	$requires['features'] = $required;
