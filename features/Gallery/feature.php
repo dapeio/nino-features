@@ -83,7 +83,7 @@ return [
 	'category'		=> 'content',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// The albums with their alt texts and captions. The images themselves live under
 	// /images/gallery/, where every other uploaded image lives and where a
 	// backup already carries them

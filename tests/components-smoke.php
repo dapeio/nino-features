@@ -25,6 +25,7 @@ if( is_file( $root. '/tests/harness.php' ) === false ) {
 
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', $repo. '/features' );
 require $root. '/tests/harness.php';
+require $repo. '/bin/delivered.php';
 
 /*	The features that offer a component and bring no block, by the key of their manifest, and why. A name on this list that has a block,
 	or no component that is offered anywhere, fails the test, so the list cannot outlive what it was for	*/
@@ -35,7 +36,43 @@ const COMPONENTS_WITHOUT_BLOCK = [
 
 $appData = ninoSandbox( 'components' );
 $appData[\Nino\Html::TREES_SWITCH] = false;
-$appData['/nino/modules'] = [ '\\Nino\\Modules\\Basis' ];
+// The modules the kernel delivers itself are on - the copy below features/ of a feature it delivers rests, and a feature of this repository that requires it stands on those
+$appData['/nino/modules'] = array_map( static fn( string $directory ): string => '\\Nino\\Modules\\'. $directory, array_values( deliveredFeatures() ) );
+
+// The folder of every feature of this repository by the key its feature.php names - read as the file says it, since the kernel refuses the folder of a feature it delivers
+$folders = [];
+
+foreach( (array) scandir( NINO_FEATURES_DIR ) as $directory )
+	if( $directory[0] !== '.' && is_file( NINO_FEATURES_DIR. '/'. $directory. '/feature.php' ) === true )
+		$folders[(string) ( (array) require NINO_FEATURES_DIR. '/'. $directory. '/feature.php' )['key']] = NINO_FEATURES_DIR. '/'. $directory;
+
+/**
+ *	The names of the components of the features a feature requires, through the features they require
+ *
+ *	@param		array			$requires			The keys a manifest requires
+ *	@param		array			$folders			key => folder
+ *
+ *	@return 	array
+ */
+function componentsBuiltOn( array $requires, array $folders ): array {
+
+	$names = [];
+	$seen = [];
+
+	while( $requires !== [] ) {
+
+		$key = (string) array_shift( $requires );
+
+		if( isset( $seen[$key] ) === true || isset( $folders[$key] ) === false )
+			continue;
+
+		$seen[$key] = true;
+		$names = array_merge( $names, \Nino\Features::componentNames( $folders[$key] ) );
+		$requires = array_merge( $requires, (array) ( ( (array) require $folders[$key]. '/feature.php' )['requires'] ?? [] ) );
+	}
+
+	return array_values( array_unique( $names ) );
+}
 
 // A feature of this repository with components, by the key of its manifest: its folder, its manifest and what the kernel reads of its folders
 $features = [];
@@ -53,7 +90,7 @@ foreach( (array) scandir( NINO_FEATURES_DIR ) as $directory ) {
 		continue;
 
 	$appData['/nino/modules'][] = '\\'. ltrim( (string) $manifest['module'], '\\' );
-	$features[(string) $manifest['key']] = [ 'dir' => $dir, 'name' => $directory, 'read' => \Nino\Features::readComponents( $dir, (string) $manifest['key'] ) ];
+	$features[(string) $manifest['key']] = [ 'dir' => $dir, 'name' => $directory, 'read' => \Nino\Features::readComponents( $dir, (string) $manifest['key'], componentsBuiltOn( $manifest['requires'], $folders ) ) ];
 }
 
 \Nino\Features::registerComponents( $appData );

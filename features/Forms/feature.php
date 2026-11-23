@@ -69,7 +69,7 @@ return [
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
 	'php'					=> [],
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Nothing: the definitions live in config.php under '/nino/form/forms',
 	// where the kernel reads them and every backup already carries them, and
 	// the submissions are the kernel's own /data/forms.<Y-m>.php. The one

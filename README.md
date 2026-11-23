@@ -28,6 +28,8 @@ A feature is not installed; it is dropped in and switched on:
 2. Sign in to `/_admin` and open **Features** in the System group. The panel asks for the developer permission `/_admin/features/manage`. It lists every directory with a valid manifest, switched on or not, with its version and with whatever stands in the way of an activation - a Nino version the feature was not written for, a missing PHP extension, a required feature that is not there.
 3. **Activate.** That applies the feature's install unit without overwriting anything your project already has, lists the class in `/nino/modules` and records the version under `/nino/features` in `config.php`.
 
+A feature that builds its pages from the components of another says so under `requires` in its manifest, and **Activate** switches the required feature on with it - which has to be in the project's `features/` already. Most features of this catalogue require **Basis**, `features/Basis/`: the header, footer, section, button, image and text components with their groups and blocks, the standard look of a page and the script of its menu. It is a feature like the others: a project that uses one of them has Basis in its `features/`, unless the kernel it runs on still delivers Basis itself - then Basis comes from the kernel and nothing below `features/` is needed (see below).
+
 A panel a feature brings appears with the next load of the workbench, in the rail's Features group. The roles tab of the Users panel offers its permission under that group, and the **Editor** role does not receive it by itself.
 
 **Update:** replace `features/<Name>/` with the new release and press **Update** in the Features panel. The panel offers it as soon as the manifest names a different version than the recorded one; the unit adds what is new and leaves everything the project has edited as it is. **Deactivate** removes the class from `/nino/modules` and nothing else - settings, data, copied templates and texts stay.
@@ -45,6 +47,8 @@ NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
 `bin/check.sh` copies every feature the checkout can run into the checkout's `features/` - the same layout a project has -, validates every manifest through `bin/catalogue.php`, runs those features' own tests and removes the copies again; then it runs every test of this repository under `tests/`. A feature written for a newer Nino than the checkout is listed with its reason and left out (`bin/applicable.php` decides).
+
+A Nino that still delivers Basis itself - as a module of its own, `_nino/Nino/Modules/Basis` - refuses a directory of that name below `features/` ("the directory name is taken"), serves its own class first and offers no update of it. The scripts of this repository ask the Nino they run against, `\Nino\Features::moduleOwner()`, and not a version, whether it does (`bin/delivered.php`): `bin/applicable.php` then does not name `features/Basis` and says so, `bin/check.sh` copies only its `tests/` into the checkout, into `features/.delivered-Basis/`, so that they run against the Basis the kernel has and the line "Basis under test" of each says which one it is, `bin/catalogue.php` and `bin/build.php` leave the folder out and say so, and the suites of the feature carry a line "skipped" where only the other case can show something. Against a Nino that does not deliver it the folder is a feature like any other, and nothing of this is in the output. A release is built with such a Nino: an application names Basis, and a Nino offers an application only where every feature of it is in the index, so `bin/build.php` refuses to build with one that delivers it.
 
 A single test runs directly too:
 
@@ -82,7 +86,7 @@ return [
 	'key'					=> 'website',
 	'name'				=> [ 'en_US' => 'Website', 'de_DE' => 'Webseite' ],
 	'description'	=> [ 'en_US' => '...', 'de_DE' => '...' ],
-	'features'		=> [ 'builder', 'design', 'consent' ],
+	'features'		=> [ 'basis', 'themes', 'builder', 'consent' ],
 	'next'				=> '/_admin/#dashboard',
 	'start'				=> 'starter',
 	'menu'				=> null,
@@ -93,7 +97,7 @@ return [
 | --- | --- |
 | `key` | a slug, the file name without `.php` |
 | `name`, `description` | a text per locale, `de_DE` and `en_US` required; no two applications share a name |
-| `features` | the keys of features of this catalogue, at least one, none twice |
+| `features` | the keys of features of this catalogue, at least one, none twice; the kernel sets them up in this order, so a feature follows the features it requires, and those are listed too |
 | `next` | the path in the project the setup leads to, with an optional anchor - `/_admin/#builder`, the workbench panel by its uri - or `null`; no scheme, no `//` |
 | `start` | who provides the start page: `starter` (the kernel's starter pages), `own` (a feature of the application brings it) or `null` (no statement). Applications with a `start` exclude one another |
 | `menu` | `"folded"` where the workbench opens on the `next` panel with its menu folded, or `null` for the menu as it is. The index carries the field only where it is `"folded"`; a kernel that does not know it ignores it |

@@ -571,15 +571,36 @@ namespace Nino\Modules {
 			$footer = self::_side( $appData, $root ) === 'footer' || self::_side( $appData, $place ) === 'footer';
 			$inRow = $footer === false && self::_side( $appData, $root ) === 'header' && $place !== $root;
 			$args['class'] .= $footer === true ? ' menu--footer' : ( $inRow === true ? ' menu--in-row' : '' );
-			$name = $args['label'] !== '' ? $args['label'] : self::_text( \Nino\Html::renderTextfill( $appData, '/module/basis/navigation/'. ( $footer === true ? 'footer' : 'primary' ) ) );
+			// The words of the menus are Basis's, and where they are written is the kernel's to say: below /module/ where it delivers Basis, below /feature/ where it is a feature
+			$name = $args['label'] !== '' ? $args['label'] : self::_text( \Nino\Html::renderTextfill( $appData, self::_basisWord( $appData, $footer === true ? 'footer' : 'primary' ) ) );
 
 			return \Nino\Components::fill( $appData, 'menu', $args, $content, [
 				'[[uid]]'			=> $base,
 				'[[named]]'		=> $name === '' ? '' : ' aria-label="'. $name. '"',
+				'[[toggle]]'	=> self::_text( \Nino\Html::renderTextfill( $appData, self::_basisWord( $appData, 'menu' ) ) ),
 				'[[open]]'		=> $footer === true ? ' open' : '',
 				'[[folds]]'		=> $footer === true ? '' : ' data-header-menu',
 				'[[entries]]'	=> $items,
 			] );
+		}
+
+		/**
+		 *	The key of a word of Basis for what a menu is called: below the root the kernel names for the words of Basis - /module/basis/ where it delivers Basis, /feature/basis/ where
+		 *	it is a feature - and, where the feature has no text of its own for it, below /module/basis/, which is where a project that was set up while the kernel delivered Basis keeps it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$word					primary, menu or footer
+		 *
+		 *	@return 	string
+		 */
+		private static function _basisWord( array &$appData, string $word ): string {
+
+			$root = \Nino\Features::textRoot( $appData, 'basis' );
+
+			if( $root !== '/module/basis/' && ( \Nino\Html::resolveTextfill( $appData, $root. 'navigation/'. $word ) ?? '' ) === '' )
+				return '/module/basis/navigation/'. $word;
+
+			return $root. 'navigation/'. $word;
 		}
 
 		/**

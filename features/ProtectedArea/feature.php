@@ -89,7 +89,7 @@ return [
 	'category'		=> 'security',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// The attempt-cap counter and the session epoch this feature owns - what a backup carries
 	'data'				=> [ '/data/protected.php', '/data/protected-session.php' ],
 	'settings'		=> [

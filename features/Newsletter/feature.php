@@ -109,7 +109,7 @@ return [
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
 	'php'					=> [],
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	'settings'		=> [],
 	// The files under data/ this feature owns - what a backup carries and
 	// callbackRestore() merges

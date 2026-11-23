@@ -59,7 +59,7 @@ return [
 	'category'		=> 'ui',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Nothing under data/: what runs past is what stands between the tags of [ticker]
 	'data'				=> [],
 	// The script, into the site's script bundle; the look is the standard part of the group

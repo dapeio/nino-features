@@ -46,7 +46,7 @@ return [
 	'category'		=> 'ui',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	'data'				=> [],
 	// The script, into the site's script bundle; the look is the standard part of the group
 	'assets'			=> [ '/features/Progress/assets/progress.js' ],

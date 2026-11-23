@@ -28,6 +28,8 @@ Ein Feature wird nicht installiert, sondern hingelegt und eingeschaltet:
 2. Melde dich an `/_admin` an und öffne **Features** in der Gruppe System. Das Panel verlangt die Entwicklerberechtigung `/_admin/features/manage`. Es listet jedes Verzeichnis mit gültigem Manifest, eingeschaltet oder nicht, mit Version und mit dem, was einer Aktivierung entgegensteht – eine Nino-Version, für die das Feature nicht geschrieben wurde, eine fehlende PHP-Erweiterung, ein benötigtes Feature, das nicht da ist.
 3. **Aktivieren.** Das wendet die Install-Einheit des Features an, ohne etwas zu überschreiben, das dein Projekt bereits hat, trägt die Klasse in `/nino/modules` ein und zeichnet die Version unter `/nino/features` in der `config.php` auf.
 
+Ein Feature, das seine Seiten aus den Komponenten eines anderen baut, sagt das unter `requires` in seinem Manifest, und **Aktivieren** schaltet das verlangte Feature mit ein – das schon im `features/` des Projekts liegen muss. Die meisten Features dieses Katalogs verlangen **Basis**, `features/Basis/`: die Komponenten für Kopf, Fuß, Abschnitt, Button, Bild und Text mit ihren Gruppen und Blöcken, das Standard-Aussehen einer Seite und das Script ihres Menüs. Es ist ein Feature wie die anderen: ein Projekt, das eines von ihnen nutzt, hat Basis in seinem `features/` – es sei denn, der Kernel, auf dem es läuft, liefert Basis noch selbst mit; dann kommt Basis vom Kernel, und unter `features/` ist nichts nötig (siehe unten).
+
 Ein Panel, das ein Feature mitbringt, erscheint mit dem nächsten Laden der Workbench, in der Gruppe Features der Leiste. Der Tab Nutzerrollen des Panels Nutzer bietet seine Berechtigung unter dieser Gruppe an, und die Rolle **Editor** erhält sie nicht von selbst.
 
 **Update:** Ersetze `features/<Name>/` durch die neue Fassung und drücke **Update** im Panel Features. Das Panel bietet es an, sobald das Manifest eine andere Version nennt als die aufgezeichnete; die Einheit ergänzt, was neu ist, und lässt alles, was das Projekt bearbeitet hat, wie es ist. **Deaktivieren** trägt die Klasse aus `/nino/modules` aus – und sonst nichts: Einstellungen, Daten, kopierte Templates und Texte bleiben.
@@ -45,6 +47,8 @@ NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
 `bin/check.sh` kopiert jedes Feature, das der Checkout ausführen kann, in dessen `features/` – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests dieser Features aus und entfernt die Kopien danach wieder; danach führt es jeden eigenen Test dieses Repositories unter `tests/` aus. Ein Feature, das für ein neueres Nino geschrieben ist als der Checkout, steht mit seinem Grund in der Liste und bleibt draußen (`bin/applicable.php` entscheidet das).
+
+Ein Nino, das Basis noch selbst mitliefert – als eigenes Modul, `_nino/Nino/Modules/Basis` –, verweigert ein Verzeichnis dieses Namens unter `features/` („the directory name is taken“), bedient seine eigene Klasse zuerst und bietet kein Update davon an. Die Skripte dieses Repositories fragen das Nino, gegen das sie laufen, `\Nino\Features::moduleOwner()`, und keine Version, ob es das tut (`bin/delivered.php`): `bin/applicable.php` nennt dann `features/Basis` nicht und sagt es, `bin/check.sh` kopiert nur seine `tests/` in den Checkout, nach `features/.delivered-Basis/`, sodass sie gegen das Basis laufen, das der Kernel hat, und die Zeile „Basis under test“ jeder Suite sagt, welches es ist, `bin/catalogue.php` und `bin/build.php` lassen den Ordner aus und sagen es, und die Suiten des Features tragen eine Zeile „skipped“, wo nur der andere Fall etwas zeigen kann. Gegen ein Nino, das es nicht mitliefert, ist der Ordner ein Feature wie jedes andere, und nichts davon steht in der Ausgabe. Ein Release wird mit einem solchen Nino gebaut: eine Anwendung nennt Basis, und ein Nino bietet eine Anwendung nur an, wo jedes ihrer Features im Index steht, sodass `bin/build.php` sich weigert, mit einem zu bauen, das es mitliefert.
 
 Ein einzelner Test läuft auch direkt:
 
@@ -82,7 +86,7 @@ return [
 	'key'					=> 'website',
 	'name'				=> [ 'en_US' => 'Website', 'de_DE' => 'Webseite' ],
 	'description'	=> [ 'en_US' => '...', 'de_DE' => '...' ],
-	'features'		=> [ 'builder', 'design', 'consent' ],
+	'features'		=> [ 'basis', 'themes', 'builder', 'consent' ],
 	'next'				=> '/_admin/#dashboard',
 	'start'				=> 'starter',
 	'menu'				=> null,
@@ -93,7 +97,7 @@ return [
 | --- | --- |
 | `key` | ein Slug, der Dateiname ohne `.php` |
 | `name`, `description` | ein Text je Sprache, `de_DE` und `en_US` verlangt; kein Name kommt bei zwei Anwendungen vor |
-| `features` | die Keys von Features dieses Katalogs, mindestens eines, keines doppelt |
+| `features` | die Keys von Features dieses Katalogs, mindestens eines, keines doppelt; der Kernel richtet sie in dieser Reihenfolge ein, ein Feature steht also nach den Features, die es verlangt, und die stehen auch in der Liste |
 | `next` | der Pfad im Projekt, zu dem die Einrichtung führt, mit optionalem Anker – `/_admin/#builder`, das Panel der Verwaltung mit seiner uri – oder `null`; kein Schema, kein `//` |
 | `start` | wer die Startseite stellt: `starter` (die Starter-Seiten des Kernels), `own` (ein Feature der Anwendung bringt sie) oder `null` (keine Aussage). Anwendungen mit einem `start` schließen einander aus |
 | `menu` | `"folded"`, wo die Verwaltung auf dem Panel von `next` mit eingeklapptem Menü öffnet, oder `null` für das Menü, wie es ist. Der Index trägt das Feld nur bei `"folded"`; ein Kernel, der es nicht kennt, übergeht es |

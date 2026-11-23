@@ -96,7 +96,7 @@ return [
 	'category'		=> 'content',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// The places and the closures are elements, which is where a project keeps them
 	'data'				=> [],
 	'assets'			=> [],

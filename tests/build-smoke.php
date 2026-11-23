@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  *	Nino features
  *	build-smoke.php	Contract test for bin/build.php, the publishing tool, and for the catalogue of format 2 it builds. A tree of this run's own -
- *									two features (copies of Themes and of Collections), a theme (the craft-probe of Themes' fixtures, with a picture, and a part of the group Collections brings), a package of blocks with
+ *									three features (copies of Basis, of Themes and of Collections), a theme (the craft-probe of Themes' fixtures, with a picture, and a part of the group Collections brings), a package of blocks with
  *									a svg and a png, an application - is built into a directory with a key of this run's own, and then what has to hold:
  *
  *										A. the index: the kernel reads every entry; kind, requires, parts and blocks are what the files say, not what anybody
@@ -39,6 +39,7 @@ mkdir( $work. '/project-features', 0700, true );
 
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', $work. '/project-features' );
 require $root. '/tests/harness.php';
+require dirname( __DIR__ ). '/bin/delivered.php';
 
 if( class_exists( '\Nino\Packages' ) === false || class_exists( '\Nino\Archive' ) === false || \Nino\Catalogue::FORMAT !== 2 ) {
 	fwrite( STDERR, 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no packages and no catalogue of format 2 - bin/build.php needs the Nino that reads them'. "\n" );
@@ -49,6 +50,9 @@ register_shutdown_function( static fn() => \Nino\Filesystem::removeDir( $work ) 
 
 $repo			= dirname( __DIR__ );
 $baseUrl	= 'https://catalogue.test/packages';
+
+// Whether the kernel delivers Basis itself: then the copy of Basis the tree holds rests, the build leaves it out, and the index lists none - the kernel has it
+$delivers	= deliveredFeatures() !== [];
 
 // A picture of each kind a block may bring, and a svg that the rebuild of the kernel keeps whole - a comment is no element and no attribute, and the rebuild
 // does not keep it
@@ -154,9 +158,10 @@ function gastroBlock( string $svg, string $png ): array {
  */
 function makeTree( string $dest ): void {
 
-	global $repo, $webp, $png, $svg;
+	global $repo, $webp, $png, $svg, $delivers;
 
 	copyTree( $repo. '/bin', $dest. '/bin', [ 'check.sh', 'release.sh' ] );
+	copyTree( $repo. '/features/Basis', $dest. '/features/Basis', [ 'tests' ] );
 	copyTree( $repo. '/features/Themes', $dest. '/features/Themes', [ 'tests' ] );
 	copyTree( $repo. '/features/Collections', $dest. '/features/Collections', [ 'tests' ] );
 	copyTree( $repo. '/features/Themes/tests/fixtures/themes/craft-probe', $dest. '/themes/craft-probe' );
@@ -174,7 +179,7 @@ function makeTree( string $dest ): void {
 	}
 
 	mkdir( $dest. '/applications', 0755, true );
-	file_put_contents( $dest. '/applications/website.php', "<?php\nreturn [ 'key' => 'website', 'name' => [ 'de_DE' => 'Webseite', 'en_US' => 'Website' ], 'description' => [ 'de_DE' => 'Eine Seite', 'en_US' => 'A site' ],\n\t'features' => [ 'themes' ], 'next' => '/_admin/#themes', 'start' => null, 'menu' => null ];\n" );
+	file_put_contents( $dest. '/applications/website.php', "<?php\nreturn [ 'key' => 'website', 'name' => [ 'de_DE' => 'Webseite', 'en_US' => 'Website' ], 'description' => [ 'de_DE' => 'Eine Seite', 'en_US' => 'A site' ],\n\t'features' => [ ". ( $delivers === true ? '' : "'basis', " ). "'themes' ], 'next' => '/_admin/#themes', 'start' => null, 'menu' => null ];\n" );
 }
 
 /**
@@ -222,7 +227,7 @@ echo "bin/build.php - a feature, a theme and a package of blocks into a catalogu
 
 [ $status, $stdout, $stderr ] = buildTree( $tree, $out );
 
-$expected = [ 'blocks-gastro-1.0.0.tar.gz', 'blocks-gastro-1.0.0.webp', 'catalogue.json', 'catalogue.json.sig', 'feature-collections-1.0.0.tar.gz', 'feature-themes-1.0.0.tar.gz', 'theme-craft-probe-1.0.0.tar.gz', 'theme-craft-probe-1.0.0.webp' ];
+$expected = array_merge( [ 'blocks-gastro-1.0.0.tar.gz', 'blocks-gastro-1.0.0.webp', 'catalogue.json', 'catalogue.json.sig' ], $delivers === true ? [] : [ 'feature-basis-1.0.0.tar.gz' ], [ 'feature-collections-1.0.0.tar.gz', 'feature-themes-1.0.0.tar.gz', 'theme-craft-probe-1.0.0.tar.gz', 'theme-craft-probe-1.0.0.webp' ] );
 
 check( 'the build of the tree succeeds, says nothing on stderr, and writes one archive per package, a picture per theme and per package of blocks, the index and its signature', $status === 0 && $stderr === '' && array_keys( filesOf( $out ) ) === $expected );
 
@@ -235,7 +240,7 @@ $theme		= entryOf( $document, 'theme', 'craft-probe' );
 $pack			= entryOf( $document, 'blocks', 'gastro' );
 
 check( 'the kernel reads the index whole - every entry, none left out, in the order feature, theme, blocks - and the signature holds over its bytes',
-	$parsed['unreadable'] === [] && array_map( static fn( array $entry ): string => $entry['kind']. ':'. $entry['key'], $parsed['packages'] ) === [ 'feature:collections', 'feature:themes', 'theme:craft-probe', 'blocks:gastro' ]
+	$parsed['unreadable'] === [] && array_map( static fn( array $entry ): string => $entry['kind']. ':'. $entry['key'], $parsed['packages'] ) === array_merge( $delivers === true ? [] : [ 'feature:basis' ], [ 'feature:collections', 'feature:themes', 'theme:craft-probe', 'blocks:gastro' ] )
 	&& array_column( $parsed['applications'], 'key' ) === [ 'website' ] && \Nino\Catalogue::verify( $json, (string) file_get_contents( $out. '/catalogue.json.sig' ), $publicPem ) === true );
 
 $source		= filesOf( $tree. '/themes/craft-probe' );
@@ -253,12 +258,12 @@ check( 'what a theme requires is computed from its files - the feature of the th
 
 check( 'what a package of blocks requires is the feature of the components its blocks call, and it lists its blocks with their category; a feature requires what its manifest says and has no picture',
 	$pack['requires'] === [ 'nino' => '^2.0', 'features' => [ 'basis' ] ] && $pack['blocks'] === [ [ 'key' => 'menu', 'category' => 'content' ] ]
-	&& $feature['requires'] === [ 'nino' => '^2.0', 'php' => [], 'features' => [] ] && $feature['directory'] === 'Themes' && isset( $feature['preview'] ) === false && isset( $feature['parts'] ) === false );
+	&& $feature['requires'] === [ 'nino' => '^2.0', 'php' => [], 'features' => [ 'basis' ] ] && $feature['directory'] === 'Themes' && isset( $feature['preview'] ) === false && isset( $feature['parts'] ) === false );
 
 // the bytes each entry names, and what the reader of the kernel makes of the archive
 $wrong = [];
 
-foreach( [ [ $feature, 'features/Themes' ], [ entryOf( $document, 'feature', 'collections' ), 'features/Collections' ], [ $theme, 'themes/craft-probe' ], [ $pack, 'blocks/gastro' ] ] as [ $entry, $folder ] ) {
+foreach( array_merge( $delivers === true ? [] : [ [ entryOf( $document, 'feature', 'basis' ), 'features/Basis' ] ], [ [ $feature, 'features/Themes' ], [ entryOf( $document, 'feature', 'collections' ), 'features/Collections' ], [ $theme, 'themes/craft-probe' ], [ $pack, 'blocks/gastro' ] ] ) as [ $entry, $folder ] ) {
 
 	$name		= $entry['kind']. '-'. $entry['key']. '-'. $entry['version'];
 	$bytes	= (string) @file_get_contents( $out. '/'. $name. '.tar.gz' );
@@ -357,6 +362,10 @@ $cases = [
 	[ 'a svg that loses an element in the rebuild'	, 'blocks/gastro/menu/images/background.svg'						, static function( string $tree ) use ( $pack ): void { file_put_contents( $tree. $pack. '/menu/images/background.svg', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#f00"/><script>alert(1)</script></svg>' ); } ],
 	[ 'a file that is no file of a package of blocks'	, 'blocks/gastro/menu/.htaccess'										, static function( string $tree ) use ( $pack ): void { file_put_contents( $tree. $pack. '/menu/.htaccess', 'Options +ExecCGI' ); } ],
 	[ 'an application that names a feature nobody has'	, 'website'																, static function( string $tree ): void { file_put_contents( $tree. '/applications/website.php', str_replace( "'themes'", "'nobody'", (string) file_get_contents( $tree. '/applications/website.php' ) ) ); } ],
+	[ 'an application that lists a feature before the feature it requires'	, 'applications/website.php'		, static function( string $tree ): void {
+		file_put_contents( $tree. '/features/Collections/feature.php', str_replace( "'requires'		=> [ 'basis' ],", "'requires'		=> [ 'basis', 'themes' ],", (string) file_get_contents( $tree. '/features/Collections/feature.php' ) ) );
+		file_put_contents( $tree. '/applications/website.php', str_replace( "'themes'", "'collections', 'themes'", (string) file_get_contents( $tree. '/applications/website.php' ) ) );
+	} ],
 	[ 'a feature with a file the reader of the kernel refuses'	, 'features/Themes/.hidden.php'							, static function( string $tree ): void { file_put_contents( $tree. '/features/Themes/.hidden.php', '<?php' ); } ],
 	[ 'a feature that does not validate'			, 'features/Broken'														, static function( string $tree ): void { mkdir( $tree. '/features/Broken' ); file_put_contents( $tree. '/features/Broken/feature.php', "<?php\nreturn 'not a manifest';\n" ); file_put_contents( $tree. '/features/Broken/Broken.php', "<?php\nnamespace Nino\\Modules { class Broken {} }\n" ); } ],
 ];
@@ -393,7 +402,7 @@ check( 'what is not a build is a usage error, exit 2, before anything is created
 $preview = (array) json_decode( $stdout, true );
 
 check( 'the preview lists what the build would: the same entries without archive, digest and picture, the applications above them',
-	$status === 0 && $stderr === '' && array_map( static fn( array $entry ): array => array_diff_key( $entry, [ 'archive' => 1, 'sha256' => 1, 'size' => 1, 'released' => 1, 'preview' => 1 ] ), $document['packages'] ) === $preview['packages'] && $preview['applications'] === $document['applications'] );
+	$status === 0 && ( $delivers === true ? str_contains( $stderr, 'features/Basis: delivered by the kernel' ) === true : $stderr === '' ) && array_map( static fn( array $entry ): array => array_diff_key( $entry, [ 'archive' => 1, 'sha256' => 1, 'size' => 1, 'released' => 1, 'preview' => 1 ] ), $document['packages'] ) === $preview['packages'] && $preview['applications'] === $document['applications'] );
 
 echo "\n";
 
@@ -403,6 +412,10 @@ echo "\\Nino\\Catalogue - the built theme and package of blocks installed throug
 
 $appData = ninoSandbox( 'build' );
 $appData['/nino/modules']					= [ '\\Nino\\Modules\\Basis' ];
+
+// The groups of the parts of the theme are read against the register as it stands when the theme comes, and the features it brings are placed in that same step: Basis - where the kernel
+// does not deliver it, the folder below the features/ of the project - is there before the theme
+$delivers === true || copyTree( $repo. '/features/Basis', NINO_FEATURES_DIR. '/Basis', [ 'tests' ] );
 $appData['/nino/catalogue/url']		= $baseUrl. '/catalogue.json';
 $appData['/nino/catalogue/key']		= $publicPem;
 
@@ -426,7 +439,7 @@ $placed		= array_map( static fn( array $one ): string => $one['kind']. ':'. $one
 $blocked	= \Nino\Catalogue::install( $appData, 'blocks', 'gastro', '1.0.0' );
 
 check( 'the theme installs, with the features it requires that the project does not have - the features first, as the entry says - and the package of blocks with nothing else to bring',
-	$themed === true && count( $placed ) === 3 && end( $placed ) === 'theme:craft-probe@1.0.0' && array_slice( $placed, 0, 2 ) === [ 'feature:collections@1.0.0', 'feature:themes@1.0.0' ] && $blocked === true && is_file( NINO_FEATURES_DIR. '/Themes/feature.php' ) === true
+	$themed === true && end( $placed ) === 'theme:craft-probe@1.0.0' && array_slice( $placed, 0, -1 ) === [ 'feature:collections@1.0.0', 'feature:themes@1.0.0' ] && $blocked === true && is_file( NINO_FEATURES_DIR. '/Themes/feature.php' ) === true
 	&& \Nino\Packages::installed( $appData, 'theme' ) === [ 'craft-probe' => '1.0.0' ] && \Nino\Packages::installed( $appData, 'blocks' ) === [ 'gastro' => '1.0.0' ] );
 
 $installed = filesOf( \Nino\Packages::dir( $appData, 'blocks', 'gastro' ) );

@@ -79,7 +79,7 @@ return [
 	'version'			=> '1.0.0',
 	'nino'				=> '^2.0',					// the kernel with the register of components
 	'php'					=> [],
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	'data'				=> [],
 	'settings'		=> [],
 	'assets'			=> [ '/features/Collections/assets/collection-filter.js' ],

@@ -80,7 +80,7 @@ return [
 	'category'		=> 'content',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// The links are elements, in /elements/social.php - the project's own type file, which a backup carries like every other
 	'data'				=> [],
 	'assets'			=> [],

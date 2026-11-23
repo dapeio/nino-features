@@ -89,7 +89,7 @@ return [
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
 	'php'					=> [],
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Which element type is a section of the site, under which path, through
 	// which templates. Not the posts - those are ordinary elements and live in
 	// /elements/, where a backup finds them on their own

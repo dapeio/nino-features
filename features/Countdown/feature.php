@@ -58,7 +58,7 @@ return [
 	'category'		=> 'ui',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Nothing under data/: the moment is written into the page it counts down
 	// on, and what is left of it is arithmetic in the reader's own browser
 	'data'				=> [],

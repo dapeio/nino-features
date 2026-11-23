@@ -287,7 +287,9 @@ function collectionsDom( string $html ): array {
 
 echo "A. The folders of the feature: schemas, group, part, manifest\n";
 
-$read = \Nino\Features::readComponents( $featureDir, 'collections' );
+// The demo of the group calls the components of Basis, which the feature requires: the names the kernel hands the read are those of the folder of Basis where it stands
+$sample = collectionsSite();
+$read = \Nino\Features::readComponents( $featureDir, 'collections', \Nino\Features::componentNames( (string) ( \Nino\Features::get( $sample, 'basis' )['dir'] ?? '' ) ) );
 check( 'the folders are read and nothing is refused: no component, no group and no standard part', is_array( $read ) === true && $read['rejected'] === [] && array_keys( $read['groups'] ) === [ 'collection' ] && $read['groups']['collection']['part'] === true );
 
 $have = array_keys( $read['components'] );
@@ -379,8 +381,8 @@ check( 'a loop has its children as nodes: the register draws nothing of them', a
 
 $manifestWarnings = ninoWarnings();
 $manifest = \Nino\Features::manifest( $featureDir );
-check( 'the manifest validates with no warning: key collections, no requirement, the kernel with the register, the script of the filter as its one asset',
-	is_array( $manifest ) === true && ninoWarnings() === [] && $manifestWarnings === [] && $manifest['key'] === 'collections' && $manifest['requires'] === [] && $manifest['nino'] === '^2.0'
+check( 'the manifest validates with no warning: key collections, Basis as its one requirement, the kernel with the register, the script of the filter as its one asset',
+	is_array( $manifest ) === true && ninoWarnings() === [] && $manifestWarnings === [] && $manifest['key'] === 'collections' && $manifest['requires'] === [ 'basis' ] && $manifest['nino'] === '^2.0'
 	&& $manifest['assets'] === [ '/features/Collections/assets/collection-filter.js' ] && $manifest['settings'] === [] && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'the manifest names no component and no stack: those are the folders\'', is_array( $manifest ) === true && ( $manifest['components'] ?? [] ) === [] && ( $manifest['stacks'] ?? [] ) === [] );
 $all = \Nino\Features::all( $appData );

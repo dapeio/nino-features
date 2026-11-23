@@ -32,12 +32,15 @@ $appData['/nino/modules'] = [ '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Menu' 
 \Nino\Features::registerParts( $appData );
 \Nino\Admin\Admin::init( $appData );
 
+// Where the words of the menus are written is the kernel's to say for Basis: below /module/ where it delivers it, below /feature/ where it is a feature
+$basisWords = \Nino\Features::textRoot( $appData, 'basis' ). 'navigation/';
+
 // The words of the site, as the Text panel writes them: a page's name, a menu's titles, links and an entry's name
 $words = [
 	'en_US' => [
 		'/_nino/webpage/about/name' => 'About', '/_nino/webpage/contact/name' => 'Contact', '/_nino/webpage/nowhere/name' => 'Nowhere',
 		'/feature/menu/main/services' => 'Services', '/feature/menu/main/services-1' => 'What we do', '/feature/menu/main/services-2' => 'For every size',
-		'/feature/menu/main/services-3' => 'Our blog', '/feature/menu/panel/open' => 'Open the submenu', '/module/basis/navigation/primary' => 'Main', '/module/basis/navigation/footer' => 'Foot',
+		'/feature/menu/main/services-3' => 'Our blog', '/feature/menu/panel/open' => 'Open the submenu', $basisWords. 'primary' => 'Main', $basisWords. 'footer' => 'Foot', $basisWords. 'menu' => 'Menu',
 	],
 	'de_DE' => [
 		'/_nino/webpage/about/name' => 'Über uns', '/_nino/webpage/contact/name' => 'Kontakt',
@@ -253,6 +256,28 @@ $html = $draw( $header() );
 $x = $dom( $html );
 check( 'it is a nav with a details, a button of three bars for the small screen, and a list of the entries that can be drawn',
 	$x->query( '//nav[@class="menu"]/details[@class="menu-details"]/summary[@class="menu-burger"]' )->length === 1 && $x->query( '//ul[@class="menu-list"]/li[contains(@class,"menu-item")]' )->length === 2 );
+
+// The names a screen reader reads are the words of Basis, wherever the kernel says Basis keeps them: the nav of the header and the button of three bars, and the nav of the foot
+$footing = $dom( $draw( '[footer-wrap][menu key="main"][/footer-wrap]' ) );
+check( 'the nav and the button are named by the words of Basis - the main navigation and the menu in the header, the foot navigation in the foot - read below the root the kernel gives them',
+	$x->query( '//nav[@class="menu"]' )->item( 0 )?->getAttribute( 'aria-label' ) === 'Main' && $x->query( '//summary[@class="menu-burger"]' )->item( 0 )?->getAttribute( 'aria-label' ) === 'Menu'
+	&& $footing->query( '//nav' )->item( 0 )?->getAttribute( 'aria-label' ) === 'Foot' );
+
+// A project that was set up while the kernel delivered Basis keeps the words of the menus below /module/basis/: where Basis is a feature with none of its own they are read there
+$legacy = ninoSandbox( 'menu-legacy' );
+$legacy['./nino/filesystem/path'] = $root;
+$legacy['/nino/modules'] = [ '\\Nino\\Modules\\Basis', '\\Nino\\Modules\\Menu' ];
+\Nino\Html::init( $legacy );
+\Nino\Features::registerComponents( $legacy );
+\Nino\Modules::callModules( $legacy, 'init' );
+$legacy['/nino/http/routes']['GET://about'] = [ 'uri' => '/about', 'body' => '' ];
+\Nino\Html::addFills( $legacy, [ '/_nino/webpage/about/name' => 'About', '/module/basis/navigation/primary' => 'Mod main', '/module/basis/navigation/menu' => 'Mod menu', '/module/basis/navigation/footer' => 'Mod foot' ], 'en_US' );
+menuStore( $legacy, [ [ 'id' => 'about', 'kind' => 'page', 'uri' => '/about', 'label' => '', 'panel' => null ] ] );
+\Nino\Locales::useLocale( $legacy, 'en_US' );
+$old = \Nino\Html::renderSource( $legacy, '[header-wrap][menu key="main"][/header-wrap][footer-wrap][menu key="main"][/footer-wrap]', \Nino\Html::context( $legacy ) );
+preg_match_all( '/aria-label="([^"]*)"/', $old, $olds );
+check( 'a menu draws the words of Basis from below /module/basis/ where the project keeps them there - the name of the nav in the header and in the foot and of the button - whichever case the kernel is in',
+	in_array( 'Mod main', $olds[1], true ) === true && in_array( 'Mod foot', $olds[1], true ) === true && in_array( 'Mod menu', $olds[1], true ) === true );
 
 $buttons = $x->query( '//li[contains(@class,"menu-item--panel")]/button[@class="menu-toggle"]' );
 $link = $x->query( '//li[contains(@class,"menu-item--panel")]/a[@class="menu-link"]' )->item( 0 );

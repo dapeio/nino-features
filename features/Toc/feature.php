@@ -65,7 +65,7 @@ return [
 	'category'		=> 'content',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Nothing under data/: the list is the page, read as it stands
 	'data'				=> [],
 	// The script, into the site's script bundle; the look is the standard part of the group

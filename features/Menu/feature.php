@@ -84,7 +84,7 @@ return [
 	'version'			=> '2.0.0',
 	// The kernel whose vocabulary it uses: the register of components with their groups and parts, the sanitizer and the panel blocks of the workbench
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// The menus. No '/nino/admin/restore' callback: the texts and the image slots a menu points
 	// at come back with the same backup, so the plain copy of this file is the state they belong to
 	'data'				=> [ '/data/menus.php' ],

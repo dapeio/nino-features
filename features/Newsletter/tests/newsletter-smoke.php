@@ -79,8 +79,8 @@ check( 'the group has its knobs and a demo, and the standard part keeps the rule
 	&& ( $group['demo'] ?? '' ) !== '' && \Nino\Components::partProblems( $part, $own ) === [] );
 check( 'the part is in the style bundle, and it keeps off the form group: no token of it is read', str_contains( \Nino\Modules\Assets::stylesheet( $appData, '/.cache/style.css' ), '.newsletter-signup-control' ) === true
 	&& preg_match( '/--form-|\.form\b|\.form-/', $part ) === 0 );
-check( 'a tool offers the signup in the flow of a column and of a footer column, and the feature depends on no other', in_array( 'newsletter-signup', \Nino\Components::allowed( $appData, 'section-col' ), true ) === true
-	&& in_array( 'newsletter-signup', \Nino\Components::allowed( $appData, 'footer-col' ), true ) === true && $manifest['requires'] === [] );
+check( 'a tool offers the signup in the flow of a column and of a footer column, and the feature depends on Basis alone', in_array( 'newsletter-signup', \Nino\Components::allowed( $appData, 'section-col' ), true ) === true
+	&& in_array( 'newsletter-signup', \Nino\Components::allowed( $appData, 'footer-col' ), true ) === true && $manifest['requires'] === [ 'basis' ] );
 
 $block = \Nino\Blocks::get( $appData, 'newsletter-signup' );
 check( 'the block is valid, names the feature and misses nothing', is_array( $block ) === true && in_array( 'newsletter', $block['features'] ?? [], true ) === true && ( $block['missing'] ?? [] ) === [] );

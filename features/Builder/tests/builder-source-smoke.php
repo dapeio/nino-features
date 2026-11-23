@@ -560,7 +560,7 @@ ninoUser( $site, 'designer-blocks2@example.com', [ '/_admin/builder/manage', '/_
 // a block is taken away only where it is the project's and listed: not one of Basis, not a path, not a folder that holds what is no block
 mkdir( $sandbox. '/private/blocks/kaputt', 0755 );
 file_put_contents( $sandbox. '/private/blocks/kaputt/block.json', '{' );
-$kernelFile = $root. '/_nino/Nino/Modules/Basis/blocks/hero-full/block.json';
+$kernelFile = ( \Nino\Features::get( $site, 'basis' )['dir'] ?? '' ). '/blocks/hero-full/block.json';
 $before = sourceSnapshot( $site );
 $homeBefore = (string) file_get_contents( $sandbox. '/private/templates/page-home.tpl' );
 $refused = array_map( static fn( string $key ): int => sourceCall( $site, 'themelab/remove', [ 'key' => $key ] )[0], [ 'hero-full', '../blocks/karten', 'kaputt', 'nothing', '' ] );
@@ -1115,7 +1115,7 @@ check( 'two pages made at the same moment under one address, '. $rounds. ' round
 echo "\nH. The variants of a block\n";
 
 // A page with three blocks of the catalogue that have variants - as the dialog puts them in: the template of the block, whatever its first line is
-$basis = $root. '/_nino/Nino/Modules/Basis/blocks';
+$basis = ( \Nino\Features::get( $site, 'basis' )['dir'] ?? '' ). '/blocks';
 $blockTpl = static function( string $path ) use ( &$site ): string {
 
 	// The block as it is put into a page: its root laid out the way the kernel writes a template, each call on a line of its own

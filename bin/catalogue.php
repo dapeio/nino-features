@@ -45,10 +45,12 @@ if( class_exists( '\Nino\Packages' ) === false || class_exists( '\Nino\Archive' 
 require __DIR__. '/packages.php';
 require __DIR__. '/applications.php';
 
-[ $features, $problems ] = readFeatures( NINO_FEATURES_DIR );
+ignoreDeliveredWarnings();
+
+[ $features, $problems, $delivered ] = readFeatures( NINO_FEATURES_DIR );
 
 if( $problems === [] ) {
-	[ $register, $found ] = packageRegister( $features );
+	[ $register, $found ] = packageRegister( $features, $delivered );
 	$problems = $found;
 }
 
@@ -72,11 +74,16 @@ foreach( $problems === [] ? PACKAGES_FOLDERS : [] as $kind => $folder )
 // to say, as the features it can run are for bin/applicable.php
 if( $problems === [] ) {
 
-	[ $applications, $found ] = readApplications( dirname( __DIR__ ). '/applications', array_keys( $features ) );
+	[ $applications, $found ] = readApplications( dirname( __DIR__ ). '/applications', array_merge( array_keys( $features ), array_keys( $delivered ) ), array_map( static fn( array $manifest ): array => $manifest['requires'], $features ), array_keys( $delivered ) );
 
 	if( $found !== [] )
 		$problems[] = "Not every application is valid:\n  ". implode( "\n  ", $found );
 }
+
+// What the kernel delivers is not listed, and a copy of it here rests - say it, so that a run shows which of the two cases it is
+foreach( $problems === [] ? $delivered : [] as $directory )
+	if( is_dir( NINO_FEATURES_DIR. '/'. $directory ) === true )
+		fwrite( STDERR, 'features/'. $directory. ': delivered by the kernel, not listed. An index of this catalogue is built with a kernel that does not deliver it'. "\n" );
 
 if( $problems !== [] ) {
 	fwrite( STDERR, implode( "\n", $problems ). "\n" );

@@ -353,7 +353,9 @@ if( class_exists( '\Nino\Packages' ) === false || class_exists( '\Nino\Archive' 
 require __DIR__. '/packages.php';
 require __DIR__. '/applications.php';
 
-[ $features, $problems ] = readFeatures( NINO_FEATURES_DIR );
+ignoreDeliveredWarnings();
+
+[ $features, $problems, $delivered ] = readFeatures( NINO_FEATURES_DIR );
 
 if( $problems !== [] )
 	fail( implode( "\n", $problems ) );
@@ -361,7 +363,7 @@ if( $problems !== [] )
 if( $features === [] )
 	fail( 'No feature below '. NINO_FEATURES_DIR );
 
-[ $register, $problems ] = packageRegister( $features );
+[ $register, $problems ] = packageRegister( $features, $delivered );
 
 if( $problems !== [] )
 	fail( implode( "\n", $problems ) );
@@ -379,10 +381,25 @@ foreach( PACKAGES_FOLDERS as $kind => $folder )
 
 // --- The applications --------------------------------------------------------
 
-[ $applications, $problems ] = readApplications( $repository. '/applications', array_keys( $features ) );
+[ $applications, $problems ] = readApplications( $repository. '/applications', array_merge( array_keys( $features ), array_keys( $delivered ) ), array_map( static fn( array $manifest ): array => $manifest['requires'], $features ), array_keys( $delivered ) );
 
 if( $problems !== [] )
 	fail( 'Not every application is valid:'. "\n  ". implode( "\n  ", $problems ) );
+
+// A feature the kernel delivers has no entry in this index - the kernel refuses its directory - and a kernel offers an application only when every
+// feature of it is offered: the index would list an application that no kernel shows. The index of such an application is built with a kernel that does not deliver the feature
+$unoffered = [];
+
+foreach( $applications as $application )
+	foreach( array_intersect( $application['features'], array_keys( $delivered ) ) as $key )
+		$unoffered[] = 'applications/'. $application['key']. '.php names "'. $key. '", which the kernel at '. $root. ' ('. \Nino\VERSION. ') delivers itself, so that the index cannot list it, and a kernel offers an application only when every feature of it is in the index - build the catalogue with a kernel that does not deliver '. $delivered[$key];
+
+if( $unoffered !== [] )
+	fail( implode( "\n", $unoffered ) );
+
+foreach( $delivered as $directory )
+	if( is_dir( NINO_FEATURES_DIR. '/'. $directory ) === true )
+		say( 'skipped  features/'. $directory. ' - delivered by the kernel' );
 
 say( 'checked  '. count( $applications ). ' '. ( count( $applications ) === 1 ? 'application' : 'applications' ). ( $applications === [] ? '' : ' ('. implode( ', ', array_column( $applications, 'key' ) ). ')' ) );
 

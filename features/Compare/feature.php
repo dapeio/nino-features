@@ -55,7 +55,7 @@ return [
 	'category'		=> 'ui',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Nothing under data/: the two pictures are the project's own picture slots, and
 	// where the divider stands is the visitor's, for as long as they look
 	'data'				=> [],

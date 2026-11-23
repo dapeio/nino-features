@@ -57,7 +57,7 @@ return [
 	// The kernel whose vocabulary it uses: the register of components with their groups and
 	// parts, the token --brand-scheme that the palette turns on, and the output phase
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Nothing under data/: the choice belongs to the reader's browser and is
 	// kept there. A site that stored it would be storing a preference about a
 	// person, which is a consent question this feature deliberately does not

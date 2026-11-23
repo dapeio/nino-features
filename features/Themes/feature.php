@@ -141,7 +141,7 @@ return [
 	'version'			=> '1.0.0',
 	'nino'				=> '^2.0',					// the kernel with the register of components, the hook of the variants and of the blocks, the drafts of \Nino\Preview and the bundle in memory
 	'php'					=> [],
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	'data'				=> [ '/data/theme' ],
 	// Where the Fonts tab reads the signed list of fonts from, and the key that list has to be signed with. The two are the feature's own
 	// repository by default; a project that publishes fonts of its own changes both

@@ -101,7 +101,7 @@ return [
 	'version'			=> '1.1.0',
 	'nino'				=> '^2.0',					// the kernel with the draft of a preview, the trace of the drawing, the words put in one step and the bars of the workbench
 	'php'					=> [],
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	'data'				=> [ '/data/builder' ],
 	// How the block under the pointer shows in the page: "frame" draws a frame of the accent colour round it and leaves the others as they are, "fade" leaves it as it is and
 	// draws the others at four fifths of their strength

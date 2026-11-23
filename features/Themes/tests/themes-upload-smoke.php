@@ -32,6 +32,14 @@ use Nino\Modules\Themes\Upload;
 
 const UP_BUNDLE = '/.cache/style.css';
 
+/** The folder of the blocks of Basis, where the kernel says Basis stands: the folder it delivers it in, or below features/ */
+function upBasisBlocks(): string {
+
+	$probe = [];
+
+	return (string) ( \Nino\Features::get( $probe, 'basis' )['dir'] ?? '' ). '/blocks';
+}
+
 /** A site as a sandbox of its own: the kernel's components and Basis, the feature, and an account that holds the right of the panel */
 function upSite(): array {
 
@@ -131,7 +139,7 @@ function upFiles2( string $key = 'second-look', string $version = '1.2.0' ): arr
 	global $root;
 
 	$fixture = __DIR__. '/fixtures/themes/craft-probe';
-	$basis = $root. '/_nino/Nino/Modules/Basis/blocks';
+	$basis = upBasisBlocks();
 	$files = [
 		'theme.json'							=> json_encode( [ 'key' => $key, 'version' => $version, 'name' => [ 'de_DE' => 'Zweiter Blick', 'en_US' => 'Second look' ], 'description' => [ 'de_DE' => 'Warm und grün.', 'en_US' => 'Warm and green.' ],
 			'brand' => [ 'color-1' => '#8a2b0d', 'color-2' => '#1d3b2f', 'tone' => 'warm', 'font-title' => 'lato-demo' ] ], JSON_UNESCAPED_UNICODE ),
@@ -174,7 +182,7 @@ function upRich( string $key, string $version ): array {
 	global $root;
 
 	$fixture = __DIR__. '/fixtures/themes/craft-probe';
-	$basis = $root. '/_nino/Nino/Modules/Basis/blocks';
+	$basis = upBasisBlocks();
 	$page = (array) json_decode( (string) file_get_contents( $fixture. '/parts/page/part.json' ), true );
 	$page['values'] = [ 'size' => 1, 'width' => 0 ];
 	$files = [
@@ -1188,7 +1196,7 @@ $heavy = $files;
 foreach( range( 1, 6 ) as $at ) {
 
 	foreach( [ 'block.json', 'block.tpl', 'text/de_DE.json', 'text/en_US.json' ] as $name )
-		$heavy['blocks/heavy-'. $at. '/'. $name] = (string) file_get_contents( $root. '/_nino/Nino/Modules/Basis/blocks/split-image-text/'. $name );
+		$heavy['blocks/heavy-'. $at. '/'. $name] = (string) file_get_contents( upBasisBlocks(). '/split-image-text/'. $name );
 
 	$heavy['blocks/heavy-'. $at. '/images/picture.png'] = $noise;
 }

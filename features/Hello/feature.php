@@ -43,6 +43,7 @@ return [
 	'category'		=> 'system',				// one of \Nino\Features::CATEGORIES
 	'maturity'		=> 'Example',				// the badge beside the name, 24 characters at most
 	'version'			=> '2.0.0',
+	'requires'		=> [ 'basis' ],				// the page and the demo are made of its components
 	'nino'				=> '^2.0',					// the kernel whose vocabulary it uses
 	'data'				=> [ '/data/hello.php' ],					// what a backup carries
 	'settings'		=> [

@@ -452,7 +452,7 @@ $appData['/nino/modules'] = [ '\\Nino\\Modules\\Basis' ];
 
 $manifest = \Nino\Features::manifest( $featureDir );
 check( 'the manifest validates without a warning', is_array( $manifest ) === true && ninoWarnings() === [] );
-check( 'it is the key themes, written for the kernel 2.0, with a data directory and nothing to require', is_array( $manifest ) === true && $manifest['key'] === 'themes' && $manifest['nino'] === '^2.0' && $manifest['data'] === [ '/data/theme' ] && $manifest['requires'] === [] );
+check( 'it is the key themes, written for the kernel 2.0, with a data directory and Basis, whose groups its parts are for, to require', is_array( $manifest ) === true && $manifest['key'] === 'themes' && $manifest['nino'] === '^2.0' && $manifest['data'] === [ '/data/theme' ] && $manifest['requires'] === [ 'basis' ] );
 check( 'activation lists the class and records the version', \Nino\Features::activate( $appData, 'themes' ) === true && in_array( '\\Nino\\Modules\\Themes', $appData['/nino/modules'], true ) === true
 	&& \Nino\Features::get( $appData, 'themes' )['installed'] === $manifest['version'] );
 // A constant not every system defines: the flag for braces in a glob is missing where the C library is musl (the php of an Alpine image), and a glob that names it is an error there
@@ -2215,7 +2215,8 @@ check( 'every knob of the page turns one way: its steps grow from the first to t
 $planned = Compiler::plan( $site, Mix::of( $site, 'nino' ), [] )['groups'];
 $standards = [];
 
-foreach( glob( $root. '/_nino/Nino/Modules/Basis/groups/*/part/part.css' ) ?: [] as $file ) {
+// Basis stands where the kernel says: the folder it delivers it in, or below features/
+foreach( glob( ( \Nino\Features::get( $site, 'basis' )['dir'] ?? '' ). '/groups/*/part/part.css' ) ?: [] as $file ) {
 
 	preg_match( '/:root \{(.*?)\n\}/s', (string) file_get_contents( $file ), $standard );
 	preg_match_all( '/(--[a-z0-9-]+):\s*([^;]+);/', $standard[1] ?? '', $values );

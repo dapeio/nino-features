@@ -100,8 +100,8 @@ check( 'the files of the feature are there: the module, the API, the sheet, the 
 
 $manifest = require $feature. '/feature.php';
 
-check( 'the manifest is the one of a feature for the kernel of Nino 2, version 1.0.0, with the six sections of its manual - and it needs the Builder, whose editor it works with, and Themes, whose theme it develops on',
-	$manifest['key'] === 'themelab' && $manifest['nino'] === '^2.0' && $manifest['version'] === '1.0.0' && $manifest['requires'] === [ 'builder', 'themes' ] && array_keys( $manifest['manual'] ) === [ 'shortcodes', 'markup', 'routes', 'panel', 'callbacks', 'install' ]
+check( 'the manifest is the one of a feature for the kernel of Nino 2, version 1.0.0, with the six sections of its manual - and it needs Basis, whose components a new block begins with, the Builder, whose editor it works with, and Themes, whose theme it develops on',
+	$manifest['key'] === 'themelab' && $manifest['nino'] === '^2.0' && $manifest['version'] === '1.0.0' && $manifest['requires'] === [ 'basis', 'builder', 'themes' ] && array_keys( $manifest['manual'] ) === [ 'shortcodes', 'markup', 'routes', 'panel', 'callbacks', 'install' ]
 	&& str_contains( $manifest['manual']['panel']['Blocks']['en_US'], '/_admin/themelab/manage' ) === true && \Nino\Modules\Themelab::PERM === '/_admin/themelab/manage' );
 
 // The catalogue has no feature of the key "blocks" any more: the folders of the features, by their manifests, hold the key themelab once, no key blocks, nobody requires blocks - and no two folders are
@@ -260,7 +260,7 @@ check( 'an empty block is a section with one row and one column: its key is made
 // the gap and the alignments. The usual values are read from the templates of the basis, so that the pin follows them
 $usual = [];
 
-foreach( glob( $root. '/_nino/Nino/Modules/Basis/blocks/*/block.tpl' ) ?: [] as $file )
+foreach( glob( ( \Nino\Features::get( $site, 'basis' )['dir'] ?? '' ). '/blocks/*/block.tpl' ) ?: [] as $file )
 	foreach( [ 'section-wrap', 'section-row', 'section-col' ] as $call )
 		if( preg_match_all( '/\['. $call. '((?: \w+(?:="[^"]*")?)*)\]/', (string) file_get_contents( $file ), $found ) > 0 )
 			foreach( $found[1] as $attributes ) {

@@ -103,8 +103,8 @@ $appData = ninoSandbox( 'gallery' );
 $appData['./nino/filesystem/path'] = $root;
 $manifest = \Nino\Features::manifest( $dir );
 
-check( 'the manifest validates, is written for this kernel, and brings no component, no requirement and no stylesheet of the old kind',
-	is_array( $manifest ) === true && \Nino\Features::satisfies( (string) $manifest['nino'] ) === true && isset( $manifest['components'] ) === false && $manifest['requires'] === []
+check( 'the manifest validates, is written for this kernel, and brings no component and no stylesheet of the old kind, and requires Basis',
+	is_array( $manifest ) === true && \Nino\Features::satisfies( (string) $manifest['nino'] ) === true && isset( $manifest['components'] ) === false && $manifest['requires'] === [ 'basis' ]
 	&& $manifest['assets'] === [ '/features/Gallery/assets/gallery.js' ] && in_array( \Nino\Modules\Gallery::ALBUMS, $manifest['data'], true ) === true );
 check( 'Basis and the feature are switched on', \Nino\Features::activate( $appData, 'basis' ) === true && \Nino\Features::activate( $appData, 'gallery' ) === true );
 
@@ -378,7 +378,7 @@ ninoWarnings();
 // Nothing of the old components API, the old stylesheet vocabulary or the old ways of ending a request is left in the folder
 $oldWorld = [];
 foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS ) ) as $file )
-	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|\bnino-(?!admin-)[a-z]|--(?:space|color|radius|fontsize)-|--text-\d|Nino\.ui\.|E_USER_ERROR|GLOB_BRACE|\'requires\'\s*=>\s*\[\s*\'/', (string) file_get_contents( (string) $file ) ) === 1 )
+	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|\bnino-(?!admin-)[a-z]|--(?:space|color|radius|fontsize)-|--text-\d|Nino\.ui\.|E_USER_ERROR|GLOB_BRACE/', (string) file_get_contents( (string) $file ) ) === 1 )
 		$oldWorld[] = (string) $file;
 check( 'no file of the feature names the vocabulary of Nino 1', $oldWorld === [] );
 

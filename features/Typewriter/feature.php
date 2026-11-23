@@ -71,7 +71,7 @@ return [
 	'category'		=> 'ui',
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],
 	// Nothing under data/: what is typed is the text of the call
 	'data'				=> [],
 	// The script, into the site's script bundle; the look is the standard part of the group

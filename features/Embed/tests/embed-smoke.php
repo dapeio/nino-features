@@ -8,8 +8,8 @@ require $root. '/tests/harness.php';
 
 $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
-check( 'the manifest validates and is written for this kernel, with no component of the old form, no data and no required feature', is_array( $manifest ) === true && $manifest['key'] === 'embed' && \Nino\Features::satisfies( (string) $manifest['nino'] ) === true
-	&& isset( $manifest['components'] ) === false && $manifest['data'] === [] && $manifest['requires'] === [] && $manifest['assets'] === [ '/features/Embed/assets/embed.js' ] );
+check( 'the manifest validates and is written for this kernel, with no component of the old form, no data and Basis as its one required feature', is_array( $manifest ) === true && $manifest['key'] === 'embed' && \Nino\Features::satisfies( (string) $manifest['nino'] ) === true
+	&& isset( $manifest['components'] ) === false && $manifest['data'] === [] && $manifest['requires'] === [ 'basis' ] && $manifest['assets'] === [ '/features/Embed/assets/embed.js' ] );
 check( 'the settings are the Consent category that releases an embed without a press, empty to never, and the flag that lets one press carry the provider\'s others', array_keys( $manifest['settings'] ) === [ 'category', 'remember' ]
 	&& $manifest['settings']['category']['default'] === 'external' && $manifest['settings']['remember']['default'] === false );
 

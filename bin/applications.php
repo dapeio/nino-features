@@ -17,7 +17,13 @@ declare(strict_types=1);
  *										name					a string per locale, de_DE and en_US among them
  *										description	the same
  *										features			keys of features of this catalogue, at least one,
- *																	none twice, in the order the file gives them
+ *																	none twice, in the order the file gives them: the
+ *																	kernel sets them up one after the other, and a feature
+ *																	that requires another is switched on only where that
+ *																	one is there - so each follows the features it requires,
+ *																	and those are listed as well, but for what the kernel
+ *																	delivers: a project has that, and no application of an
+ *																	index built there can name it
  *										next					a path in the project with an optional anchor
  *																	("/_admin/#builder"), no scheme, no "//", or null
  *										start					who provides the start page: "starter" (the
@@ -88,10 +94,12 @@ function applicationNextIsPath( string $next ): bool {
  *
  *	@param		string		$directory		The applications/ directory; one that is not there holds none
  *	@param		array			$featureKeys	The keys of the features of this catalogue
+ *	@param		array			$requires			What each feature requires: key => list of keys. A feature that is not in it requires nothing
+ *	@param		array			$delivered		The keys of the features the kernel delivers itself: a feature may require them with no word of them in the list
  *
  *	@return 	array										[ applications sorted by key, the one with the most features last, problems ] - the problems are lines naming the file
  */
-function readApplications( string $directory, array $featureKeys ): array {
+function readApplications( string $directory, array $featureKeys, array $requires = [], array $delivered = [] ): array {
 
 	$applications	= [];
 	$problems			= [];
@@ -167,6 +175,12 @@ function readApplications( string $directory, array $featureKeys ): array {
 					$problems[] = $label. ': feature "'. $shown. '" is not a feature of this catalogue';
 				elseif( isset( $seen[$feature] ) === true )
 					$problems[] = $label. ': feature "'. $shown. '" is listed twice';
+
+				// The kernel sets the features up in the order of the list, and switching one on needs the features it requires there
+				if( is_string( $feature ) === true && isset( $seen[$feature] ) === false )
+					foreach( (array) ( $requires[$feature] ?? [] ) as $required )
+						if( isset( $seen[$required] ) === false && in_array( $required, $delivered, true ) === false )
+							$problems[] = $label. ': feature "'. $shown. '" requires "'. $required. '", which must be listed before it - the kernel sets the features up in the order of the list';
 
 				if( is_string( $feature ) === true )
 					$seen[$feature] = true;

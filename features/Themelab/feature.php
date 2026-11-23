@@ -43,7 +43,7 @@ return [
 	'version'			=> '1.0.0',
 	'nino'				=> '^2.0',					// the kernel with the draft of a preview and the blocks with variants
 	'php'					=> [],
-	'requires'		=> [ 'builder', 'themes' ],
+	'requires'		=> [ 'basis', 'builder', 'themes' ],
 	'data'				=> [],
 	'settings'		=> [],
 	'assets'			=> [],

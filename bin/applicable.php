@@ -17,11 +17,18 @@ declare(strict_types=1);
  *									not: it describes every feature of this repository, whatever
  *									it runs on.
  *
+ *									A feature the kernel delivers itself (bin/delivered.php: Basis,
+ *									where the kernel still carries it as a module) is not named
+ *									either: the kernel refuses a directory of that name, the copy
+ *									here rests, and the line on stderr says so. With --delivered
+ *									the script prints those directories instead, one per line, for
+ *									bin/check.sh, which lets their tests run against the kernel's.
+ *
  *									A manifest the kernel cannot read is not skipped: it is named
  *									like the others, so the step that validates every manifest
  *									is the one that fails on it.
  *
- *	Usage: php bin/applicable.php <path to a Nino checkout>
+ *	Usage: php bin/applicable.php <path to a Nino checkout> [--delivered]
  */
 
 $root = rtrim( (string) ( $argv[1] ?? getenv( 'NINO_ROOT' ) ?: '' ), '/' );
@@ -43,10 +50,33 @@ if( class_exists( '\Nino\Features' ) === false ) {
 	exit( 2 );
 }
 
+require __DIR__. '/delivered.php';
+
+$delivered = deliveredFeatures();
+
+if( ( $problems = deliveredProblems() ) !== [] ) {
+	fwrite( STDERR, implode( "\n", $problems ). "\n" );
+	exit( 1 );
+}
+
+if( in_array( '--delivered', $argv, true ) === true ) {
+
+	foreach( $delivered as $directory )
+		if( is_dir( NINO_FEATURES_DIR. '/'. $directory ) === true )
+			echo $directory, "\n";
+
+	exit( 0 );
+}
+
 foreach( scandir( NINO_FEATURES_DIR ) ?: [] as $directory ) {
 
 	if( $directory[0] === '.' || is_dir( NINO_FEATURES_DIR. '/'. $directory ) === false )
 		continue;
+
+	if( in_array( $directory, $delivered, true ) === true ) {
+		fwrite( STDERR, $directory. ': delivered by Nino '. \Nino\VERSION. ' itself (_nino/Nino/Modules/'. $directory. '): not copied, not read, its tests run against that one'. "\n" );
+		continue;
+	}
 
 	$manifest = \Nino\Features::manifest( NINO_FEATURES_DIR. '/'. $directory );
 

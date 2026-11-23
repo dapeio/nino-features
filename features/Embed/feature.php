@@ -75,7 +75,7 @@ return [
 		which is the safe half of what this does and works on its own. With it,
 		a visitor who has already allowed external media does not have to press
 		anything - see Embed.php on the two ways a frame is released	*/
-	'requires'		=> [],
+	'requires'		=> [ 'basis' ],			// the blocks and the frame are made of its components
 	// Nothing under data/: what is embedded is written into the project's own
 	// templates, and whether a visitor allowed it is Consent's cookie in
 	// their own browser
