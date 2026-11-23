@@ -16,8 +16,8 @@ return [
 				'de_DE' => 'Die Vorlage einer Seite wird als Folge von Blocks gelesen, je ein Aufruf auf oberster Ebene; freies HTML und Aufrufe ohne Schema stehen als gesperrte Blocks da.',
 			],
 			'frame-header.tpl' => [
-				'en_US' => 'The header and the footer stand in every page as two quiet rows and are written in Themelab, under Header/footer; their texts and pictures are written in the page.',
-				'de_DE' => 'Kopfbereich und Fußbereich stehen in jeder Seite als zwei leise Zeilen und werden in Themelab unter Kopf-/Fußbereich geschrieben; ihre Texte und Bilder schreibt man in der Seite.',
+				'en_US' => 'The header and the footer stand in every page as two quiet rows; the tab Header/footer makes, writes, renames and deletes them for whoever designs.',
+				'de_DE' => 'Kopfbereich und Fußbereich stehen in jeder Seite als zwei leise Zeilen; der Reiter Kopf-/Fußbereich legt sie an, schreibt, benennt um und löscht sie für alle, die gestalten.',
 			],
 		],
 		'routes' => [
@@ -44,8 +44,12 @@ return [
 				'de_DE' => 'Der Stift an einer Komponente und eine Zeile des Baums öffnen ihre Eigenschaften in einer Lightbox: Quelle, Inhalt, Aussehen und Erweitert (die Kennung), die letzten beiden für alle, die gestalten.',
 			],
 			'/_admin/builder/*' => [
-				'en_US' => 'Every role needs the door /_admin/builder/manage; content/* allows texts and pictures of the blocks on a page, design/* also putting together and designing; header/footer and html belong to Blocks.',
-				'de_DE' => 'Jede Rolle braucht die Tür /_admin/builder/manage; content/* erlaubt Texte und Bilder der Blocks einer Seite, design/* auch Zusammensetzen und Gestalten; Kopf-/Fußbereich und html gehören zu Blocks.',
+				'en_US' => 'The door /_admin/builder/manage is needed; content/* allows texts and pictures, design/* also designing, header and footer too; html there needs the right of Themelab.',
+				'de_DE' => 'Die Tür /_admin/builder/manage ist nötig; content/* erlaubt Texte und Bilder, design/* auch Gestalten, Kopf- und Fußbereich eingeschlossen; html dort braucht das Recht von Themelab.',
+			],
+			'Header/footer' => [
+				'en_US' => 'The tab for the header and the footer of the site: a table with search and a choice of the side, and New, Edit, Choose, Save as block, Rename and Delete for whoever designs.',
+				'de_DE' => 'Der Reiter für Kopf- und Fußbereich der Website: eine Tabelle mit Suche und Auswahl des Bereichs, und Neu, Bearbeiten, Auswählen, Als Block sichern, Umbenennen und Löschen für alle, die gestalten.',
 			],
 			'Variant' => [
 				'en_US' => 'A block of the catalogue with variants has a choice of them in its bar and in its look, for whoever designs; a variant sets looks and keeps the texts and pictures.',

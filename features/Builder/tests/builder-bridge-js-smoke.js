@@ -28,6 +28,8 @@ const sheet = fs.readFileSync( path.join( featureDir, 'assets/admin.css' ), 'utf
 const de = fs.readFileSync( path.join( featureDir, 'text/de_DE.php' ), 'utf8' );
 const en = fs.readFileSync( path.join( featureDir, 'text/en_US.php' ), 'utf8' );
 const panelPhp = fs.readFileSync( path.join( featureDir, 'Admin/Admin.php' ), 'utf8' );
+const tabPhp = fs.readFileSync( path.join( featureDir, 'FramesTab/FramesTab.php' ), 'utf8' );
+const tabScript = fs.readFileSync( path.join( featureDir, 'assets/admin-frames.js' ), 'utf8' );
 const notices = fs.readFileSync( path.join( featureDir, '../../THIRD-PARTY-NOTICES.md' ), 'utf8' );
 
 const has = function( pattern ) { return pattern.test( script ) };
@@ -58,10 +60,10 @@ check( 'B1. a block of the page is taken as a block of the project - the page un
 	&& has( /S\.bridge = data\.bridge === true/ ) === true && has( /S\.own = response\.own \?\? /) === true );
 check( 'B2. the way is asked about unsaved work first, and goes to the address of the block in the panel of the blocks - never to a block the page names itself',
 	has( /Nino\.admin\.dirty\.guard\( \[ 'builder' \], function\(\) \{ Nino\.admin\.router\.go\( 'themelab', \[ key \] \) \} \)/ ) === true && has( /editInBlocks\( S\.own\[box\.block\] \)/ ) === true );
-check( 'B3. the rows of the header and the footer in the outline are a display - "applies to all pages" - and have a button to the editor of the blocks only for the one who holds its right',
-	has( /item\.kind === 'frame' && S\.bridge === true && \( row\.key === '@header' \|\| row\.key === '@footer' \)/ ) === true && has( /'themelab', \[ '@frames', id === '@footer' \? 'footer' : 'header' \]/ ) === true );
-check( 'B3b. the way from the row of a frame in the outline of a page to the editor of that frame is the address of the tab with the @: #themelab/@frames/header or footer',
-	has( /router\.go\( 'themelab', \[ '@frames', id === '@footer' \? 'footer' : 'header' \] \)/ ) === true );
+check( 'B3. the rows of the header and the footer in the outline are a display - "applies to all pages" - and have a button to the editor of that frame, in the tab of the frames of this pane, for the one who designs',
+	has( /item\.kind === 'frame' && S\.level >= DESIGN && \( row\.key === '@header' \|\| row\.key === '@footer' \)/ ) === true && has( /key : 'frame-edit'/ ) === true && has( /'builder-frames', \[ choice === 'default' \|\| choice === 'none' \? side : side\+ '-'\+ choice \]/ ) === true );
+check( 'B3b. the way from the row of a frame in the outline of a page to the editor of that frame is the address of the tab of the frames: #builder-frames/header, #builder-frames/footer and #builder-frames/header-landing for the frame the page chooses - and the page has no way into Themelab for it',
+	has( /router\.go\( 'builder-frames', \[/ ) === true && has( /router\.go\( 'themelab', \[ '@frames'/ ) === false && has( /sideOfCall\( node \) === side/ ) === true );
 check( 'B4. the words of the two ways are in both languages and say what they do: "take over into own blocks", "open in Themelab"',
 	word( de, 'own/open' ).indexOf( 'Eigene Blocks' ) !== -1 && word( en, 'own/open' ).indexOf( 'Own blocks' ) !== -1 && word( de, 'own/edit' ).indexOf( 'Themelab' ) !== -1 && word( en, 'own/edit' ).indexOf( 'Themelab' ) !== -1 );
 
@@ -98,9 +100,8 @@ check( 'C5c. the bar of a section has the pencil of its section and a button for
 	has( /const sectionTools = function\( node, block \)/ ) === true && has( /pencil\.dataset\.action = 'properties'/ ) === true && has( /button\.dataset\.action = 'row'/ ) === true && has( /openProperties\( at, 'root', opener \)/ ) === true
 	&& has( /const ROW_BUTTONS\s*= 6;/ ) === true && has( /const sectionPen = function\( at \)[\s\S]*?hasProperties\( 'root' \)/ ) === true && has( /button\.addEventListener\( 'pointerenter', function\(\) \{ show\( true \) \} \)/ ) === true
 	&& [ 'label/edit-section', 'label/edit-row', 'ident/change-of', 'ident/field-of', 'ident/fixed-of', 'ident/why-frame', 'ident/why-block', 'ident/why-content', 'ident/why-locked', 'ident/form', 'ident/long', 'ident/taken' ].every( function( key ) { return word( de, key ) !== '' && word( en, key ) !== '' && word( de, key ) !== word( en, key ) } ) === true );
-check( 'C5d. the frames of the list of the pages are all the frames of the site: a named one by the name it was given with its word beside it, and by its word where it has no name; the standard ones by the words of the panel, the line under the title telling the number of pages only',
-	has( /const name = frameName\( frame\.key, frame \);/ ) === true && has( /entry\.name !== '' \? entry\.name : key\.replace\( \/\^\(\?:header\|footer\)-\/, '' \)/ ) === true && has( /frame\.default === true \|\| frame\.name === '' \? count : word\( 'frame\/word', frame\.key\.replace\( \/\^\(\?:header\|footer\)-\/, '' \), count \)/ ) === true
-	&& has( /key === 'header' \|\| key === 'footer' \? word\( 'frame\/'\+ key \)/ ) === true && has( /data\.frames\.map\( function\( frame \) \{/ ) === true );
+check( 'C5d. the frames of the tab are all the frames of the site: a named one by the name it was given with its word beside it, and by its word where it has no name; the standard ones by the words of the side, the second line telling the word and the number of pages in a column of its own',
+	/const frameName = function\( frame \) \{\s*return frame\.default === true \? word\( 'frame\/'\+ sideOf\( frame \) \) : \( frame\.name !== '' \? frame\.name : frame\.key\.slice\( sideOf\( frame \)\.length \+ 1 \) \);/.test( tabScript ) === true && /word : frame\.default === true \? word\('frame\/standard'\) : word\( 'frame\/word-of'/.test( tabScript ) === true && /data\.frames\.filter\(/.test( tabScript ) === true );
 check( 'C6. the pencil belongs to the component under a pointer that stands still when the page is rolled: the roll asks what is under the pointer again, and a pointer that left the page asks nothing',
 	has( /let pointerAt = null;/ ) === true && has( /doc\.addEventListener\( 'pointerleave', function\(\) \{ pointerAt = null; outerAt = null \} \)/ ) === true && has( /doc\.elementFromPoint\( pointerAt\.x, pointerAt\.y \)/ ) === true
 	&& /place\(\);\s*rollAim\(\);/.test( script ) === true );
@@ -129,8 +130,8 @@ check( 'D2. the width that is chosen in the lightbox is the width of the preview
 	has( /const showWidth = function\( device \)/ ) === true && has( /S\.view\.preview\.width\( device\.width \)/ ) === true && has( /S\.tools\.setWidth\( device\.width \)/ ) === true && has( /showWidth\( DEVICES\.find\( function\( device \) \{ return device\.width === value \} \) \)/ ) === true );
 check( 'D6. the wide column of the settings beside the preview is the workbench\'s: split() is given settingsWidth \'wide\' for a sheet that opens its properties in the column - the Blocks editors - and for no other, and the stylesheet of the feature has no rule of its own for the width of the column of a split',
 	has( /settingsWidth\s*: S\.adapter\.props === 'panel' \? 'wide' : undefined/ ) === true && /nino-admin-split--fill > \.nino-admin-split-grid \{\s*grid-template-columns/.test( sheet ) === false && /480px/.test( sheet ) === false );
-check( 'D7. a column too narrow for a label beside its field stacks them - the label over the field -, so that a choice is never cut: the label goes to the left of the field only where the column is 22 rem wide - the column is the one of the workbench, and the preview gives way - and the strip of the preview over the column of a narrow window is the one rule for it, in a container query of the split, for #themelab-app',
-	/@container builder-props \(min-width: 22rem\) \{\s*\.builder-props \.nino-admin-field \{\s*display: grid;/.test( sheet ) === true && /@container nino-split \(max-width: 44rem\) \{[\s\S]*?#themelab-app \.nino-admin-split--fill\.builder-props-live\[data-view="settings"\] > \.nino-admin-split-grid \{\s*grid-template-rows: 9rem minmax\(0, 1fr\);/.test( sheet ) === true );
+check( 'D7. a column too narrow for a label beside its field stacks them - the label over the field -, so that a choice is never cut: the label goes to the left of the field only where the column is 22 rem wide - the column is the one of the workbench, and the preview gives way - and the strip of the preview over the column of a narrow window is the one rule for it, in a container query of the split, for #builder-frames-app and #themelab-app',
+	/@container builder-props \(min-width: 22rem\) \{\s*\.builder-props \.nino-admin-field \{\s*display: grid;/.test( sheet ) === true && /@container nino-split \(max-width: 44rem\) \{[\s\S]*?:is\( #builder-frames-app, #themelab-app \) \.nino-admin-split--fill\.builder-props-live\[data-view="settings"\] > \.nino-admin-split-grid \{\s*grid-template-rows: 9rem minmax\(0, 1fr\);/.test( sheet ) === true );
 check( 'D3. the row of the devices has no caption on the screen and keeps its name for a screen reader; the inputs that the width switches share one quiet surface with it - and so does a setting that has one value for each width',
 	has( /el\( 'span', 'nino-admin-sr-only', word\('rows\/width'\) \)/ ) === true && has( /'builder-widths-group builder-widths-box'/ ) === true && has( /'nino-admin-field builder-widths-set builder-widths-box'/ ) === true
 	&& /\.builder-lightbox \.builder-widths-box \{[^}]*background: var\(--editor-bg\);/.test( sheet ) === true );
@@ -174,30 +175,28 @@ check( 'D4. the notation of a component is no part of a page: the button behind 
 check( 'D5. the notices of the third party name no strokes of the Builder: it draws no icon of its own',
 	/The catalogue's own code/.test( notices ) === false || /GLYPHS/.test( notices ) === false );
 
-check( 'F299 T1. the button of a row of the tab of the header/footer says "Auswählen" / "Choose" and keeps its name for each side - "%s auswählen" / "Choose %s" -, and the dialog it opens has a title of its own that names what is chosen: the two do not share a key',
-	word( de, 'frame/choose' ) === 'Auswählen' && word( en, 'frame/choose' ) === 'Choose' && word( de, 'frame/choose-of' ) === '%s auswählen' && word( en, 'frame/choose-of' ) === 'Choose %s'
+check( 'F299 T1. the button of a row of the tab of the header/footer says "Auswählen" / "Choose" and keeps its name for each side - "Kopfbereich „%s“ auswählen" / "Choose header “%s”" -, and the dialog it opens has a title of its own that names what is chosen: the two do not share a key',
+	word( de, 'frame/choose' ) === 'Auswählen' && word( en, 'frame/choose' ) === 'Choose' && word( de, 'frame/choose-of-header' ) === 'Kopfbereich „%s“ auswählen' && word( en, 'frame/choose-of-header' ) === 'Choose header “%s”' && word( de, 'frame/choose-footer' ) === 'Fußbereich auswählen'
 	&& word( de, 'frame/choose-title-header' ) === 'Kopfbereich wählen' && word( de, 'frame/choose-title-footer' ) === 'Fußbereich wählen' && word( en, 'frame/choose-title-header' ) === 'Choose header' && word( en, 'frame/choose-title-footer' ) === 'Choose footer'
-	&& has( /title\s*: word\( 'frame\/choose-title-'\+ side \)/ ) === true && has( /Nino\.adminUi\.button\( word\('frame\/choose'\)/ ) === true );
+	&& has( /title\s*: word\( 'frame\/choose-title-'\+ side \)/ ) === true && /Nino\.adminUi\.button\( word\('frame\/choose'\)/.test( tabScript ) === true );
 
 check( 'F326 e. a row of the tab "Header/footer" has no button "Edit in Themelab": no call, no word, no name of it - the tab chooses, Themelab is where a header and a footer are written',
 	has( /frame\/themelab|\[ '@frames', frame\.key \]/ ) === false && word( de, 'frame/themelab' ) === '' && word( en, 'frame/themelab' ) === '' && word( de, 'frame/themelab-of' ) === '' && word( en, 'frame/themelab-of' ) === '' );
 
 console.log( '\nF312. The pane of the pages' );
 
-const tabPhp = fs.readFileSync( path.join( featureDir, 'FramesTab/FramesTab.php' ), 'utf8' );
-const tabScript = fs.readFileSync( path.join( featureDir, 'assets/admin-frames.js' ), 'utf8' );
 
 check( 'F312 a. the panel is called "Seiten" / "Pages" in the rail and over the pane - and only there: the feature, its right and the roles tab keep the name "Builder" (scope/name), and the first tab of the pane is the pages',
 	word( de, 'nav' ) === 'Seiten' && word( en, 'nav' ) === 'Pages' && word( de, 'scope/name' ) === 'Builder' && word( en, 'scope/name' ) === 'Builder' && word( de, 'tab/pages' ) === 'Seiten' && word( en, 'tab/pages' ) === 'Pages'
 	&& /'label' => '\/_admin\/builder\/scope\/name'/.test( panelPhp ) === true && /public static function tab\(\): string \{\s*return '\/_admin\/builder\/tab\/pages';/.test( panelPhp ) === true
 	&& /\[ 'builder', '\/_admin\/builder\/nav', 61 \]/.test( panelPhp ) === true );
-check( 'F312 b. "Kopf-/Fußbereich" / "Header/footer" is a tab of the pane, a tab of the kernel\'s own kind with the right of the panel and no right of its own: the panel brings it by tabs(), it has the uri builder-frames, its word, its file, the words of the panel and no action',
+check( 'F312 b. "Kopf-/Fußbereich" / "Header/footer" is a tab of the pane, a tab of the kernel\'s own kind with the step of the design of the panel and no right of its own: the panel brings it by tabs(), it has the uri builder-frames, its word, its mounts - the list and the sheet of the editor -, its file and the words of the panel; the actions are the panel\'s own',
 	/public static function tabs\(\): array \{\s*return \[ FramesTab::class \];/.test( panelPhp ) === true && /return \[ 'builder-frames', '\/_admin\/builder\/tab\/frames', \d+ \];/.test( tabPhp ) === true && /public static function perm\(\): string \{[\s\S]*?\\Nino\\Modules\\Builder::DESIGN : Admin::perm\(\);/.test( tabPhp ) === true && /public static function scope\(\): string \{\s*return \\Nino\\Modules\\Builder::SCOPE;/.test( tabPhp ) === true
-	&& /admin-frames\.js/.test( tabPhp ) === true && /public static function actions\(\): array \{\s*return \[\];/.test( tabPhp ) === true && /public static function text\(\): string \{\s*return Admin::text\(\);/.test( tabPhp ) === true
-	&& word( de, 'tab/frames' ) === 'Kopf-/Fußbereich' && word( en, 'tab/frames' ) === 'Header/footer' && /wn\.Nino\.admin\['builder-frames'\] = \{\s*showCurrent/.test( tabScript ) === true );
-check( 'F312 c. the list of the pages has no strip of tabs of its own - none is made, none has a style, no word - and the frames are drawn into the mount of the tab from the same answer; the address of before, #builder/@frames, leads to #builder-frames',
+	&& /admin-frames\.js/.test( tabPhp ) === true && /public static function template\(\): string \{[\s\S]*?templates\/frames/.test( tabPhp ) === true && /public static function actions\(\): array \{\s*return \[\];/.test( tabPhp ) === true && /public static function text\(\): string \{\s*return Admin::text\(\);/.test( tabPhp ) === true
+	&& word( de, 'tab/frames' ) === 'Kopf-/Fußbereich' && word( en, 'tab/frames' ) === 'Header/footer' && /wn\.Nino\.admin\[TAB\] = \{/.test( tabScript ) === true && /const TAB = 'builder-frames';/.test( tabScript ) === true );
+check( 'F312 c. the list of the pages has no strip of tabs of its own - none is made, none has a style, no word - and the frames are drawn by the tab itself, into its own mount, from the list of its own (builder/frame-list), not from the answer of the pages; the address of before, #builder/@frames, leads to #builder-frames',
 	has( /Nino\.adminUi\.tabs\(/ ) === false && has( /builder-tabs/ ) === false && sheet.indexOf( 'builder-tabs' ) === -1 && word( de, 'tab/label' ) === '' && word( en, 'tab/label' ) === ''
-	&& has( /const drawFrames = function\( data \)[\s\S]*?dc\.getElementById\('builder-frames-list'\)/ ) === true && has( /drawFrames\( data \);/ ) === true
+	&& has( /drawFrames|framesList/ ) === false && /call\( 'frame-list', \{\}/.test( tabScript ) === true && /dc\.getElementById\('builder-frames-list'\)/.test( tabScript ) === true
 	&& has( /wn\.location\.replace\( Nino\.admin\.router\.href\( framesTabFor\( S\.list \), \[\] \) \)/ ) === true && has( /return list !== null && list\.frames\.length > 0 \? 'builder-frames' : 'builder';/ ) === true && word( de, 'frame/empty' ) === '' && word( en, 'frame/empty' ) === '' && has( /const isFramesTab = function\( parts \) \{\s*return parts\.length === 1 && parts\[0\] === FRAMES_TAB;/ ) === true );
 
 console.log( '\nF304. The dialog Source' );
@@ -242,8 +241,8 @@ check( 'F294 T5. the advanced part has no id row for a component below a section
 	has( /const advancedWants = function\( rel \)/ ) === true && has( /S\.level >= 2 && advancedWants\( rel \) === true \)\s*sections\.push\( \{ key : 'advanced'/ ) === true
 	&& has( /const id = rel === 'root' && S\.sheet === 'page' \? Object\.keys/ ) === true && has( /if\( sections\.length === 0 \) \{\s*holder\.appendChild\( el\( 'p', 'builder-props-none', word\('box\/none'\) \) \);/ ) === true
 	&& word( de, 'box/none' ) !== '' && word( en, 'box/none' ) !== '' );
-check( 'F294 T6. the heading of the tab of the frames says "Standard-Wert für jede Seite" and "Default for every page" - the word "Rahmen" in the other words of the panel is not part of it',
-	word( de, 'frame/title' ) === 'Standard-Wert für jede Seite' && word( en, 'frame/title' ) === 'Default for every page' );
+check( 'F294 T6. the tab of the frames has no heading of its own - the head of the pane names it, "Kopf-/Fußbereich" and "Header/footer" - and the word of the old heading, "Standard-Wert für jede Seite", is gone from both languages',
+	word( de, 'frame/title' ) === '' && word( en, 'frame/title' ) === '' && word( de, 'tab/frames' ) === 'Kopf-/Fußbereich' && word( en, 'tab/frames' ) === 'Header/footer' );
 
 {
 	// The word for the head and the foot of a page: in German "Kopfbereich", "Fußbereich" and "Kopf-/Fußbereich", in English "header" and "footer" and "header/footer" - the old words are in no text of the

@@ -1065,6 +1065,24 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	Whether a tree holds a piece that a person who may not develop does not write - free markup, a fill, a call that has no schema, the call of html with what it holds -: what a
+		 *	replacement of the whole tree takes away from them
+		 *
+		 *	@param		array			$nodes
+		 *	@param		array			$registry
+		 *
+		 *	@return 	bool
+		 */
+		public static function pieced( array $nodes, array $registry ): bool {
+
+			$pieces = [];
+			$units = [];
+			self::_pieces( $nodes, $registry, false, $pieces, $units );
+
+			return $pieces !== [];
+		}
+
+		/**
 		 *	The pieces of a tree that a person who designs does not write: free markup, a fill, a call that has no schema, and - where the call of html is not for the
 		 *	person - html with what it holds. A piece is the text without its blanks, or the node as it is written. The pieces that follow one another in a container,
 		 *	with nothing but blanks between, are a unit - a call of a frame that follows another is the start of one of its own -; it is told by the container it stands in - the names of the calls it stands in, from the top of the page down, so that it never gets an ancestor it did not have: no loop, no other kind of container - and what it holds

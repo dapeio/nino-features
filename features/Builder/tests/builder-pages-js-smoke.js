@@ -847,138 +847,19 @@ function world( options ) {
 	}
 }
 
-// --- the tab of the frames: a header and a footer that are given a block of their kind, without the editor of Themelab -----------------------------------------
-
-{
-	const frames = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 2, stamp : 'aa', last : 0, undo : false }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 0, stamp : 'bb', last : 1763356920, undo : true } ];
-	const w = world( { list : answer( { frames : frames, bridge : false } ) } );
-
-	w.open('#builder');
-
-	const buttons = function( node ) { return findAll( node, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-btn') !== -1 && el.className.indexOf('nino-admin-btn-icon') === -1 } ).map( textOf ) };
-	const rows = findAll( w.frames, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'footer' ) } );
-
-	check( 'G. the list of the pages has the two frames for the one who designs - a row each, "applies to all pages", with the choice of a block, the way back only where there is a last state, and nothing that names Themelab where Themelab is off',
-		rows.length === 2 && buttons( rows[0] ).join() === W('frame/choose') && buttons( rows[1] ).join() === W('frame/choose')+ ','+ W('frame/undo') && textOf( rows[0] ).indexOf( W( 'frame/uses-many', '2' ) ) !== -1 && textOf( rows[1] ).indexOf( W('frame/uses-none') ) !== -1 && buttons( w.list ).indexOf( W('frame/themelab') ) === -1 && buttons( w.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 0 );
-
-	const content = world( { list : answer( { frames : [] } ) } );
-
-	content.open('#builder');
-
-	const bridged = world( { list : answer( { frames : frames, bridge : true } ) } );
-
-	bridged.open('#builder');
-
-	check( 'G. the account that only writes the content gets no frames from the server and so no row of them; and no row has a button "Edit in Themelab" - not where Themelab is on and the account holds its right either: the tab chooses, Themelab edits',
-		findAll( content.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header' } ).length === 0 && buttons( bridged.frames ).filter( function( text ) { return text === W('frame/themelab') } ).length === 0 && buttons( bridged.frames ).every( function( text ) { return text === W('frame/choose') || text === W('frame/undo') } ) );
-
-	// the choice: the blocks of the frame are asked by its template, the dialog names each with where it comes from, the question is asked before anything is written - and the answer yes writes that block
-	fire( findAll( rows[0], function( el ) { return el.tagName === 'BUTTON' && textOf( el ) === W('frame/choose') } )[0], 'click' );
-
-	const asked = w.requests.filter( function( entry ) { return entry.action === 'builder/framechoices' } )[0];
-
-	const entry = function( key, source, kind, label, extra ) { return Object.assign( { key : key, name : key, description : '', category : 'header', origin : { kind : kind, label : label }, own : kind === 'project', source : source, applied : false, off : null }, extra ?? {} ) };
-
-	asked.callback( { status : 200, responseJSON : { blocks : [
-		entry( 'soft', 'second', 'theme', 'Craft' ), entry( 'alike', 'other', 'theme', 'Craft' ), entry( 'basic', 'basis', 'basis', 'Basis' ),
-		entry( 'applied', 'nino', 'theme', 'Nino', { applied : true } ), entry( 'mine', 'project', 'project', 'Project' ),
-	], categories : [] }, getAllResponseHeaders : function() { return 'x' } } );
-
-	const dialog = w.dialogs[w.dialogs.length - 1];
-	const items = findAll( dialog, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-pick-item') !== -1 } );
-	const heads = findAll( dialog, function( el ) { return el.className === 'nino-admin-pick-group-title' } ).map( textOf );
-	const tiles = w.requests.filter( function( entry ) { return entry.action === 'builder/frametile' } );
-
-	check( 'G. the dialog of the choice has the blocks of the kind of the frame from every source under the name of their source - the own ones, the theme in use, then the others by name, two themes of one name told apart by their key - and asks the server by the template of the frame; nothing is written by asking',
-		asked.payload.template === 'frame-header' && heads.join('|') === [ W('frame/own'), W( 'frame/theme', 'Nino' ), 'Basis', W( 'frame/theme-key', 'Craft', 'other' ), W( 'frame/theme-key', 'Craft', 'second' ) ].join('|')
-		&& items.map( textOf ).join() === 'mine,applied,basic,alike,soft' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0
-		&& textOf( dialog ).indexOf( W('frame/choose-title-header') ) !== -1 && textOf( dialog ).indexOf( W('frame/choose-title-footer') ) === -1 );
-
-	// each item is a tile whose picture is the tile of the dialog of the blocks - asked for by the template of the frame and the key of the block - drawn in the face of the item, in the order of the items
-	tiles.forEach( function( request ) { request.callback( { status : 200, responseJSON : { token : 't', query : 'nino-preview=tok-'+ request.payload.key, ttl : 600, address : '/home' }, getAllResponseHeaders : function() { return 'x' } } ) } );
-
-	const faces = findAll( dialog, function( el ) { return String( el.className ).indexOf('nino-admin-pick-image') !== -1 } );
-	const framed = faces.map( function( face ) { const frame = findAll( face, function( el ) { return el.tagName === 'IFRAME' } )[0]; return frame === undefined ? '' : String( frame.attributes.src ?? frame.src ).split('tok-')[1] } );
-
-	check( 'G. the picture of each item is the tile that the dialog of the blocks draws, asked for once by the template of the frame and the key of the block, and it stands in the face of that item - the first face has the first item\'s block, the last the last\'s - with no other request than that',
-		tiles.length === 5 && tiles.every( function( request ) { return request.payload.template === 'frame-header' } ) && framed.join() === 'mine,applied,basic,alike,soft' );
-
-	fire( items[4], 'click' );
-	fire( dialog, 'close' );
-
-	const question = w.questions[w.questions.length - 1];
-
-	check( 'G. the whole frame goes by the choice, so it is asked first - destructive, naming the frame and the block - and only the answer yes asks the server to write: the template, the key, the stamp of the frame the list saw and the language, and no tree, no words, no right',
-		question !== undefined && question.level === 'destructive' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0 && ( question.options.onChoose( true ), w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 1 )
-		&& Object.keys( w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } )[0].payload ).sort().join() === 'base,key,locale,template' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } )[0].payload.base === 'aa' );
-
-	// the frame was saved elsewhere meanwhile: the server says so with its own code - the list says it in words and is drawn again, and nothing is forced
-	const chose = w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } )[0];
-
-	w.requests.length = 0;
-	chose.callback( { status : 409, responseJSON : { error : 'x', code : 'builder_frame_changed' }, getAllResponseHeaders : function() { return 'x' } } );
-
-	check( 'G. a frame that was changed since the list was drawn is not forced: the answer 409 with the code of the frame says so in words, the list is asked for again, and no request is made with force',
-		w.said.indexOf( W('frame/changed-header') ) !== -1 && w.requests.filter( function( entry ) { return entry.action === 'builder/list' } ).length === 1 && w.requests.every( function( entry ) { return entry.payload.force === undefined } ) );
-
-	// a frame that is made of a block is no replacement: the same dialog applies the choice at once, with no question
-	{
-		const chosen = [];
-		const before = w.questions.length;
-
-		w.panel.chooseFrame( { name : 'Header', opener : null, dir : '', confirm : false, load : function( done ) { done( 200, { blocks : [ entry( 'one', 'project', 'project', 'Project' ) ], categories : [] } ) }, tile : function() {}, fail : function() {}, none : function() {}, apply : function( key ) { chosen.push( key ) } } );
-
-		const pick = w.dialogs[w.dialogs.length - 1];
-
-		fire( findAll( pick, function( el ) { return el.tagName === 'BUTTON' && el.className.indexOf('nino-admin-pick-item') !== -1 } )[0], 'click' );
-		fire( pick, 'close' );
-
-		check( 'G. the dialog of the blocks of a frame, asked not to confirm - for a frame that is made of a block, which replaces none - applies the block at once and asks no question', chosen.join() === 'one' && w.questions.length === before );
-	}
-}
-
-// --- the pane has the tab of the frames beside the pages: no strip of tabs inside the list, the tab is drawn from the same answer, and the old address leads to it ----------------------------------
+// --- the pane has the tab of the frames beside the pages: the old address leads to it, and a page called "frames" is a page ----------------------------------
 
 {
 	const named = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 3, stamp : 'aa', last : 0, undo : false },
 		{ key : 'header-landing', side : 'header', template : 'frame-header-landing', default : false, names : { de_DE : 'Landung', en_US : 'Landing' }, name : 'Landing', uses : 1, stamp : 'cc', last : 0, undo : false },
 		{ key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 4, stamp : 'bb', last : 0, undo : false } ];
-	const tabs = function( node ) { return findAll( node, function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ) };
+
 	const w = world( { list : answer( { frames : named, bridge : true } ) } );
 
 	w.open('#builder');
 
-	const rows = findAll( w.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } );
-
-	check( 'T. the list of the pages has no tabs of its own - the frames are the tab of the pane, drawn from the same answer into its own mount: the pages are in the list and the frames are not, the named frame is a row with its name, its word and the number of pages, the standard ones are marked with theirs',
-		tabs( w.list.parentNode ?? w.list ).length === 0 && w.table() !== null && findAll( w.list, function( el ) { return el.dataset !== undefined && el.dataset.row === 'header-landing' } ).length === 0
-		&& rows.length === 1 && textOf( rows[0] ).indexOf('Landing') !== -1 && textOf( rows[0] ).indexOf( W( 'frame/word', 'landing', W('frame/uses-one') ) ) !== -1 && textOf( w.frames ).indexOf( W( 'frame/uses-many', '3' ) ) !== -1
-		&& textOf( w.frames ).indexOf( W('frame/title') ) !== -1 );
-
-	// F344 d.: a row says which header or footer it is and what the dialog of a page's choice calls it - the word of the standard one, the name of a named one -, and the name is text
-	const odd = '<img src=x onerror=alert(1)> '+ 'long '.repeat( 40 );
-	const marked = named.map( function( frame ) { return frame.key === 'header-landing' ? Object.assign( {}, frame, { names : { de_DE : odd, en_US : odd }, name : odd } ) : frame } );
-	const naming = world( { list : answer( { frames : marked, bridge : true } ) } );
-
-	naming.open('#builder');
-
-	const rowText = function( x, key ) { return textOf( findAll( x.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === key } )[0] ) };
-
-	check( 'F344 d. each row of the frames says the side and the name the dialog of a page shows for it: "side: Standard" for the standard header and footer, "side: name" for a named one - the name as text, never as markup, and a long one in the same row',
-		rowText( w, 'header' ).indexOf( W( 'frame/of', W('frame/header'), W('frames/default') ) ) !== -1 && rowText( w, 'footer' ).indexOf( W( 'frame/of', W('frame/footer'), W('frames/default') ) ) !== -1
-		&& rowText( w, 'header-landing' ).indexOf( W( 'frame/of', W('frame/header'), 'Landing' ) ) !== -1
-		&& rowText( naming, 'header-landing' ).indexOf( W( 'frame/of', W('frame/header'), odd ) ) !== -1 && findAll( naming.frames, function( el ) { return el.tagName === 'IMG' } ).length === 0
-		&& findAll( naming.frames, function( el ) { return el.dataset !== undefined && el.dataset.row !== undefined } ).length === 3 );
-
-	// F344 g.: the line under the title tells what the title does not: the name of the title is not said a second time
-	const detailOf = function( x, key ) { return textOf( findAll( findAll( x.frames, function( el ) { return el.dataset !== undefined && el.dataset.row === key } )[0], function( el ) { return el.tagName === 'SMALL' } )[0] ) };
-	const bare = world( { list : answer( { frames : named.map( function( frame ) { return frame.key === 'header-landing' ? Object.assign( {}, frame, { names : {}, name : '' } ) : frame } ), bridge : true } ) } );
-
-	bare.open('#builder');
-
-	check( 'F344 g. the line under the title of a frame holds the number of pages and, for a named frame, its word - and not the name that the title has: not "Standard" for the standard ones, not the name of a named one, and not the word of a frame that has no name and is told by it in the title',
-		detailOf( w, 'header' ) === W( 'frame/uses-many', '3' ) && detailOf( w, 'footer' ) === W( 'frame/uses-many', '4' ) && detailOf( w, 'header-landing' ) === W( 'frame/word', 'landing', W('frame/uses-one') )
-		&& detailOf( w, 'header-landing' ).indexOf('Landing') === -1 && detailOf( bare, 'header-landing' ) === W('frame/uses-one') );
+	check( 'T. the list of the pages has no strip of tabs of its own and no frames in its mount: the pages are in the list and the frames are not - the tab of the frames draws them itself, from its own list',
+		w.rows().length === 3 && findAll( w.list, function( el ) { return el.dataset !== undefined && ( el.dataset.row === 'header' || el.dataset.row === 'header-landing' ) } ).length === 0 && w.frames.children.length === 0 );
 
 	const again = world( { list : answer( { frames : named, bridge : true } ) } );
 

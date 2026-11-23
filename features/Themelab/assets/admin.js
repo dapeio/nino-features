@@ -79,7 +79,6 @@
 
 	const N = {
 		fresh		: '',
-		frames	: null,
 		ownKeys	: null,
 		tab			: 'blocks',
 		from		: kept(),
@@ -94,9 +93,9 @@
 	};
 
 	// The address of the list of a tab, and of a block in it: the first tab is the blocks - 'project' for the own ones, 'theme' for those of the theme in use, a switch inside the
-	// tab -, the second the frames, the third 'info' - the theme itself, which has an address of its own and no block in it
+	// tab -, the second 'info' - the theme itself, which has an address of its own and no block in it
 	const tabParts = function( tab ) {
-		return tab === 'blocks' ? ( N.from === 'own' ? [] : [ '@blocks', N.from ] ) : ( tab === 'theme' ? [ '@theme-blocks' ] : ( tab === 'frames' ? [ '@frames' ] : ( tab === 'info' ? [ '@theme' ] : [] ) ) );
+		return tab === 'blocks' ? ( N.from === 'own' ? [] : [ '@blocks', N.from ] ) : ( tab === 'theme' ? [ '@theme-blocks' ] : ( tab === 'info' ? [ '@theme' ] : [] ) );
 	};
 
 	const partsOf = function( tab, key ) {
@@ -113,12 +112,17 @@
 
 		// The fixed addresses have the @ that no key of a block has: #themelab/@frames, #themelab/@theme, #themelab/@theme-blocks. The addresses of before, without it, name what they most
 		// likely mean: with a key behind them they are the tab; alone they are the block of that key where the project has one, else the tab
+		// The frames of the site are no tab of this panel: the address of the tab they had leads to the blocks
 		const FIXED = { '@theme-blocks' : 'theme', '@frames' : 'frames', '@theme' : 'info', '@blocks' : 'blocks' };
 		const OLD = { 'theme-blocks' : 'theme', 'frames' : 'frames', 'theme' : 'info' };
 		const first = parts[0] ?? '';
 		const fixed = FIXED[first] ?? ( OLD[first] !== undefined && ( parts.length > 1 || ( N.ownKeys ?? [] ).indexOf( first ) === -1 ) ? OLD[first] : undefined );
 		const tab = fixed ?? 'project';
 		const rest = tab === 'project' ? parts : parts.slice( 1 );
+
+		// An address of the tab that is gone - #themelab/@frames, #themelab/@frames/header - is the list of the blocks, where a header and a footer are found by the choice of the category
+		if( tab === 'frames' )
+			return { tab : 'blocks', key : '', from : N.from };
 
 		// The list of the blocks has the choice of where they come from in its address: #themelab/@blocks/<source>; the own blocks are the address of the list without more, and the choice the
 		// person made last is the one it shows. The address of before, #themelab/@theme-blocks, is the list of the theme's blocks
@@ -135,8 +139,8 @@
 		if( tab === 'info' )
 			return null;
 
-		// A frame is a header or a footer - the standard one or a named one: header-landing; a block is any key of the form of a key
-		return rest.length === 1 && ( tab === 'frames' ? /^(?:header|footer)(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?$/ : /^[a-z][a-z0-9-]{0,63}$/ ).test( rest[0] ) === true ? { tab : tab, key : rest[0] } : null;
+		// A block is any key of the form of a key
+		return rest.length === 1 && /^[a-z][a-z0-9-]{0,63}$/.test( rest[0] ) === true ? { tab : tab, key : rest[0] } : null;
 	};
 
 	const sheetOpen = function() {
@@ -182,38 +186,6 @@
 		};
 	};
 
-	// What a frame is called: the standard ones by the words of the panel, a named one by its word
-	const frameName = function( key ) {
-
-		if( key === 'header' || key === 'footer' )
-			return word( 'frames/'+ key );
-
-		const entry = ( N.frames ?? [] ).find( function( frame ) { return frame.key === key } );
-
-		return entry !== undefined && entry.name !== '' ? entry.name : String( key ).replace( /^(?:header|footer)-/, '' );
-	};
-
-	// The word of a new frame, made of its name: small letters and digits, the rest a single hyphen, at most the length the server takes
-	const frameWordOf = function( text ) {
-
-		const made = String( text ).normalize('NFKD').replace( /[\u0300-\u036f]/g, '' ).toLowerCase().replace( /\u00df/g, 'ss' ).replace( /[^a-z0-9]+/g, '-' ).replace( /^-+/, '' ).slice( 0, 40 ).replace( /-+$/, '' );
-
-		return made === '' || made === 'none' || made === 'default' ? 'frame' : made;
-	};
-
-	// The side a frame is of - 'header' or 'footer' - by its key, which is the side or the side and a word: 'header', 'footer-landing'
-	const sideOfFrame = function( key ) {
-		return String( key ).indexOf('footer') === 0 ? 'footer' : 'header';
-	};
-
-	// What stands beside the name of a frame: that it is the standard one or its word - and how many pages choose it
-	const frameDetail = function( frame ) {
-
-		const count = frame.uses === 0 ? word('frames/uses-none') : ( frame.uses === 1 ? word('frames/uses-one') : word( 'frames/uses-many', String( frame.uses ) ) );
-
-		return ( frame.default === true ? word('frames/standard') : word( 'frames/word-of', frame.key.slice( frame.side.length + 1 ) ) )+ ' \u00b7 '+ count;
-	};
-
 	const categoryWord = function( category ) {
 		return word( 'cat/'+ category );
 	};
@@ -224,14 +196,6 @@
 
 		box.dataset.block = row.key;
 		box.setAttribute( 'aria-hidden', 'true' );
-
-		// A block of a frame is drawn on the bare page of its frame - the way the dialog of the choice draws it
-		if( row.frame === true ) {
-
-			pictureWhenSeen( box, frameTiles( row.template ) );
-
-			return box;
-		}
 
 		pictureWhenSeen( box, tiles() );
 
@@ -259,17 +223,6 @@
 		}, { rootMargin : '120px' } );
 
 		watch.observe( box );
-	};
-
-	// The adapter of the tiles of the blocks of a frame: the request is the one of the frames, naming the template of the frame the block is for
-	const frameTiles = function( template ) {
-
-		return {
-			panel	: 'themelab-'+ template,
-			dir		: N.data.dir,
-			call	: function( action, payload, done, extra ) { Nino.admin.themelab.call( 'frame-'+ action, payload, done, extra ) },
-			base	: function() { return { locale : N.data.contentLocale, template : template } },
-		};
 	};
 
 	// The number of variants has their names as its tooltip
@@ -585,6 +538,23 @@
 		} );
 	};
 
+	// The way to the frames of the site - the header and the footer every page has - which are written in the panel of the pages: a link to its tab, for the account that holds the right of
+	// that panel and designs - the list says so - and for no other
+	const framesLink = function( data ) {
+
+		if( data.framesAt !== true )
+			return null;
+
+		const line = el( 'p', 'nino-admin-hint themelab-frames-at', word('frames-at/note')+ ' ' );
+		const link = el( 'a', '', word('frames-at/link') );
+
+		link.href = Nino.admin.router.href( 'builder-frames', [] );
+		link.dataset.key = 'frames-at';
+		line.appendChild( link );
+
+		return line;
+	};
+
 	// The third tab: the theme in use - its name, its version and where it comes from - how many blocks and frames the project has of its own, and what a package of a theme will hold.
 	// Nothing in it can be pressed: the export and the import of a theme package are not here yet, and the (?) says so
 	const infoView = function( data ) {
@@ -611,6 +581,11 @@
 		fact( word('info/frame-blocks'), String( data.counts.frameBlocks ?? 0 ) );
 		view.appendChild( rows );
 
+		const at = framesLink( data );
+
+		if( at !== null )
+			view.appendChild( at );
+
 		const title = el( 'h2', 'nino-admin-section-title', word('info/package') );
 
 		title.appendChild( Nino.adminUi.fieldHelp( word('info/package-help'), { name : word('info/package') } ) );
@@ -631,7 +606,6 @@
 
 		N.data = data;
 		N.ownKeys = Array.isArray( data.ownKeys ) === true ? data.ownKeys : N.ownKeys;
-		N.frames = Array.isArray( data.frames ) === true ? data.frames : N.frames;
 		N.tab = data.tab;
 
 		// The choice of where the blocks come from: IN_USE - the address of before - is the theme in use, and a source the site no longer has is the own blocks
@@ -652,8 +626,8 @@
 
 		mount.innerHTML = '';
 
-		// The tabs: the blocks - the project's own, and the theme's beside them by a switch of their own -, the frames of the site and the theme in use
-		const items = [ { key : 'blocks', label : word('tab/blocks') }, { key : 'frames', label : word('tab/frames') }, { key : 'info', label : word('tab/info') } ];
+		// The tabs: the blocks - the project's own, and the theme's beside them by a switch of their own - and the theme in use
+		const items = [ { key : 'blocks', label : word('tab/blocks') }, { key : 'info', label : word('tab/info') } ];
 		const shown = data.tab;
 
 		const strip = Nino.adminUi.tabs( items, { active : shown, label : word('tab/label'), id : 'themelab-tabs', onSelect : function( key ) {
@@ -676,35 +650,6 @@
 		if( data.tab === 'info' ) {
 
 			holder.appendChild( infoView( data ) );
-
-			return;
-		}
-
-		if( data.tab === 'frames' ) {
-
-			N.frames = data.frames;
-			holder.appendChild( Nino.adminUi.list( data.frames.map( function( frame ) {
-
-				const title = frameName( frame.key );
-				const actions = [ Nino.adminUi.iconButton( 'copy', word( 'adopt/row', title ), function( event ) { askFrameAdopt( frame.key, event.currentTarget ) }, { small : true } ) ];
-
-				if( frame.default === false ) {
-					actions.push( Nino.adminUi.iconButton( 'pencil', word( 'frames/rename-of', title ), function( event ) { askFrameRename( frame, event.currentTarget ) }, { small : true } ) );
-					actions.push( Nino.adminUi.iconButton( 'trash-2', word( 'frames/remove-of', title ), function( event ) { askFrameRemove( frame, event.currentTarget ) }, { small : true } ) );
-				}
-
-				return {
-					key		: frame.key,
-					title	: title,
-					detail	: frameDetail( frame ),
-					href	: Nino.admin.router.href( 'themelab', partsOf( 'frames', frame.key ) ),
-					onOpen	: function() { Nino.admin.themelab.go( partsOf( 'frames', frame.key ) ) },
-					actions	: actions,
-				};
-			} ), { title : word('tab/frames'), level : 2 } ) );
-
-			N.button = Nino.adminUi.button( word('frames/new'), function() { askFrameNew( N.button ) }, { kind : 'primary', id : 'themelab-frame-new' } );
-			mount.appendChild( Nino.adminUi.actionBar( { list : true, primary : N.button } ).el );
 
 			return;
 		}
@@ -775,7 +720,7 @@
 					{ key : 'category', label : word('list/category'), type : 'string', render : function( value ) { return categoryWord( value ) } },
 					{ key : 'variants', label : word('list/variants'), type : 'integer', render : variantCell },
 				],
-				rows			: rows.map( function( block ) { return { key : block.key, pick : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, frame : block.frame === true, template : block.template ?? '', names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ), own : block.own === true, openable : block.openable === true, origin : originLabel( data, block.origin ) } } ),
+				rows			: rows.map( function( block ) { return { key : block.key, pick : block.key, tile : block.key, name : localized( block.name ), category : block.group, variants : block.variants, frame : block.frame === true, names : ( block.variantNames ?? [] ).map( localized ).join( ', ' ), own : block.own === true, openable : block.openable === true, origin : originLabel( data, block.origin ) } } ),
 				actions		: rowButtons,
 				// The own blocks are chosen in the list and handed out or taken away together; the blocks of a source are only looked at and copied
 				select		: own === true ? { label : word('list/pick-head'), rowLabel : function( row ) { return word( 'list/pick', row.name ) }, actions : [
@@ -809,6 +754,15 @@
 			// The categories the blocks of the source have, in one select after the search: a second select of the bar's kind, named for what it picks
 			if( kinds.length > 2 )
 				holder.querySelector('.nino-admin-table-toolbar').appendChild( categoryChoice( data, kinds ) );
+		}
+
+		// Where a header or a footer of the site is written - not here: the blocks are the templates they are made of - is said under the list where the blocks of a header or a footer are looked at
+		if( N.category === 'header' || N.category === 'footer' ) {
+
+			const at = framesLink( data );
+
+			if( at !== null )
+				holder.appendChild( at );
 		}
 
 		N.button = null;
@@ -1191,297 +1145,6 @@
 	// --- the editor: the sheet of a block ------------------------------------------------------------------------------------
 
 	// Save as: the sheet as it stands - what was changed and not saved with it - is a new block of the project under a name of its own; the editor is on the new one afterwards
-	// A new frame: a name in each language, the word - made of the name until it is written over - and what it is made of: the standard frame, another frame of the site or a block, each
-	// with its side in front - the side is the one of the source. The texts come along, and the editor opens on the new frame. Where the server refuses after the dialog of the blocks, the
-	// form opens again with what was typed and the refusal at its field
-	const askFrameNew = function( opener, again ) {
-
-		clearFail();
-
-		const work = Nino.admin.workLocale.current;
-		const sources = [];
-
-		[ 'header', 'footer' ].forEach( function( side ) {
-
-			( N.frames ?? [] ).filter( function( frame ) { return frame.side === side } ).forEach( function( frame ) {
-				sources.push( { value : side+ '|'+ frame.template, label : word( 'frames/side-'+ side )+ ': '+ ( frame.default === true ? word('frames/source-standard') : word( 'frames/source-frame' )+ ' - '+ frameName( frame.key ) ) } );
-			} );
-
-			sources.push( { value : side+ '|@block', label : word( 'frames/side-'+ side )+ ': '+ word('frames/source-block') } );
-		} );
-
-		const was = again ?? { name : {}, word : '', from : sources[0].value };
-
-		// What is asked of the server: the side, the word, the names, and where the frame comes from; a block is chosen after the form
-		const make = function( values, block, ctl ) {
-
-			const side = String( values.from ).split('|')[0];
-			const chosen = String( values.word ).trim() === '' ? frameWordOf( nameIn( values.name, work ) ) : String( values.word ).trim();
-			const asked = Object.assign( { side : side, word : chosen, name : values.name, locale : work }, block === '' ? { from : String( values.from ).split('|')[1] } : { block : block } );
-
-			Nino.admin.themelab.call( 'frame-create', asked, function( status, response ) {
-
-				if( status !== 200 ) {
-					refused( ctl, status, response, '/_admin/themelab/error/frame-create' );
-					return;
-				}
-
-				ctl.close();
-				Nino.adminUi.say( word( 'frames/created', nameIn( values.name, work ) ) );
-				N.frames = ( N.frames ?? [] ).concat( [ { key : response.key, side : side, template : 'frame-'+ response.key, default : false, names : values.name, name : nameIn( values.name, work ), uses : 0, pages : [] } ] );
-				Nino.admin.themelab.go( partsOf( 'frames', response.key ) );
-			} );
-		};
-
-		Nino.adminUi.formDialog( {
-			title		: word('frames/new-title'),
-			message	: word('frames/new-message'),
-			fields	: [
-				nameField( was.name ),
-				{ key : 'word', type : 'text', label : word('frames/word'), value : was.word, required : false, maxLength : 40, help : word('frames/word-help') },
-				{ key : 'from', type : 'select', label : word('frames/source'), options : sources, value : was.from, required : true },
-			],
-			submit	: word('frames/create'),
-			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
-			opener	: opener,
-			onSubmit	: function( values, ctl ) {
-
-				if( String( values.from ).split('|')[1] !== '@block' ) {
-					make( values, '', ctl );
-					return;
-				}
-
-				// The form is closed for the dialog of the blocks - a dialog stands alone -; what the server refuses after that opens the form again, with what was typed
-				ctl.close();
-
-				const side = String( values.from ).split('|')[0];
-				const said = { close : function() {}, idle : function() {}, fail : function( field, text ) {
-
-					askFrameNew( opener, values );
-
-					const input = Array.from( dc.querySelectorAll('input') ).filter( function( one ) { return one.dataset.key === ( field === 'word' ? 'word' : 'name' ) && ( field === 'word' || one.dataset.locale === work ) } ).pop();
-
-					if( input !== undefined )
-						Nino.adminUi.fieldError( input.closest('label') ?? input.parentNode, input, 'themelab-frame-new-error', text );
-					else
-						Nino.adminUi.say( text, { kind : 'error' } );
-				} };
-
-				Nino.admin.builder.chooseFrame( {
-					name		: word( 'frames/side-'+ side ),
-					side		: side,
-					opener	: opener,
-					dir			: N.data.dir ?? '',
-					confirm	: false,
-					load		: function( done ) { Nino.admin.themelab.call( 'frame-blocks', { template : 'frame-'+ side, locale : work }, done ) },
-					tile		: function( key, done ) { Nino.admin.themelab.call( 'frame-tile', { template : 'frame-'+ side, key : key, locale : work }, done ) },
-					fail		: function( status, response ) { fail( status, response, '/_admin/themelab/error/frame-create' ) },
-					none		: function() { Nino.adminUi.say( word('frames/source-none'), { kind : 'error' } ) },
-					apply		: function( key ) { make( values, key, said ) },
-				} );
-			},
-		} );
-
-		// The word follows the name in the working language until it is written by hand
-		const inputs = Array.from( dc.querySelectorAll('input') );
-		const named = inputs.filter( function( input ) { return input.dataset.key === 'name' && input.dataset.locale === work } ).pop();
-		const typed = inputs.filter( function( input ) { return input.dataset.key === 'word' } ).pop();
-		let own = was.word !== '';
-
-		if( named !== undefined && typed !== undefined ) {
-			typed.addEventListener( 'input', function() { own = true } );
-			named.addEventListener( 'input', function() {
-
-				if( own === false )
-					typed.value = frameWordOf( named.value );
-			} );
-		}
-
-		tuck();
-	};
-
-	// A new name of a frame, in each language: the word and the texts stay
-	const askFrameRename = function( frame, opener ) {
-
-		clearFail();
-
-		const work = Nino.admin.workLocale.current;
-		const title = frameName( frame.key );
-
-		Nino.adminUi.formDialog( {
-			title		: word( 'frames/rename-of', title ),
-			message	: word('frames/rename-message'),
-			fields	: [ nameField( Object.assign( {}, frame.names, { [ work ] : frame.names[work] ?? frame.name } ) ) ],
-			submit	: word('frames/rename'),
-			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
-			opener	: opener,
-			onSubmit	: function( values, ctl ) {
-
-				Nino.admin.themelab.call( 'frame-rename', { template : frame.template, name : values.name, locale : work }, function( status, response ) {
-
-					if( status !== 200 ) {
-						refused( ctl, status, response, '/_admin/themelab/error/frame-rename' );
-						return;
-					}
-
-					ctl.close();
-					Nino.adminUi.say( word( 'frames/renamed', nameIn( values.name, work ) ) );
-					Nino.admin.themelab.reload();
-				} );
-			},
-		} );
-
-		tuck();
-	};
-
-	// A frame taken away, after the question: a frame a page chooses is refused by the server, which names the pages
-	const askFrameRemove = function( frame, opener ) {
-
-		clearFail();
-
-		const title = frameName( frame.key );
-
-		// The list knows that pages choose the frame: the question says which - three by name, the rest counted - and has nothing to confirm; the server is the one that decides all the same
-		if( frame.uses > 0 ) {
-
-			const pages = ( frame.pages ?? [] ).join(', ')+ ( frame.uses > ( frame.pages ?? [] ).length ? ' '+ word( 'frames/remove-more', String( frame.uses - ( frame.pages ?? [] ).length ) ) : '' );
-
-			Nino.adminUi.choiceDialog( {
-				title		: word('frames/remove-title'),
-				message	: word( 'frames/remove-used', title, pages ),
-				opener	: opener,
-				choices	: [ { value : 'ok', label : word('frames/remove-ok'), kind : 'primary' } ],
-				onChoose	: function() {},
-			} );
-
-			return;
-		}
-
-		Nino.adminUi.confirm( 'destructive', {
-			title		: word('frames/remove-title'),
-			message	: word( 'frames/remove-message', title ),
-			yes			: word('frames/remove'),
-			no			: Nino.adminUi.text('/_admin/common/label/cancel'),
-			kind		: 'danger',
-			opener	: opener,
-			onChoose	: function( ok ) {
-
-				if( ok !== true )
-					return;
-
-				Nino.admin.themelab.call( 'frame-remove', { template : frame.template, locale : Nino.admin.workLocale.current }, function( status, response ) {
-
-					if( status !== 200 ) {
-						fail( status, response, '/_admin/themelab/error/frame-remove' );
-						return;
-					}
-
-					Nino.adminUi.say( word( 'frames/removed', title ) );
-					Nino.admin.themelab.reload();
-				} );
-			},
-		} );
-	};
-
-	// A frame of the site kept as a block of the project: a name in each language, the short name the folder has - made of the name until it is written over - and a description. The
-	// block is the frame as it is SAVED: what is not saved in the editor is asked about first, and the frame is not changed
-	const askFrameAdopt = function( frame, opener ) {
-
-		clearFail();
-
-		const title = frameName( frame );
-		const work = Nino.admin.workLocale.current;
-		const locales = N.data.locales.map( function( entry ) { return entry.locale } );
-		const first = word( 'adopt/default-name', title );
-
-		// What is asked of the server: the frame, the names and the key that stands in the field - the one that is written
-		const asked = function( values, more ) {
-			return Object.assign( { template : 'frame-'+ frame, key : String( values.key ).trim() === '' ? packKeyOf( nameIn( values.name, work ) ) : String( values.key ).trim(), name : values.name, description : values.description, locale : work }, more );
-		};
-
-		Nino.adminUi.formDialog( {
-			title		: word( 'adopt/title', title ),
-			message	: word( 'adopt/message-'+ sideOfFrame( frame ) ),
-			fields	: [
-				nameField( { [ work ] : first } ),
-				{ key : 'key', type : 'text', label : word('adopt/key'), value : packKeyOf( first ), required : true, maxLength : 32, help : word('adopt/key-help') },
-				{ key : 'description', type : 'locales', label : word('adopt/description'), locales : locales, work : work, values : {}, required : false, maxLength : 240, multiline : true, rows : 3 },
-			],
-			submit	: word('adopt/submit'),
-			cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
-			opener	: opener,
-			onSubmit	: function( values, ctl ) {
-
-				const write = function( more ) {
-
-					Nino.admin.themelab.call( 'frame-adopt', asked( values, more ), function( status, response ) {
-
-						if( status !== 200 ) {
-							refused( ctl, status, response, '/_admin/themelab/error/frame-adopt' );
-							return;
-						}
-
-						ctl.close();
-						Nino.adminUi.say( word( 'adopt/done', nameIn( values.name, work ) ) );
-					} );
-				};
-
-				// Asked first, nothing written: which language lacks a text for which part - none is made up for it; the person fills them from the working language, or does not
-				Nino.admin.themelab.call( 'frame-adopt', asked( values, { check : true } ), function( status, response ) {
-
-					if( status !== 200 ) {
-						refused( ctl, status, response, '/_admin/themelab/error/frame-adopt' );
-						return;
-					}
-
-					const gaps = Array.isArray( response.gaps ) === true ? response.gaps : [];
-
-					if( gaps.length === 0 ) {
-						write( {} );
-						return;
-					}
-
-					const shown = locales;
-					const lines = gaps.map( function( gap ) { return Nino.adminUi.localeName( gap.locale, shown )+ ': '+ gap.parts.join(', ') } );
-					const own = gaps.some( function( gap ) { return gap.locale === work } );
-
-					ctl.idle();
-
-					Nino.adminUi.choiceDialog( {
-						nested	: true,
-						title		: word('adopt/gaps-title'),
-						message	: word( own === true ? 'adopt/gaps-own' : 'adopt/gaps-message', lines.join( '; ' ), Nino.adminUi.localeName( work, shown ) ),
-						choices	: ( own === true ? [] : [ { value : 'fill', label : word( 'adopt/gaps-fill', Nino.adminUi.localeName( work, shown ) ), kind : 'primary' } ] ).concat( [ { value : 'cancel', label : Nino.adminUi.text('/_admin/common/label/cancel'), kind : 'secondary' } ] ),
-						opener	: opener,
-						onChoose	: function( value ) {
-
-							if( value === 'fill' ) {
-								write( { fill : work } );
-							}
-						},
-					} );
-				} );
-			},
-		} );
-
-		tuck();
-
-		// The key that stands in the field is the key that is written: it follows the name in the working language until it is written by hand
-		const fields = Array.from( dc.querySelectorAll('input') );
-		const named = fields.filter( function( input ) { return input.dataset.key === 'name' && input.dataset.locale === work } ).pop();
-		const keyed = fields.filter( function( input ) { return input.dataset.key === 'key' } ).pop();
-		let written = false;
-
-		if( named !== undefined && keyed !== undefined ) {
-			keyed.addEventListener( 'input', function() { written = true } );
-			named.addEventListener( 'input', function() {
-
-				if( written === false )
-					keyed.value = packKeyOf( named.value );
-			} );
-		}
-	};
-
 	const askSaveAs = function( adapter ) {
 
 		const model = Nino.admin.builder.model;
@@ -2443,99 +2106,6 @@
 		return adapter;
 	};
 
-	// The block that takes the place of a frame: the frame is the block of its kind that stands in it, and a block that the project offers for it replaces it - in the draft, so that
-	// Undo brings it back. The dialog and its question are the Builder's: the list of the pages gives a frame its block by the same one
-	const askFrameBlock = function( adapter ) {
-
-		const sheet = editor().state();
-
-		Nino.admin.builder.chooseFrame( {
-			name		: adapter.name,
-			side		: sideOfFrame( adapter.frameKey ),
-			opener	: sheet.view.bar.buttons.frameblock,
-			dir			: sheet.adapter.dir ?? '',
-			load		: function( done ) { editor().call( 'blocks', {}, done ) },
-			tile		: function( key, done ) { editor().call( 'tile', { key : key }, done ) },
-			fail		: function( status, response ) { sheet.view.bar.line.error( status, response ) },
-			none		: function() { sheet.view.bar.line.idle( word( 'frames/no-blocks-'+ sideOfFrame( adapter.frameKey ) ) ) },
-			apply		: function( key, entry ) {
-
-				editor().call( 'block', { key : key }, function( code, block ) {
-
-					if( code !== 200 )
-						sheet.view.bar.line.error( code, block );
-					else if( editor().replace( block, entry.name ) === false )
-						sheet.view.bar.line.fail( word('frames/insert-fail') );
-				} );
-			},
-		} );
-	};
-
-	// The sheet of a frame: the requests are the code of the Builder for it, passed on after the right of this panel; the template is the one every request names
-	const frameAdapterOf = function( frame, response ) {
-
-		const title = frameName( frame );
-		const template = 'frame-'+ frame;
-
-		const adapter = {
-			panel		: 'themelab',
-			level		: 'themelab-sheet',
-			frame		: true,
-			frameKey	: frame,
-			template	: template,
-			name		: title,
-			slug		: '',
-			dir			: response.dir,
-			restore	: true,
-			sources	: 'block',
-			props		: 'panel',
-			call		: function( action, payload, done, extra ) { Nino.admin.themelab.call( 'frame-'+ action, payload, done, extra ) },
-			code		: template,
-			base		: function() { return { template : template, locale : editor().state().locale, hint : word('preview/place') } },
-			go			: function( parts, options ) { Nino.admin.themelab.go( parts, options ) },
-			href		: function( parts ) { return Nino.admin.router.href( 'themelab', parts ) },
-			set			: function() { Nino.admin.router.set( 'themelab', partsOf( 'frames', frame ) ) },
-			show		: function() { Nino.adminUi.showLevel( 'themelab-sheet', { focus : false } ) },
-			fail		: function( level, status, answer ) { Nino.admin.themelab.fail( level, status, answer ) },
-			back		: function() { return { parts : tabParts( 'frames' ), name : word('title'), keep : false, block : false } },
-			reload	: function() { openFrame( frame ) },
-			buttons	: [ { key : 'frameblock', label : word( 'frames/insert-'+ sideOfFrame( frame ) ), name : word( 'frames/insert-of', title ), onPress : function() { askFrameBlock( adapter ) } },
-				{ key : 'frameadopt', label : word('adopt/button'), name : word( 'adopt/button-of', title ), onPress : function() { Nino.admin.dirty.guard( [ 'themelab' ], function() { askFrameAdopt( frame, editor().state().view.bar.buttons.frameadopt ) } ) } } ],
-		};
-
-		return adapter;
-	};
-
-	const openFrame = function( frame ) {
-
-		const level = dc.getElementById('themelab-sheet');
-
-		clearFail();
-
-		Nino.admin.themelab.call( 'frame-open', { template : 'frame-'+ frame, locale : Nino.admin.workLocale.current }, function( status, response ) {
-
-			if( status !== 200 ) {
-				Nino.admin.themelab.fail( level, status, response );
-				Nino.adminUi.showLevel( 'themelab-sheet', { focus : false } );
-				return;
-			}
-
-			if( response.contentLocale !== Nino.admin.workLocale.current ) {
-				openFrame( frame );
-				return;
-			}
-
-			if( editor().open( frameAdapterOf( frame, response ), response ) === false ) {
-				Nino.admin.themelab.go( tabParts( 'frames' ) );
-				return;
-			}
-
-			N.open = { tab : 'frames', key : frame, names : frameName( frame ) };
-
-			unloadList();
-		} );
-	};
-
 	// The place of the first column of the block in its tree, as the tree names a place: the index of each level, joined by a point; '' where it has none
 	const columnOf = function() {
 
@@ -2564,7 +2134,7 @@
 		return root === undefined || Array.isArray( root.c ) === false ? '' : walk( root.c, '' );
 	};
 
-	// The list is left for the editor: its previews - a frame of the site each - are taken out of the page, and the list is drawn again where it is come back to
+	// The list is left for the editor: its previews - a frame each - are taken out of the page, and the list is drawn again where it is come back to
 	const unloadList = function() {
 
 		const list = dc.getElementById('themelab-list');
@@ -2699,10 +2269,7 @@
 				return;
 			}
 
-			if( target.tab === 'frames' )
-				openFrame( target.key );
-			else
-				openBlock( target.key, target.tab === 'theme' );
+			openBlock( target.key, target.tab === 'theme' );
 		},
 
 		showCurrent : function() {

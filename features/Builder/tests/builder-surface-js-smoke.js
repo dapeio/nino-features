@@ -384,11 +384,11 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		const row = rowOf( w, 'hero' );
 		return textOf( row.querySelector('.nino-admin-tree-label') ) === 'hero' && textOf( row ).indexOf( W('kind/section-wrap') ) === -1 && row.querySelector('.nino-admin-tree-row').title === 'Section · Hallo';
 	} )() );
-	check( 'B. what can be done to a block is at the end of its row - put one in behind it, up, down, duplicate, delete in red -, what cannot be done is shut, and the rows of the frames can have a block put in behind them and their texts opened', ( function() {
+	check( 'B. what can be done to a block is at the end of its row - put one in behind it, up, down, duplicate, delete in red -, what cannot be done is shut, and the rows of the frames can have a block put in behind them, their texts opened and - for the one who designs - the frame itself edited in the tab of the frames', ( function() {
 		const keys = function( id ) { return buttonsOf( rowOf( w, id ) ).map( function( button ) { return button.dataset.key } ).join() };
 		const shut = function( id ) { return buttonsOf( rowOf( w, id ) ).filter( function( button ) { return button.disabled === true } ).map( function( button ) { return button.dataset.key } ).join() };
 		const remove = buttonsOf( rowOf( w, 'cards' ) ).find( function( button ) { return button.dataset.key === 'remove' } );
-		return keys( 'hero' ) === 'insert,up,down,copy,remove' && shut( 'hero' ) === 'up' && shut( 'team' ) === 'down' && shut( 'cards' ) === '' && keys( '@header' ) === 'insert,texts' && keys( '@footer' ) === 'texts'
+		return keys( 'hero' ) === 'insert,up,down,copy,remove' && shut( 'hero' ) === 'up' && shut( 'team' ) === 'down' && shut( 'cards' ) === '' && keys( '@header' ) === 'insert,texts,frame-edit' && keys( '@footer' ) === 'texts,frame-edit'
 			&& remove.classList.contains('nino-admin-tree-action--danger') === true && remove.attributes['aria-label'] === W('label/remove')+ ': Section \u00B7 Karten';
 	} )() );
 	check( 'B. the outline folds to a strip with the icon of each row, and a press on one chooses the block', ( function() {
@@ -1852,6 +1852,86 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 		return asked.length === 1 && asked[0].payload.key === 'hero-full' && asked[0].payload.block === 'x' && x.w.requests.length === 0 && x.S.adapter !== x.adapter && x.S.ready === false;
 	} )() );
+}
+
+
+// --- K. the texts of the header and of the footer are those of the frame the page chooses ------------------------------------------------------------------------------
+
+{
+	const texts = function( head, foot ) {
+
+		const x = world( { page : pageAnswer( { tree : [ head, { t : '\n' }, block( 'hero' ), { t : '\n' }, foot, { t : '\n' } ] } ) } );
+		const asked = {};
+
+		x.title.textContent = 'Builder';
+		x.open('#builder/home');
+
+		[ '@header', '@footer' ].forEach( function( id ) {
+
+			x.requests.length = 0;
+			const button = buttonsOf( rowOf( x, id ) ).find( function( candidate ) { return candidate.dataset.key === 'texts' } );
+
+			if( button !== undefined )
+				fire( button, 'click' );
+
+			asked[id] = x.requests.filter( function( request ) { return request.action === 'builder/frametexts' } ).map( function( request ) { return request.payload.template } ).join();
+		} );
+
+		return asked;
+	};
+	const standard = texts( { n : 'template', s : '/templates/html-header', a : {}, c : null }, { n : 'template', s : '/templates/html-footer', a : {}, c : null } );
+	const named = texts( { n : 'frame', s : '/templates/frame-header-landing', a : {}, c : null }, { n : 'frame', s : '/templates/frame-footer-klein', a : {}, c : null } );
+	const none = texts( { n : 'frame', s : '/templates/frame-header-none', a : {}, c : null }, { n : 'template', s : '/templates/html-footer', a : {}, c : null } );
+
+	check( 'K. the texts of the head and of the foot of a page are asked for the frames the page chooses: the standard ones for the calls of the scaffold, the named ones for a page that chooses them, and none for a side the page leaves empty',
+		standard['@header'] === 'frame-header' && standard['@footer'] === 'frame-footer' && named['@header'] === 'frame-header-landing' && named['@footer'] === 'frame-footer-klein' && none['@header'] === '' && none['@footer'] === 'frame-footer' );
+}
+
+
+// --- L. a frame with the call of html: what the step that may not write markup sees of it is what it sees of a page ----------------------------------------------------------------------------
+
+{
+	// A header with the call of html in its actions and a free text beside the button: the same tree is a frame - the sheet of a frame is the sheet of a block whose root is the header - and a page
+	const tree = [ { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n' }, { n : 'header-actions', s : '', a : {}, c : [ { t : '\n' }, { n : 'html', s : '', a : {}, c : [ { t : '<p>x</p>' } ] }, { t : '\n' }, { n : 'button', s : '~b', a : {}, c : null }, { t : '\n' }, { t : 'Free text' } ] }, { t : '\n' } ] } ];
+	const schemas = { 'header-wrap' : schema( 'Header', 'panel-top', 'none', { side : 'header' } ), 'header-actions' : schema( 'Actions', 'mouse-pointer-click', 'none' ), html : schema( 'HTML', 'code', 'none', { markup : true, container : false } ), button : schema( 'Button', 'rectangle-horizontal', 'text' ) };
+	const known = { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, 'header-actions' : { label : 'Actions', icon : 'mouse-pointer-click', id : '', source : 'none' }, html : { label : 'HTML', icon : 'code', id : '', source : 'none' }, button : { label : 'Button', icon : 'rectangle-horizontal', id : '', source : 'text' } };
+
+	const sheet_ = function( asFrame, level ) {
+
+		const w = opened();
+		const level_ = element('div');
+		const adapter = {
+			panel : 'dummy', level : 'frame-level', frame : asFrame, template : asFrame === true ? 'frame-header' : 'page-home', name : 'Header', slug : '', restore : true, sources : 'block', props : 'panel',
+			call : function() {}, base : function() { return { template : asFrame === true ? 'frame-header' : 'page-home', locale : 'de_DE' } }, go : function() {}, href : function() { return '#dummy' }, set : function() {}, show : function() {}, fail : function() {},
+			back : function() { return { parts : [], name : 'Frames', keep : false, block : false } },
+		};
+
+		level_.id = 'frame-level';
+		w.page.appendChild( level_ );
+		w.requests.length = 0;
+		w.panel.editor.open( adapter, pageAnswer( { template : adapter.template, frame : asFrame, tree : JSON.parse( JSON.stringify( tree ) ), known : known, schemas : Object.assign( {}, pageAnswer().schemas, schemas ), level : level, texts : {} } ) );
+
+		return { w : w, S : w.panel.model.state, rows : function() { return findAll( level_, function( el ) { return el.tagName === 'LI' && el.dataset.id !== undefined } ) } };
+	};
+
+	// the buttons of the row itself, not of the rows inside it
+	const buttonsOf = function( row ) { return findAll( row.querySelector('.nino-admin-tree-row') ?? row, function( el ) { return el.tagName === 'BUTTON' && el.dataset.key !== undefined } ).map( function( button ) { return button.dataset.key } ) };
+	const rowsOf = function( x ) { const out = {}; x.rows().forEach( function( row ) { out[row.dataset.id] = textOf( row ).replace( /\s+/g, ' ' ).trim() + ' | ' + buttonsOf( row ).join() } ); return out };
+	const frameDesign = sheet_( true, 2 );
+	const pageDesign = sheet_( false, 2 );
+	const frameRows = rowsOf( frameDesign );
+	const pageRows = rowsOf( pageDesign );
+	const inner = function( rows ) { const out = {}; Object.keys( rows ).filter( function( id ) { return id.indexOf('1.') === 0 } ).forEach( function( id ) { out[id] = rows[id] } ); return out };
+	const html = frameDesign.rows().find( function( row ) { return /^HTML/.test( textOf( row ) ) } );
+	const develop = sheet_( true, 3 );
+	const developHtml = develop.rows().find( function( row ) { return /^HTML/.test( textOf( row ) ) } );
+
+	check( 'L. a frame offers the step that designs what a page offers it: the rows inside the header, with the buttons of each row - the call of html and the free text included - are those of the same tree on a page, row for row',
+		Object.keys( inner( frameRows ) ).length >= 4 && JSON.stringify( inner( frameRows ) ) === JSON.stringify( inner( pageRows ) ) && frameDesign.S.frame === true && pageDesign.S.frame === false && frameDesign.S.level === 2 );
+	check( 'L. what is offered is what the server takes of a page, and of a frame the same: the call of html has the button that takes it away and no button that copies it, and the free text has the buttons of a locked piece',
+		html !== undefined && buttonsOf( html ).indexOf('remove') !== -1 && buttonsOf( html ).indexOf('copy') === -1 && buttonsOf( html ).length > 0 );
+	check( 'L. for the step that holds the right of Themelab too the call of html is a component like any other: it has the buttons of one, and what it holds is a row of its own',
+		developHtml !== undefined && buttonsOf( developHtml ).length > 0 && develop.S.level === 3 && develop.rows().some( function( row ) { return row.dataset.id === '1.1.0' } ) === true );
 }
 
 

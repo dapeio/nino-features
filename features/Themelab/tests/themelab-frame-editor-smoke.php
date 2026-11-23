@@ -91,15 +91,15 @@ $header = "[header-wrap id=\"header\" sticky]\n\t[header-logo]\n\t[header-nav me
 \Nino\Filesystem::putFileContent( $site, '/config.php', [ '/nino/html/navs' => [ 'main' ] ] );
 $site['/nino/http/routes'] = [ 'GET://home' => [ 'uri' => '/home', 'body' => '[template /templates/page-home]' ], 'GET://contact' => [ 'uri' => '/contact', 'body' => '[template /templates/page-contact]' ] ];
 
-ninoUser( $site, 'lab@example.com', [ \Nino\Modules\Themelab::PERM ] );
+ninoUser( $site, 'lab@example.com', [ \Nino\Modules\Themelab::PERM, '/_admin/builder/manage', '/_admin/builder/design/*' ] );
 $names = [ 'de_DE' => 'Mein Kopf', 'en_US' => 'My head' ];
 $about = [ 'de_DE' => 'Kopf der Website', 'en_US' => 'Head of the site' ];
 
 
-$both = [ \Nino\Modules\Themelab::PERM ];
+$both = [ \Nino\Modules\Themelab::PERM, '/_admin/builder/manage', '/_admin/builder/design/*' ];
 $names = [ 'de_DE' => 'Mein Kopf', 'en_US' => 'My head' ];
 
-[ $adopted ] = feCall( $site, 'themelab/frame-adopt', [ 'template' => 'frame-header', 'key' => 'mein-kopf', 'name' => $names, 'description' => $names ] );
+[ $adopted ] = feCall( $site, 'themelab/adopt', [ 'template' => 'frame-header', 'key' => 'mein-kopf', 'name' => $names, 'description' => $names ] );
 unset( $site['./nino/blocks/state'] );
 $page = [ 'template' => 'page-home' ];
 
@@ -241,7 +241,7 @@ check( 'the picture of the block of a header is drawn for the side the kernel gi
 	$previewStatus === 200 && ( $preview['address'] ?? '' ) !== '' && ( $held['data']['side'] ?? '' ) === 'header' );
 
 // the footer is a block of a frame as well: its root is the footer, and the preview puts the quiet page over it
-[ $footerAdopted ] = feCall( $site, 'themelab/frame-adopt', [ 'template' => 'frame-footer', 'key' => 'mein-fuss', 'name' => [ 'de_DE' => 'Mein Fuss', 'en_US' => 'My foot' ], 'description' => [ 'de_DE' => 'Fuss', 'en_US' => 'Foot' ] ] );
+[ $footerAdopted ] = feCall( $site, 'themelab/adopt', [ 'template' => 'frame-footer', 'key' => 'mein-fuss', 'name' => [ 'de_DE' => 'Mein Fuss', 'en_US' => 'My foot' ], 'description' => [ 'de_DE' => 'Fuss', 'en_US' => 'Foot' ] ] );
 unset( $site['./nino/blocks/state'] );
 [ $footerOpened, $footerOpen ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-fuss' ] );
 [ $footerSaved, $footerAnswer ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-fuss', 'tree' => $footerOpen['tree'] ?? [], 'texts' => $footerOpen['texts'] ?? [], 'base' => $footerOpen['stamp'] ?? '' ] );
@@ -340,9 +340,9 @@ check( 'a language that was emptied lacks the text and is told so: with the work
 
 // the picture of a block of a frame in the list: the account that holds the right of this panel and none of the Builder is given it
 ninoUser( $site, 'only@example.com', [ \Nino\Modules\Themelab::PERM ] );
-[ $tileStatus, $tile ] = feCall( $site, 'themelab/frame-tile', [ 'template' => 'frame-header', 'key' => 'header-line' ] );
+[ $tileStatus, $tile ] = feCall( $site, 'themelab/tile', [ 'key' => 'header-line' ] );
 $tileRequest = [ '/nino/http/request' => [ 'query' => [ \Nino\Preview::QUERY => $tile['token'] ?? 'x' ] ] ];
-$tileHeld = \Nino\Preview::held( $site, $tileRequest, \Nino\Modules\Builder\Library::KIND, \Nino\Modules\Builder::BRIDGE );
+$tileHeld = \Nino\Preview::held( $site, $tileRequest, \Nino\Modules\Themelab::TILE, \Nino\Modules\Themelab::PERM );
 ninoUser( $site, 'lab@example.com', $both );
 
 check( 'an account with the right of this panel and none of the Builder is given the picture of a block of a frame: the answer is 200 with a token the right of this panel holds - the draft is held for that right',

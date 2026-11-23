@@ -406,10 +406,10 @@ const typed = function( dialog, values ) {
 	const choiceOf = function( x ) { return findAll( x.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-from' } )[0] };
 	const optionsOf = function( select ) { return findAll( select, function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value+ '='+ textOf( el ) } ).join() };
 
-	check( 'A. the tabs are the blocks, the frames and the theme; where the blocks come from is a choice beside the search - all, the own ones, and each source by its name - and the choice is the one of the own blocks to begin with', ( function() {
+	check( 'A. the tabs are the blocks and the theme - the frames of the site are no tab of this panel; where the blocks come from is a choice beside the search - all, the own ones, and each source by its name - and the choice is the one of the own blocks to begin with', ( function() {
 		const none = shown( '#themelab', LIST( { theme : null, sources : [] } ) ).w;
 
-		return tabsOf( w ).join() === W('tab/blocks')+ ','+ W('tab/frames')+ ','+ W('tab/info') && tabsOf( none ).join() === tabsOf( w ).join()
+		return tabsOf( w ).join() === W('tab/blocks')+ ','+ W('tab/info') && words.en['/_admin/themelab/tab/frames'] === undefined && words.de['/_admin/themelab/tab/frames'] === undefined && tabsOf( none ).join() === tabsOf( w ).join()
 			&& optionsOf( choiceOf( w ) ) === 'all='+ W('source/all')+ ',own='+ W('tab/project')+ ',nino='+ W( 'tab/theme', 'Nino' ) && choiceOf( w ).value === 'own' && optionsOf( choiceOf( none ) ) === 'all='+ W('source/all')+ ',own='+ W('tab/project');
 	} )() );
 	check( 'A. the third tab is the theme in use and only reads: its name, version and origin, how many blocks and frames the project has, and what a theme package will hold - with a (?) that says export and import follow, and no button, no field, no bar of actions', ( function() {
@@ -1013,7 +1013,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 	const inHead = head === null ? [] : findAll( head, function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).map( textOf );
 	const inList = findAll( x.w.page.querySelector('#themelab-list'), function( el ) { return el.attributes !== undefined && el.attributes.role === 'tab' } ).length;
 
-	check( 'D. the tabs of the list stand in the head of the pane - the blocks, the frames and the theme - and none stands in the list itself; the first of the switch of the blocks is "Own blocks"', inHead.join() === W('tab/blocks')+ ','+ W('tab/frames')+ ','+ W('tab/info') && inList === 0 && W('tab/project') === 'Own blocks' && String( words.de['/_admin/themelab/tab/project'] ) === 'Eigene Blocks' );
+	check( 'D. the tabs of the list stand in the head of the pane - the blocks and the theme - and none stands in the list itself; the first of the switch of the blocks is "Own blocks"', inHead.join() === W('tab/blocks')+ ','+ W('tab/info') && inList === 0 && W('tab/project') === 'Own blocks' && String( words.de['/_admin/themelab/tab/project'] ) === 'Eigene Blocks' );
 }
 
 // "Save as" in a block of one's own keeps its name and says what it does behind a (?); in a block of the theme it is "Save to own blocks" - and neither has a paragraph over its field
@@ -1788,16 +1788,16 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 /** What was asked of the panel, in the order it was asked */
 const asked = function( w, action ) { return w.requests.filter( function( entry ) { return entry.action === action } ) };
 
-// The block of a frame stands in the list of the own blocks as the block of a frame: its category is the frame's, its picture is the tile of its frame - asked the way
-// of the frames, naming the template - and a press on the row opens the editor, as for any own block; the details, which the pencil opens, do not ask for a category
+// The block of a frame stands in the list of the own blocks as the block of a frame: its category is the frame's, its picture is the tile of the blocks - asked as the picture of any
+// block is, by its key - and a press on the row opens the editor, as for any own block; the details, which the pencil opens, do not ask for a category
 {
 	const list = LIST( { counts : { blocks : 2, frames : 2, frameBlocks : 1 }, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'header', group : 'header', variants : 0, rank : 0, frame : true, template : 'frame-header', origin : 'project', own : true, openable : true } ] ) } );
 	const { w } = shown( '#themelab', list );
 	const head = rowsOfList( w ).find( function( row ) { return row.dataset.row === 'mein-kopf' } );
 	const tiles = asked( w, 'themelab/frame-tile' ).concat( asked( w, 'themelab/tile' ) ).map( function( entry ) { return entry.action+ ':'+ entry.payload.key+ ':'+ ( entry.payload.template ?? '' ) } );
 
-	check( 'H. the block of a frame is a row of the list with the category of the frames and no line that sends the person to the frames of the site - it is edited like any block; its picture is asked for by the action of the frames, with the template of its frame - and the blocks of a page by the action they had',
-		head !== undefined && textOf( head ).indexOf( W('cat/header') ) !== -1 && findAll( head, function( el ) { return String( el.className ).indexOf('builder-cell-note') !== -1 } ).length === 0 && tiles.indexOf( 'themelab/frame-tile:mein-kopf:frame-header' ) !== -1 && tiles.indexOf( 'themelab/tile:karten:' ) !== -1 && tiles.indexOf( 'themelab/tile:mein-kopf:' ) === -1 );
+	check( 'H. the block of a frame is a row of the list with the category of the frames and no line that sends the person to the frames of the site - it is edited like any block; its picture is asked for as the picture of any block is - by its key and no template, and no action of the frames - like the picture of the blocks of a page',
+		head !== undefined && textOf( head ).indexOf( W('cat/header') ) !== -1 && findAll( head, function( el ) { return String( el.className ).indexOf('builder-cell-note') !== -1 } ).length === 0 && tiles.indexOf( 'themelab/tile:mein-kopf:' ) !== -1 && tiles.indexOf( 'themelab/tile:karten:' ) !== -1 && tiles.filter( function( entry ) { return entry.indexOf('themelab/frame-tile') === 0 } ).length === 0 );
 
 	w.requests.length = 0;
 	fire( head, 'click' );
@@ -1823,101 +1823,6 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	fire( opened, 'close' );
 }
 
-// "Save as frame block": a row of the tab of the frames has the action, the dialog begins with a name made of the frame's, and the field of the key is the key that is written: it follows the name that is typed
-// until it is typed over, and what is asked is asked with what stands in the field - first as a question, check, and then written
-{
-	const inputsOf = function( dialog ) { return findAll( dialog, function( el ) { return el.tagName === 'INPUT' && String( el.className ).indexOf('nino-admin-input') !== -1 } ) };
-	const { w } = shown( '#themelab/@frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 0 }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 0 } ] } ) );
-	const action = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/header') ) } )[0];
-
-	check( 'H. a row of the frames has the action "Save as frame block", named for its frame', action !== undefined );
-
-	w.requests.length = 0;
-	fire( action, 'click' );
-
-	const dialog = dialogOf( w );
-	const inputs = inputsOf( dialog );
-
-	check( 'H. the dialog names the frame, begins with the name "Header of the site" in the working language and the key made of it, and has a description in each language',
-		textOf( dialog ).indexOf( W( 'adopt/title', W('frames/header') ) ) !== -1 && inputs[0].value === W( 'adopt/default-name', W('frames/header') ) && inputs[2].value === 'header-of-the-site' && findAll( dialog, function( el ) { return el.tagName === 'TEXTAREA' } ).length === 2
-		&& textOf( dialog ).indexOf( W('adopt/message-header') ) !== -1 && textOf( dialog ).indexOf( W('adopt/message-footer') ) === -1 );
-
-	inputs[0].value = 'Mein Kopf';
-	fire( inputs[0], 'input' );
-
-	check( 'H. the field of the key shows the key that is written: it follows the name in the working language as it is typed', inputs[2].value === 'mein-kopf' );
-
-	inputs[2].value = 'eigener-kopf';
-	fire( inputs[2], 'input' );
-	inputs[0].value = 'Mein Kopf zwei';
-	fire( inputs[0], 'input' );
-
-	check( 'H. a key that was typed by hand stays as it was typed: the name that is typed after it does not change it', inputs[2].value === 'eigener-kopf' );
-
-	pressed( dialog, W('adopt/submit') );
-
-	const question = asked( w, 'themelab/frame-adopt' );
-
-	check( 'H. the first request is a question - check, nothing is written - for the frame, with the names, the description and the key that stands in the field, and no tree and no text of the frame',
-		question.length === 1 && question[0].payload.check === true && question[0].payload.template === 'frame-header' && question[0].payload.name.de_DE === 'Mein Kopf zwei' && question[0].payload.key === 'eigener-kopf' && question[0].payload.tree === undefined && question[0].payload.texts === undefined && question[0].payload.locale === 'de_DE' );
-
-	answerOf( question[0], 200, { key : 'eigener-kopf', checked : true, gaps : [] } );
-
-	const written = asked( w, 'themelab/frame-adopt' )[1];
-
-	check( 'H. where no language lacks a text the frame is written at once, with the same key and no check', written !== undefined && written.payload.check === undefined && written.payload.key === 'eigener-kopf' && written.payload.fill === undefined );
-
-	answerOf( written, 409, { error : 'x', code : 'themelab_taken', params : [ 'eigener-kopf' ], field : 'key' } );
-
-	check( 'H. a key that is taken is refused by the server and the dialog names the key that stands in the field, at the field, and stays open', textOf( dialog ).indexOf( 'eigener-kopf' ) !== -1 && dialog.open !== false );
-
-	fire( dialog, 'close' );
-
-	const footer = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/footer') ) } )[0];
-
-	w.requests.length = 0;
-	fire( footer, 'click' );
-	pressed( dialogOf( w ), W('adopt/submit') );
-
-	check( 'H. the footer is kept the same way: the question names the template of the footer and the key is made of its name', asked( w, 'themelab/frame-adopt' )[0].payload.template === 'frame-footer' && asked( w, 'themelab/frame-adopt' )[0].payload.key === 'footer-of-the-site' );
-
-	fire( dialogOf( w ), 'close' );
-}
-
-// A language that has no text for a part: the dialog says which language lacks which part before anything is written, and offers to fill it from the working language - or to stop; nothing is filled by itself
-{
-	const { w } = shown( '#themelab/@frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 0 } ] } ) );
-	const action = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'adopt/row', W('frames/header') ) } )[0];
-
-	w.requests.length = 0;
-	fire( action, 'click' );
-	const dialog = dialogOf( w );
-
-	pressed( dialog, W('adopt/submit') );
-	answerOf( asked( w, 'themelab/frame-adopt' )[0], 200, { key : 'header-of-the-site', checked : true, gaps : [ { locale : 'en_US', parts : [ '[button]' ] } ] } );
-	const choice = dialogOf( w );
-
-	check( 'H. a language that lacks a text is said before anything is written: the dialog names the language and the part and offers to fill from the working language, and to cancel - and writes nothing yet',
-		choice !== dialog && textOf( choice ).indexOf( '[button]' ) !== -1 && textOf( choice ).indexOf( W( 'adopt/gaps-fill', 'Deutsch' ) ) !== -1 && asked( w, 'themelab/frame-adopt' ).length === 1 );
-
-	pressed( choice, 'Cancel' );
-	fire( choice, 'close' );
-
-	check( 'H. cancel writes nothing: no second request', asked( w, 'themelab/frame-adopt' ).length === 1 );
-
-	pressed( dialog, W('adopt/submit') );
-	answerOf( asked( w, 'themelab/frame-adopt' )[1], 200, { key : 'header-of-the-site', checked : true, gaps : [ { locale : 'en_US', parts : [ '[button]' ] } ] } );
-	const second = dialogOf( w );
-
-	pressed( second, W( 'adopt/gaps-fill', 'Deutsch' ) );
-	fire( second, 'close' );
-	const filled = asked( w, 'themelab/frame-adopt' )[2];
-
-	check( 'H. "Fill from the working language" writes, naming that language - and no other - for the languages that lack a text', filled !== undefined && filled.payload.fill === 'de_DE' && filled.payload.check === undefined );
-
-	fire( dialog, 'close' );
-}
-
 // The tab of the theme counts the own blocks of the frames besides the blocks and the frames
 {
 	const { w } = shown( '#themelab/info', LIST( { tab : 'info', counts : { blocks : 2, frames : 2, frameBlocks : 3 } } ) );
@@ -1925,188 +1830,24 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	check( 'H. the tab of the theme counts the own blocks of the frames', textOf( w.page ).indexOf( W('info/frame-blocks') ) !== -1 && /3/.test( textOf( w.page ).slice( textOf( w.page ).indexOf( W('info/frame-blocks') ) ) ) );
 }
 
-// Frames of the site made, named and taken away: "New frame" asks for the side, then the name in each language, the word - made of the name until it is typed over - and what it is made of;
-// a named frame has the actions "Rename" and "Delete", a standard one has neither; a frame a page chooses is refused and the pages are named
+// The way to the frames of the site: a link to the tab of the pages for the one who holds that right and designs - the list says so - on the tab of the theme and under the list of the blocks of a
+// header or of a footer, and for nobody else
 {
-	const standard = [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 2 }, { key : 'footer', side : 'footer', template : 'frame-footer', default : true, names : {}, name : '', uses : 2 },
-		{ key : 'header-landing', side : 'header', template : 'frame-header-landing', default : false, names : { de_DE : 'Landung', en_US : 'Landing' }, name : 'Landung', uses : 0, pages : [] } ];
-	const { w } = shown( '#themelab/@frames', LIST( { tab : 'frames', blocks : [], frames : standard } ) );
-	const labelled = function( label ) { return findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === label } ) };
+	const link = function( now ) { return findAll( now.page, function( el ) { return el.tagName === 'A' && el.dataset.key === 'frames-at' } ) };
+	const info = shown( '#themelab/info', LIST( { tab : 'info', framesAt : true } ) ).w;
+	const plain = shown( '#themelab/info', LIST( { tab : 'info', framesAt : false } ) ).w;
+	const headed = LIST( { framesAt : true, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'header', group : 'header', variants : 0, rank : 0, frame : true, template : 'frame-header', origin : 'project', own : true, openable : true } ] ) } );
+	const blocks = shown( '#themelab', headed ).w;
 
-	check( 'I. the tab of the frames names a named frame by its name with its word and the number of pages beside it, and the standard ones by the words of the panel with the same count',
-		textOf( w.page ).indexOf('Landung') !== -1 && textOf( w.page ).indexOf( W( 'frames/word-of', 'landing' ) ) !== -1 && textOf( w.page ).indexOf( W( 'frames/uses-none' ) ) !== -1 && textOf( w.page ).indexOf( W( 'frames/uses-many', '2' ) ) !== -1 && textOf( w.page ).indexOf( W('frames/standard') ) !== -1 );
-	check( 'I. "Rename" and "Delete" are the actions of a named frame only - the standard frames have none, and so cannot be asked to be taken away',
-		labelled( W( 'frames/rename-of', 'Landung' ) ).length === 1 && labelled( W( 'frames/remove-of', 'Landung' ) ).length === 1 && labelled( W( 'frames/rename-of', W('frames/header') ) ).length === 0 && labelled( W( 'frames/remove-of', W('frames/footer') ) ).length === 0 );
+	check( 'H. the way to the frames of the site is a link to the tab Header/footer of the pages - #builder-frames - on the tab of the theme for the account the list says may go there, and none for another',
+		link( info ).length === 1 && link( info )[0].href === '#builder-frames' && textOf( link( info )[0] ) === W('frames-at/link') && textOf( info.page ).indexOf( W('frames-at/note') ) !== -1 && link( plain ).length === 0 && textOf( plain.page ).indexOf( W('frames-at/note') ) === -1 );
 
-	const button = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('frames/new') } )[0];
+	const category = findAll( blocks.page, function( el ) { return el.tagName === 'SELECT' && el.dataset.key === 'themelab-category' } )[0];
 
-	check( 'I. the tab has the button "New frame"', button !== undefined );
+	category.value = 'header';
+	fire( category, 'change' );
 
-	fire( button, 'click' );
-
-	const form = dialogOf( w );
-	const sourceOf = findAll( form, function( el ) { return el.tagName === 'SELECT' } )[0];
-
-	check( 'I. the form is one dialog with one main button - the side is part of what the frame is made of: each source has its side in front, the blocks of each side too', findAll( form, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-btn-primary') !== -1 } ).length === 1
-		&& findAll( sourceOf, function( el ) { return el.tagName === 'OPTION' } ).map( function( el ) { return el.value } ).join() === 'header|frame-header,header|frame-header-landing,header|@block,footer|frame-footer,footer|@block' );
-
-	sourceOf.value = 'footer|frame-footer';
-	const named = findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0];
-	const typed = findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'word' } )[0];
-
-	named.value = 'Fuß der Landung';
-	fire( named, 'input' );
-
-	check( 'I. the word of a new frame follows the name in the working language as it is typed - small letters, digits, single hyphens', typed.value === 'fuss-der-landung' );
-
-	typed.value = 'unten';
-	fire( typed, 'input' );
-	named.value = 'Anderer Fuß';
-	fire( named, 'input' );
-
-	check( 'I. a word that was typed by hand stays as it was typed', typed.value === 'unten' );
-
-	w.requests.length = 0;
-	pressed( form, W('frames/create') );
-
-	const made = asked( w, 'themelab/frame-create' );
-
-	check( 'I. the request names the side that was chosen, the word, the names in each language, and the frame it is made of - the standard frame of that side - and no block',
-		made.length === 1 && made[0].payload.side === 'footer' && made[0].payload.word === 'unten' && made[0].payload.name.de_DE === 'Anderer Fuß' && made[0].payload.from === 'frame-footer' && made[0].payload.block === undefined && made[0].payload.locale === 'de_DE' );
-
-	answerOf( made[0], 409, { error : 'x', code : 'themelab_frame_taken', params : [ 'unten' ], field : 'word' } );
-
-	check( 'I. a word that is taken is said at the dialog, which stays open', textOf( form ).indexOf( 'unten' ) !== -1 && form.open !== false );
-
-	// made of a block: the form closes for the dialog of the blocks of that side, and the block that is chosen is the source - no frame, no question
-	fire( form, 'close' );
-	fire( button, 'click' );
-
-	const form2 = dialogOf( w );
-
-	findAll( form2, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0].value = 'Aus Block';
-	findAll( form2, function( el ) { return el.tagName === 'SELECT' } )[0].value = 'footer|@block';
-	w.requests.length = 0;
-	pressed( form2, W('frames/create') );
-	fire( form2, 'close' );
-
-	const listing = asked( w, 'themelab/frame-blocks' );
-
-	check( 'I. "Made of a block" asks the blocks that this panel has for the side that was chosen, and makes nothing yet', listing.length === 1 && listing[0].payload.template === 'frame-footer' && asked( w, 'themelab/frame-create' ).length === 0 );
-
-	answerOf( listing[0], 200, { blocks : [ { key : 'footer-line', name : { de_DE : 'Eine Zeile', en_US : 'One line' }, description : {}, category : 'footer', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
-
-	const blocks = dialogOf( w );
-
-	fire( findAll( blocks, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-pick-item') !== -1 } )[0], 'click' );
-	fire( blocks, 'close' );
-
-	const fromBlock = asked( w, 'themelab/frame-create' );
-
-	check( 'I. the block that is chosen is the source of the frame: the request has the block and the side, the word made of the name, and no frame - and no question came first',
-		fromBlock.length === 1 && fromBlock[0].payload.block === 'footer-line' && fromBlock[0].payload.from === undefined && fromBlock[0].payload.side === 'footer' && fromBlock[0].payload.word === 'aus-block' );
-
-	answerOf( fromBlock[0], 200, { key : 'footer-aus-block' } );
-
-	check( 'I. the frame that was made is open in the editor by its address', w.state.hash === '#themelab/@frames/footer-aus-block' );
-
-
-	answerOf( made[0], 200, { key : 'footer-unten' } );
-	w.requests.length = 0;
-	w.state.hash = '#themelab/@frames';
-
-	fire( form, 'close' );
-	fire( labelled( W( 'frames/rename-of', 'Landung' ) )[0], 'click' );
-
-	const renaming = dialogOf( w );
-	const field = findAll( renaming, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0];
-
-	check( 'I. the dialog of "Rename" begins with the name the frame has in the working language', field !== undefined && field.value === 'Landung' );
-
-	field.value = 'Start';
-	fire( field, 'input' );
-	pressed( renaming, W('frames/rename') );
-
-	const renamed = asked( w, 'themelab/frame-rename' );
-
-	check( 'I. renaming asks for the template of the frame and the new names, and nothing else', renamed.length === 1 && renamed[0].payload.template === 'frame-header-landing' && renamed[0].payload.name.de_DE === 'Start' && renamed[0].payload.word === undefined );
-
-	fire( renaming, 'close' );
-	w.requests.length = 0;
-	fire( labelled( W( 'frames/remove-of', 'Landung' ) )[0], 'click' );
-
-	const confirmation = dialogOf( w );
-
-	fire( confirmation, 'close' );
-
-	check( 'I. a "Delete" that is turned down asks the server for nothing', asked( w, 'themelab/frame-remove' ).length === 0 );
-
-	fire( labelled( W( 'frames/remove-of', 'Landung' ) )[0], 'click' );
-
-	check( 'I. "Delete" asks first, and says that the frame goes with its texts', textOf( dialogOf( w ) ).indexOf( W( 'frames/remove-message', 'Landung' ) ) !== -1 && asked( w, 'themelab/frame-remove' ).length === 0 );
-
-	const sure = dialogOf( w );
-
-	pressed( sure, W('frames/remove') );
-	fire( sure, 'close' );
-
-	const removing = asked( w, 'themelab/frame-remove' );
-
-	check( 'I. the answer yes asks the server to take the frame away by its template', removing.length === 1 && removing[0].payload.template === 'frame-header-landing' );
-
-	answerOf( removing[0], 409, { error : 'x', code : 'themelab_frame_used', params : [ 'Kontakt (/kontakt)' ], field : 'template' } );
-
-	check( 'I. a frame that a page chooses is refused with the pages named - the page and its address - at the list', textOf( w.page ).indexOf('Kontakt (/kontakt)') !== -1 );
-}
-
-// The question before a frame is deleted tells the truth: where the list knows that pages choose the frame, it names them - three, the rest counted - and has no button that deletes
-{
-	const used = { key : 'header-viel', side : 'header', template : 'frame-header-viel', default : false, names : { de_DE : 'Viel' }, name : 'Viel', uses : 5, pages : [ 'Kontakt', 'Start', 'Blog' ] };
-	const { w } = shown( '#themelab/@frames', LIST( { tab : 'frames', blocks : [], frames : [ { key : 'header', side : 'header', template : 'frame-header', default : true, names : {}, name : '', uses : 5, pages : [] }, used ] } ) );
-	const opening = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && ( el.attributes['aria-label'] ?? el.attributes.title ?? '' ) === W( 'frames/remove-of', 'Viel' ) } )[0];
-
-	w.requests.length = 0;
-	fire( opening, 'click' );
-
-	const note = dialogOf( w );
-	const text = textOf( note );
-
-	check( 'J. a frame that pages choose is not asked about: the dialog names the three pages and counts the rest, says what to do, and has no button that deletes - the one button is "Understood"',
-		text.indexOf( W( 'frames/remove-used', 'Viel', 'Kontakt, Start, Blog '+ W( 'frames/remove-more', '2' ) ) ) !== -1 && findAll( note, function( el ) { return el.tagName === 'BUTTON' } ).map( function( el ) { return textOf( el ).trim() } ).indexOf( W('frames/remove') ) === -1
-		&& findAll( note, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-btn-primary') !== -1 } ).length === 1 );
-
-	pressed( note, W('frames/remove-ok') );
-	fire( note, 'close' );
-
-	check( 'J. nothing is asked of the server by it', asked( w, 'themelab/frame-remove' ).length === 0 );
-
-	// a refusal of the server after the block of a new frame comes back to the form, with what was typed and the refusal at the field
-	const make = findAll( w.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).trim() === W('frames/new') } )[0];
-
-	fire( make, 'click' );
-
-	const form = dialogOf( w );
-
-	findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'name' && el.dataset.locale === 'de_DE' } )[0].value = 'Viel';
-	findAll( form, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === 'word' } )[0].value = 'viel';
-	findAll( form, function( el ) { return el.tagName === 'SELECT' } )[0].value = 'header|@block';
-	w.requests.length = 0;
-	pressed( form, W('frames/create') );
-	fire( form, 'close' );
-
-	answerOf( asked( w, 'themelab/frame-blocks' )[0], 200, { blocks : [ { key : 'header-line', name : { de_DE : 'Eine Zeile' }, description : {}, category : 'header', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
-
-	const blocks = dialogOf( w );
-
-	fire( findAll( blocks, function( el ) { return el.tagName === 'BUTTON' && String( el.className ).indexOf('nino-admin-pick-item') !== -1 } )[0], 'click' );
-	fire( blocks, 'close' );
-	answerOf( asked( w, 'themelab/frame-create' )[0], 409, { error : 'x', code : 'themelab_frame_taken', params : [ 'viel' ], field : 'word' } );
-
-	const again = dialogOf( w );
-	const kept = function( key ) { return findAll( again, function( el ) { return el.tagName === 'INPUT' && el.dataset.key === key && ( key !== 'name' || el.dataset.locale === 'de_DE' ) } )[0].value };
-
-	check( 'J. the form is open again after the refusal, with the name, the word and the source as they were typed, and the refusal is said at the field of the word',
-		again !== form && kept('name') === 'Viel' && kept('word') === 'viel' && findAll( again, function( el ) { return el.tagName === 'SELECT' } )[0].value === 'header|@block' && textOf( again ).indexOf( 'viel' ) !== -1 && findAll( again, function( el ) { return String( el.className ).indexOf('nino-admin-field-error') !== -1 } ).length === 1 );
+	check( 'H. under the list of the blocks of a header or of a footer the same link stands - and under no other list of blocks', link( blocks ).length === 1 && link( shown( '#themelab', LIST( { framesAt : true, blocks : headed.blocks } ) ).w ).length === 0 );
 }
 
 // The fixed addresses have the @ that no key of a block has: a block whose key is "frames", "theme" or "theme-blocks" opens its editor by its address, the tabs go by their @ address, and
@@ -2120,20 +1861,20 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 		check( 'K. the block "'+ key+ '" of the project opens its editor by #themelab/'+ key, opened !== undefined && opened.payload.key === key && own.state.hash === '#themelab/'+ key );
 	} );
 
-	const tabs = [ [ '@frames', 'frames', '@frames' ], [ '@theme', 'info', '@theme' ], [ '@theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( pair ) {
+	const tabs = [ [ '@frames', 'blocks', '' ], [ '@frames/header', 'blocks', '' ], [ '@theme', 'info', '@theme' ], [ '@theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( pair ) {
 
 		const w = shown( '#themelab/'+ pair[0], LIST( { tab : pair[1], frames : [], ownKeys : [ 'karten', 'frames', 'theme', 'theme-blocks' ] } ) ).w;
 
-		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab/'+ pair[2];
+		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab'+ ( pair[2] === '' ? '' : '/'+ pair[2] );
 	} );
 
-	check( 'K. the tabs are at #themelab/@frames and #themelab/@theme, the theme\'s blocks at #themelab/@blocks/nino - the address #themelab/@theme-blocks of before is written so -, whatever blocks the project has: no editor opens', tabs.join() === 'true,true,true' );
+	check( 'K. the theme is at #themelab/@theme, the theme\'s blocks at #themelab/@blocks/nino - the address #themelab/@theme-blocks of before is written so - and the address of the tab of the frames, which this panel has no more, is the list of the blocks: #themelab/@frames and #themelab/@frames/header are written #themelab - whatever blocks the project has: no editor opens', tabs.join() === 'true,true,true,true' );
 
-	const old = [ [ 'frames', 'frames', '@frames' ], [ 'theme', 'info', '@theme' ], [ 'theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( triple ) {
+	const old = [ [ 'frames', 'blocks', '' ], [ 'theme', 'info', '@theme' ], [ 'theme-blocks', 'blocks', '@blocks/nino' ] ].map( function( triple ) {
 
 		const w = shown( '#themelab/'+ triple[0], LIST( { tab : triple[1], frames : [], ownKeys : [ 'karten' ] } ) ).w;
 
-		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab/'+ triple[2];
+		return request( w, 'themelab/open' ) === undefined && w.state.hash === '#themelab'+ ( triple[2] === '' ? '' : '/'+ triple[2] );
 	} );
 
 	check( 'K. the addresses of before, without the @, open the tab where no block of that key is: and are written with the @', old.join() === 'true,true,true' );

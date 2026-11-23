@@ -329,7 +329,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The frames of the site for a list - the Builder's and Themelab's -: each with its key, its side, whether it is the standard one of its side, the names it was given and the one for the
+		 *	The frames of the site for a list - the pages' and the tab of the frames' -: each with its key, its side, whether it is the standard one of its side, the names it was given and the one for the
 		 *	language, and on how many pages it is chosen (the standard frame counts the pages that choose none of their own)
 		 *
 		 *	@return 	array											[ [ key, side, template, default, names, name, uses ] ]
@@ -370,7 +370,9 @@ namespace Nino\Modules\Builder {
 
 			self::setFrameName( $appData, $template, [] );
 
-			foreach( [ self::PREVIOUS. '/'. $template. '.php', self::FRAME_MARK. '/'. $template. '.php' ] as $path ) {
+			self::unchoose( $appData, $template );
+
+			foreach( [ self::PREVIOUS. '/'. $template. '.php' ] as $path ) {
 
 				$file = \Nino\Filesystem::path( $appData, $path );
 
@@ -1215,7 +1217,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	string|null								null where it was written, else 'keep', 'texts', 'slots', 'template' or 'changed'
 		 */
-		public static function commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats = [], ?string $seen = null, array $files = [], int $level = \Nino\Modules\Builder::LEVEL_CONTENT ): ?string {
+		public static function commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats = [], ?string $seen = null, array $files = [], int $level = \Nino\Modules\Builder::LEVEL_CONTENT, ?array $expect = null, bool $chose = false ): ?string {
 
 			// The writers of the Builder follow one another. The lock of config.php is what the routes of a page are written and taken away under (\Nino\Pages), and every write
 			// of config.php lets it go: each step takes it again before it writes, and looks at the page then
@@ -1223,7 +1225,7 @@ namespace Nino\Modules\Builder {
 				return 'busy';
 
 			try {
-				return self::_hold( $appData, $template ) ?? self::_commit( $appData, $template, $state, $target, $changes, $formats, $seen, $files, $level );
+				return self::_hold( $appData, $template ) ?? self::_commit( $appData, $template, $state, $target, $changes, $formats, $seen, $files, $level, $expect, $chose );
 			} finally {
 				\Nino\Filesystem::unlockFile( $appData, self::LOCK );
 				\Nino\Filesystem::unlockFile( $appData, '/config.php' );
@@ -1236,7 +1238,12 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	string|null								See commit(); 'gone' for a page that was taken away
 		 */
-		private static function _commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats, ?string $seen, array $files, int $level ): ?string {
+		private static function _commit( array &$appData, string $template, array $state, array $target, ?array $changes, array $formats, ?string $seen, array $files, int $level, ?array $expect, bool $chose ): ?string {
+
+			// A write that is the way back of a choice of a block is made only for the frame and the last state it was asked for: they are looked at here, under the lock that every other write
+			// of the frame holds, so that nothing can come between the look and the write
+			if( $expect !== null && self::expected( $appData, $template, $expect ) === false )
+				return 'changed';
 
 			$older = self::previous( $appData, $template );
 			$was = self::_files( $appData, $template, [ self::PREVIOUS. '/'. $template. '.php' ] );
@@ -1263,7 +1270,62 @@ namespace Nino\Modules\Builder {
 			self::_sweep( $appData, $older, $target, $state );
 			\Nino\Modules\Builder\Pictures::sweep( $appData, $template );
 
+			// The mark of a choice is the mark of the frame that the choice wrote, and of that frame alone: every write of a frame takes it away, and the write of a choice sets it - with the
+			// stamp of the frame it replaced, which is the last state it kept
+			if( self::side( $template ) !== null ) {
+
+				self::unchoose( $appData, $template );
+
+				if( $chose === true && ( $now = self::state( $appData, $template ) ) !== null )
+					\Nino\Filesystem::putFileContent( $appData, self::FRAME_MARK. '/'. $template. '.php', [ 'stamp' => self::stamp( $now ), 'before' => self::stamp( $state ) ] );
+			}
+
 			return null;
+		}
+
+		/**
+		 *	The mark of the last choice of a block for a frame: the stamp of the frame the choice wrote and the stamp of the frame it replaced - the last state it kept. A mark that an earlier
+		 *	version wrote has the first only
+		 *
+		 *	@return 	array|null								[ 'stamp', 'before' ] - 'before' null for such a mark; null for a frame that was written since
+		 */
+		public static function choice( array &$appData, string $template ): ?array {
+
+			$kept = \Nino\Filesystem::getFileContent( $appData, self::FRAME_MARK. '/'. $template. '.php', [] );
+
+			if( is_array( $kept ) === false || is_string( $kept['stamp'] ?? null ) === false || $kept['stamp'] === '' )
+				return null;
+
+			return [ 'stamp' => $kept['stamp'], 'before' => is_string( $kept['before'] ?? null ) === true ? $kept['before'] : null ];
+		}
+
+		/**
+		 *	Take the mark of a choice away: the frame is no longer the one that a choice wrote
+		 */
+		public static function unchoose( array &$appData, string $template ): void {
+
+			$path = self::FRAME_MARK. '/'. $template. '.php';
+			$file = \Nino\Filesystem::path( $appData, $path );
+
+			if( $file !== '' && ( is_file( $file ) === true || is_link( $file ) === true ) )
+				@unlink( $file );
+
+			unset( $appData['./nino/filesystem/cache'][$path] );
+		}
+
+		/**
+		 *	Whether the frame and its last state are what a way back was asked for: the frame is the stamp it names, the last state is the stamp it names, and the mark of the choice is the one it
+		 *	names - read now, by the one who holds the lock
+		 *
+		 *	@param		array			$expect				[ 'state' => stamp, 'previous' => stamp, 'choice' => [ stamp, before ]|null ]
+		 */
+		private static function expected( array &$appData, string $template, array $expect ): bool {
+
+			$state = self::state( $appData, $template );
+			$previous = self::previous( $appData, $template );
+
+			return $state !== null && $previous !== null && hash_equals( (string) ( $expect['state'] ?? '' ), self::stamp( $state ) ) === true && hash_equals( (string) ( $expect['previous'] ?? '' ), self::stamp( $previous ) ) === true
+				&& self::choice( $appData, $template ) === ( $expect['choice'] ?? null );
 		}
 
 		/**

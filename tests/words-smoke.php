@@ -112,10 +112,26 @@ $both = [];
 foreach( [ 'Builder', 'Themelab', 'Themes' ] as $module )
 	foreach( [ 'de_DE' => '/Kopf-\/Fußbereich/u', 'en_US' => '/header\/footer/i' ] as $locale => $pattern )
 		foreach( (array) ( static fn( string $file ): mixed => require $file )( $here. '/features/'. $module. '/text/'. $locale. '.php' ) as $key => $text )
-			if( preg_match( '/-(?:header|footer)\]\]$/D', (string) $key ) === 1 && preg_match( $pattern, (string) preg_replace( '/„[^“]*“|“[^”]*”/u', '', (string) $text ) ) === 1 )
+			if( preg_match( '/-(?:header|footer)(?:-standard)?\]\]$/D', (string) $key ) === 1 && preg_match( $pattern, (string) preg_replace( '/„[^“]*“|“[^”]*”/u', '', (string) $text ) ) === 1 )
 				$both[] = $module. ' '. $locale. ' '. $key;
 
 check( 'a sentence of the panels that is said of one side - its key ends in -header or -footer - has the word of that side and not the word for both'. ( $both === [] ? '' : ' - '. implode( ' | ', $both ) ), $both === [] );
+
+// What is said of one side is said of the other: a key for the header has its key for the footer, in each language of each panel
+$lonely = [];
+
+foreach( [ 'Builder', 'Themelab', 'Themes' ] as $module )
+	foreach( [ 'de_DE', 'en_US' ] as $locale ) {
+
+		$keys = array_keys( (array) ( static fn( string $file ): mixed => require $file )( $here. '/features/'. $module. '/text/'. $locale. '.php' ) );
+
+		// The menu called footer is a menu, no side of a page
+		foreach( array_filter( $keys, static fn( string $key ): bool => str_contains( $key, '/page/menu-' ) === false ) as $key )
+			if( preg_match( '/-(header|footer)((?:-standard)?\]\])$/D', (string) $key, $side ) === 1 && in_array( preg_replace( '/-(?:header|footer)((?:-standard)?\]\])$/D', '-'. ( $side[1] === 'header' ? 'footer' : 'header' ). '$1', (string) $key ), $keys, true ) === false )
+				$lonely[] = $module. ' '. $locale. ' '. $key;
+	}
+
+check( 'a word of one side has its word for the other side: every key that ends in -header has one that ends in -footer, and the other way round'. ( $lonely === [] ? '' : ' - '. implode( ' | ', $lonely ) ), $lonely === [] );
 
 echo "\n", $checks, ' checks, ', $failures, ' failed', "\n";
 exit( $failures === 0 ? 0 : 1 );

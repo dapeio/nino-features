@@ -13,9 +13,10 @@ namespace Nino\Modules\Builder {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Modules\Builder		The tab "Header/footer" of the pane of the pages (#builder-frames): the default choice of the site for the header and the footer, as the list of
-	 *										the pages draws it from the answer of builder/list (assets/admin-frames.js). It is a tab of the kernel's own kind (see Admin::tabs()): its uri, its word,
-	 *										its mount and its files, under the right of the design of the panel (see perm()); it has no action of its own - the list, the choice and the way back are those of the panel
+	 *	Modules\Builder		The tab "Header/footer" of the pane of the pages (#builder-frames): the header and the footer of the site and the frames the site has beside them - the list of
+	 *										them, made, renamed, chosen, taken away and kept as a block, and the editor of one (assets/admin-frames.js). It is a tab of the kernel's own kind (see
+	 *										Admin::tabs()): its uri, its word, its two mounts - the list and the sheet of the editor - and its files, under the right of the design of the panel (see perm());
+	 *										the actions are the panel's own (builder/frame-<x>, see Admin::actions() and Frames), each of which asks for the door and the step itself
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -48,6 +49,11 @@ namespace Nino\Modules\Builder {
 
 		public static function assets(): array {
 			return [ \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/assets/admin-frames.js' ) ];
+		}
+
+		// The mounts of the tab: the list of the frames and the sheet of the editor of one
+		public static function template(): string {
+			return \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/templates/frames' );
 		}
 
 		// The words of the tab are those of the panel

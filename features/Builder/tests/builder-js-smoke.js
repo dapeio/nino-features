@@ -94,17 +94,19 @@ const words = {
 	let match;
 	const direct = /word\(\s*'([a-z-]+\/[a-z0-9-]+)'/g;
 	const named = /'\/_admin\/builder\/([a-z-]+\/[a-z0-9-]+)'/g;
+	// The panel asks for words in two scripts: its own, and the one of the tab of the frames, which draws the list of them and the forms round their editor
+	const scanned = script+ '\n'+ fs.readFileSync( path.join( featureDir, 'assets/admin-frames.js' ), 'utf8' );
 
-	while( ( match = direct.exec( script ) ) !== null )
+	while( ( match = direct.exec( scanned ) ) !== null )
 		asked.add( match[1] );
 
-	while( ( match = named.exec( script ) ) !== null )
+	while( ( match = named.exec( scanned ) ) !== null )
 		asked.add( match[1] );
 
 	// A word chosen between two - word( picture ? 'source/a' : 'source/b' ) - is read as the literal it is
 	const either = /'((?:own|page|picture|source|insert|confirm|hint|msg|field)\/[a-z0-9-]+)'/g;
 
-	while( ( match = either.exec( script ) ) !== null )
+	while( ( match = either.exec( scanned ) ) !== null )
 		asked.add( match[1] );
 
 	// The keys the script puts together: the four things done to a block, the three widths, the two frames
@@ -144,6 +146,10 @@ const words = {
 	[ 'header', 'footer' ].forEach( function( key ) { [ 'missing-', 'restore-', 'restored-' ].forEach( function( kind ) { asked.add( 'frame/'+ kind+ key ) } ) } );
 	// The dialog that gives a frame its block, and what is said of the choice, in the words of the side that is chosen for
 	[ 'header', 'footer' ].forEach( function( key ) { [ 'choose-title', 'pick-note', 'changed', 'none', 'confirm-title', 'confirm-message', 'chosen', 'undone' ].forEach( function( kind ) { asked.add( 'frame/'+ kind+ '-'+ key ) } ) } );
+	// The tab of the frames says what it does in the word of the side of the frame: made, edited, renamed, deleted, kept as a block, and the block that replaces the standard one
+	[ 'header', 'footer' ].forEach( function( key ) { [ 'created', 'edit-of', 'edit', 'choose', 'choose-of', 'undo', 'undo-of', 'adopt', 'rename-of', 'rename-title', 'renamed', 'remove-of', 'remove-title', 'remove-message', 'remove-used', 'removed', 'adopt-of', 'adopt-message', 'insert', 'insert-of', 'confirm-message' ].forEach( function( kind ) { asked.add( 'frame/'+ kind+ '-'+ key ) } ); asked.add( 'frame/confirm-message-'+ key+ '-standard' ) } );
+	// The main button of the tab says the word of the side that is chosen, and the question about a language that has no text one of two sentences
+	[ 'frame/new', 'frame/new-header', 'frame/new-footer', 'frame/adopt-gaps-message', 'frame/adopt-gaps-own' ].forEach( function( key ) { asked.add( key ) } );
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
 	asked.add('new/copy');

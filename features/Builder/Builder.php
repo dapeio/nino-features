@@ -35,29 +35,26 @@ namespace Nino\Modules {
 
 		// What a person may do once inside, in two steps: the content (the blocks of a page and the words in them) and the design (the components of a block and their
 		// settings). The scope is the panel's: an account that holds no permission below it - the door alone - is not described in detail and may design; one that is
-		// described holds what it is given, and the permission of a step is any that lies below it. The frames of the site and the call of html are no step of this panel:
-		// they are written in the editor of the blocks, with the right of that panel (see Themelab\Frames)
+		// described holds what it is given, and the permission of a step is any that lies below it. The frames of the site are written with the step of the design (see
+		// frameLevel()); the call of html, free values, units and the notation are not a step of this panel: they are what the right of Themelab adds in a frame
 		public const string SCOPE = '/_admin/builder/';
 		public const string CONTENT = '/_admin/builder/content/edit';
 		public const string DESIGN = '/_admin/builder/design/edit';
 
-		// The step that was once "Development" and the permissions of it: they have no effect any more, and the update of the feature gives whoever held one the right of the
+		// The step that was once "Development" and the permissions of it: they have no effect any more, and the update of the feature gives whoever held one the right of
 		// Themelab (see upgrade())
 		public const string DEVELOPED = '/_admin/builder/develop/';
 
-		// The steps as numbers. The third is no step of an account: it is what a request has that the editor of the blocks passes on for a frame, which may be written down to its
-		// markup - html among it
+		// The steps as numbers. The third is no step of an account of this panel: it is what the account that designs has for a frame of the site where it holds the right of
+		// Themelab too (see frameLevel()), which may write a frame down to its markup - html among it
 		public const int LEVEL_CONTENT = 1;
 		public const int LEVEL_DESIGN = 2;
 		public const int LEVEL_DEVELOP = 3;
 
-		// The right of Themelab, by its name: the bridge from a page to it is shown to whoever holds it
+		// The right of Themelab, by its name: the bridge from a page to it is shown to whoever holds it, and the call of html in a frame is written by whoever holds it too
 		public const string BRIDGE = '/_admin/themelab/manage';
 
-		// What the editor of the blocks tells the actions of this panel it runs for it: this request is for a frame of the site and the right of the editor was held
-		public const string AS = './nino/builder/as';
-
-		// What the drafts of the previews are called in \Nino\Preview - and the ones of a frame, which the editor of the blocks holds with the right of that panel
+		// What the drafts of the previews are called in \Nino\Preview - and the ones of a frame, which are drawn only for an account that still designs
 		public const string KIND = 'builder';
 		public const string KIND_FRAME = 'builder-frame';
 
@@ -91,7 +88,7 @@ namespace Nino\Modules {
 		/**
 			 *	The step of work the signed-in account may do: 2 for the one who may design - the door without a description in detail, the permission of the design, the blanket of the
 		 *	panel or of the site, and the step of the development of an older version, which is no more than the design here -, 1 for the content, 0 for none of them. 3 is no step
-		 *	of this panel: it is the step of the editor of the blocks, which that editor gives a request for a frame through the mark AS, and nothing a request brings gives it
+		 *	of this panel: it is what an account that designs has for a frame where it holds the right of Themelab too, and frameLevel() says it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -100,10 +97,59 @@ namespace Nino\Modules {
 		public static function level( array &$appData ): int {
 
 			// What held the step of the development held that of the design too: it still does, until the update has written the design into the account
-			if( \Nino\Admin\Admin::scoped( $appData, self::SCOPE, self::DESIGN ) === true || \Nino\Auth::checkPermission( $appData, self::DEVELOPED. 'edit' ) === true )
+			if( self::_scoped( $appData, self::DESIGN ) === true || \Nino\Auth::checkPermission( $appData, self::DEVELOPED. 'edit' ) === true )
 				return self::LEVEL_DESIGN;
 
-			return \Nino\Admin\Admin::scoped( $appData, self::SCOPE, self::CONTENT ) === true ? self::LEVEL_CONTENT : 0;
+			return self::_scoped( $appData, self::CONTENT ) === true ? self::LEVEL_CONTENT : 0;
+		}
+
+		/**
+		 *	Whether the signed-in account may do what a permission of the scope of this panel names: the account that no permission below the scope describes - the door alone or a blanket - may do
+		 *	all of it, one that is described may do what it holds. It is the reading of \Nino\Admin\Admin::scoped() for this scope, kept here because the class of the workbench is not there in a
+		 *	request of the site, which asks for the step of an account when it is shown the draft of a frame (see request()); the test of the panel holds the two together
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$perm					The permission of a step
+		 *
+		 *	@return 	bool
+		 */
+		private static function _scoped( array &$appData, string $perm ): bool {
+
+			$user = \Nino\Auth::getCurrentUser( $appData );
+
+			if( $user === false )
+				return false;
+
+			foreach( \Nino\Auth::permissions( $appData, $user ) as $held ) {
+
+				if( is_string( $held ) === false || str_starts_with( $held, self::SCOPE ) === false )
+					continue;
+
+				$rest = substr( $held, strlen( self::SCOPE ) );
+
+				if( $rest !== '*' && str_contains( $rest, '/' ) === true )
+					return \Nino\Auth::checkPermission( $appData, $perm );
+			}
+
+			return true;
+		}
+
+		/**
+		 *	The step of work the signed-in account has for a frame of the site - the header and the footer: the design, or the development where it also holds the right of Themelab,
+		 *	0 for an account that may not design. It is read from what the account holds and from nothing a request brings: no parameter, no name of a template and no mark raises it.
+		 *	The right of Themelab alone gives none - it is the right to write the call of html, free values, units and the notation in a frame, which only an account that designs
+		 *	has any use for. The door of the panel is asked by the caller
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	int
+		 */
+		public static function frameLevel( array &$appData ): int {
+
+			if( self::level( $appData ) < self::LEVEL_DESIGN )
+				return 0;
+
+			return self::bridge( $appData ) === true ? self::LEVEL_DEVELOP : self::LEVEL_DESIGN;
 		}
 
 		/**
@@ -282,17 +328,10 @@ namespace Nino\Modules {
 				$tile = true;
 			}
 
-			// The picture of a block of a frame that the editor of the blocks asked for: held for the right of that panel
-			if( $held === null ) {
+			// The draft of a frame is drawn as a page's is, for the door of this panel, and only where the account still designs: one that does not is shown the site
+			if( $held === null && self::frameLevel( $appData ) >= self::LEVEL_DESIGN ) {
 
-				$held = \Nino\Preview::held( $appData, $request, \Nino\Modules\Builder\Library::KIND, self::BRIDGE );
-				$tile = true;
-			}
-
-			// The draft of a frame is the editor of the blocks': it is held for the right of that panel, and drawn as a page's is
-			if( $held === null ) {
-
-				$held = \Nino\Preview::held( $appData, $request, self::KIND_FRAME, self::BRIDGE );
+				$held = \Nino\Preview::held( $appData, $request, self::KIND_FRAME, self::PERM );
 				$tile = false;
 			}
 
@@ -338,6 +377,12 @@ namespace Nino\Modules {
 			}
 
 			\Nino\Modules\Template::swap( $appData, '/templates/'. $draft['template'], $draft['source'] );
+
+			// The page that holds the draft of a frame no page chooses: the draft of the page that has the call of that frame in it. It is the server's own - the token holds nothing a request brings
+			$host = $draft['host'] ?? null;
+
+			if( is_array( $host ) === true && is_string( $host['template'] ?? null ) === true && preg_match( \Nino\Pages::TEMPLATE, $host['template'] ) === 1 && is_string( $host['source'] ?? null ) === true )
+				\Nino\Modules\Template::swap( $appData, '/templates/'. $host['template'], $host['source'] );
 
 			// The language of the view: the words of the draft are the ones of that language, and the page is drawn in it for this request only
 			$locale = is_string( $draft['locale'] ?? null ) === true ? $draft['locale'] : '';

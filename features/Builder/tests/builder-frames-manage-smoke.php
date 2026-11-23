@@ -3,17 +3,17 @@ declare(strict_types=1);
 
 /**
  *	Nino features
- *	themelab-frames-manage-smoke.php	Contract test for the frames of a site made, named and taken away in Themelab - and for the list of them in the Builder:
+ *	builder-frames-manage-smoke.php	Contract test for the frames of a site made, named and taken away in the pages - and for the list of them in the Builder:
  *
  *												A. a frame is made: of the standard frame, of another frame or of a block, with its words in every language and the name it is called by
- *												B. who and what: the right of the panel and the token, a word that is none, taken, too long or that has a capital or a path, a name with markup or format characters, a source that is
+ *												B. who and what: the step of the design and the token, a word that is none, taken, too long or that has a capital or a path, a name with markup or format characters, a source that is
  *												   none - another side, a page, both, neither, a block of the other side - are refused and nothing is written
- *												C. the name is kept apart from the word and shown where the frame is listed: in Themelab, in the list of the Builder and in the choice of a page; renaming changes the name only
+ *												C. the name is kept apart from the word and shown where the frame is listed: in the tab of the frames, in the list of the pages and in the choice of a page; renaming changes the name only
  *												D. a frame is taken away where no page chooses it - with its template, its words, its name and its last state - and refused, naming the pages, where one does; never the standard one;
  *												   the round trip: made, chosen by a page, refused, the page back on the standard frame, taken away
  *
- *	Usage: php features/Themelab/tests/themelab-frames-manage-smoke.php
- *				 NINO_ROOT=../nino php features/Themelab/tests/themelab-frames-manage-smoke.php
+ *	Usage: php features/Builder/tests/builder-frames-manage-smoke.php
+ *				 NINO_ROOT=../nino php features/Builder/tests/builder-frames-manage-smoke.php
  */
 
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
@@ -80,7 +80,7 @@ $names = [ 'de_DE' => 'Landing', 'en_US' => 'Landing page' ];
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nA. A frame is made\n";
 
-[ $made, $body ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'landing', 'name' => $names, 'from' => 'frame-header' ] );
+[ $made, $body ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'landing', 'name' => $names, 'from' => 'frame-header' ] );
 $words = [ 'de_DE' => \Nino\Text::values( $site, '/template/frame-header-landing' ), 'en_US' => [] ];
 $keys = array_keys( $words['de_DE'] );
 
@@ -88,24 +88,24 @@ check( 'a frame is made of the standard frame: its template is the frame\'s and 
 	$made === 200 && ( $body['key'] ?? '' ) === 'header-landing' && $file( 'frame-header-landing' ) === $header && $keys === [ '/template/frame-header-landing/header/button' ] && ( $words['de_DE'][$keys[0]]['de_DE'] ?? '' ) === 'Kontakt' && ( $words['de_DE'][$keys[0]]['en_US'] ?? '' ) === 'Contact'
 	&& Store::frameName( $site, 'frame-header-landing', 'en_US' ) === 'Landing page' && Store::frameName( $site, 'frame-header-landing', 'de_DE' ) === 'Landing' && isset( Store::frames( $site )['header-landing'] ) === true );
 
-[ $fromFrame, $copy ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'zwei', 'name' => 'Zwei', 'from' => 'frame-header-b' ] );
+[ $fromFrame, $copy ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'zwei', 'name' => 'Zwei', 'from' => 'frame-header-b' ] );
 
 check( 'a frame is made of another frame of the site as well - the text of its template is that frame\'s, and the words that point at it point at the copy',
 	$fromFrame === 200 && str_contains( $file( 'frame-header-zwei' ), 'id="b"' ) === true && isset( \Nino\Text::values( $site, '/template/frame-header-zwei' )['/template/frame-header-zwei/b/button'] ) === true );
 
-[ $fromBlock ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'aus-block', 'name' => 'Aus Block', 'block' => 'header-line' ] );
-[ $footBlock ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'footer', 'word' => 'fuss', 'name' => 'Fuss', 'block' => 'footer-columns' ] );
+[ $fromBlock ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'aus-block', 'name' => 'Aus Block', 'block' => 'header-line' ] );
+[ $footBlock ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'footer', 'word' => 'fuss', 'name' => 'Fuss', 'block' => 'footer-columns' ] );
 
 check( 'a frame is made of a block of its side - the template is the block\'s root and the texts of the block are in it - and a header block makes no footer',
 	$fromBlock === 200 && str_starts_with( $file( 'frame-header-aus-block' ), '[header-wrap' ) === true && $footBlock === 200 && str_starts_with( $file( 'frame-footer-fuss' ), '[footer-wrap' ) === true );
 
-[ $wrongBlock ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'footer', 'word' => 'falsch', 'name' => 'Falsch', 'block' => 'header-line' ] );
+[ $wrongBlock ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'footer', 'word' => 'falsch', 'name' => 'Falsch', 'block' => 'header-line' ] );
 [ $listStatus, $listed ] = fmCall( $site, 'builder/list' );
 $rows = array_column( $listed['frames'] ?? [], null, 'key' );
-[ , $lab ] = fmCall( $site, 'themelab/frames' );
+[ , $lab ] = fmCall( $site, 'builder/frame-list' );
 $labRows = array_column( $lab['frames'] ?? [], null, 'key' );
 
-check( 'the frame is in the list of the Builder and in that of Themelab: with its name in the language, whether it is the standard one, and on how many pages it is chosen - the standard frame has the pages that choose none of their own',
+check( 'the frame is in the list of the pages and in the tab of the frames: with its name in the language, whether it is the standard one, and on how many pages it is chosen - the standard frame has the pages that choose none of their own',
 	$wrongBlock === 404 && ( $rows['header-landing']['name'] ?? '' ) === 'Landing' && ( $labRows['header-landing']['name'] ?? '' ) === 'Landing' && ( $rows['header-landing']['default'] ?? true ) === false && ( $rows['header']['default'] ?? false ) === true
 	&& ( $rows['header-landing']['uses'] ?? -1 ) === 0 && ( $rows['header']['uses'] ?? 0 ) === 2 && ( $rows['footer']['uses'] ?? 0 ) === 2 && ( $rows['header-landing']['names']['en_US'] ?? '' ) === 'Landing page' );
 
@@ -118,7 +118,7 @@ check( 'the choice of a page offers the frame by its word and says the name of e
 echo "\nB. Who and what\n";
 
 $snapshot = fmSnapshot( $site );
-$ask = static fn( array $more ): int => fmCall( $GLOBALS['site'], 'themelab/frame-create', $more + [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ] )[0];
+$ask = static fn( array $more ): int => fmCall( $GLOBALS['site'], 'builder/frame-create', $more + [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ] )[0];
 $refused = [
 	'a path'							=> $ask( [ 'word' => '../x' ] ),
 	'a capital'						=> $ask( [ 'word' => 'Neu' ] ),
@@ -146,12 +146,12 @@ $refused = [
 check( 'a frame is not made for a word that is none, taken, too long or has a capital, a path, a blank, a dot or two hyphens; for a name with markup or a character that turns a line round; for a source that is a page, another side, no frame, a path, both, none, or a block that is not of the side - 400, 404 or 409 - and nothing is written',
 	array_filter( $refused, static fn( int $status ): bool => in_array( $status, [ 400, 404, 409 ], true ) === false ) === [] && $refused['a word that is taken'] === 409 && fmSnapshot( $site ) === $snapshot );
 
-ninoUser( $site, 'builder@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
-$noRight = [ fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ] )[0], fmCall( $site, 'themelab/frame-rename', [ 'template' => 'frame-header-landing', 'name' => 'X' ] )[0], fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-zwei' ] )[0] ];
+ninoUser( $site, 'writer@example.com', [ '/_admin/builder/manage', '/_admin/builder/content/*' ] );
+$noRight = [ fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ] )[0], fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header-landing', 'name' => 'X' ] )[0], fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-zwei' ] )[0] ];
 ninoUser( $site, 'lab@example.com', $both );
 $untokened = [];
 
-foreach( [ 'themelab/frame-create' => [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ], 'themelab/frame-rename' => [ 'template' => 'frame-header-landing', 'name' => 'X' ], 'themelab/frame-remove' => [ 'template' => 'frame-header-zwei' ] ] as $action => $data ) {
+foreach( [ 'builder/frame-create' => [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ], 'builder/frame-rename' => [ 'template' => 'frame-header-landing', 'name' => 'X' ], 'builder/frame-remove' => [ 'template' => 'frame-header-zwei' ] ] as $action => $data ) {
 
 	$_POST['data'] = json_encode( $data + [ 'locale' => \Nino\Locales::getNativeLocale( $site ) ] );
 	$_POST['action'] = $action;
@@ -160,23 +160,27 @@ foreach( [ 'themelab/frame-create' => [ 'side' => 'header', 'word' => 'neu', 'na
 	$untokened[$action] = $request['/nino/http/response']['statusCode'];
 }
 
-check( 'making, renaming and taking away need the right of this panel and the token of the session: an account with the right of the Builder only and a request without the token are 403, and nothing is written',
-	$noRight === [ 403, 403, 403 ] && array_unique( array_values( $untokened ) ) === [ 403 ] && fmSnapshot( $site ) === $snapshot );
+ninoUser( $site, 'themelab@example.com', [ \Nino\Modules\Themelab::PERM ] );
+$labOnly = [ fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ] )[0], fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header-landing', 'name' => 'X' ] )[0], fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-zwei' ] )[0] ];
+ninoUser( $site, 'lab@example.com', $both );
+
+check( 'making, renaming and taking away need the step of the design in the panel of the pages and the token of the session: the step of the content, the right of Themelab alone and a request without the token are 403, and nothing is written',
+	$noRight === [ 403, 403, 403 ] && $labOnly === [ 403, 403, 403 ] && array_unique( array_values( $untokened ) ) === [ 403 ] && fmSnapshot( $site ) === $snapshot );
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 echo "\nC. The name\n";
 
 $before = [ $file( 'frame-header-landing' ), \Nino\Text::values( $site, '/template/frame-header-landing' ) ];
-[ $renamed ] = fmCall( $site, 'themelab/frame-rename', [ 'template' => 'frame-header-landing', 'name' => [ 'de_DE' => 'Startseite', 'en_US' => 'Home' ] ] );
+[ $renamed ] = fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header-landing', 'name' => [ 'de_DE' => 'Startseite', 'en_US' => 'Home' ] ] );
 [ , $listed ] = fmCall( $site, 'builder/list' );
 $rows = array_column( $listed['frames'] ?? [], null, 'key' );
-[ $std ] = fmCall( $site, 'themelab/frame-rename', [ 'template' => 'frame-header', 'name' => 'X' ] );
-[ $none ] = fmCall( $site, 'themelab/frame-rename', [ 'template' => 'frame-header-nofile', 'name' => 'X' ] );
-[ $markup ] = fmCall( $site, 'themelab/frame-rename', [ 'template' => 'frame-header-landing', 'name' => '<i>x</i>' ] );
+[ $std ] = fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header', 'name' => 'X' ] );
+[ $none ] = fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header-nofile', 'name' => 'X' ] );
+[ $markup ] = fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header-landing', 'name' => '<i>x</i>' ] );
 
-check( 'renaming changes the name and nothing else: the word, the template and its words stay - the list says the new name in the language - and the standard frame, a frame that is not there and a name with markup are refused',
+check( 'renaming changes the name and nothing else: the word, the template and its words stay - the list says the new name in the language - and the standard frame (403), a frame that is not there (400) and a name with markup are refused',
 	$renamed === 200 && ( $rows['header-landing']['name'] ?? '' ) === 'Startseite' && isset( Store::frames( $site )['header-landing'] ) === true && $before === [ $file( 'frame-header-landing' ), \Nino\Text::values( $site, '/template/frame-header-landing' ) ]
-	&& $std === 404 && $none === 404 && $markup === 400 && Store::frameName( $site, 'frame-header', 'de_DE' ) === '' );
+	&& $std === 403 && $none === 400 && $markup === 400 && Store::frameName( $site, 'frame-header', 'de_DE' ) === '' );
 
 $names = Store::frameNames( $site );
 $script = (string) file_get_contents( $sandbox. '/private/data/builder/frame-names.php' );
@@ -198,17 +202,17 @@ foreach( $tree as $at => $node )
 [ $chose ] = fmCall( $site, 'builder/save', [ 'template' => 'page-home', 'tree' => $tree, 'texts' => $open['texts'], 'base' => $open['stamp'] ] );
 ninoUser( $site, 'lab@example.com', $both );
 $snapshot = fmSnapshot( $site );
-[ $usedStatus, $used ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-landing' ] );
-[ $stdStatus ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header' ] );
-[ $footStd ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-footer' ] );
-[ $nofile ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-nofile' ] );
-[ $path ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-../x' ] );
+[ $usedStatus, $used ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-landing' ] );
+[ $stdStatus ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header' ] );
+[ $footStd ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-footer' ] );
+[ $nofile ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-nofile' ] );
+[ $path ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-../x' ] );
 ninoUser( $site, 'designer@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
 [ , $listed ] = fmCall( $site, 'builder/list' );
 $rows = array_column( $listed['frames'] ?? [], null, 'key' );
 
-check( 'a frame that a page chooses is not taken away - 409, the page is named with its address, the standard frames, a frame that is not there and a path are refused - and nothing is written; the list counts the page on the frame it chose',
-	$chose === 200 && $usedStatus === 409 && ( $used['code'] ?? '' ) === 'themelab_frame_used' && str_contains( implode( ' ', (array) ( $used['params'] ?? [] ) ), '/home' ) === true && $stdStatus === 403 && $footStd === 403 && in_array( $nofile, [ 404 ], true ) === true && in_array( $path, [ 404 ], true ) === true
+check( 'a frame that a page chooses is not taken away - 409, the number of the pages is the reason and the page is named with its address, the standard frames (403), a frame that is not there and a path (400) are refused - and nothing is written; the list counts the page on the frame it chose',
+	$chose === 200 && $usedStatus === 409 && ( $used['code'] ?? '' ) === 'builder_frames_used' && ( $used['params'][0] ?? 0 ) === 1 && str_contains( implode( ' ', (array) ( $used['params'] ?? [] ) ), '/home' ) === true && $stdStatus === 403 && $footStd === 403 && $nofile === 400 && $path === 400
 	&& fmSnapshot( $site ) === $snapshot && ( $rows['header-landing']['uses'] ?? 0 ) === 1 && ( $rows['header']['uses'] ?? 0 ) === 1 );
 
 [ , $open ] = fmCall( $site, 'builder/open', [ 'template' => 'page-home' ] );
@@ -222,8 +226,8 @@ foreach( $tree as $at => $node )
 ninoUser( $site, 'lab@example.com', $both );
 
 // the last state of the page still names the frame: a restore would write it back, so the frame is not taken away either
-[ $keptStatus, $keptBody ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-landing' ] );
-$keptNamed = $keptStatus === 409 && ( $keptBody['code'] ?? '' ) === 'themelab_frame_used_last' && str_contains( implode( ' ', (array) ( $keptBody['params'] ?? [] ) ), '/home' ) === true && is_file( $sandbox. '/private/templates/frame-header-landing.tpl' ) === true;
+[ $keptStatus, $keptBody ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-landing' ] );
+$keptNamed = $keptStatus === 409 && ( $keptBody['code'] ?? '' ) === 'builder_frames_used_last' && str_contains( implode( ' ', (array) ( $keptBody['params'] ?? [] ) ), '/home' ) === true && is_file( $sandbox. '/private/templates/frame-header-landing.tpl' ) === true;
 
 // a restore of a state that names a frame the site has not says so at once
 $before = Store::previous( $site, 'page-home' );
@@ -238,7 +242,7 @@ if( $ghost !== null ) {
 	ninoUser( $site, 'lab@example.com', $both );
 }
 
-check( 'the last state of a page counts as a use: the frame is refused - 409, "themelab_frame_used_last" with the page - and stays; a restore of a state that names a frame the site has not answers with the word of that frame',
+check( 'the last state of a page counts as a use: the frame is refused - 409, "builder_frames_used_last" with the page - and stays; a restore of a state that names a frame the site has not answers with the word of that frame',
 	$keptNamed === true && $ghost !== null && ( $restored['missingFrames'] ?? [] ) === [ 'ghost' ] );
 
 // the page is saved once more - its last state is then the one before, on the standard frame
@@ -257,7 +261,7 @@ $keep = $file( 'frame-header' );
 \Nino\Filesystem::putFileContent( $site, Store::FRAME_MARK. '/frame-header-landing.php', [ 'key' => 'x' ] );
 $marked = is_file( \Nino\Filesystem::path( $site, Store::PREVIOUS. '/frame-header-landing.php' ) ) === true && is_file( \Nino\Filesystem::path( $site, Store::FRAME_MARK. '/frame-header-landing.php' ) ) === true;
 $standard = [ Store::dropFrame( $site, 'frame-header' ), Store::dropFrame( $site, 'frame-footer' ), $file( 'frame-header' ) === $keep ];
-[ $gone ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-landing' ] );
+[ $gone ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-landing' ] );
 $left = fmSnapshot( $site );
 
 check( 'with the page back on the standard frame the frame is taken away: its template, its words in every language, its name and the last state of it are gone, and the standard frame and the other frames are as they were',
@@ -270,7 +274,7 @@ echo "\nE. What else counts, and what is never read\n";
 
 // the texts: a frame that names its own texts by their key is copied to a frame that names the copy's keys - it never reads the texts of the source
 $put( $site, 'frame-header-c', $header. "[text /template/frame-header-c/c/extra]\n" );
-[ $copyStatus ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'kopie', 'name' => 'Kopie', 'from' => 'frame-header-c' ] );
+[ $copyStatus ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'kopie', 'name' => 'Kopie', 'from' => 'frame-header-c' ] );
 $copy = $file( 'frame-header-kopie' );
 
 check( 'a copy of a frame that names its texts by key points at its own keys: no key of the source is left in the template of the copy',
@@ -279,24 +283,24 @@ check( 'a copy of a frame that names its texts by key points at its own keys: no
 // the footer: a frame of the footer is as little taken away as one of the header while a page chooses it; a page that has no route counts, and is named by its file
 $home = $file( 'page-home' );
 $put( $site, 'page-home', str_replace( '/templates/frame-footer]', '/templates/frame-footer-fuss]', $home ) );
-[ $footerUsed, $footerBody ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-footer-fuss' ] );
+[ $footerUsed, $footerBody ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-footer-fuss' ] );
 $put( $site, 'page-home', $home );
 $put( $site, 'page-extra', "[frame /templates/frame-header-zwei]\n" );
-[ $routeless, $routelessBody ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-zwei' ] );
-[ , $routelessList ] = fmCall( $site, 'themelab/frames' );
+[ $routeless, $routelessBody ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-zwei' ] );
+[ , $routelessList ] = fmCall( $site, 'builder/frame-list' );
 $routelessRows = array_column( $routelessList['frames'] ?? [], null, 'key' );
 $put( $site, 'page-extra', "[template /templates/html-header]\n" );
-[ $routelessGone ] = fmCall( $site, 'themelab/frame-remove', [ 'template' => 'frame-header-zwei' ] );
+[ $routelessGone ] = fmCall( $site, 'builder/frame-remove', [ 'template' => 'frame-header-zwei' ] );
 
 check( 'a footer frame that a page chooses is refused, 409, naming the page; so is a frame that only a template without a route chooses - named by its file, and counted in the list; with that template changed they go',
 	$footerUsed === 409 && str_contains( implode( ' ', (array) ( $footerBody['params'] ?? [] ) ), '/home' ) === true && $routeless === 409 && str_contains( implode( ' ', (array) ( $routelessBody['params'] ?? [] ) ), 'page-extra.tpl' ) === true
 	&& ( $routelessRows['header-zwei']['uses'] ?? 0 ) === 1 && $routelessGone === 200 );
 
 // the names: two frames of a side are not called alike, in no language; a frame keeps its own name, and the other side may use it
-[ $alike ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'gleich', 'name' => [ 'de_DE' => 'aus block', 'en_US' => 'Equal' ], 'from' => 'frame-header' ] );
-[ $alikeRename ] = fmCall( $site, 'themelab/frame-rename', [ 'template' => 'frame-header-kopie', 'name' => 'Aus Block' ] );
-[ $own ] = fmCall( $site, 'themelab/frame-rename', [ 'template' => 'frame-header-kopie', 'name' => 'KOPIE' ] );
-[ $other ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'footer', 'word' => 'gleich', 'name' => 'Aus Block', 'from' => 'frame-footer' ] );
+[ $alike ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'gleich', 'name' => [ 'de_DE' => 'aus block', 'en_US' => 'Equal' ], 'from' => 'frame-header' ] );
+[ $alikeRename ] = fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header-kopie', 'name' => 'Aus Block' ] );
+[ $own ] = fmCall( $site, 'builder/frame-rename', [ 'template' => 'frame-header-kopie', 'name' => 'KOPIE' ] );
+[ $other ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'footer', 'word' => 'gleich', 'name' => 'Aus Block', 'from' => 'frame-footer' ] );
 
 check( 'two frames of one side are not called alike - not in one language, not by a different case - 409 at the name, when made or renamed; a frame may take its own name in another case, and the other side may use a name',
 	$alike === 409 && $alikeRename === 409 && $own === 200 && $other === 200 );
@@ -306,7 +310,7 @@ $names = Store::frameNames( $site );
 file_put_contents( $sandbox. '/private/data/builder/frame-names.php', "<?php return [ ;\n" );
 unset( $site['./nino/filesystem/cache'][Store::FRAME_NAMES] );
 $level = error_reporting( 0 );
-[ $brokenLab, $brokenLabBody ] = fmCall( $site, 'themelab/frames' );
+[ $brokenLab, $brokenLabBody ] = fmCall( $site, 'builder/frame-list' );
 [ $brokenList ] = fmCall( $site, 'builder/list' );
 error_reporting( $level );
 $brokenNames = array_column( $brokenLabBody['frames'] ?? [], 'name' );
@@ -329,9 +333,9 @@ foreach( [ 'probe-head' => 'header', 'probe-foot' => 'footer' ] as $rootName => 
 unset( $site['./nino/blocks/state'] );
 $templates = static fn(): array => array_map( 'basename', glob( $GLOBALS['sandbox']. '/private/templates/*' ) ?: [] );
 $before = $templates();
-[ $crossedSide ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'sonde', 'name' => 'Sonde', 'block' => 'probe-foot-block' ] );
+[ $crossedSide ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'sonde', 'name' => 'Sonde', 'block' => 'probe-foot-block' ] );
 $unchanged = $templates() === $before;
-[ $rightSide ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'sonde', 'name' => 'Sonde', 'block' => 'probe-head-block' ] );
+[ $rightSide ] = fmCall( $site, 'builder/frame-create', [ 'side' => 'header', 'word' => 'sonde', 'name' => 'Sonde', 'block' => 'probe-head-block' ] );
 
 check( 'a frame is made of a block of its side whatever the name of the root: the block of a footer makes no header - 404 and nothing is written - and the block of a header does',
 	$crossedSide === 404 && $unchanged === true && $rightSide === 200 && str_starts_with( $file( 'frame-header-sonde' ), '[probe-head' ) === true );

@@ -37,7 +37,8 @@
 	const LAYOUT		= { mobile : 390, tablet : 768, desktop : null };
 	const DESKTOP		= 1280;
 
-	// The step that writes the markup in a call of html
+	// The step that designs - the components of a block, a page or a frame and their settings - and the step that writes the markup in a call of html
+	const DESIGN		= 2;
 	const DEVELOP		= 3;
 
 	// Below this width of the preview a person who has chosen no width is shown the page as a phone shows it
@@ -1359,9 +1360,9 @@
 			if( item.kind === 'frame' && ( row.key === '@header' || row.key === '@footer' ) )
 				actions.push( { key : 'texts', icon : 'pencil', name : word( 'frame/texts-of', row.label ) } );
 
-			// The frames are written in the editor of the blocks: the one who holds the right of that panel is taken there from the row
-			if( item.kind === 'frame' && S.bridge === true && ( row.key === '@header' || row.key === '@footer' ) )
-				actions.push( { key : 'themelab', icon : 'external-link', name : word( 'own/frame-edit', row.label ) } );
+			// The frames are written in the tab Header/footer of this pane: the one who designs is taken to the frame the page has from the row
+			if( item.kind === 'frame' && S.level >= DESIGN && ( row.key === '@header' || row.key === '@footer' ) )
+				actions.push( { key : 'frame-edit', icon : 'external-link', name : word( row.key === '@footer' ? 'frame/edit-footer' : 'frame/edit-header' ) } );
 
 			const held = item.kind === 'block' && S.frame === false ? variantOfBlock( item.at ) : undefined;
 			const named = held === undefined || held.current === null ? undefined : held.items.find( function( entry ) { return entry[0] === held.current } );
@@ -1840,8 +1841,15 @@
 			return;
 		}
 
-		if( key === 'themelab' ) {
-			Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'themelab', [ '@frames', id === '@footer' ? 'footer' : 'header' ] ) } );
+		if( key === 'frame-edit' ) {
+
+			// The frame the page has: the one its call chooses, and the standard one where it calls none of its own
+			const side = id === '@footer' ? 'footer' : 'header';
+			const call = S.top.find( function( node ) { return sideOfCall( node ) === side } );
+			const choice = call === undefined ? 'default' : choiceOfCall( call );
+
+			Nino.admin.dirty.guard( [ 'builder' ], function() { Nino.admin.router.go( 'builder-frames', [ choice === 'default' || choice === 'none' ? side : side+ '-'+ choice ] ) } );
+
 			return;
 		}
 
@@ -4503,8 +4511,17 @@
 	 */
 	const openFrameTexts = function( id, opener ) {
 
-		const template = id === '@footer' ? 'frame-footer' : 'frame-header';
-		const name = word( id === '@footer' ? 'word/frame-footer' : 'word/frame-header' );
+		// The frame the page has: the one its call chooses - the standard one where it calls none of its own - and its texts are the ones the dialog is for
+		const side = id === '@footer' ? 'footer' : 'header';
+		const call = S.top.find( function( node ) { return sideOfCall( node ) === side } );
+		const choice = call === undefined ? 'default' : choiceOfCall( call );
+		const template = choice === 'default' ? 'frame-'+ side : 'frame-'+ side+ '-'+ choice;
+		const name = choice === 'default' ? word( id === '@footer' ? 'word/frame-footer' : 'word/frame-header' ) : frameWord( choice, side );
+
+		if( choice === 'none' ) {
+			S.view.bar.line.idle( word( 'frame/no-texts', word( id === '@footer' ? 'word/frame-footer' : 'word/frame-header' ) ) );
+			return;
+		}
 
 		api( 'frametexts', { template : template }, function( status, response ) {
 
@@ -10712,13 +10729,15 @@
 	};
 
 	/**
-	 *	The block a frame is given, chosen: ONE dialog for the list of the pages and for the editor of the frames of Themelab. The blocks of the kind of the frame - a header or a footer -
+	 *	The block a frame is given, chosen: ONE dialog for the list of the frames and for the editor of a frame - both in the tab Header/footer of the pane of the pages. The blocks of the kind of the frame - a header or a footer -
 	 *	of every source the server lists, the own ones first and then those of each theme, the source said at each; then the question before the whole frame goes. What is done with the
 	 *	choice is the caller's: the list writes the frame, the editor puts the block into its draft
 	 *
 	 *	@param		{Object}		options
 	 *	@param		{string}		options.name					What the frame is called: "Header"
 	 *	@param		{string}		options.side					'header' or 'footer': the words of the dialog are those of that side
+	 *	@param		{boolean}		[options.locked]			true where the frame holds parts the account may not write: the question says that they go with it and that "Undo" brings them back
+	 *	@param		{boolean}		[options.standard]		true for the standard frame of the side, which has no name of its own: the question then says the side and the block, and not the name twice
 	 *	@param		{Element}		options.opener				What opened it: the focus returns there
 	 *	@param		{Function}	options.load					load( done ) - asks the server for the blocks of the kind of the frame; done( status, response )
 	 *	@param		{Function}	options.fail					fail( status, response ) - a request that was refused
@@ -10785,7 +10804,7 @@
 					// The whole frame goes: it is asked, and it can be taken back
 					Nino.adminUi.confirm( 'destructive', {
 						title		: word( 'frame/confirm-title-'+ side ),
-						message	: word( 'frame/confirm-message-'+ side, options.name, localized( entry.name ) ),
+						message	: ( options.standard === true ? word( 'frame/confirm-message-'+ side+ '-standard', localized( entry.name ) ) : word( 'frame/confirm-message-'+ side, options.name, localized( entry.name ) ) ) + ( options.locked === true ? ' '+ word('frame/confirm-locked') : '' ),
 						yes			: word('frame/confirm-yes'),
 						no			: Nino.adminUi.text('/_admin/common/label/cancel'),
 						kind		: 'danger',
@@ -10844,93 +10863,6 @@
 					watch.observe( face );
 			} );
 		} );
-	};
-
-	// What a frame is called: the standard ones by the words of the panel, a named one by the name it was given, and by its word where it has none
-	const frameName = function( key, entry ) {
-		return key === 'header' || key === 'footer' ? word( 'frame/'+ key ) : ( entry !== undefined && entry.name !== '' ? entry.name : key.replace( /^(?:header|footer)-/, '' ) );
-	};
-
-	// What stands beside the name of a frame, which the title has said: on how many pages it is chosen and, for a named frame, the word it is called by - where it has a name
-	const frameDetail = function( frame ) {
-
-		const count = frame.uses === 0 ? word('frame/uses-none') : ( frame.uses === 1 ? word('frame/uses-one') : word( 'frame/uses-many', String( frame.uses ) ) );
-
-		return frame.default === true || frame.name === '' ? count : word( 'frame/word', frame.key.replace( /^(?:header|footer)-/, '' ), count );
-	};
-
-	// The frames in the list of the pages - the standard ones and the named ones the site has -, for the one who designs: each a row with the choice of its block, the way back to what it was, and - where Themelab is on and the account may
-	// use it - the way to its editor. A frame is changed here by being given another block of its kind; what is built in it is built in Themelab
-	const framesList = function( data ) {
-
-		// A frame that was changed since the list was drawn - in the editor of the frames - is not written over: the list is drawn again and says so
-		const frameFailed = function( status, response, side ) {
-
-			if( status === 409 && ( response ?? {} ).code === 'builder_frame_changed' ) {
-				Nino.adminUi.say( word( 'frame/changed-'+ ( side === 'footer' ? 'footer' : 'header' ) ) );
-				Nino.admin.builder.reload();
-				return;
-			}
-
-			listFail( status, response, '/_admin/builder/error/frame' );
-		};
-
-		const rows = data.frames.map( function( frame ) {
-
-			const name = frameName( frame.key, frame );
-			const actions = [];
-
-			actions.push( Nino.adminUi.button( word('frame/choose'), function( event ) {
-
-				clearFail();
-				chooseFrameBlock( {
-					name : name,
-					opener : event.currentTarget,
-					dir : data.dir ?? '',
-					load : function( done ) { Nino.admin.builder.call( 'framechoices', { template : frame.template, locale : Nino.admin.workLocale.current }, done ) },
-					tile : function( key, done ) { Nino.admin.builder.call( 'frametile', { template : frame.template, key : key, locale : Nino.admin.workLocale.current }, done ) },
-					side : frame.side,
-					fail : function( status, response ) { frameFailed( status, response, frame.side ) },
-					none : function() { Nino.adminUi.say( word( 'frame/none-'+ ( frame.side === 'footer' ? 'footer' : 'header' ) ) ) },
-					apply : function( key, entry ) {
-
-						Nino.admin.builder.call( 'framechoose', { template : frame.template, key : key, base : frame.stamp, locale : Nino.admin.workLocale.current }, function( status, response ) {
-
-							if( status !== 200 ) {
-								frameFailed( status, response, frame.side );
-								return;
-							}
-
-							Nino.adminUi.say( word( 'frame/chosen-'+ ( frame.side === 'footer' ? 'footer' : 'header' ), name, localized( entry.name ) ) );
-							Nino.admin.builder.reload();
-						} );
-					},
-				} );
-			}, { small : true, name : word( 'frame/choose-of', name ) } ) );
-
-			if( frame.undo === true )
-				actions.push( Nino.adminUi.button( word('frame/undo'), function() {
-
-					Nino.admin.builder.call( 'framerestore', { template : frame.template, base : frame.stamp, locale : Nino.admin.workLocale.current }, function( status, response ) {
-
-						if( status !== 200 ) {
-							frameFailed( status, response, frame.side );
-							return;
-						}
-
-						Nino.adminUi.say( word( 'frame/undone-'+ ( frame.side === 'footer' ? 'footer' : 'header' ), name ) );
-						Nino.admin.builder.reload();
-					} );
-				}, { small : true, name : word( 'frame/undo-of', name ) } ) );
-
-			// The row says which header or footer it is and what that is called in the dialog of a page's choice: the word of the standard one, or the name of the named one. The name is text
-			const side = frame.side === 'footer' ? 'footer' : 'header';
-			const choice = frame.default === true ? 'default' : frame.key.replace( /^(?:header|footer)-/, '' );
-
-			return { key : frame.key, title : word( 'frame/of', word( 'frame/'+ side ), frameWord( choice, side ) ), detail : frameDetail( frame ), actions : actions };
-		} );
-
-		return Nino.adminUi.list( rows, { title : word('frame/title'), level : 2 } );
 	};
 
 	/**
@@ -11061,20 +10993,6 @@
 		return [ copy, Nino.adminUi.fieldHelp( reason, { name : row.name } ), drop ];
 	};
 
-	// The tab "Header/footer" of the pane: the default choice of the site - drawn from the answer of the list, with the list of the pages. Whoever may not design has no tab, and no frames in the answer
-	const drawFrames = function( data ) {
-
-		const mount = dc.getElementById('builder-frames-list');
-
-		if( mount === null )
-			return;
-
-		mount.innerHTML = '';
-
-		if( data.frames.length > 0 )
-			mount.appendChild( framesList( data ) );
-	};
-
 	const render = function( data ) {
 
 		closeSheet();
@@ -11100,9 +11018,6 @@
 		N.button = null;
 
 		mount.appendChild( holder );
-
-		// The header and the footer of the site are the tab beside this one: it is drawn from the same answer
-		drawFrames( data );
 
 		// A page is made by the one who may design and may write routes: the list says so, and the action asks again
 		if( data.pages.length === 0 )
@@ -11199,7 +11114,7 @@
 			call : api, tile : tileAsk, tileFrame : tileFrame, state : function() { return S }, replace : replaceFrame, reshape : reshape, select : function( rel ) { if( S.sheet === 'block' && S.tree !== null && relNode( rel ) !== null ) chooseRow( rel, false ) },
 		},
 
-		// The dialog that gives a frame its block, for Themelab's editor of the frames: see chooseFrameBlock()
+		// The dialog that gives a frame its block, for the tab of the frames - its list and its editor: see chooseFrameBlock()
 		chooseFrame : chooseFrameBlock,
 
 		go : function( parts, options ) {

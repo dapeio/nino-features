@@ -123,10 +123,10 @@ $script = (string) file_get_contents( $feature. '/assets/admin.js' );
 
 preg_match_all( "/word\\(\\s*'([a-z][a-z\\/-]*)'/", $script, $asked );
 $asked = array_unique( $asked[1] );
-$dynamic = [ 'adopt/message-header', 'adopt/message-footer', 'frames/insert-header', 'frames/insert-footer', 'frames/no-blocks-header', 'frames/no-blocks-footer', 'info/origin-package', 'info/origin-feature', 'info/package-design', 'info/package-blocks', 'info/package-frames', 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'details/ph-landscape', 'details/ph-mark', 'error/load', 'frames/header', 'frames/footer', 'import/result-written', 'import/result-copied', 'import/result-replaced', 'import/result-skipped', 'import/result-left', 'import/result-failed', 'import/result-untried', 'error/export', 'error/import' ];
-$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'info/origin-' && $key !== 'frames/' && $key !== 'frames/side-' && $key !== 'adopt/message-' && $key !== 'frames/insert-' && $key !== 'frames/no-blocks-' && $key !== 'details/ph-' && $key !== 'import/result-' && isset( $words['de_DE']['[[/_admin/themelab/'. $key. ']]'], $words['en_US']['[[/_admin/themelab/'. $key. ']]'] ) === false );
+$dynamic = [ 'info/origin-package', 'info/origin-feature', 'info/package-design', 'info/package-blocks', 'info/package-frames', 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'details/ph-landscape', 'details/ph-mark', 'error/load', 'import/result-written', 'import/result-copied', 'import/result-replaced', 'import/result-skipped', 'import/result-left', 'import/result-failed', 'import/result-untried', 'error/export', 'error/import' ];
+$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'info/origin-' && $key !== 'details/ph-' && $key !== 'import/result-' && isset( $words['de_DE']['[[/_admin/themelab/'. $key. ']]'], $words['en_US']['[[/_admin/themelab/'. $key. ']]'] ) === false );
 $sentence = static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/'. $code. ']]'], $words['en_US']['[[/_admin/error/'. $code. ']]'] );
-$codes = [ 'themelab_frame', 'themelab_frame_gone', 'themelab_frame_side', 'themelab_frame_word', 'themelab_frame_taken', 'themelab_frame_source', 'themelab_frame_used', 'themelab_frame_standard', 'themelab_frame_write', 'themelab_changed', 'themelab_language', 'themelab_shell', 'themelab_unknown', 'themelab_name', 'themelab_category', 'themelab_taken', 'themelab_invalid', 'themelab_refused', 'themelab_tree', 'themelab_place', 'themelab_preview', 'themelab_write', 'themelab_key', 'themelab_block', 'themelab_id', 'themelab_locked', 'themelab_html', 'themelab_foreign', 'themelab_loop', 'themelab_frame', 'themelab_address', 'themelab_picture', 'themelab_empty', 'themelab_long', 'themelab_export_key', 'themelab_export_version', 'themelab_export_name', 'themelab_export_description', 'themelab_export_none', 'themelab_export_unknown', 'themelab_export_read', 'themelab_export_archive', 'themelab_export_large', 'themelab_import_large', 'themelab_import_empty', 'themelab_import_unknown', 'themelab_package_loop', 'themelab_package_block', 'themelab_package_refused', 'themelab_import_archive_gzip', 'themelab_import_archive_name', 'themelab_import_archive_refused' ];
+$codes = [ 'themelab_changed', 'themelab_language', 'themelab_shell', 'themelab_unknown', 'themelab_name', 'themelab_category', 'themelab_taken', 'themelab_invalid', 'themelab_refused', 'themelab_tree', 'themelab_place', 'themelab_preview', 'themelab_write', 'themelab_key', 'themelab_block', 'themelab_id', 'themelab_locked', 'themelab_html', 'themelab_foreign', 'themelab_loop', 'themelab_address', 'themelab_picture', 'themelab_empty', 'themelab_long', 'themelab_export_key', 'themelab_export_version', 'themelab_export_name', 'themelab_export_description', 'themelab_export_none', 'themelab_export_unknown', 'themelab_export_read', 'themelab_export_archive', 'themelab_export_large', 'themelab_import_large', 'themelab_import_empty', 'themelab_import_unknown', 'themelab_package_loop', 'themelab_package_block', 'themelab_package_refused', 'themelab_import_archive_gzip', 'themelab_import_archive_name', 'themelab_import_archive_refused' ];
 
 $twice = [];
 
@@ -198,17 +198,12 @@ $every = [
 	'themelab/picture'	=> [ 'key' => 'karten', 'name' => 'bild' ],
 	'themelab/picture-drop'	=> [ 'key' => 'karten', 'files' => [] ],
 	'themelab/picture-show'	=> [ 'key' => 'karten', 'file' => 'x' ],
-	'themelab/frames'		=> [],
 	'themelab/adopt'		=> [ 'template' => 'page-home', 'tree' => [], 'at' => '0', 'key' => 'neu', 'name' => 'Neu', 'category' => 'content' ],
-	'themelab/frame-adopt'	=> [ 'template' => 'frame-header', 'key' => 'neu', 'name' => 'Neu' ],
-	'themelab/frame-create'	=> [ 'side' => 'header', 'word' => 'neu', 'name' => 'Neu', 'from' => 'frame-header' ],
-	'themelab/frame-rename'	=> [ 'template' => 'frame-header-neu', 'name' => 'Neu' ],
-	'themelab/frame-remove'	=> [ 'template' => 'frame-header-neu' ],
 	'themelab/export'		=> [ 'keys' => [ 'hero-full' ], 'key' => 'x', 'version' => '1.0.0', 'name' => 'X' ],
 	'themelab/import-check'	=> [],
 	'themelab/import'		=> [ 'id' => 'x', 'items' => [] ],
 	'themelab/import-drop'	=> [ 'id' => 'x' ],
-] + array_combine( array_map( static fn( string $act ): string => 'themelab/frame-'. $act, [ 'open', 'preview', 'save', 'restore', 'blocks', 'block', 'tile', 'keys', 'variant', 'offer', 'notation', 'upload', 'unstage' ] ), array_fill( 0, 13, [ 'template' => 'frame-header', 'tree' => [], 'texts' => [], 'base' => 'x', 'key' => 'hero-full', 'kind' => 'types', 'uri' => 'x', 'files' => [] ] ) );
+];
 
 ninoUser( $site, 'builder-only@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/routes/manage' ] );
 $before = themelabSnapshot( $site );
@@ -217,7 +212,7 @@ $answers = [];
 foreach( $every as $action => $data )
 	$answers[$action] = themelabCall( $site, $action, $data )[0];
 
-check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen and the frames, the adopting of a block of a page and of a frame, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 39 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
+check( 'an account that has the rights of the Builder and not /_admin/themelab/manage gets 403 on every action of the panel - the thirteen, the adopting of a block of a page or of a frame, the export and the import - and nothing is written', array_unique( array_values( $answers ) ) === [ 403 ] && count( $answers ) === 21 && array_keys( $every ) === array_keys( \Nino\Modules\Themelab\Admin::actions() ) && themelabSnapshot( $site ) === $before );
 
 ninoUser( $site, 'blocks@example.com', [ \Nino\Modules\Themelab::PERM ] );
 $answers = [];
@@ -533,7 +528,7 @@ $beforeInfo = themelabSnapshot( $site );
 [ $infoStatus, $info ] = themelabCall( $site, 'themelab/list', [ 'tab' => 'info' ] );
 
 check( 'the tab of the theme is answered with the counts of the own blocks and frames and no block of a list, and asking for it writes nothing',
-	$infoStatus === 200 && $info['tab'] === 'info' && $info['blocks'] === [] && $info['counts']['blocks'] === count( $listedOwn ) && $info['counts']['frames'] === count( $listed['frames'] ) && themelabSnapshot( $site ) === $beforeInfo );
+	$infoStatus === 200 && $info['tab'] === 'info' && $info['blocks'] === [] && $info['counts']['blocks'] === count( $listedOwn ) && $info['counts']['frames'] === count( \Nino\Modules\Builder\Frames::listed( $site ) ) && isset( $info['frames'] ) === false && themelabSnapshot( $site ) === $beforeInfo );
 
 // the tile of the list is the small picture of a block of any source
 [ $tiled, $tile ] = themelabCall( $site, 'themelab/tile', [ 'key' => 'hero-full' ] );

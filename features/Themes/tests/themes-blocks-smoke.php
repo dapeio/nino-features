@@ -115,7 +115,7 @@ $split = (string) ( $made['key'] ?? '' );
 $empty = (string) ( $made['key'] ?? '' );
 @mkdir( $sandbox. '/private/blocks/'. $split. '/images', 0755, true );
 file_put_contents( $sandbox. '/private/blocks/'. $split. '/images/picture.svg', $svg );
-[ $adopted, $made ] = bkCall( $site, 'themelab/frame-adopt', [ 'template' => 'frame-header', 'key' => 'mein-kopf', 'name' => [ 'de_DE' => 'Mein Kopf', 'en_US' => 'My head' ], 'description' => [ 'de_DE' => 'Kopf', 'en_US' => 'Head' ] ] );
+[ $adopted, $made ] = bkCall( $site, 'themelab/adopt', [ 'template' => 'frame-header', 'key' => 'mein-kopf', 'name' => [ 'de_DE' => 'Mein Kopf', 'en_US' => 'My head' ], 'description' => [ 'de_DE' => 'Kopf', 'en_US' => 'Head' ] ] );
 \Nino\Blocks::forget( $site );
 
 // an own theme of the project

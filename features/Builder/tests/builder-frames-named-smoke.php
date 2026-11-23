@@ -3,17 +3,17 @@ declare(strict_types=1);
 
 /**
  *	Nino features
- *	themelab-frames-named-smoke.php	Contract test for the frames of a site - as many as it has, not two: the standard frame of each side and the named ones, frame-<side>-<word>:
+ *	builder-frames-named-smoke.php	Contract test for the frames of a site - as many as it has, not two: the standard frame of each side and the named ones, frame-<side>-<word>:
  *
  *												A. the list: one source - Store::frames() - with the standard first, the named ones in the order of their names, and nothing whose name or file is not right;
  *												   side() says which side a name is of by its form alone
- *												B. a named frame is a frame like the standard one: in the list of the Builder and in that of Themelab, opened and saved in the editor, given a block by the
+ *												B. a named frame is a frame like the standard one: in the list of the pages and in the tab of the frames, opened and saved in the editor, given a block by the
  *												   choice of the Builder - in its own file and no other - and a header block only in a header
- *												C. what is no frame is refused by every action of a frame, of the Builder and of Themelab, like a foreign template: a path, a capital, none, another side, a page, a
+ *												C. what is no frame is refused by every action of a frame - the choice, the editor, the making - like a foreign template: a path, a capital, none, another side, a page, a
  *												   word that is too long, a name of the right form that has no file - and nothing is written
  *
- *	Usage: php features/Themelab/tests/themelab-frames-named-smoke.php
- *				 NINO_ROOT=../nino php features/Themelab/tests/themelab-frames-named-smoke.php
+ *	Usage: php features/Builder/tests/builder-frames-named-smoke.php
+ *				 NINO_ROOT=../nino php features/Builder/tests/builder-frames-named-smoke.php
  */
 
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
@@ -145,14 +145,14 @@ $rows = array_column( $listed['frames'] ?? [], null, 'key' );
 check( 'the list of the pages has a row for each frame of the site - the named ones too, with their side and template - in the order of the list',
 	array_keys( $rows ) === [ 'header', 'header-b', 'header-landing', 'footer', 'footer-alt' ] && ( $rows['header-landing']['template'] ?? '' ) === 'frame-header-landing' && ( $rows['header-landing']['side'] ?? '' ) === 'header' && ( $rows['footer-alt']['side'] ?? '' ) === 'footer' );
 
-ninoUser( $site, 'lab@example.com', [ \Nino\Modules\Themelab::PERM ] );
-[ , $lab ] = namedCall( $site, 'themelab/frames' );
-[ $openStatus, $opened ] = namedCall( $site, 'themelab/frame-open', [ 'template' => 'frame-header-landing' ] );
+ninoUser( $site, 'lab@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*' ] );
+[ , $lab ] = namedCall( $site, 'builder/frame-list' );
+[ $openStatus, $opened ] = namedCall( $site, 'builder/frame-open', [ 'template' => 'frame-header-landing' ] );
 $tree = $opened['tree'] ?? [];
 unset( $tree[0]['a']['sticky'] );
-[ $saveStatus ] = namedCall( $site, 'themelab/frame-save', [ 'template' => 'frame-header-landing', 'tree' => $tree, 'texts' => [], 'base' => $opened['stamp'] ?? '' ] );
+[ $saveStatus ] = namedCall( $site, 'builder/frame-save', [ 'template' => 'frame-header-landing', 'tree' => $tree, 'texts' => [], 'base' => $opened['stamp'] ?? '' ] );
 
-check( 'the tab of the frames of Themelab lists them all, a named frame opens in the editor as the standard one does and is saved in its own file - the other frames are as they were',
+check( 'the tab of the frames in the pages lists them all, a named frame opens in the editor as the standard one does and is saved in its own file - the other frames are as they were',
 	array_column( $lab['frames'] ?? [], 'key' ) === [ 'header', 'header-b', 'header-landing', 'footer', 'footer-alt' ] && $openStatus === 200 && ( $opened['frame'] ?? false ) === true && $saveStatus === 200 && ( $opened['tree'][0]['a']['id'] ?? '' ) === 'landing'
 	&& str_contains( (string) file_get_contents( $sandbox. '/private/templates/frame-header-landing.tpl' ), 'sticky' ) === false && (string) file_get_contents( $sandbox. '/private/templates/frame-header.tpl' ) === $head( 'header' ) );
 
@@ -180,8 +180,10 @@ $names = [ 'frame-header-../x', 'frame-header-X', 'frame-header-none', 'frame-he
 $builderActions = [ 'builder/framechoices' => [ 'key' => 'header-line' ], 'builder/frametile' => [ 'key' => 'header-line' ], 'builder/framechoose' => [ 'key' => 'header-line', 'base' => 'x' ], 'builder/framerestore' => [ 'base' => 'x', 'force' => true ] ];
 $labActions = [];
 
-foreach( [ 'open', 'preview', 'save', 'restore', 'blocks', 'block', 'tile', 'keys', 'variant', 'offer', 'notation', 'upload', 'unstage', 'adopt' ] as $action )
-	$labActions['themelab/frame-'. $action] = [ 'tree' => [], 'texts' => [], 'base' => 'x', 'key' => 'header-line', 'name' => [ 'de_DE' => 'N', 'en_US' => 'N' ], 'at' => '0', 'uri' => 'x', 'files' => [] ];
+foreach( [ 'open', 'preview', 'save', 'restore', 'blocks', 'block', 'tile', 'keys', 'variant', 'offer', 'notation', 'upload', 'unstage', 'rename', 'remove' ] as $action )
+	$labActions['builder/frame-'. $action] = [ 'tree' => [], 'texts' => [], 'base' => 'x', 'key' => 'header-line', 'name' => [ 'de_DE' => 'N', 'en_US' => 'N' ], 'at' => '0', 'uri' => 'x', 'files' => [] ];
+
+$labActions['themelab/adopt'] = [ 'key' => 'neu-kopf', 'name' => [ 'de_DE' => 'N', 'en_US' => 'N' ], 'description' => 'D' ];
 
 ninoUser( $site, 'both@example.com', [ '/_admin/builder/manage', '/_admin/builder/design/*', '/_admin/builder/content/*', \Nino\Modules\Themelab::PERM ] );
 $snapshot = namedSnapshot( $site );
@@ -191,9 +193,9 @@ foreach( $names as $name )
 	foreach( $builderActions + $labActions as $action => $data )
 		$answers[$action. ' '. $name] = namedCall( $site, $action, $data + [ 'template' => $name ] )[0];
 
-$loose = array_filter( $answers, static fn( int $status ): bool => in_array( $status, [ 400, 403, 404, 409 ], true ) === false );
+$loose = array_filter( $answers, static fn( int $status, string $at ): bool => str_starts_with( $at, 'themelab/adopt' ) === true ? in_array( $status, [ 400, 404 ], true ) === false : $status !== 400, ARRAY_FILTER_USE_BOTH );
 
-check( 'every action of a frame - the four of the Builder and the fourteen of Themelab - refuses what is no frame of the site as it refuses a foreign template: a path, a capital, none, default, another side, a page, a word that is too long, and a name of the right form that has no file; nothing is written',
+check( 'every action of a frame - the four of the choice, the thirteen of the editor, the renaming, the taking away and the keeping as a block - refuses what is no frame of the site as it refuses a foreign template: a path, a capital, none, default, another side, a page, a word that is too long, and a name of the right form that has no file - 400, and nothing is written',
 	$loose === [] && count( $answers ) === count( $names ) * ( count( $builderActions ) + count( $labActions ) ) && namedSnapshot( $site ) === $snapshot );
 
 ninoDone( $site );

@@ -14,32 +14,54 @@
 @layer nino.tool {
 
 /* The name in the table of the pages: the name, the sign that a language lacks something, and the file of the template quietly under them */
-:is( #builder-app, #themelab-app ) .builder-cell-name {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-cell-name {
 	display: grid;
 	min-width: 0;
 }
 
-:is( #builder-app, #themelab-app ) .builder-cell-first {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-cell-first {
 	display: flex;
 	align-items: center;
 	gap: var(--nino-admin-space-2);
 	min-width: 0;
 }
 
-:is( #builder-app, #themelab-app ) .builder-cell-warn {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-cell-warn {
 	display: inline-flex;
 	color: var(--editor-orange-ink);
 }
 
-:is( #builder-app, #themelab-app ) :is( .builder-cell-file, .builder-cell-origin ) {
+:is( #builder-app, #builder-frames-app, #themelab-app ) :is( .builder-cell-file, .builder-cell-origin ) {
 	color: var(--editor-text-secondary);
 	font-size: var(--nino-admin-text-xs);
 	overflow-wrap: anywhere;
 }
 
+/* The list of the frames on a phone: nothing is cut by the frame of the table and nothing scrolls sideways - the column of the side gives way and the side stands in the second line of the
+   name, what a cell says breaks its lines, and the heads stand over their columns */
+#builder-frames-app .builder-cell-side {
+	display: none;
+}
+
+@media (max-width: 40rem) {
+	#builder-frames-app .builder-cell-side {
+		display: inline;
+	}
+
+	#builder-frames-app .nino-admin-table :is( th, td ):nth-child(2) {
+		display: none;
+	}
+
+	#builder-frames-app .nino-admin-table td:not(.nino-admin-table-actions) {
+		max-width: none;
+		overflow: visible;
+		white-space: normal;
+	}
+}
+
 /* The languages of the form that makes a page, one row for each: the name of the language quietly in front of its input, as wide as its words and at the right edge,
    so that the inputs stand in one column */
-:is( #builder-app, #themelab-app ) .builder-new-rows {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-new-rows {
 	display: grid;
 	grid-template-columns: max-content minmax(0, 1fr);
 	align-items: center;
@@ -47,77 +69,77 @@
 	min-width: 0;
 }
 
-:is( #builder-app, #themelab-app ) .builder-new-row {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-new-row {
 	display: contents;
 }
 
-:is( #builder-app, #themelab-app ) .builder-new-language {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-new-language {
 	justify-self: end;
 	color: var(--editor-text-secondary);
 	font-size: var(--nino-admin-text-xs);
 	white-space: nowrap;
 }
 
-:is( #builder-app, #themelab-app ) .builder-new-rows > .nino-admin-field-error {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-new-rows > .nino-admin-field-error {
 	grid-column: 1 / -1;
 }
 
 /* The page a copy is made from stands in the place of the choice of the block, as a line of text of the form; what an action of the list says is wrong stands above the table */
-:is( #builder-app, #themelab-app ) .builder-new-origin {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-new-origin {
 	margin: 0;
 	font-size: var(--nino-admin-text-md);
 }
 
-:is( #builder-app, #themelab-app ) .builder-list-error {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-list-error {
 	margin: 0 0 var(--nino-admin-space-3);
 }
 
 /* Where the buttons of a row stay at the right edge (a sticky cell), the cells of the rows below are painted over the sentence that a (?) of the row above opens: the row that
    has one open is painted above them */
-:is( #builder-app, #themelab-app ) .nino-admin-table-actions:has( .nino-admin-help[data-open] ) {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .nino-admin-table-actions:has( .nino-admin-help[data-open] ) {
 	z-index: 2;
 }
 
-:is( #builder-app, #themelab-app ) .builder-column {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-column {
 	min-width: 0;
 }
 
 /* The outline column is as wide as a row needs for the id of a block and the six buttons the chosen row shows (put in, up, down, duplicate, delete, extended view): at the
    workbench's 16 rem the id was cut to its first letter on the chosen row; 18 rem leaves room for ten letters */
-:is( #builder-app, #themelab-app ) .nino-admin-split {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .nino-admin-split {
 	--nino-admin-aside-width: 18rem;
 }
 
 /* The column of the outline: the tree of the blocks, and over it the place to put the first block in where the page has none above it */
-:is( #builder-app, #themelab-app ) .builder-outline {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-outline {
 	display: grid;
 	gap: var(--nino-admin-space-2);
 	min-width: 0;
 }
 
-:is( #builder-app, #themelab-app ) .builder-insert {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-insert {
 	justify-self: start;
 	border-style: dashed;
 }
 
 /* The strip the outline folds to: the icon of the type of each row, a quiet line over the head and under the foot */
-:is( #builder-app, #themelab-app ) .builder-rail {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-rail {
 	display: contents;
 }
 
 /* The resting colour is not given to a button that is lit: the mark of the workbench for it (the accent, in its strip) is the one that shows */
-:is( #builder-app, #themelab-app ) .builder-rail-button:not(.is-lit) {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-rail-button:not(.is-lit) {
 	color: var(--editor-text-secondary);
 }
 
-:is( #builder-app, #themelab-app ) .builder-rail-button[aria-pressed="true"] {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-rail-button[aria-pressed="true"] {
 	border-color: var(--editor-blue);
 	background: var(--editor-blue-soft);
 	color: var(--editor-text);
 }
 
-:is( #builder-app, #themelab-app ) .builder-rail-button.is-quiet + .builder-rail-button:not(.is-quiet),
-:is( #builder-app, #themelab-app ) .builder-rail-button:not(.is-quiet) + .builder-rail-button.is-quiet {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-rail-button.is-quiet + .builder-rail-button:not(.is-quiet),
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-rail-button:not(.is-quiet) + .builder-rail-button.is-quiet {
 	margin-top: var(--nino-admin-space-2);
 }
 
@@ -252,7 +274,7 @@
 }
 
 /* The extended view: the tree of a block, in the column that is the outline of the page */
-:is( #builder-app, #themelab-app ) .builder-adv-tree {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-adv-tree {
 	display: grid;
 	gap: var(--nino-admin-space-4);
 	align-content: start;
@@ -260,12 +282,12 @@
 }
 
 /* The outline of a page and the tree of a block are one pane: the ground of the workbench's raised surface, and in the column of the tree the measure the body of the outline has */
-:is( #builder-app, #themelab-app ) .builder-tree-pane {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-tree-pane {
 	min-width: 0;
 	background: var(--editor-bg-elevated);
 }
 
-:is( #builder-app, #themelab-app ) .builder-tree-pane--column {
+:is( #builder-app, #builder-frames-app, #themelab-app ) .builder-tree-pane--column {
 	box-sizing: border-box;
 	padding: var(--nino-admin-space-3);
 	border: 0;
@@ -723,11 +745,11 @@
 /* --- The properties of a component in the column beside the preview (the editor of Themelab) -------------------------------------------------------------------------------- */
 
 /* With the properties open the outline is out of sight - it stays in the page, told of every change - and the column is the properties' own: no padding, the head sticks */
-#themelab-app .nino-admin-split-settings.builder-props-open {
+:is( #builder-frames-app, #themelab-app ) .nino-admin-split-settings.builder-props-open {
 	padding: 0;
 }
 
-#themelab-app .nino-admin-split-settings.builder-props-open > :not(.builder-props) {
+:is( #builder-frames-app, #themelab-app ) .nino-admin-split-settings.builder-props-open > :not(.builder-props) {
 	display: none;
 }
 
@@ -913,18 +935,18 @@
 
 @container nino-split (max-width: 44rem) {
 
-	#themelab-app .nino-admin-split--fill.builder-props-live[data-view="settings"] > .nino-admin-split-grid {
+	:is( #builder-frames-app, #themelab-app ) .nino-admin-split--fill.builder-props-live[data-view="settings"] > .nino-admin-split-grid {
 		grid-template-rows: 9rem minmax(0, 1fr);
 	}
 
-	#themelab-app .nino-admin-split--fill.builder-props-live[data-view="settings"] > .nino-admin-split-grid > .nino-admin-split-preview {
+	:is( #builder-frames-app, #themelab-app ) .nino-admin-split--fill.builder-props-live[data-view="settings"] > .nino-admin-split-grid > .nino-admin-split-preview {
 		display: flex;
 		order: -1;
 		position: relative;
 		border-bottom: 1px solid var(--editor-separator);
 	}
 
-	#themelab-app .builder-props-live[data-view="settings"] .builder-props-peek {
+	:is( #builder-frames-app, #themelab-app ) .builder-props-live[data-view="settings"] .builder-props-peek {
 		position: absolute;
 		inset: 0;
 		z-index: 2;
@@ -934,7 +956,7 @@
 		cursor: pointer;
 	}
 
-	#themelab-app .builder-props-live[data-view="settings"] .builder-props-peek:focus-visible {
+	:is( #builder-frames-app, #themelab-app ) .builder-props-live[data-view="settings"] .builder-props-peek:focus-visible {
 		outline: 2px solid var(--editor-blue);
 		outline-offset: -2px;
 	}
