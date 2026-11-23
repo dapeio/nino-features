@@ -67,6 +67,10 @@ return [
 				'en_US' => 'An element type to start from, if the project has none.',
 				'de_DE' => 'Ein Elementtyp zum Anfangen, falls das Projekt keinen hat.',
 			],
+			'install/manifest.php' => [
+				'en_US' => 'Offers the list to the main menu at the first switch-on if the project has one; a renamed section key is another page, which you enter in the Navigations panel.',
+				'de_DE' => 'Bietet die Liste beim ersten Einschalten dem Hauptmenü an, wenn das Projekt eines hat; ein umbenannter Rubrik-Schlüssel ist eine andere Seite, die Du im Panel „Navigationen“ einträgst.',
+			],
 			'templates/page-posts.tpl' => [
 				'en_US' => 'The list page and, as templates/page-post.tpl, the page of one post, both made of components; an installed template is not written again.',
 				'de_DE' => 'Die Listenseite und, als templates/page-post.tpl, die Seite eines Beitrags, beide aus Komponenten; ein installiertes Template wird nicht noch einmal geschrieben.',

@@ -5,8 +5,34 @@ declare(strict_types=1);
 // limits, what is published, the four components, the two pages, the hooks of Seo and Search against the real
 // features. php features/Posts/tests/posts-smoke.php
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
-defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
+
+/*	The features of this run are a copy of the folder, without the tests: the end of the suite removes Posts from a project, and that deletes the directory
+	it was switched on from - which has to be none of this repository's	*/
+if( defined( 'NINO_FEATURES_DIR' ) === false ) {
+
+	$copy = sys_get_temp_dir(). '/nino-posts-features-'. bin2hex( random_bytes( 6 ) );
+	mkdir( $copy, 0755, true );
+
+	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( dirname( __DIR__, 2 ), \FilesystemIterator::SKIP_DOTS ), \RecursiveIteratorIterator::SELF_FIRST ) as $entry ) {
+
+		$relative = substr( (string) $entry, strlen( dirname( __DIR__, 2 ) ) + 1 );
+
+		if( preg_match( '#^[^/]+/tests(/|$)#', $relative ) === 1 )
+			continue;
+
+		if( $entry->isDir() === true )
+			mkdir( $copy. '/'. $relative, 0755, true );
+		else
+			copy( (string) $entry, $copy. '/'. $relative );
+	}
+
+	define( 'NINO_FEATURES_DIR', $copy );
+}
+
 require $root. '/tests/harness.php';
+
+if( isset( $copy ) === true )
+	register_shutdown_function( static fn() => \Nino\Filesystem::removeDir( $copy ) );
 
 $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
@@ -361,5 +387,242 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, 
 	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|\bnino-(?!sanitize)[a-z]|--(?:space|color|radius|fontsize)-|Nino\.ui\./', (string) file_get_contents( (string) $file ) ) === 1 )
 		$oldWorld[] = (string) $file;
 check( 'no file of the feature names the vocabulary of Nino 1', $oldWorld === [] );
+
+
+// --- The menu: what the unit offers the main menu of the project -------------------------------------------------------------------------
+
+echo "\nThe list page in the main menu\n";
+
+require $root. '/_admin/install/Install.php';
+
+$keypair = openssl_pkey_new( [ 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1' ] );
+openssl_pkey_export( $keypair, $privateKey );
+$publicKey = openssl_pkey_get_details( $keypair )['key'];
+
+// The index of this run: every feature of the folder, signed with a key of this run's own. The folders are there, so nothing is fetched and nothing is placed
+$offers = [];
+foreach( glob( dirname( __DIR__, 2 ). '/*', GLOB_ONLYDIR ) ?: [] as $folder ) {
+
+	if( is_file( $folder. '/feature.php' ) === false )
+		continue;
+
+	$entry = (array) ( static fn( string $path ): mixed => include $path )( $folder. '/feature.php' );
+	$offers[] = [ 'key' => $entry['key'], 'name' => $entry['name'], 'description' => $entry['description'], 'category' => $entry['category'], 'version' => $entry['version'], 'nino' => $entry['nino'], 'php' => [ 'ext' => [] ],
+		'requires' => $entry['requires'] ?? [], 'directory' => basename( $folder ), 'archive' => 'https://catalogue.test/'. basename( $folder ). '.tar.gz', 'sha256' => str_repeat( '0', 64 ), 'size' => 1, 'released' => '2026-11-13' ];
+}
+
+/*	The applications of the run: the order of the features of applications/website.php and applications/blog.php, written here because a test of a feature is run from a copy below the
+	kernel's features/, which has no applications/ beside it (bin/check.sh). The start page is the application's own, as it is there	*/
+$website = [ 'basis', 'websitestart', 'themes', 'builder', 'forms', 'consent', 'modeswitch', 'seo' ];
+$applications = [];
+foreach( [ 'website' => $website, 'blog' => array_merge( array_slice( $website, 0, 8 ), [ 'collections', 'posts', 'search', 'toc', 'progress' ] ) ] as $applicationKey => $applicationFeatures )
+	$applications[] = [ 'key' => $applicationKey, 'name' => [ 'en_US' => ucfirst( $applicationKey ), 'de_DE' => ucfirst( $applicationKey ) ], 'description' => [ 'en_US' => 'An application of this run', 'de_DE' => 'Eine Anwendung dieses Laufs' ],
+		'features' => $applicationFeatures, 'next' => '/_admin/#builder', 'start' => 'own', 'menu' => null ];
+
+$index = ninoCatalogue( $offers, $applications );
+openssl_sign( $index, $signature, $privateKey, OPENSSL_ALGO_SHA256 );
+$remote = [ \Nino\Catalogue::DEFAULT_URL => $index, \Nino\Catalogue::DEFAULT_URL. '.sig' => base64_encode( $signature ) ];
+
+/**
+ *	A project made by the setup wizard, step by step as a browser takes them: Setup, the account, the application with each of its features, the end
+ *
+ *	@param		string		$applicationKey		'website' or 'blog'
+ *
+ *	@return 	array											$appData of the wizard's last request
+ */
+$wizard = static function( string $applicationKey ) use ( &$remote, $publicKey ): array {
+
+	$app = ninoSandbox( 'posts-menu-'. $applicationKey );
+	$dir = ninoSandboxDir( $app );
+	register_shutdown_function( static fn() => \Nino\Filesystem::removeDir( $dir ) );
+
+	foreach( [ '/private/templates', '/private/text', '/public/images', '/private/assets' ] as $sub )
+		mkdir( $dir. $sub, 0777, true );
+
+	$app['./nino/filesystem/path']	= $GLOBALS['root'];
+	$app['/nino/catalogue/key']			= $publicKey;
+	$app['/nino/dir']								= '';
+	\Nino\Filesystem::putFileContent( $app, '/config.php', [ '/nino/locales/native' => 'de_DE', '/nino/locales/available' => [ 'de_DE', 'en_US' ], '/nino/modules' => [] ] );
+	$app['./nino/fetch/stub'] = static function( string $url, array $options ) use ( &$remote ): array {
+		return isset( $remote[$url] ) === false ? [ 'ok' => false, 'status' => 404, 'error' => 'http 404' ] : [ 'ok' => true, 'status' => 200, 'body' => $remote[$url] ];
+	};
+	$app['/nino/html/navs']	= \Nino\AppData::DEFAULTS['/nino/html/navs'];
+	$app['/nino/modules']		= [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Elements', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Jstext', '\\Nino\\Modules\\Csrf' ];
+	$_SERVER['REMOTE_ADDR']	= '127.0.0.1';
+
+	ninoCall( $app, [ \Nino\Install\Setup::class, 'apiApply' ], [ 'locales' => [ 'de_DE' ], 'native' => 'de_DE', 'modules' => [] ] );
+	ninoCall( $app, [ \Nino\Install\Accounts::class, 'apiCreate' ], [ 'mail' => 'owner@example.com', 'pw' => 'a long enough password' ] );
+	$app[ \Nino\Install\Applications::KEY_OVERRIDE ] = $publicKey;
+
+	$step = static function( string $action, array $data ) use ( &$app ): array {
+		return ninoCall( $app, [ \Nino\Install\Install::class, 'handlePost' ], $data, $action );
+	};
+
+	$step( 'applications/list', [] );
+	[ , $plan ] = $step( 'applications/plan', [ 'applications' => [ $applicationKey ] ] );
+
+	foreach( (array) ( $plan['features'] ?? [] ) as $feature )
+		$step( 'applications/apply', [ 'applications' => [ $applicationKey ], 'feature' => $feature['key'] ] );
+
+	unset( $app['./nino/features/all'] );
+	ninoCall( $app, [ \Nino\Install\Finish::class, 'apiComplete' ], [ 'password' => 'a brand new dev password', 'applications' => [ $applicationKey ] ] );
+
+	return $app;
+};
+
+/**
+ *	The project as the next request boots it
+ */
+$boot = static function( array &$project ): array {
+
+	$dir = ninoSandboxDir( $project );
+	$booted = [ './nino/uid' => $dir ];
+	\Nino\AppData::prepare( $booted );
+
+	foreach( [ 'path' => $dir, 'configpath' => $dir. '/private', 'contentpath' => $dir. '/private', 'publicpath' => $dir. '/public' ] as $part => $path )
+		$booted['./nino/filesystem/'. $part] = $path;
+
+	\Nino\Filesystem::init( $booted );
+	\Nino\AppData::init( $booted );
+	$booted['/nino/dir'] = '';
+	\Nino\Locales::init( $booted );
+	\Nino\Csrf::init( $booted );
+	\Nino\Html::init( $booted );
+	\Nino\Auth::init( $booted );
+	\Nino\Features::registerAssets( $booted );
+	\Nino\Features::registerComponents( $booted );
+	\Nino\Modules::callModules( $booted, 'init' );
+	\Nino\Features::registerParts( $booted );
+	$booted['./nino/locales/current'] = 'de_DE';
+
+	return $booted;
+};
+
+/**
+ *	One request of it: status and body
+ */
+$request = static function( array &$project, string $uri ) use ( $boot ): array {
+
+	$booted = $boot( $project );
+	$answered = \Nino\request( $booted, [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => $uri, 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'example.com', 'HTTPS' => 'on' ] );
+
+	return [ (int) $answered['/nino/http/response']['statusCode'], (string) ( $answered['/nino/http/response']['body'] ?? '' ) ];
+};
+
+/**
+ *	The links of the main menu in the header of the start page, in their order: what the visitor is offered
+ */
+$mainMenu = static function( array &$project ) use ( $request ): array {
+
+	[ , $page ] = $request( $project, '/' );
+	preg_match( '~<nav[^>]*class="[^"]*header-nav[^"]*"[^>]*>(.*?)</nav>~s', $page, $nav );
+	preg_match_all( '~<a [^>]*href="([^"]*)"~', $nav[1] ?? '', $links );
+
+	return $links[1];
+};
+
+$stored = static fn( array &$project ): array => \Nino\Filesystem::getFileContent( $project, '/config.php', [] );
+
+/**
+ *	The addresses the sitemap names
+ */
+$listed = static function( array &$project ) use ( $request ): array {
+
+	[ $status, $body ] = $request( $project, '/sitemap.xml' );
+	preg_match_all( '~<loc>https?://[^/<]+([^<]*)</loc>~', $body, $found );
+
+	return [ $status, $found[1] ];
+};
+
+// A. The application Blog, through the wizard: its main menu is the start page, the contact page and the list - in the order the features are put in
+$blog = $wizard( 'blog' );
+$config = $stored( $blog );
+
+check( 'a site that the wizard makes with the application Blog has the main menu Start, Contact, Blog: the list is offered after the pages of Website start, as a membership of its Element-URI, and its link answers',
+	$mainMenu( $blog ) === [ '/', '/contact', '/blog' ] && ( $config['/nino/html/navroutes']['/blog'] ?? [] ) === [ 'main' => 3 ] && $request( $blog, '/blog' )[0] === 200
+	&& ( $config['/nino/features']['posts']['menus'] ?? null ) === [ 'offered' => [ '/blog' ], 'parked' => [] ] );
+check( 'the unit offers the list and nothing else: one page, to the main menu - the pages of the project are never in it', method_exists( \Nino\Features::class, 'unitMenus' ) === true && \Nino\Features::unitMenus( (array) \Nino\Features::readUnitManifest( $dir. '/install' ), 'posts' ) === [ 'main' => [ '/blog' ] ] );
+
+// B. The application Website has no list in it, and nothing is made for one
+$site = $wizard( 'website' );
+$before = $stored( $site );
+
+check( 'a site that the wizard makes with the application Website has the main menu Start, Contact, and no list: nothing of Posts is in the project', $mainMenu( $site ) === [ '/', '/contact' ] && isset( $before['/nino/html/navroutes']['/blog'] ) === false
+	&& isset( $before['/nino/features']['posts'] ) === false && $request( $site, '/blog' )[0] === 404 );
+
+// C. Switched on later, in a project with a menu of its own: the list is the last entry, and the project is not changed anywhere else
+$settled = static function( array $config ): array {
+	unset( $config['/nino/modules'], $config['/nino/features'], $config['/nino/html/navroutes'], $config['/nino/auth/user'] );
+	return $config;
+};
+$templates = static fn( array &$project ): array => array_combine( array_map( 'basename', glob( ninoSandboxDir( $project ). '/private/templates/*.tpl' ) ?: [] ), array_map( 'md5_file', glob( ninoSandboxDir( $project ). '/private/templates/*.tpl' ) ?: [] ) );
+$filesBefore = $templates( $site );
+$result = \Nino\Features::activate( $site, 'posts' );
+$after = $stored( $site );
+
+check( 'Posts switched on in that project puts "Blog" at the end of its main menu and changes nothing else the project has: not its menus, its routes, its other settings or the templates it has',
+	$result === true && $mainMenu( $site ) === [ '/', '/contact', '/blog' ] && $after['/nino/html/navroutes']['/blog'] === [ 'main' => 3 ] && $settled( $after ) === $settled( $before )
+	&& array_intersect_key( $templates( $site ), $filesBefore ) === $filesBefore );
+
+// D. Off: the entry is not drawn, the list answers 404 and the sitemap does not name it; on again, it is where it was
+\Nino\Features::deactivate( $site, 'posts' );
+[ , $mapOff ] = $listed( $site );
+
+check( 'Posts switched off: no entry in the menu, /blog answers 404 as it did before the feature, and the sitemap does not list it',
+	$mainMenu( $site ) === [ '/', '/contact' ] && $request( $site, '/blog' )[0] === 404 && in_array( '/blog', $mapOff, true ) === false && count( $mapOff ) > 0 );
+
+\Nino\Features::activate( $site, 'posts' );
+[ , $mapOn ] = $listed( $site );
+
+check( 'Posts switched on again: the entry is back at its place and the sitemap lists the list', $mainMenu( $site ) === [ '/', '/contact', '/blog' ] && $request( $site, '/blog' )[0] === 200 && in_array( '/blog', $mapOn, true ) === true );
+
+// ...and while it is off the entry is parked, so that a save of the menu in the panel has nothing of it to lose
+\Nino\Features::deactivate( $site, 'posts' );
+$parkedAway = isset( $stored( $site )['/nino/html/navroutes']['/blog'] ) === false;
+$booted = $boot( $site );
+\Nino\Auth::loginUser( $booted, 'owner@example.com', 'a long enough password' );
+[ $saved ] = ninoCall( $booted, [ \Nino\Modules\Navigation\Admin::class, 'apiSave' ], [ 'key' => 'main', 'originalKey' => 'main', 'entries' => [ '/contact', '/' ] ] );
+\Nino\Features::activate( $site, 'posts' );
+
+check( 'a menu saved in the Navigations panel while Posts is off does not cost the entry: with the feature on again it is the last of the menu',
+	$parkedAway === true && $saved === 200 && $mainMenu( $site ) === [ '/contact', '/', '/blog' ] );
+
+// E. The project took the entry out - in the panel of the menus, as it does - and it does not come back
+$booted = $boot( $site );
+\Nino\Auth::loginUser( $booted, 'owner@example.com', 'a long enough password' );
+[ $saved ] = ninoCall( $booted, [ \Nino\Modules\Navigation\Admin::class, 'apiSave' ], [ 'key' => 'main', 'originalKey' => 'main', 'entries' => [ '/', '/contact' ] ] );
+\Nino\Features::deactivate( $site, 'posts' );
+\Nino\Features::activate( $site, 'posts' );
+$report = null;
+\Nino\Features::activate( $site, 'posts', [], $report, true );
+
+check( 'an entry that the project took out of the menu does not come back: not by switching the feature off and on, not by applying its content again, and the list is still there',
+	$saved === 200 && $mainMenu( $site ) === [ '/', '/contact' ] && isset( $stored( $site )['/nino/html/navroutes']['/blog'] ) === false && $request( $site, '/blog' )[0] === 200 );
+
+// F. A project that moves the path of the default section: the entry is the section's, and follows it
+$moved = $wizard( 'blog' );
+\Nino\Filesystem::putFileContent( $moved, $sections::PATH, [ 'sections' => [ 'blog' => [ 'type' => '/posts', 'path' => 'news' ] ] ] );
+
+check( 'when the project moves the path of the default section the entry follows it: the menu links to the new path and the old one answers 404 - there is no entry that points at nothing',
+	$mainMenu( $moved ) === [ '/', '/contact', '/news' ] && $request( $moved, '/news' )[0] === 200 && $request( $moved, '/blog' )[0] === 404 );
+
+\Nino\Filesystem::putFileContent( $moved, $sections::PATH, [ 'sections' => [] ] );
+
+check( 'when the project takes the section away there is no entry and no page: the menu has the pages of the project and the addresses answer 404, never an empty page',
+	$mainMenu( $moved ) === [ '/', '/contact' ] && $request( $moved, '/blog' )[0] === 404 && $request( $moved, '/news' )[0] === 404 );
+
+// G. Removed: nothing is left, and the address is the project's
+$gone = $wizard( 'blog' );
+\Nino\Features::deactivate( $gone, 'posts' );
+$removed = \Nino\Features::remove( $gone, 'posts' );
+$left = $stored( $gone );
+[ , $mapGone ] = $listed( $gone );
+
+check( 'Posts removed takes its entry with it: nothing of it is left under navroutes, the menu has the pages of the project, /blog answers 404 and the sitemap does not list it',
+	$removed === true && isset( $left['/nino/html/navroutes']['/blog'] ) === false && $mainMenu( $gone ) === [ '/', '/contact' ] && $request( $gone, '/blog' )[0] === 404 && in_array( '/blog', $mapGone, true ) === false && count( $mapGone ) > 0 );
+
+$own = \Nino\Pages::put( $gone, [ 'uri' => '/blog', 'httpUris' => [ '' => '/blog' ], 'template' => 'page-home', 'text' => [ 'de_DE' => [ 'name' => 'Eigene', 'title' => 'Eigene', 'description' => '' ], 'en_US' => [ 'name' => 'Own', 'title' => 'Own', 'description' => '' ] ] ] );
+
+check( 'a page of the project can be made under /blog once Posts is removed - no route of the feature holds the address - and it answers', isset( $own['error'] ) === false && $request( $gone, '/blog' )[0] === 200 );
 
 ninoDone( $appData );
