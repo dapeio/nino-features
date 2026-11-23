@@ -268,6 +268,12 @@ const opened = function() {
 	check( 'C. the save sends the whole form in the order of the rows, once, with the key it had and the words of each language of every field',
 		sent.action === 'forms/save' && sent.payload.key === 'contact' && sent.payload.form.fields.map( function( field ) { return field.name } ).join() === 'plan,name'
 		&& sent.payload.texts.fields[1].de_DE === 'Name' && sent.payload.texts.fields[0].en_US === 'Plan' && sent.payload.form.fields[0].options.join() === 'S,L' );
+
+	// The bar of the form says "saved" by itself, as a toast: the answer of the server is one sentence, not two
+	w.answer( 200, { form : { key : 'contact' } } );
+	w.answer( 200, JSON.parse( JSON.stringify( LIST ) ) );
+
+	check( 'C. a saved form says so once: the bar of the form says it, and the panel adds nothing', w.requests.length === 0 && w.toasts.length === 1 );
 }
 
 // --- D. unsaved input ---------------------------------------------------------------------------------------------------

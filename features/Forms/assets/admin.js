@@ -614,7 +614,6 @@
 					// The screen is drawn again from what the server holds, the focus stays on the button that was pressed
 					showForm( saved, saved.key, tab, { focus : false } );
 					S.view.bar.line.saved();
-					Nino.adminUi.say( t('/_admin/common/msg/saved') );
 					Nino.admin.router.set( 'forms', partsOf( saved.key, tab ) );
 				}
 
