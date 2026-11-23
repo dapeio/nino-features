@@ -904,6 +904,12 @@
 						Nino.admin.router.set( TAB, [] );
 						Nino.adminUi.showLevel( 'builder-frames-list', { focus : false } );
 					} );
+				// The workbench shows a tab before it writes the address of it, so that the address is still the one of the tab before when a click on the button of this one comes here: the tab
+				// is the one that is shown, and the list - the state of the frames, asked for each time - is drawn and gives the address. A sheet that is open is not given up for it
+				else if( F.open === null && sheetOpen() === false ) {
+					Nino.admin.router.set( TAB, [] );
+					load( function() { Nino.adminUi.showLevel( 'builder-frames-list', { focus : false } ) } );
+				}
 
 				return;
 			}

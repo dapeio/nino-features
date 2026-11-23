@@ -923,15 +923,39 @@ function world( options ) {
 
 	check( 'F. a language chosen in the workbench makes the sheet be asked for again, and the properties that were open are held for the new sheet', lang.state.held === 1 && lang.state.opened.join() === 'frame-header' );
 
-	// another panel is shown: the tab asks nothing
+	// the tab is shown by a click on its button: the workbench shows it before it writes the address, which is the one of the tab before - the list is asked for each time the
+	// tab is shown, and the address is the tab's
+	const click = world();
+
+	click.state.hash = '#builder';
+	click.tab.showCurrent();
+	const firstAsk = click.asked('builder/frame-list').length;
+	click.serve();
+
+	check( 'F. a click on the tab asks for the list of the frames although the address is still the one of the tab before: the table is drawn and the address is the tab\'s',
+		firstAsk === 1 && click.table() !== null && click.rows().length === 4 && click.state.hash === '#builder-frames' );
+
+	const rounds = [];
+
+	[ '#builder', '#builder-settings', '#builder' ].forEach( function( before ) {
+		click.state.hash = before;
+		click.tab.showCurrent();
+		rounds.push( click.asked('builder/frame-list').length );
+		click.serve();
+		rounds.push( click.table() !== null && click.state.hash === '#builder-frames' );
+	} );
+
+	check( 'F. Pages, Header/footer, Settings, Header/footer: the list is asked for at every show of the tab and is on screen with the address of the tab each time', rounds.join() === '1,true,1,true,1,true' );
+
+	// another panel is shown while a sheet is open: the tab asks nothing and keeps the sheet
 	const away = world();
 
-	away.show('#builder-frames');
+	away.show('#builder-frames/header');
 	away.requests.length = 0;
 	away.state.hash = '#themelab';
 	away.tab.showCurrent();
 
-	check( 'F. the tab asks for nothing while another panel is the one that is shown', away.requests.length === 0 );
+	check( 'F. the tab asks for nothing while a sheet is open and another address is the one that is shown: the sheet is not given up', away.requests.length === 0 && away.state.sheet === true );
 }
 
 done();
