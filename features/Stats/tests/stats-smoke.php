@@ -467,6 +467,9 @@ if( in_array( '\\Nino\\Modules\\Cache', $appData['/nino/modules'], true ) === fa
 
 $before = dayTotal( $appData, $month, $today );
 
+// The bundle lists a booted request has: the page cache stamps a page with them, and the second view boots from the files
+$appData['/nino/html/assets'] = \Nino\AppData::DEFAULTS['/nino/html/assets'];
+
 $missRequest = ninoVisit( $appData, '/cache-test' );
 \Nino\Http::response( $appData, $missRequest );
 check( 'the first view (a cache miss) is counted', dayTotal( $appData, $month, $today ) === $before + 1 );

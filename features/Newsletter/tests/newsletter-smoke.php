@@ -138,7 +138,7 @@ $x = $parse( $signup );
 $form = $x->query( '//form' )->item( 0 );
 check( 'the contract of the script of the kernel: nino-form, a prefix of words that the kernel publishes, the message is the first paragraph and the submit the first button, no novalidate',
 	$form !== null && in_array( 'nino-form', explode( ' ', $form->getAttribute( 'class' ) ), true ) === true && $form->getAttribute( 'data-form-texts' ) === \Nino\Modules\Newsletter::INFO && $form->hasAttribute( 'novalidate' ) === false
-	&& in_array( \Nino\Modules\Newsletter::INFO, ( new ReflectionClassConstant( \Nino\Modules\Jstext::class, 'DEFAULT_KEYS' ) )->getValue(), true ) === true
+	&& in_array( \Nino\Modules\Newsletter::INFO, ( new ReflectionClassConstant( \Nino\Modules\Form::class, 'WORDS' ) )->getValue(), true ) === true
 	&& $x->query( './/p', $form )->item( 0 )->getAttribute( 'class' ) === 'newsletter-signup-message' && $x->query( './/button', $form )->item( 0 )->getAttribute( 'type' ) === 'submit' );
 check( 'it posts to the endpoint below the directory of the project, with the token of the session, the empty honeypot and the id of the form on its page',
 	$form->getAttribute( 'action' ) === '/.newsletter' && $form->getAttribute( 'method' ) === 'post' && $x->query( './/input[@name="_csrf"]' )->length === 1 && $x->query( './/input[@name="location"][@value=""][@tabindex="-1"]' )->length === 1
