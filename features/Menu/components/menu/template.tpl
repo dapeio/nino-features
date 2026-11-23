@@ -1,1 +1,1 @@
-<nav class="[[class]]" id="[[uid]]"[[named]]><details class="menu-details"[[open]]><summary class="menu-burger" aria-label="[[/module/basis/navigation/menu]]"><span aria-hidden="true"></span></summary><ul class="menu-list">[[entries]]</ul></details></nav>
+<nav class="[[class]]" id="[[uid]]"[[named]]><details class="menu-details"[[folds]][[open]]><summary class="menu-burger" aria-label="[[/module/basis/navigation/menu]]"><span aria-hidden="true"></span></summary><ul class="menu-list">[[entries]]</ul></details></nav>

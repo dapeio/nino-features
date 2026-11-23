@@ -31,7 +31,7 @@
 .menu-html > :last-child { margin-bottom: 0; }
 .menu-html a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
 
-/*	The menu is a details of the browser, with no script, as the menu of the header is: a button of three bars that opens the list below the line of the header, over the whole width. Where the browser draws the inside of a details as a part of its own (::details-content), the nav and the details are no boxes and the button and the list are items of the line of the header; a wide screen then shows the list open beside the logo and the actions, and no button. Where it does not, the button stays at every width	*/
+/*	The menu is a details of the browser, with no script, as the menu of the header is: a button of three bars that opens the list below the line of the header, over the whole width. Where the browser draws the inside of a details as a part of its own (::details-content), the nav and the details are no boxes and the button and the list are items of the line of the header; a wide screen then shows the list open beside the logo and the actions, and no button. Where it does not, the button stays at every width and the nav that is open takes the whole line. The details says data-header-menu, so that the part of the header makes the header an overlay over the window while the list is open and folded, and the script of the header holds the page behind it: the list is then drawn in the overlay, the entries as large as those of the menu of the header, with no scrolling of its own	*/
 .menu-burger { display: flex; align-items: center; justify-content: center; margin-inline-start: auto; width: 2.75rem; height: 2.75rem; padding: 0; border: var(--page-line) solid var(--brand-line); border-radius: var(--page-radius); background: none; list-style: none; cursor: pointer; }
 .menu-burger::-webkit-details-marker { display: none; }
 .menu-burger span, .menu-burger span::before, .menu-burger span::after { display: block; width: 1.25rem; height: 2px; background: currentColor; }
@@ -39,7 +39,9 @@
 .menu-burger span::before, .menu-burger span::after { content: ""; position: absolute; left: 0; }
 .menu-burger span::before { top: -6px; }
 .menu-burger span::after { top: 6px; }
-.menu:not( .menu--footer ) .menu-list { margin-top: var(--page-space-2); max-height: calc( 100dvh - 10rem ); overflow-y: auto; overscroll-behavior: contain; }
+.menu:not( .menu--footer ) .menu-list { margin-top: var(--page-space-5); }
+.menu:not( .menu--footer ) .menu-item > .menu-link { padding-block: var(--page-space-3); font-size: var(--page-text-5); }
+.menu:not( .menu--footer ):has( .menu-details[open] ) { flex: 1 0 100%; }
 @supports selector( ::details-content ) {
 	.menu:not( .menu--footer ), .menu:not( .menu--footer ) .menu-details { display: contents; }
 	.menu:not( .menu--footer ) .menu-details::details-content { flex: 1 0 100%; min-width: 0; }
@@ -49,7 +51,8 @@
 	@supports selector( ::details-content ) {
 		.menu:not( .menu--footer ) .menu-details::details-content, .menu:not( .menu--footer ) .menu-details:not( [open] )::details-content { display: block; content-visibility: visible; flex: 1 1 0; }
 		.menu:not( .menu--footer ) .menu-burger { display: none; }
-		.menu:not( .menu--footer ) .menu-list { margin-top: 0; max-height: 40dvh; }
+		.menu:not( .menu--footer ) .menu-list { margin-top: 0; max-height: 40dvh; overflow-y: auto; overscroll-behavior: contain; }
+		.menu:not( .menu--footer ) .menu-item > .menu-link { padding-block: var(--page-space-2); font-size: inherit; }
 	}
 	.menu-cols--2 { grid-template-columns: repeat( 2, minmax( 0, 1fr ) ); }
 	.menu-cols--3 { grid-template-columns: repeat( 3, minmax( 0, 1fr ) ); }
@@ -60,17 +63,17 @@
 .menu--footer .menu-burger { display: none; }
 
 /*	A menu in a column of a header of rows (the register says so: menu--in-row). Closed, the button stands in its column, where the column puts it. Opened where the list is folded - under 768px, and
-	wherever the browser has no ::details-content - the list is laid under the row, over its width, and scrolls in itself, so that the page is not pushed down: the row is positioned (the part of
-	section) and the list stands where the open list of the menu of Basis stands, a line and a gap below it. A wide screen shows the list open in the column, as long as its entries, at the start, the middle or the end of it as the column says	*/
+	wherever the browser has no ::details-content - the list is laid under the row, over its width, and the header, which is the overlay then, scrolls with it: the row is positioned (the part of
+	section) and the list stands where the open list of the menu of Basis stands, a gap below the row. A wide screen shows the list open in the column, as long as its entries, at the start, the middle or the end of it as the column says	*/
 .menu--in-row .menu-burger { margin-inline-start: 0; }
-.menu--in-row .menu-details[open] > .menu-list { position: absolute; inset-inline: 0; top: calc( 100% + var(--page-space-4) + var(--page-space-2) ); z-index: 1; margin-top: 0; text-align: start; background-color: var(--brand-ground); color: var(--brand-ink); box-shadow: 0 .5rem 1.5rem color-mix( in srgb, var(--brand-ink) 16%, transparent ); }
+.menu--in-row .menu-details[open] > .menu-list { position: absolute; inset-inline: 0; top: calc( 100% + var(--page-space-4) ); z-index: 1; text-align: start; background-color: var(--brand-ground); color: var(--brand-ink); }
 @supports selector( ::details-content ) {
 	.menu--in-row .menu-details[open]::details-content { display: contents; }
 }
 @media (min-width: 768px) {
 	@supports selector( ::details-content ) {
 		.menu--in-row .menu-details[open]::details-content { display: block; }
-		.menu--in-row .menu-details[open] > .menu-list { position: static; background-color: transparent; color: inherit; box-shadow: none; }
+		.menu--in-row .menu-details[open] > .menu-list { position: static; background-color: transparent; color: inherit; }
 	}
 }
 

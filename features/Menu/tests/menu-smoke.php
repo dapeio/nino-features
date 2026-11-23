@@ -313,6 +313,17 @@ check( 'SAFETY: a call cannot make itself the foot or a row - the class, the pla
 	&& str_contains( \Nino\Modules\Menu::componentMenu( $appData, [ 'key' => '', 'label' => '', 'class' => 'menu' ], '', [ 'place' => 'footer-col' ] ), 'menu--footer' ) === true
 	&& str_contains( \Nino\Modules\Menu::componentMenu( $appData, [ 'key' => '', 'label' => '', 'class' => 'menu' ], '', [ 'place' => 'section-col' ] ), 'menu--' ) === false );
 
+// The header of the kernel makes a menu an overlay over the window, and holds the page behind it, when its details says data-header-menu: the menu of the header says it, the one of the foot does not
+check( 'the details of a menu in the header says data-header-menu - in the old markup, in a column of a row and in a box there - which is how the header of the kernel knows a menu it folds; the one in the foot, which is open and has no button, does not say it',
+	$dom( $draw( $header() ) )->query( '//nav/details[@class="menu-details"][@data-header-menu]' )->length === 1
+	&& $dom( $draw( $header( sprintf( $cell, '[menu]' ) ) ) )->query( '//nav[contains(@class,"menu--in-row")]/details[@data-header-menu]' )->length === 1
+	&& $dom( $draw( $header( sprintf( $cell, '[button-group][menu][/button-group]' ) ) ) )->query( '//nav[contains(@class,"menu--in-row")]/details[@data-header-menu]' )->length === 1
+	&& $dom( $draw( '[footer-wrap][footer-col][menu][/footer-col][/footer-wrap]' ) )->query( '//details[@data-header-menu]' )->length === 0
+	&& $dom( $draw( '[footer-wrap]'. sprintf( $cell, '[menu]' ). '[/footer-wrap]' ) )->query( '//details[@data-header-menu]' )->length === 0 );
+check( 'SAFETY: a call cannot put the mark into the foot or take it out of the header - it is no attribute of the component',
+	$dom( $draw( '[footer-wrap][footer-col][menu data-header-menu="1"][/footer-col][/footer-wrap]' ) )->query( '//*[@data-header-menu]' )->length === 0
+	&& $dom( $draw( $header( '[menu data-header-menu=""]' ) ) )->query( '//details[@data-header-menu=""]' )->length === 1 );
+
 menuStore( $appData, [ [ 'id' => 'gone', 'kind' => 'page', 'uri' => '/nowhere', 'label' => '', 'panel' => null ], [ 'id' => 'mute', 'kind' => 'link', 'href' => '/x', 'target' => '', 'label' => '/feature/menu/main/mute', 'panel' => null ] ] );
 check( 'a page with no route, and a link nobody wrote a word for, are no links: a menu with nothing to draw is not drawn', $draw( $header() ) === '<header class="header-wrap"><div class="header-wrap-inner"></div></header>' || str_contains( $draw( $header() ), 'menu-list' ) === false );
 
@@ -671,6 +682,24 @@ check( 'the list of a menu in a row that is open and folded lies under the row, 
 	&& str_starts_with( $ink, 'var(--brand-' ) === true && str_starts_with( $ground, 'var(--brand-' ) === true && $ink !== $ground );
 check( 'on a wide screen the list is a row in the column, in the flow: not absolute',
 	( menuDeclared( $rules, [ 'menu--in-row', 'menu-list', '[open]' ], true )['position'] ?? '' ) === 'static' );
+
+// The open list that is folded is drawn in the overlay the header makes of itself (the part of the header, the script of the header): the header scrolls, so the list has no height of its own and nothing to scroll in itself,
+// it does not stand as a card (no shadow), and its entries are as large as those of the menu of the header, by the tokens of the page; from 768px the entries are those of the line
+$folded = menuDeclared( $rules, [ 'menu', 'menu-list' ] );
+$entry = menuDeclared( $rules, [ 'menu-item', '>', 'menu-link' ] );
+$entryWide = menuDeclared( $rules, [ 'menu-item', '>', 'menu-link' ], true );
+check( 'the open list of a menu that is folded has no height of its own and no scrolling of its own, and a gap of the page\'s below the line: the header, which is the overlay, scrolls',
+	isset( $folded['max-height'] ) === false && isset( $folded['overflow-y'] ) === false && isset( $folded['overflow'] ) === false && ( $folded['margin-top'] ?? '' ) === 'var(--page-space-5)'
+	&& count( array_filter( $rules, static fn( array $rule ): bool => str_contains( $rule['at'], 'min-width' ) === true && str_contains( $rule['body'], 'max-height: 40dvh' ) === true && str_contains( $rule['body'], 'overflow-y: auto' ) === true && str_contains( $rule['body'], 'margin-top: 0' ) === true ) ) === 1 );
+check( 'the open list of a menu in a row is flat, as the list of the menu of the header: no shadow, on its own ground and a gap below the row - and no shadow comes back on a wide screen',
+	isset( $lies['box-shadow'] ) === false && isset( menuDeclared( $rules, [ 'menu--in-row', 'menu-list', '[open]' ], true )['box-shadow'] ) === false && str_contains( $css, 'box-shadow: 0 .5rem 1.5rem color-mix( in srgb, var(--brand-ink) 16%, transparent ); translate' ) === true
+	&& ( $lies['top'] ?? '' ) === 'calc(100%+var(--page-space-4))' && ( $lies['margin-top'] ?? 'none' ) === 'none' );
+check( 'the entries of a folded menu are large by the tokens of the page, as those of the menu of the header, and on a wide screen they are those of the line',
+	( $entry['font-size'] ?? '' ) === 'var(--page-text-5)' && ( $entry['padding-block'] ?? '' ) === 'var(--page-space-3)' && ( $entryWide['font-size'] ?? '' ) === 'inherit' && ( $entryWide['padding-block'] ?? '' ) === 'var(--page-space-2)' );
+check( 'where the browser does not know ::details-content the nav is a box, and the one that is open takes the whole line, as the nav of the menu of the header does - the list is not squeezed beside the logo',
+	( menuDeclared( $rules, [ '.menu:not(.menu--footer):has(', 'menu-details', '[open]' ] )['flex'] ?? '' ) === '10100%' );
+check( 'the part names nothing of the header - it cannot, the rule of mixing says every class is its own - and it keeps that rule',
+	str_contains( $css, 'header-wrap' ) === false && \Nino\Components::partProblems( $css, [ 'menu' ] ) === [] );
 $blockDrawn2 = $dom( $draw( (string) file_get_contents( $dir. '/blocks/menu-header/block.tpl' ) ) );
 check( 'the block of the header keeps the menu in the column that fills the rest of the row and stands at its end',
 	$blockDrawn2->query( '//header//div[contains(@class,"section-col--size-fill") and contains(@class,"section-col--align-end")]/nav[contains(concat(" ",@class," ")," menu ")]' )->length === 1 );

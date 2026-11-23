@@ -565,7 +565,7 @@ namespace Nino\Modules {
 				return '';
 
 			// The foot is where the outermost component is the footer, or - the markup that has the parts directly in the wrap - the column of it; the register says so, no call does.
-			// A menu in the header that stands below a column, not in the line of the wrap itself, is in a row: the part lays its open list under the row
+			// A menu in the header that stands below a column, not in the line of the wrap itself, is in a row: the part lays its open list under the row. The details of a menu in the header says data-header-menu: the header of the kernel makes itself an overlay over the window, and the script of the kernel holds the page, while that list is open and folded
 			$place = (string) ( $context['place'] ?? '' );
 			$root = (string) ( $context['root'] ?? '' );
 			$footer = self::_side( $appData, $root ) === 'footer' || self::_side( $appData, $place ) === 'footer';
@@ -577,6 +577,7 @@ namespace Nino\Modules {
 				'[[uid]]'			=> $base,
 				'[[named]]'		=> $name === '' ? '' : ' aria-label="'. $name. '"',
 				'[[open]]'		=> $footer === true ? ' open' : '',
+				'[[folds]]'		=> $footer === true ? '' : ' data-header-menu',
 				'[[entries]]'	=> $items,
 			] );
 		}

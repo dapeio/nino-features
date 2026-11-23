@@ -4,7 +4,8 @@
  *						WAI-ARIA authoring practices has them: an entry with a panel is its link and a button
  *						beside it, and the button says in aria-expanded whether the panel is open. A press or
  *						Enter or Space on the button turns the panel; Escape closes it and hands the focus
- *						to the button; the focus leaving the entry (Tab) or a press outside closes it; a
+ *						to the button (an accordion in the overlay of the header takes the key: the next Escape
+ *						is the header's, which closes the menu); the focus leaving the entry (Tab) or a press outside closes it; a
  *						second panel closes the first, so one panel is open at a time. A mouse that rests on
  *						an entry opens the panel after a short delay and leaves it a moment after the pointer
  *						has gone - the hover adds to the button and is never the only way.
@@ -60,6 +61,28 @@
 		const panel = item.querySelector( '.menu-panel' );
 
 		return panel !== null && window.getComputedStyle( panel ).position === 'absolute';
+	}
+
+	/**
+	 *	Whether something stands in the top layer that has the Escape before a panel: a modal dialog, a popover that closes with it - a manual one is a toast and does
+	 *	not. The script of the header of the kernel asks the same and leaves that Escape to it as well, so that each key has one taker
+	 *
+	 *	@return		{boolean}
+	 */
+	function layer() {
+
+		try {
+			return document.querySelector( ':modal, :popover-open:not([popover=manual])' ) !== null;
+		}
+		catch( error ) {
+
+			try {
+				return document.querySelector( ':modal' ) !== null;
+			}
+			catch( other ) {
+				return false;
+			}
+		}
 	}
 
 	/**
@@ -299,21 +322,26 @@
 				set( current, false );
 		} );
 
-		// Escape closes the panel and, where the focus was in it, hands the focus to its button
+		// Escape closes the panel - unless a dialog or a popover is on top of it - and, where the focus was in it, hands the focus to its button. It is heard before the script of the header hears it (capturing), and an accordion that was
+		// shown takes the key - preventDefault -, which that script leaves alone: the panel is the first to go, the overlay the next to. A panel nobody sees (the menu is shut) or reaches (it lies behind an overlay, inert) takes nothing
 		document.addEventListener( 'keydown', function( event ) {
 
-			if( event.key !== 'Escape' || current === null )
+			if( event.key !== 'Escape' || current === null || layer() === true )
 				return;
 
 			const item = current;
 			const held = inside( item, document.activeElement );
+			const taken = dropdown( item ) === false && item.closest( '[inert]' ) === null && item.querySelector( '.menu-panel' ).getClientRects().length > 0;
 
 			stop();
 			set( item, false );
 
 			if( held === true )
 				item.querySelector( '.menu-toggle' ).focus();
-		} );
+
+			if( taken === true )
+				event.preventDefault();
+		}, true );
 
 		// What was open in the one shape is closed in the other, and a dropdown that stays is kept inside the window
 		window.addEventListener( 'resize', function() {

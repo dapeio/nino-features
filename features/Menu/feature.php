@@ -32,6 +32,10 @@ return [
 				'en_US' => 'In a column of a row of the header the nav is menu--in-row and its folded list lies under the row; in the footer it is menu--footer, open, with no button.',
 				'de_DE' => 'In einer Spalte einer Zeile des Kopfbereichs ist das nav menu--in-row, seine eingeklappte Liste liegt unter der Zeile; im Fußbereich ist es menu--footer, offen und ohne Knopf.',
 			],
+			'details[data-header-menu]' => [
+				'en_US' => 'Marks a menu in the header: folded and open it is an overlay over the window, which the script of the kernel closes with Escape - after an open panel - and holds the page behind.',
+				'de_DE' => 'Kennzeichnet ein Menü im Kopfbereich: eingeklappt und offen deckt es das Fenster, das Skript des Kernels schließt es mit Escape - nach einem offenen Panel - und hält die Seite dahinter.',
+			],
 			'.menu-title, .menu-subtitle, .menu-image, .menu-html, .menu-link--sub' => [
 				'en_US' => 'The parts of a column: a title, a subtitle, a picture, HTML+ that the kernel\'s sanitizer has cleaned, and a link of the panel.',
 				'de_DE' => 'Die Teile einer Spalte: ein Titel, ein Untertitel, ein Bild, HTML+, das der Sanitizer des Kernels gereinigt hat, und ein Link des Panels.',
