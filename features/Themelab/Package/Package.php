@@ -310,7 +310,7 @@ namespace Nino\Modules\Themelab {
 					'name'		=> is_array( $name ) === true ? (string) ( $name[$locale] ?? $name[\Nino\Blocks::FALLBACK] ?? reset( $name ) ?: $key ) : (string) $name,
 					'category'	=> (string) ( $block['category'] ?? '' ),
 					'kind'		=> self::_category( (string) ( $block['category'] ?? '' ), $locale ),
-					'frame'		=> ( $block['wrap'] ?? Library::PAGE ) !== Library::PAGE,
+					'frame'		=> ( $block['side'] ?? Library::PAGE ) !== Library::PAGE,
 					'reads'		=> $whole === null ? [] : array_map( 'strval', \Nino\Blocks::reads( $whole ) ),
 					'files'		=> count( $files ),
 					'bytes'		=> array_sum( array_map( 'strlen', $files ) ),

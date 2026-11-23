@@ -98,7 +98,7 @@ foreach( [
 	'a rank over 999' => [ [ 'rank' => 1000 ], 'themelab_rank' ],
 	'a rank that is no number' => [ [ 'rank' => 'zehn' ], 'themelab_rank' ],
 	'the category dynamic content, which a block gets by itself' => [ [ 'category' => 'dynamic' ], 'themelab_category' ],
-	'the category of the frames' => [ [ 'category' => 'frame' ], 'themelab_category' ],
+	'the category of a header, which is no category of a page' => [ [ 'category' => 'header' ], 'themelab_category' ],
 	'a description with markup' => [ [ 'descriptions' => [ 'de_DE' => 'a <b>' ] ], 'themelab_description' ],
 	'a placeholder the kernel has not' => [ [ 'images' => [ 'picture' => [ 'placeholder' => '/x', 'width' => 100, 'height' => 100, 'label' => [ 'de_DE' => 'x' ] ] ] ], 'themelab_picture_place' ],
 	'a picture of no size' => [ [ 'images' => [ 'picture' => [ 'placeholder' => '/nino/placeholder/mark', 'width' => 5, 'height' => 100, 'label' => [ 'de_DE' => 'x' ] ] ] ], 'themelab_picture_place' ],

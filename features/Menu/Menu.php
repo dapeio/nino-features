@@ -508,6 +508,26 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The side of a page a component stands on - header, footer or page - as the register says it: the side its schema gives it as the root of a block, or that of the root it
+		 *	is put in. Nothing is read of a name
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					The component
+		 *
+		 *	@return 	string										header, footer, page or '' for a component that is none of the sides
+		 */
+		private static function _side( array &$appData, string $name ): string {
+
+			$wraps = \Nino\Blocks::wraps( $appData );
+
+			foreach( array_merge( [ $name ], (array) ( \Nino\Components::components( $appData )[$name]['in'] ?? [] ) ) as $one )
+				if( isset( $wraps[$one] ) === true )
+					return $wraps[$one];
+
+			return '';
+		}
+
+		/**
 		 *	The renderer of the component menu: [menu key="main"], the list of a menu in a nav, each entry that has a
 		 *	panel with the button that opens it. The first menu where no key is named; nothing for a key that is none, a
 		 *	menu that is not there or one with nothing to draw
@@ -548,8 +568,8 @@ namespace Nino\Modules {
 			// A menu in the header that stands below a column, not in the line of the wrap itself, is in a row: the part lays its open list under the row
 			$place = (string) ( $context['place'] ?? '' );
 			$root = (string) ( $context['root'] ?? '' );
-			$footer = $root === 'footer-wrap' || $place === 'footer-col';
-			$inRow = $footer === false && $root === 'header-wrap' && $place !== 'header-wrap';
+			$footer = self::_side( $appData, $root ) === 'footer' || self::_side( $appData, $place ) === 'footer';
+			$inRow = $footer === false && self::_side( $appData, $root ) === 'header' && $place !== $root;
 			$args['class'] .= $footer === true ? ' menu--footer' : ( $inRow === true ? ' menu--in-row' : '' );
 			$name = $args['label'] !== '' ? $args['label'] : self::_text( \Nino\Html::renderTextfill( $appData, '/module/basis/navigation/'. ( $footer === true ? 'footer' : 'primary' ) ) );
 

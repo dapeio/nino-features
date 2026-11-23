@@ -877,7 +877,7 @@ function world( options ) {
 
 	const asked = w.requests.filter( function( entry ) { return entry.action === 'builder/framechoices' } )[0];
 
-	const entry = function( key, source, kind, label, extra ) { return Object.assign( { key : key, name : key, description : '', category : 'frame', origin : { kind : kind, label : label }, own : kind === 'project', source : source, applied : false, off : null }, extra ?? {} ) };
+	const entry = function( key, source, kind, label, extra ) { return Object.assign( { key : key, name : key, description : '', category : 'header', origin : { kind : kind, label : label }, own : kind === 'project', source : source, applied : false, off : null }, extra ?? {} ) };
 
 	asked.callback( { status : 200, responseJSON : { blocks : [
 		entry( 'soft', 'second', 'theme', 'Craft' ), entry( 'alike', 'other', 'theme', 'Craft' ), entry( 'basic', 'basis', 'basis', 'Basis' ),
@@ -891,7 +891,8 @@ function world( options ) {
 
 	check( 'G. the dialog of the choice has the blocks of the kind of the frame from every source under the name of their source - the own ones, the theme in use, then the others by name, two themes of one name told apart by their key - and asks the server by the template of the frame; nothing is written by asking',
 		asked.payload.template === 'frame-header' && heads.join('|') === [ W('frame/own'), W( 'frame/theme', 'Nino' ), 'Basis', W( 'frame/theme-key', 'Craft', 'other' ), W( 'frame/theme-key', 'Craft', 'second' ) ].join('|')
-		&& items.map( textOf ).join() === 'mine,applied,basic,alike,soft' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0 );
+		&& items.map( textOf ).join() === 'mine,applied,basic,alike,soft' && w.requests.filter( function( entry ) { return entry.action === 'builder/framechoose' } ).length === 0
+		&& textOf( dialog ).indexOf( W('frame/choose-title-header') ) !== -1 && textOf( dialog ).indexOf( W('frame/choose-title-footer') ) === -1 );
 
 	// each item is a tile whose picture is the tile of the dialog of the blocks - asked for by the template of the frame and the key of the block - drawn in the face of the item, in the order of the items
 	tiles.forEach( function( request ) { request.callback( { status : 200, responseJSON : { token : 't', query : 'nino-preview=tok-'+ request.payload.key, ttl : 600, address : '/home' }, getAllResponseHeaders : function() { return 'x' } } ) } );
@@ -918,7 +919,7 @@ function world( options ) {
 	chose.callback( { status : 409, responseJSON : { error : 'x', code : 'builder_frame_changed' }, getAllResponseHeaders : function() { return 'x' } } );
 
 	check( 'G. a frame that was changed since the list was drawn is not forced: the answer 409 with the code of the frame says so in words, the list is asked for again, and no request is made with force',
-		w.said.indexOf( W('frame/changed') ) !== -1 && w.requests.filter( function( entry ) { return entry.action === 'builder/list' } ).length === 1 && w.requests.every( function( entry ) { return entry.payload.force === undefined } ) );
+		w.said.indexOf( W('frame/changed-header') ) !== -1 && w.requests.filter( function( entry ) { return entry.action === 'builder/list' } ).length === 1 && w.requests.every( function( entry ) { return entry.payload.force === undefined } ) );
 
 	// a frame that is made of a block is no replacement: the same dialog applies the choice at once, with no question
 	{

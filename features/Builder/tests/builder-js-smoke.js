@@ -142,6 +142,8 @@ const words = {
 	[ 'none', 'has', 'chosen', 'taken', 'upload', 'replace', 'remove' ].forEach( function( key ) { asked.add( 'place/own-'+ key ) } );
 	// A page that has lost the call of its head or of its foot, and the way to put it back
 	[ 'header', 'footer' ].forEach( function( key ) { [ 'missing-', 'restore-', 'restored-' ].forEach( function( kind ) { asked.add( 'frame/'+ kind+ key ) } ) } );
+	// The dialog that gives a frame its block, and what is said of the choice, in the words of the side that is chosen for
+	[ 'header', 'footer' ].forEach( function( key ) { [ 'choose-title', 'pick-note', 'changed', 'none', 'confirm-title', 'confirm-message', 'chosen', 'undone' ].forEach( function( kind ) { asked.add( 'frame/'+ kind+ '-'+ key ) } ) } );
 	// The two pages whose button to delete is shut, each with its reason, and the word the server puts behind the name of a copy in the language of each name
 	[ 'home', 'not-found', 'runtime' ].forEach( function( key ) { asked.add( 'list/locked-'+ key ) } );
 	asked.add('new/copy');
@@ -453,11 +455,24 @@ check( 'B. a page that has no call of its foot says so quietly in the outline - 
 
 		return whole === true && quietly === true;
 	} )() );
+check( 'B. the component whose schema says markup is the markup of the page whatever its name: what it holds is the account\'s that may develop, for the others the block that holds it is locked, and the block has the icon of code',
+	( function() {
+		fresh();
+		const block = { n : 'section-wrap', s : '', a : { id : 'raw' }, c : [ { t : '\n' }, { n : 'rawbox', s : '', a : {}, c : [ { t : '<p>x</p>' } ] }, { t : '\n' } ] };
+		S.known.rawbox = { label : 'Raw', id : '', source : 'none' };
+		S.schemas.rawbox = { label : 'Raw', markup : true, container : false, side : '' };
+		S.level = 2;
+		const closed = builder.free( block );
+		S.level = 3;
+		const open = builder.free( block );
+		return closed === false && open === true && builder.iconOf( block ) === 'code';
+	} )() );
 check( 'B. what the call of html holds is the account\'s that may develop: for the others the block that holds text in it is locked, for that account it is a block like any other - and the words of a new text are the ones of the language of the page', ( function() {
 	fresh();
 	const html = { n : 'html', s : '', a : {}, c : [ { t : '<p>x</p>' } ] };
 	const block = { n : 'section-wrap', s : '', a : { id : 'raw' }, c : [ { t : '\n' }, html, { t : '\n' } ] };
 	S.known.html = { label : 'HTML', id : '', source : 'none' };
+	S.schemas.html = { label : 'HTML', markup : true, container : false, side : '' };
 	S.level = 2;
 	const closed = builder.free( block );
 	S.level = 3;
@@ -544,7 +559,7 @@ check( 'B. the dialog asks for as many pictures as the server keeps, and the scr
 // --- C. the extended view ---------------------------------------------------------------------------------------
 
 const schemas = {
-	'section-wrap' : { icon : 'panel-top', label : 'Section', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'alt' ], optionLabels : null, responsive : false } } },
+	'section-wrap' : { icon : 'panel-top', label : 'Section', group : 'section', side : 'page', container : true, source : 'none', format : '', id : 'id', variants : [], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'alt' ], optionLabels : null, responsive : false } } },
 	'section-col' : { icon : 'columns-3', label : 'Column', group : 'section', container : true, source : 'none', format : '', id : 'id', variants : [ 'card' ], standard : 'regular', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, size : { type : 'choice', label : 'Width', hint : '', default : '100', options : [ '25', '33', '50', '100', 'auto', 'fill' ], optionLabels : { auto : 'As wide as its content', fill : 'The rest of the row' }, responsive : true }, link : { type : 'bool', label : 'Link', hint : '', default : false } } },
 	'section-title' : { icon : 'heading', label : 'Title', group : 'section', container : false, source : 'text', format : 'inline', id : '', variants : [], standard : 'regular', attributes : {} },
 	'text' : { icon : 'text', label : 'Text', group : 'text', container : false, source : 'text', format : 'blocks', id : '', variants : [], standard : 'regular', attributes : {} },

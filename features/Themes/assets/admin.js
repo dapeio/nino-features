@@ -4142,7 +4142,7 @@
 	};
 
 	// The keys of the texts of the website that frames read, as a list of text: the (?) says what that means
-	const readsOf = function( holder, name, reads ) {
+	const readsOf = function( holder, name, reads, side ) {
 
 		const list = el( 'ul', 'themes-upload-reads' );
 
@@ -4156,7 +4156,7 @@
 			list.appendChild( item );
 		} );
 
-		const head = el( 'p', 'nino-admin-hint', word( 'upload/reads', name ) );
+		const head = el( 'p', 'nino-admin-hint', word( 'upload/reads-'+ ( side === 'footer' ? 'footer' : 'header' ), name ) );
 
 		head.appendChild( Nino.adminUi.fieldHelp( word('upload/reads-help'), { field : list, name : name } ) );
 		holder.appendChild( head );
@@ -4219,7 +4219,7 @@
 				say( word( 'upload/block-out', block.name, block.origin ), 'nino-admin-hint themes-upload-warn' );
 
 			if( block.reads.length > 0 )
-				readsOf( holder, block.name, block.reads );
+				readsOf( holder, block.name, block.reads, block.side );
 		} );
 
 		// What stands in the way of the write, in the words of the refusal the write would answer with
@@ -4660,7 +4660,7 @@
 			toggle.setAttribute( 'aria-expanded', 'false' );
 			toggle.dataset.reads = theme.key;
 
-			theme.frames.forEach( function( frame ) { readsOf( reads, localized( frame.name ), frame.reads ) } );
+			theme.frames.forEach( function( frame ) { readsOf( reads, localized( frame.name ), frame.reads, frame.side ) } );
 			card.appendChild( toggle );
 			card.appendChild( reads );
 		}

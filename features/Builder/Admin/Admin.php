@@ -555,14 +555,14 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The root a block must have to be offered in the editor that is asked: a frame of the site is a block of its own, and only a block of its own kind stands in its place
+		 *	The side a block must be of to be offered in the editor that is asked: a frame of the site is a block of its own, and only a block of its own side stands in its place
 		 *
 		 *	@param		array 		&$appData
 		 *
-		 *	@return 	string
+		 *	@return 	string										page, header or footer
 		 */
-		private static function _wrap( array &$appData ): string {
-			return ( $appData[\Nino\Modules\Builder::AS] ?? false ) === true ? Library::wrapOf( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) ) : Library::PAGE;
+		private static function _side( array &$appData ): string {
+			return ( $appData[\Nino\Modules\Builder::AS] ?? false ) === true ? Library::sideOf( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'template' ) ) : Library::PAGE;
 		}
 
 		public static function apiBlocks( array &$appData, array &$request ): void {
@@ -570,7 +570,7 @@ namespace Nino\Modules\Builder {
 			if( self::_gate( $appData, $request, \Nino\Modules\Builder::LEVEL_DESIGN ) === null )
 				return;
 
-			\Nino\Http::ok( $request, Library::all( $appData, self::_wrap( $appData ) ) );
+			\Nino\Http::ok( $request, Library::all( $appData, self::_side( $appData ) ) );
 		}
 
 		public static function apiBlock( array &$appData, array &$request ): void {
@@ -580,7 +580,7 @@ namespace Nino\Modules\Builder {
 			if( $level === null )
 				return;
 
-			$block = Library::block( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' ), self::_wrap( $appData ) );
+			$block = Library::block( $appData, \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'key' ), self::_side( $appData ) );
 
 			if( $block === null ) {
 				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );
@@ -628,7 +628,7 @@ namespace Nino\Modules\Builder {
 				return;
 
 			[ $template, , , $locale ] = $opened;
-			$tile = Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale, $level >= \Nino\Modules\Builder::LEVEL_DESIGN, Library::wrapOf( $template ) );
+			$tile = Library::tile( $appData, $template, \Nino\Admin\Admin::postString( $data, 'key' ), $locale, $level >= \Nino\Modules\Builder::LEVEL_DESIGN, Library::sideOf( $template ) );
 
 			if( $tile === null ) {
 				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );
@@ -645,10 +645,6 @@ namespace Nino\Modules\Builder {
 
 			\Nino\Http::ok( $request, [ 'token' => $token, 'query' => \Nino\Preview::QUERY. '='. $token, 'ttl' => \Nino\Preview::TTL, 'address' => self::_address( $appData, $template, $locale ) ] );
 		}
-
-		// The places that are the frames' own: the top of a page, the header and the footer with the parts they hold, and the places that they open to every column below them. A
-		// component that stands only at these places is the frames' and no choice anywhere else
-		private const array FRAME_PLACES = [ 'page', 'header-wrap', 'header-actions', 'footer-wrap', 'footer-col', 'header', 'footer' ];
 
 		// Where a component stands in the dialog that offers them - the one place that says it, for the blocks, the frames and every other place a component is put in. It is the
 		// dialog's own order and no group of the register, which belongs to the themes: a part of a section, a part of a card, what is of a group of components, the loops, what a
@@ -667,7 +663,6 @@ namespace Nino\Modules\Builder {
 			'button'					=> 'general',
 			'image'						=> 'general',
 			'logo'						=> 'general',
-			'html'						=> 'general',
 			'spacer'					=> 'general',
 			'scroll-hint'			=> 'general',
 			'button-group'		=> 'groups',
@@ -679,6 +674,47 @@ namespace Nino\Modules\Builder {
 		// The order of the tiles in a part of the dialog, the common ones first: this is the one place that says it, as DIALOG says the parts. What is not named stands behind them
 		// in the order the register has it, and the filter, which holds loops and is none, is the last of the loops
 		private const array DIALOG_ORDER = [ 'section-title', 'section-subtitle', 'section-row', 'section-col', 'card', 'card-title', 'card-subtitle', 'card-text', 'card-image', 'text', 'button', 'image', 'logo', 'spacer', 'scroll-hint', 'html', 'button-group', 'tabs', 'accordion', 'collection', 'collection-list', 'collection-table', 'collection-filter' ];
+
+		// The place at the top of a page, the one the register calls 'page' in the "in" of a component: a place, not the side of a block
+		private const string TOP = 'page';
+
+		/**
+		 *	The places that are the frames' own: the top of a page, the roots of a header and of a footer - by the side their schema says (\Nino\Blocks::wraps()) - the places those open
+		 *	to everything below them (their 'deep'), and every component that is put in them and in nothing else of the register: the parts they hold. A component that stands
+		 *	only at these places is the frames' and no choice anywhere else
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$registry
+		 *
+		 *	@return 	array											[ the places, the roots of a header and of a footer ]
+		 */
+		private static function _framePlaces( array &$appData, array $registry ): array {
+
+			$roots = array_keys( array_filter( \Nino\Blocks::wraps( $appData ), static fn( string $side ): bool => $side !== Library::PAGE ) );
+			$own = $roots;
+
+			foreach( $roots as $root )
+				foreach( (array) ( $registry[$root]['deep'] ?? [] ) as $word )
+					$own[] = (string) $word;
+
+			do {
+
+				$grew = false;
+
+				foreach( $registry as $name => $schema ) {
+
+					$in = array_map( 'strval', (array) ( $schema['in'] ?? [] ) );
+
+					if( in_array( (string) $name, $own, true ) === false && array_intersect( $in, $own ) !== [] && array_diff( $in, $own, [ self::TOP ] ) === [] ) {
+						$own[] = (string) $name;
+						$grew = true;
+					}
+				}
+			}
+			while( $grew === true );
+
+			return [ array_merge( [ self::TOP ], $own ), $roots ];
+		}
 
 		/**
 		 *	The part of the dialog a component is in
@@ -729,10 +765,11 @@ namespace Nino\Modules\Builder {
 			// What the register has that this place does not take is in the dialog as well, grey and with its reason: the person sees what there is, and why not here. The
 			// frames' own parts, what stands at the top of a page - a section - and what a feature offers only at the places of the frames - the menu in a column of a header
 			// or a footer - are no choice of any place outside the frames, inside a block or a page; within a header or a footer they are grey where they do not fit
-			$inFrame = in_array( 'header-wrap', $route, true ) === true || in_array( 'footer-wrap', $route, true ) === true;
+			[ $framePlaces, $frameRoots ] = self::_framePlaces( $appData, $registry );
+			$inFrame = array_intersect( $frameRoots, $route ) !== [];
 
 			foreach( $registry as $name => $schema )
-				if( isset( $offered[$name] ) === false && in_array( (string) ( $schema['group'] ?? '' ), [ 'header', 'footer' ], true ) === false && ( $schema['in'] ?? [] ) !== [ 'page' ] && ( $inFrame === true || ( $schema['in'] ?? [] ) === [] || array_diff( (array) $schema['in'], self::FRAME_PLACES ) !== [] ) && ( $name !== 'html' || $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ) )
+				if( isset( $offered[$name] ) === false && in_array( (string) ( $schema['group'] ?? '' ), [ 'header', 'footer' ], true ) === false && ( $schema['in'] ?? [] ) !== [ self::TOP ] && ( $inFrame === true || ( $schema['in'] ?? [] ) === [] || array_diff( (array) $schema['in'], $framePlaces ) !== [] ) && ( ( $schema['markup'] ?? false ) !== true || $level >= \Nino\Modules\Builder::LEVEL_DEVELOP ) )
 					$offered[$name] = 'place';
 
 			$schemas = Tree::schemas( $appData, [], $registry, array_map( 'strval', array_keys( $offered ) ) );
@@ -1174,7 +1211,7 @@ namespace Nino\Modules\Builder {
 			};
 			[ $name, $names ] = $words( $data['name'] ?? '' );
 			[ $about, $abouts ] = $words( $data['description'] ?? '' );
-			$made = Custom::save( $appData, $template, $state, $nodes, [ 'at' => (string) $at, 'key' => \Nino\Admin\Admin::postString( $data, 'key' ), 'name' => $name, 'names' => $names, 'description' => $about, 'descriptions' => $abouts, 'category' => 'frame', 'locale' => $opened[3], 'fill' => \Nino\Admin\Admin::postString( $data, 'fill' ), 'check' => ( $data['check'] ?? false ) === true ] );
+			$made = Custom::save( $appData, $template, $state, $nodes, [ 'at' => (string) $at, 'key' => \Nino\Admin\Admin::postString( $data, 'key' ), 'name' => $name, 'names' => $names, 'description' => $about, 'descriptions' => $abouts, 'category' => Library::sideOf( $template ), 'locale' => $opened[3], 'fill' => \Nino\Admin\Admin::postString( $data, 'fill' ), 'check' => ( $data['check'] ?? false ) === true ] );
 
 			if( isset( $made['failure'] ) === true ) {
 				self::_fail( $request, $made['failure'] );
@@ -1653,7 +1690,7 @@ namespace Nino\Modules\Builder {
 			if( $template === null )
 				return;
 
-			\Nino\Http::ok( $request, Library::all( $appData, Library::wrapOf( $template ) ) );
+			\Nino\Http::ok( $request, Library::all( $appData, Library::sideOf( $template ) ) );
 		}
 
 		/**
@@ -1682,7 +1719,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			$key = \Nino\Admin\Admin::postString( $data, 'key' );
-			$block = Library::block( $appData, $key, Library::wrapOf( $template ) );
+			$block = Library::block( $appData, $key, Library::sideOf( $template ) );
 
 			if( $block === null ) {
 				self::_fail( $request, [ 404, 'there is no such block', 'builder_block', [], 'key' ] );

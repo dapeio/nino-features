@@ -134,8 +134,8 @@ check( 'the dialog of the export is given what the project offers: the own block
 [ , $offerDe ] = bkCall( $site, 'themes/export-blocks', [ 'theme' => 'own:boxed', 'locale' => 'de_DE' ] );
 $byDe = array_column( $offerDe['blocks'] ?? [], null, 'key' );
 
-check( 'each block of the dialog says what it is in the words of the workbench for its category, in the language asked for - the list of the feature that lists the blocks carries the word, the themes read none of its texts - and a header is a "Header/footer": in English and in German',
-	( $by[$split]['kind'] ?? '' ) === 'Static content' && ( $by['mein-kopf']['kind'] ?? '' ) === 'Header/footer' && ( $by[$empty]['kind'] ?? '' ) === 'Titles' && ( $byDe[$split]['kind'] ?? '' ) === 'Statische Inhalte' && ( $byDe['mein-kopf']['kind'] ?? '' ) === 'Kopf-/Fußbereich' && ( $byDe[$empty]['kind'] ?? '' ) === 'Titel' );
+check( 'each block of the dialog says what it is in the words of the workbench for its category, in the language asked for - the list of the feature that lists the blocks carries the word, the themes read none of its texts - and a header is a "Header": in English and in German',
+	( $by[$split]['kind'] ?? '' ) === 'Static content' && ( $by['mein-kopf']['kind'] ?? '' ) === 'Header' && ( $by[$empty]['kind'] ?? '' ) === 'Titles' && ( $byDe[$split]['kind'] ?? '' ) === 'Statische Inhalte' && ( $byDe['mein-kopf']['kind'] ?? '' ) === 'Kopfbereich' && ( $byDe[$empty]['kind'] ?? '' ) === 'Titel' );
 
 check( 'and the limits of a package, and what the folder of the theme has already: the files and bytes of the folder without blocks, none carried - so that a package that is too large is said before it is packed - and nothing is written by asking',
 	( $offer['limits'] ?? [] ) === [ 'files' => $limits['files'], 'bytes' => $limits['bytes'] ] && ( $offer['base']['files'] ?? 0 ) === count( $ownBefore ) && ( $offer['base']['bytes'] ?? 0 ) === array_sum( array_map( 'strlen', bkFiles( $ownDir ) ) ) && ( $offer['carried'] ?? null ) === [] && bkHashes( $ownDir ) === $ownBefore );
@@ -268,10 +268,10 @@ check( 'a package that carries blocks is copied as an own theme, and its card sa
 [ , $shownDe ] = bkCall( $siteB, 'themes/blocks', [ 'theme' => 'own:boxed', 'locale' => 'de_DE' ] );
 $shownBy = array_column( $shown['blocks'] ?? [], null, 'key' );
 
-check( 'the blocks of the theme say what they are in the words of the workbench for their category, in the language asked for', array_column( $shown['blocks'] ?? [], 'kind', 'key' ) === [ 'mein-kopf' => 'Header/footer', $split => 'Static content' ] && array_column( $shownDe['blocks'] ?? [], 'kind', 'key' ) === [ 'mein-kopf' => 'Kopf-/Fußbereich', $split => 'Statische Inhalte' ] );
+check( 'the blocks of the theme say what they are in the words of the workbench for their category, in the language asked for', array_column( $shown['blocks'] ?? [], 'kind', 'key' ) === [ 'mein-kopf' => 'Header', $split => 'Static content' ] && array_column( $shownDe['blocks'] ?? [], 'kind', 'key' ) === [ 'mein-kopf' => 'Kopfbereich', $split => 'Statische Inhalte' ] );
 
 check( 'the blocks of the theme are shown before anything is written: each with its name, its category and whether the project has the key - all are free here - and the name of the theme',
-	$shownStatus === 200 && array_keys( $shownBy ) === [ 'mein-kopf', $split ] && ( $shownBy[$split]['state'] ?? '' ) === 'free' && ( $shownBy[$split]['name'] ?? '' ) === 'My split' && ( $shownBy['mein-kopf']['category'] ?? '' ) === 'frame' && ( $shown['theme'] ?? '' ) === 'Boxed' && bkHashes( $sandboxB. '/private/blocks' ) === $blocksBefore );
+	$shownStatus === 200 && array_keys( $shownBy ) === [ 'mein-kopf', $split ] && ( $shownBy[$split]['state'] ?? '' ) === 'free' && ( $shownBy[$split]['name'] ?? '' ) === 'My split' && ( $shownBy['mein-kopf']['category'] ?? '' ) === 'header' && ( $shown['theme'] ?? '' ) === 'Boxed' && bkHashes( $sandboxB. '/private/blocks' ) === $blocksBefore );
 
 $items = [ $split => [ 'take' => true, 'how' => 'skip' ], 'mein-kopf' => [ 'take' => true, 'how' => 'skip' ] ];
 [ $takenStatus, $taken ] = bkCall( $siteB, 'themes/blocks-take', [ 'theme' => 'own:boxed', 'items' => $items ] );
@@ -290,7 +290,7 @@ check( 'the round trip: the blocks that were exported with the theme, the theme 
 $projectBlocks = \Nino\Blocks::all( $siteB );
 
 check( 'what was taken is a block of the project, of its origin, a header among them with its category: the project lists them as it lists the blocks it made itself',
-	( $projectBlocks[$split]['origin'] ?? '' ) === 'project' && ( $projectBlocks['mein-kopf']['origin'] ?? '' ) === 'project' && ( $projectBlocks['mein-kopf']['category'] ?? '' ) === 'frame' && ( $projectBlocks['mein-kopf']['wrap'] ?? '' ) === 'header-wrap' );
+	( $projectBlocks[$split]['origin'] ?? '' ) === 'project' && ( $projectBlocks['mein-kopf']['origin'] ?? '' ) === 'project' && ( $projectBlocks['mein-kopf']['category'] ?? '' ) === 'header' && ( $projectBlocks['mein-kopf']['side'] ?? '' ) === 'header' );
 
 echo "\nD. What is taken and what is not\n";
 

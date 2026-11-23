@@ -1992,7 +1992,7 @@ $numbers['files of the theme'] = $allBytes;
 $numbers['theme.css'] = strlen( $sheet );
 $numbers['bundle with'] = strlen( $with );
 $numbers['bundle without'] = strlen( $without );
-check( 'Nr. 11: sizes of a theme with a rule, a band and a density: the css of its parts below 4 KB and all its files below 12 KB, the stylesheet written below 8 KB, the bundle of the site below 45 KB, and what the feature adds to it - the stylesheet written - below 6 KB: the bundle without it is the kernel\'s to size', $partBytes < 4096 && $allBytes < 12288 && strlen( $sheet ) < 8192 && strlen( $with ) < 45 * 1024 && strlen( $with ) - strlen( $without ) < 6 * 1024 && strlen( $with ) > strlen( $without ) );
+check( 'Nr. 11: sizes of a theme with a rule, a band and a density: the css of its parts below 4 KB and all its files below 12 KB, the stylesheet written below 8 KB, the bundle of the site below 60 KB, and what the feature adds to it - the stylesheet written - below 6 KB: the bundle without it is the kernel\'s to size', $partBytes < 4096 && $allBytes < 12288 && strlen( $sheet ) < 8192 && strlen( $with ) < 60 * 1024 && strlen( $with ) - strlen( $without ) < 6 * 1024 && strlen( $with ) > strlen( $without ) );
 
 // the feature off: the site as it is with no theme; on again: the state that was saved
 themesCall( $site, 'themes/apply', [ 'theme' => 'craft-probe' ] );

@@ -130,7 +130,7 @@ namespace Nino\Modules\Themelab {
 			$out = [];
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $block )
-				if( ( ( $block['wrap'] ?? '' ) === Library::PAGE || ( $frames === true && in_array( $block['wrap'] ?? '', [ 'header-wrap', 'footer-wrap' ], true ) === true ) ) && ( $block['missing'] ?? [] ) === [] && ( $origin === '' || (string) $block['origin'] === $origin ) )
+				if( ( ( $block['side'] ?? '' ) === Library::PAGE || ( $frames === true && in_array( $block['side'] ?? '', [ 'header', 'footer' ], true ) === true ) ) && ( $block['missing'] ?? [] ) === [] && ( $origin === '' || (string) $block['origin'] === $origin ) )
 					$out[(string) $key] = $block;
 
 			return $out;
@@ -172,7 +172,7 @@ namespace Nino\Modules\Themelab {
 		 */
 		public static function blank( string $id ): array {
 
-			$root = [ 'n' => Library::PAGE, 's' => '', 'a' => [ 'id' => $id ] + self::BEGIN['section-wrap'], 'c' => [ [ 'n' => 'section-row', 's' => '', 'a' => self::BEGIN['section-row'], 'c' => [ [ 'n' => 'section-col', 's' => '', 'a' => self::BEGIN['section-col'], 'c' => [] ] ] ] ] ];
+			$root = [ 'n' => 'section-wrap', 's' => '', 'a' => [ 'id' => $id ] + self::BEGIN['section-wrap'], 'c' => [ [ 'n' => 'section-row', 's' => '', 'a' => self::BEGIN['section-row'], 'c' => [ [ 'n' => 'section-col', 's' => '', 'a' => self::BEGIN['section-col'], 'c' => [] ] ] ] ] ];
 
 			return [ 'key' => '', 'id' => $id, 'tree' => Tree::strip( \Nino\Markup::layout( [ $root ], 0 ) ), 'known' => [], 'texts' => [ \Nino\Blocks::FALLBACK => [] ], 'slots' => [], 'images' => [] ];
 		}
@@ -234,7 +234,7 @@ namespace Nino\Modules\Themelab {
 					$at = $index;
 
 			// The root of a block of a header or a footer keeps the id the frame has: the frame stands on it, and what the site says of #header is said of it
-			if( $at === null || in_array( $nodes[$at]['n'], [ 'header-wrap', 'footer-wrap' ], true ) === true )
+			if( $at === null || in_array( Library::sideOfRoot( $appData, (string) $nodes[$at]['n'] ), [ 'header', 'footer' ], true ) === true )
 				return $parts;
 
 			$registry = \Nino\Components::components( $appData );
@@ -496,7 +496,7 @@ namespace Nino\Modules\Themelab {
 			$reads = $whole === null ? [] : \Nino\Blocks::reads( $whole );
 
 			return [
-				'wrap'					=> (string) ( $listed['wrap'] ?? Library::PAGE ),
+				'side'					=> (string) ( $listed['side'] ?? Library::PAGE ),
 				'reads'					=> $reads,
 				'names'					=> (object) array_map( 'strval', (array) $listed['name'] ),
 				'descriptions'	=> (object) array_map( 'strval', (array) $listed['description'] ),
@@ -521,13 +521,16 @@ namespace Nino\Modules\Themelab {
 		}
 
 		/**
-		 *	The index of the block in the top level of a tree that is a sheet - the two calls of the frame, the block and blanks and nothing else - null for any other tree
+		 *	The index of the block in the top level of a tree that is a sheet - the two calls of the frame, the block and blanks and nothing else - null for any other tree. The block is
+		 *	the root of the side that is asked for: a component whose schema says that side
 		 *
+		 *	@param		array 		&$appData
 		 *	@param		array			$nodes
+		 *	@param		string		$side					page, header or footer
 		 *
 		 *	@return 	int|null
 		 */
-		public static function rootAt( array $nodes, string $wrap = Library::PAGE ): ?int {
+		public static function rootAt( array &$appData, array $nodes, string $side = Library::PAGE ): ?int {
 
 			$at = null;
 			$frames = [];
@@ -542,7 +545,7 @@ namespace Nino\Modules\Themelab {
 					continue;
 				}
 
-				if( $node['n'] === $wrap && $at === null )
+				if( $at === null && Library::sideOfRoot( $appData, (string) $node['n'] ) === $side )
 					$at = (int) $index;
 				else if( $node['n'] === 'template' && in_array( (string) ( $node['s'] ?? '' ), self::FRAMES, true ) === true && ( $node['a'] ?? [] ) === [] && isset( $frames[$node['s']] ) === false )
 					$frames[$node['s']] = true;

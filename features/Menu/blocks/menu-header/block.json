@@ -1,7 +1,7 @@
 {
 	"name": { "de_DE": "Kopfbereich mit Menü und Panels", "en_US": "Header with a menu of panels" },
 	"description": { "de_DE": "Logo und ein Menü, dessen Einträge Panels öffnen, in einer Zeile, oben festgehalten. Das Menü ist das erste, das das Panel Menü kennt.", "en_US": "The logo and a menu whose entries open panels, in one line, kept at the top. The menu is the first one the Menu panel has." },
-	"category": "frame",
+	"category": "header",
 	"rank": 20,
 	"images": {}
 }

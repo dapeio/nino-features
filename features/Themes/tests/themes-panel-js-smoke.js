@@ -155,6 +155,9 @@ const CHANGED = '\u25CF '+ W('state/changed');
 	( /public const array WHY = \[([\s\S]*?)\n\t\t\];/.exec( fs.readFileSync( path.join( featureDir, 'Reader/Reader.php' ), 'utf8' ) )[1].match( /^\t\t\t'([a-z-]+)'/gm ) ?? [] )
 		.forEach( function( line ) { asked.add( 'why/'+ line.trim().slice( 1, -1 ) ) } );
 
+	// The sentence above the keys a frame reads is the one of its side
+	[ 'header', 'footer' ].forEach( function( side ) { asked.add( 'upload/reads-'+ side ) } );
+
 	// A key that ends in a hyphen is the beginning of one the script puts together: those are named below
 	Array.from( asked ).filter( function( key ) { return key.slice( -1 ) === '-' } ).forEach( function( key ) { asked.delete( key ) } );
 
@@ -892,7 +895,7 @@ function previewDialog( w, preview ) {
 	w.at( '#themes' );
 
 	const css = '.a { color: red }\n/* </style><b>x</b> */\n.b { color: blue }';
-	const dialog = previewDialog( w, previewOfTheme( { css : { lines : 3, text : css }, blocks : [ { key : 'foot', name : 'Foot', category : 'frame', frame : true, state : 'in', origin : '', theme : '', reads : [ { key : '/project/company/general/name', text : 'Nino <b>GmbH</b>', logo : false }, { key : '<b>x</b>', text : null, logo : false }, { key : '/logo', text : null, logo : true } ] } ], frames : 1 } ) );
+	const dialog = previewDialog( w, previewOfTheme( { css : { lines : 3, text : css }, blocks : [ { key : 'foot', name : 'Foot', category : 'footer', side : 'footer', frame : true, state : 'in', origin : '', theme : '', reads : [ { key : '/project/company/general/name', text : 'Nino <b>GmbH</b>', logo : false }, { key : '<b>x</b>', text : null, logo : false }, { key : '/logo', text : null, logo : true } ] } ], frames : 1 } ) );
 	const toggle = findAll( dialog, function( node ) { return node.id === 'themes-upload-css-toggle' } )[0];
 	const field = findAll( dialog, function( node ) { return node.tagName === 'TEXTAREA' && node.getAttribute('aria-labelledby') === 'themes-upload-css-toggle' } )[0];
 	const keys = findAll( dialog, function( node ) { return node.tagName === 'CODE' } ).map( function( node ) { return node.textContent } );
@@ -900,7 +903,7 @@ function previewDialog( w, preview ) {
 	check( 'B. the preview says that the package brings css and how many lines, and shows it as text in a field that is read and not changed, behind a button, as the licence is',
 		w.text( dialog ).indexOf( Wp( 'upload/css', 3 ) ) !== -1 && toggle !== undefined && field !== undefined && field.readOnly === true && field.value === css && toggle.getAttribute('aria-expanded') === 'false' );
 	check( 'B. each frame of the package names the keys it reads, as a list of text - a key that is markup draws no element - with the sentence behind the (?) of what that means',
-		keys.join() === '/project/company/general/name,<b>x</b>,/logo' && w.text( dialog ).indexOf( 'Nino <b>GmbH</b>' ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-none') ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-logo') ) !== -1 && w.byTag( dialog, 'b' ).length === 0 && w.text( dialog ).indexOf( Wp( 'upload/reads', 'Foot' ) ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-help') ) !== -1 );
+		keys.join() === '/project/company/general/name,<b>x</b>,/logo' && w.text( dialog ).indexOf( 'Nino <b>GmbH</b>' ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-none') ) !== -1 && w.text( dialog ).indexOf( W('upload/reads-logo') ) !== -1 && w.byTag( dialog, 'b' ).length === 0 && w.text( dialog ).indexOf( Wp( 'upload/reads-footer', 'Foot' ) ) !== -1 && w.text( dialog ).indexOf( Wp( 'upload/reads-header', 'Foot' ) ) === -1 && w.text( dialog ).indexOf( W('upload/reads-help') ) !== -1 );
 }
 
 {

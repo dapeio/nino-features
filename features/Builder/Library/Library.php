@@ -11,10 +11,10 @@ namespace Nino\Modules\Builder {
 		public const string KIND = 'builder-tile';
 		public const int TILES = 12;
 
-		// The root of a block that stands on a page: the frames are blocks too, and are no part of a page
-		public const string PAGE = 'section-wrap';
+		// The side of a page a block stands on, as the schema of its root says it (\Nino\Components::SIDES): the blocks of a header and of a footer are blocks too, and are no part of a page
+		public const string PAGE = 'page';
 
-		// The groups the dialog "Insert block" shows, in its order: the categories of the kernel but the frames, and the dynamic content - a block with a loop - between the static and the proof
+		// The groups the dialog "Insert block" shows, in its order: the categories of the kernel that are those of a page, and the dynamic content - a block with a loop - between the static and the proof
 		public const array GROUPS = [ 'intro', 'content', 'dynamic', 'trust', 'offer', 'action', 'contact' ];
 
 		/**
@@ -24,7 +24,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array											[ 'blocks' => [ key, name, description, category, origin, own, source, applied, variants, hint, off ], 'categories' => the words of the categories, in the order of the dialog ]
 		 */
-		public static function all( array &$appData, string $wrap = self::PAGE ): array {
+		public static function all( array &$appData, string $side = self::PAGE ): array {
 
 			$features = \Nino\Features::all( $appData );
 			$list = [];
@@ -34,7 +34,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $block ) {
 
-				if( $block['wrap'] !== $wrap || ( ( $block['missing'] ?? [] ) === [] && self::block( $appData, (string) $key, $wrap ) === null ) )
+				if( $block['side'] !== $side || ( ( $block['missing'] ?? [] ) === [] && self::block( $appData, (string) $key, $side ) === null ) )
 					continue;
 
 				// A block that lacks the components of a feature that is off says which features: the entry is grey and is not put in
@@ -63,17 +63,40 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The root a block must have to stand in a template: a section for a page, the header for the frame of the head, the footer for the frame of the foot
+		 *	The side a block must be of to stand in a template: the page for a page, the header for the frame of the head, the footer for the frame of the foot - the side of the root
+		 *	that the schema of its component says, never the name of the component
 		 *
 		 *	@param		string		$template
 		 *
-		 *	@return 	string
+		 *	@return 	string										page, header or footer
 		 */
-		public static function wrapOf( string $template ): string {
+		public static function sideOf( string $template ): string {
 
-			$side = Store::side( $template );
+			return Store::side( $template ) ?? self::PAGE;
+		}
 
-			return $side === 'header' ? 'header-wrap' : ( $side === 'footer' ? 'footer-wrap' : self::PAGE );
+		/**
+		 *	The categories a block of a side may have, by the rule of the kernel: the side itself for a header and for a footer, any other for a page
+		 *
+		 *	@param		string		$side					page, header or footer
+		 *
+		 *	@return 	array
+		 */
+		public static function categories( string $side ): array {
+			return $side === self::PAGE ? array_values( array_diff( \Nino\Blocks::CATEGORIES, [ 'header', 'footer' ] ) ) : [ $side ];
+		}
+
+		/**
+		 *	The side of a page the root of a block stands on, by the schema of the component: the one \Nino\Blocks::wraps() lists it with
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					The component
+		 *
+		 *	@return 	string|null								page, header or footer; null for a component that is no root of a block
+		 */
+		public static function sideOfRoot( array &$appData, string $name ): ?string {
+
+			return \Nino\Blocks::wraps( $appData )[$name] ?? null;
 		}
 
 		/**
@@ -115,15 +138,15 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key
-		 *	@param		string		$wrap				The root the block has: a section for a page, a header or a footer for a frame
+		 *	@param		string		$side				The side the block is of: the page, or the header or the footer for a frame
 		 *
 		 *	@return 	array|null								[ 'key', 'id', 'tree', 'known', 'texts', 'slots' => [ [ name, scope, word, kind ] ], 'images' => name => [ placeholder, width, height, label ] ]; null for a key that \Nino\Blocks does not offer for a page
 		 */
-		public static function block( array &$appData, string $key, string $wrap = self::PAGE ): ?array {
+		public static function block( array &$appData, string $key, string $side = self::PAGE ): ?array {
 
 			$block = \Nino\Blocks::get( $appData, $key );
 
-			if( $block === null || $block['wrap'] !== $wrap || ( $block['missing'] ?? [] ) !== [] )
+			if( $block === null || $block['side'] !== $side || ( $block['missing'] ?? [] ) !== [] )
 				return null;
 
 			$root = null;
@@ -175,7 +198,7 @@ namespace Nino\Modules\Builder {
 			$flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 			$name = [ \Nino\Blocks::FALLBACK => 'Probe' ];
 			$parts = [
-				'json'	=> json_encode( [ 'name' => $name, 'description' => $name, 'category' => 'frame', 'rank' => 0 ], $flags ). "\n",
+				'json'	=> json_encode( [ 'name' => $name, 'description' => $name, 'category' => 'header', 'rank' => 0 ], $flags ). "\n",
 				'tpl'		=> "[header-wrap id=\"probe\"]\n\t[header-actions]\n\t\t[button ". $key. "]\n\t[/header-actions]\n[/header-wrap]\n",
 				'texts'	=> [ \Nino\Blocks::FALLBACK => "{}\n" ],
 			];
@@ -253,7 +276,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function origin( array &$appData, array $node, array $registry, array $inserted = [] ): ?array {
 
-			if( ( $node['n'] ?? '' ) !== self::PAGE || isset( $node['a'] ) === false )
+			if( self::sideOfRoot( $appData, (string) ( $node['n'] ?? '' ) ) !== self::PAGE || isset( $node['a'] ) === false )
 				return null;
 
 			$name = isset( $registry[$node['n']] ) === true ? Tree::idAttribute( $registry[$node['n']] ) : '';
@@ -262,7 +285,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $listed ) {
 
-				if( ( $listed['alternatives'] ?? [] ) === [] || ( $listed['wrap'] ?? '' ) !== self::PAGE )
+				if( ( $listed['alternatives'] ?? [] ) === [] || ( $listed['side'] ?? '' ) !== self::PAGE )
 					continue;
 
 				$block = \Nino\Blocks::get( $appData, (string) $key );
@@ -337,12 +360,12 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sameAs( array &$appData, array $node, array $registry ): ?string {
 
-			if( ( $node['n'] ?? '' ) !== self::PAGE )
+			if( self::sideOfRoot( $appData, (string) ( $node['n'] ?? '' ) ) !== self::PAGE )
 				return null;
 
 			foreach( \Nino\Blocks::all( $appData ) as $key => $listed ) {
 
-				if( ( $listed['origin'] ?? '' ) !== 'project' || ( $listed['wrap'] ?? '' ) !== self::PAGE )
+				if( ( $listed['origin'] ?? '' ) !== 'project' || ( $listed['side'] ?? '' ) !== self::PAGE )
 					continue;
 
 				$own = self::block( $appData, (string) $key );
@@ -451,13 +474,13 @@ namespace Nino\Modules\Builder {
 		 *	@param		string		$key
 		 *	@param		string		$locale
 		 *	@param		bool			$own					Whether the pictures a block has of its own are drawn - for the one who may put the block in
-		 *	@param		string		$wrap					The root the block has: a section for a page, a header or a footer for a frame
+		 *	@param		string		$side					The side the block is of: the page, or the header or the footer for a frame
 		 *
 		 *	@return 	array|null								[ 'template', 'source', 'fills', 'slots', 'locale' ], the draft; null for a key that \Nino\Blocks does not offer for a page
 		 */
-		public static function tile( array &$appData, string $template, string $key, string $locale, bool $own = false, string $wrap = self::PAGE ): ?array {
+		public static function tile( array &$appData, string $template, string $key, string $locale, bool $own = false, string $side = self::PAGE ): ?array {
 
-			$block = self::block( $appData, $key, $wrap );
+			$block = self::block( $appData, $key, $side );
 
 			if( $block === null )
 				return null;

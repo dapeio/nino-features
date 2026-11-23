@@ -486,7 +486,7 @@ namespace Nino\Modules\Themes {
 		 *	@param		array			$files
 		 *	@param		string		$locale
 		 *
-		 *	@return 	array											[ [ key, name, category, frame, state ('in', 'out' or 'displaces'), origin (what a person reads, '' for 'in'), theme (the name of the theme that is put out, for 'displaces') ] ]
+		 *	@return 	array											[ [ key, name, category, side, frame (whether the kernel says the side of its root is a header or a footer), state ('in', 'out' or 'displaces'), origin (what a person reads, '' for 'in'), theme (the name of the theme that is put out, for 'displaces') ] ]
 		 */
 		private static function _blocks( array &$appData, string $key, array $files, string $locale ): array {
 
@@ -498,6 +498,7 @@ namespace Nino\Modules\Themes {
 				if( preg_match( '~^blocks/([a-z][a-z0-9]*(?:-[a-z0-9]+)*)/block\.json$~D', (string) $path, $found ) === 1 ) {
 
 					$meta = (array) json_decode( (string) $bytes, true );
+					$checked = self::_checked( $appData, $found[1], $files );
 					$has = (string) ( $all[$found[1]]['origin'] ?? '' );
 					$state = 'in';
 					$label = '';
@@ -516,23 +517,23 @@ namespace Nino\Modules\Themes {
 							$state = 'out';
 					}
 
-					$out[] = [ 'key' => $found[1], 'name' => self::_words( $meta['name'] ?? '', $locale, $found[1] ), 'category' => (string) ( $meta['category'] ?? '' ), 'frame' => ( $meta['category'] ?? '' ) === 'frame', 'state' => $state, 'origin' => $label, 'theme' => $theme, 'reads' => self::_reads( $appData, $found[1], $files ) ];
+					$out[] = [ 'key' => $found[1], 'name' => self::_words( $meta['name'] ?? '', $locale, $found[1] ), 'category' => (string) ( $meta['category'] ?? '' ), 'frame' => is_array( $checked ) === true && $checked['side'] !== 'page', 'side' => is_array( $checked ) === true ? (string) $checked['side'] : '', 'state' => $state, 'origin' => $label, 'theme' => $theme, 'reads' => self::_reads( $appData, $checked ) ];
 				}
 
 			return $out;
 		}
 
 		/**
-		 *	What a frame of a package reads of the project - the keys of the texts and the logo it names, which it shows on every page once it is put in; a block of the pages reads none.
-		 *	Asked of the kernel, which reads the template as it will when the package is in place
+		 *	A block of a package as the kernel reads it when the package is in place, with the side of its root and the tree of its template - asked of the kernel, which holds it to the rule of
+		 *	a block of any source
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		string		$block				The key of the block
 		 *	@param		array			$files				The files of the package
 		 *
-		 *	@return 	array											The keys, each once, sorted
+		 *	@return 	array|null								\Nino\Blocks::validate() of it with 'tree'; null for a block the kernel refuses
 		 */
-		private static function _reads( array &$appData, string $block, array $files ): array {
+		private static function _checked( array &$appData, string $block, array $files ): ?array {
 
 			$base = 'blocks/'. $block. '/';
 			$texts = [];
@@ -544,11 +545,23 @@ namespace Nino\Modules\Themes {
 			$checked = \Nino\Blocks::validate( $appData, $block, [ 'json' => (string) ( $files[$base. 'block.json'] ?? '' ), 'tpl' => (string) ( $files[$base. 'block.tpl'] ?? '' ), 'texts' => $texts ] );
 
 			if( is_array( $checked ) === false )
-				return [];
+				return null;
 
 			$checked['tree'] = \Nino\Markup::parse( (string) $checked['source'], \Nino\Components::containers( $appData ) );
 
-			return self::_texts( $appData, array_map( 'strval', \Nino\Blocks::reads( $checked ) ) );
+			return $checked;
+		}
+
+		/**
+		 *	What a frame of a package reads of the project - the keys of the texts and the logo it names, which it shows on every page once it is put in; a block of the pages reads none
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array|null	$checked			As _checked() answers it
+		 *
+		 *	@return 	array											The keys, each once, sorted
+		 */
+		private static function _reads( array &$appData, ?array $checked ): array {
+			return $checked === null ? [] : self::_texts( $appData, array_map( 'strval', \Nino\Blocks::reads( $checked ) ) );
 		}
 
 		/**
@@ -584,7 +597,7 @@ namespace Nino\Modules\Themes {
 		 *	@param		array 		&$appData
 		 *	@param		string		$key					The key of the theme
 		 *
-		 *	@return 	array											[ [ 'key', 'name' (locale => text), 'reads' ] ], the frames that read nothing left out
+		 *	@return 	array											[ [ 'key', 'name' (locale => text), 'side', 'reads' ] ], the frames that read nothing left out
 		 */
 		public static function framesOf( array &$appData, string $key ): array {
 
@@ -592,14 +605,14 @@ namespace Nino\Modules\Themes {
 
 			foreach( \Nino\Blocks::all( $appData ) as $block => $entry ) {
 
-				if( ( $entry['origin'] ?? '' ) !== $key || ( $entry['category'] ?? '' ) !== 'frame' )
+				if( ( $entry['origin'] ?? '' ) !== $key || ( $entry['side'] ?? 'page' ) === 'page' )
 					continue;
 
 				$whole = \Nino\Blocks::get( $appData, (string) $block );
 				$reads = is_array( $whole ) === true && is_array( $whole['tree'] ?? null ) === true ? \Nino\Blocks::reads( $whole ) : [];
 
 				if( $reads !== [] )
-					$out[] = [ 'key' => (string) $block, 'name' => $entry['name'], 'reads' => self::_texts( $appData, array_map( 'strval', $reads ) ) ];
+					$out[] = [ 'key' => (string) $block, 'name' => $entry['name'], 'side' => (string) $entry['side'], 'reads' => self::_texts( $appData, array_map( 'strval', $reads ) ) ];
 			}
 
 			return $out;

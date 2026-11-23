@@ -315,4 +315,25 @@ $brokenNames = array_column( $brokenLabBody['frames'] ?? [], 'name' );
 check( 'a store of the names that is broken is no failure: the lists answer 200 and the frames have no name - the word is what they are called by',
 	$brokenLab === 200 && $brokenList === 200 && array_filter( $brokenNames, static fn( string $name ): bool => $name !== '' ) === [] );
 
+// A frame is made of a block of its side: the side the schema of the root says - a header root and a footer root of a feature of the test, named like no root of the kernel's
+foreach( [ 'probe-head' => 'header', 'probe-foot' => 'footer' ] as $rootName => $side ) {
+
+	\Nino\Components::addComponent( $site, $rootName, [ 'label' => $rootName, 'in' => [ 'page' ], 'offers' => [ 'flow' ], 'block' => $side, 'attributes' => [ 'id' => [ 'type' => 'id', 'default' => '' ] ], 'template' => '<div[[id]] class="[[class]]">[[content]]</div>' ] );
+	$folder = $sandbox. '/private/blocks/'. $rootName. '-block';
+	mkdir( $folder. '/text', 0755, true );
+	file_put_contents( $folder. '/block.json', json_encode( [ 'name' => [ 'en_US' => $rootName ], 'description' => [ 'en_US' => $rootName ], 'category' => $side, 'rank' => 5, 'images' => (object) [] ] ) );
+	file_put_contents( $folder. '/block.tpl', '['. $rootName. " id=\"x\"]\n[/". $rootName. "]\n" );
+	file_put_contents( $folder. '/text/en_US.json', '{}' );
+}
+
+unset( $site['./nino/blocks/state'] );
+$templates = static fn(): array => array_map( 'basename', glob( $GLOBALS['sandbox']. '/private/templates/*' ) ?: [] );
+$before = $templates();
+[ $crossedSide ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'sonde', 'name' => 'Sonde', 'block' => 'probe-foot-block' ] );
+$unchanged = $templates() === $before;
+[ $rightSide ] = fmCall( $site, 'themelab/frame-create', [ 'side' => 'header', 'word' => 'sonde', 'name' => 'Sonde', 'block' => 'probe-head-block' ] );
+
+check( 'a frame is made of a block of its side whatever the name of the root: the block of a footer makes no header - 404 and nothing is written - and the block of a header does',
+	$crossedSide === 404 && $unchanged === true && $rightSide === 200 && str_starts_with( $file( 'frame-header-sonde' ), '[probe-head' ) === true );
+
 ninoDone( $site );

@@ -123,8 +123,8 @@ $script = (string) file_get_contents( $feature. '/assets/admin.js' );
 
 preg_match_all( "/word\\(\\s*'([a-z][a-z\\/-]*)'/", $script, $asked );
 $asked = array_unique( $asked[1] );
-$dynamic = [ 'info/origin-package', 'info/origin-feature', 'info/package-design', 'info/package-blocks', 'info/package-frames', 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'details/ph-landscape', 'details/ph-mark', 'error/load', 'frames/header', 'frames/footer', 'import/result-written', 'import/result-copied', 'import/result-replaced', 'import/result-skipped', 'import/result-left', 'import/result-failed', 'import/result-untried', 'error/export', 'error/import' ];
-$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'info/origin-' && $key !== 'frames/' && $key !== 'frames/side-' && $key !== 'details/ph-' && $key !== 'import/result-' && isset( $words['de_DE']['[[/_admin/themelab/'. $key. ']]'], $words['en_US']['[[/_admin/themelab/'. $key. ']]'] ) === false );
+$dynamic = [ 'adopt/message-header', 'adopt/message-footer', 'frames/insert-header', 'frames/insert-footer', 'frames/no-blocks-header', 'frames/no-blocks-footer', 'info/origin-package', 'info/origin-feature', 'info/package-design', 'info/package-blocks', 'info/package-frames', 'cat/intro', 'cat/content', 'cat/dynamic', 'cat/trust', 'cat/offer', 'cat/action', 'cat/contact', 'dup/title', 'dup/title-theme', 'dup/submit', 'dup/submit-theme', 'msg/renamed', 'msg/duplicated', 'error/rename', 'error/duplicate', 'details/ph-landscape', 'details/ph-mark', 'error/load', 'frames/header', 'frames/footer', 'import/result-written', 'import/result-copied', 'import/result-replaced', 'import/result-skipped', 'import/result-left', 'import/result-failed', 'import/result-untried', 'error/export', 'error/import' ];
+$lacking = array_filter( array_merge( $asked, $dynamic ), static fn( string $key ): bool => $key !== 'cat/' && $key !== 'info/origin-' && $key !== 'frames/' && $key !== 'frames/side-' && $key !== 'adopt/message-' && $key !== 'frames/insert-' && $key !== 'frames/no-blocks-' && $key !== 'details/ph-' && $key !== 'import/result-' && isset( $words['de_DE']['[[/_admin/themelab/'. $key. ']]'], $words['en_US']['[[/_admin/themelab/'. $key. ']]'] ) === false );
 $sentence = static fn( string $code ): bool => isset( $words['de_DE']['[[/_admin/error/'. $code. ']]'], $words['en_US']['[[/_admin/error/'. $code. ']]'] );
 $codes = [ 'themelab_frame', 'themelab_frame_gone', 'themelab_frame_side', 'themelab_frame_word', 'themelab_frame_taken', 'themelab_frame_source', 'themelab_frame_used', 'themelab_frame_standard', 'themelab_frame_write', 'themelab_changed', 'themelab_language', 'themelab_shell', 'themelab_unknown', 'themelab_name', 'themelab_category', 'themelab_taken', 'themelab_invalid', 'themelab_refused', 'themelab_tree', 'themelab_place', 'themelab_preview', 'themelab_write', 'themelab_key', 'themelab_block', 'themelab_id', 'themelab_locked', 'themelab_html', 'themelab_foreign', 'themelab_loop', 'themelab_frame', 'themelab_address', 'themelab_picture', 'themelab_empty', 'themelab_long', 'themelab_export_key', 'themelab_export_version', 'themelab_export_name', 'themelab_export_description', 'themelab_export_none', 'themelab_export_unknown', 'themelab_export_read', 'themelab_export_archive', 'themelab_export_large', 'themelab_import_large', 'themelab_import_empty', 'themelab_import_unknown', 'themelab_package_loop', 'themelab_package_block', 'themelab_package_refused', 'themelab_import_archive_gzip', 'themelab_import_archive_name', 'themelab_import_archive_refused' ];
 
@@ -289,14 +289,15 @@ $refusals = [
 	'no name'										=> themelabCall( $site, 'themelab/create', [ 'name' => '', 'category' => 'content', 'from' => '' ] ),
 	'a name with a bracket'			=> themelabCall( $site, 'themelab/create', [ 'name' => 'a <b>', 'category' => 'content', 'from' => '' ] ),
 	'a name too long'						=> themelabCall( $site, 'themelab/create', [ 'name' => str_repeat( 'n', 81 ), 'category' => 'content', 'from' => '' ] ),
-	'the category of a frame'		=> themelabCall( $site, 'themelab/create', [ 'name' => 'Rahmen', 'category' => 'frame', 'from' => '' ] ),
+	'the category of a header'		=> themelabCall( $site, 'themelab/create', [ 'name' => 'Kopf', 'category' => 'header', 'from' => '' ] ),
+	'the category of a footer'		=> themelabCall( $site, 'themelab/create', [ 'name' => 'Fuss', 'category' => 'footer', 'from' => '' ] ),
 	'no category'								=> themelabCall( $site, 'themelab/create', [ 'name' => 'Rahmen', 'category' => '', 'from' => '' ] ),
 	'a block to copy that is none'	=> themelabCall( $site, 'themelab/create', [ 'name' => 'Kopie', 'category' => 'content', 'from' => 'no-such-block' ] ),
 	'a path as the block to copy'	=> themelabCall( $site, 'themelab/create', [ 'name' => 'Kopie', 'category' => 'content', 'from' => '../../config' ] ),
 ];
 
 check( 'a name that makes a key that is taken - in the project or in another source - is refused at the name with 409, and a name or a category that is none, a block to copy that is none or a path is refused with its own answer: nothing is written',
-	array_column( $refusals, 0 ) === [ 409, 409, 400, 400, 400, 400, 400, 404, 404 ] && ( $refusals['a name that is taken'][1]['field'] ?? '' ) === 'name' && ( $refusals['the key of another source'][1]['field'] ?? '' ) === 'name' && ( $refusals['a name that is taken'][1]['code'] ?? '' ) === 'themelab_taken' && themelabSnapshot( $site ) === $before );
+	array_column( $refusals, 0 ) === [ 409, 409, 400, 400, 400, 400, 400, 400, 404, 404 ] && ( $refusals['a name that is taken'][1]['field'] ?? '' ) === 'name' && ( $refusals['the key of another source'][1]['field'] ?? '' ) === 'name' && ( $refusals['a name that is taken'][1]['code'] ?? '' ) === 'themelab_taken' && themelabSnapshot( $site ) === $before );
 
 [ $copied, $copy ] = themelabCall( $site, 'themelab/create', [ 'name' => 'Held von mir', 'category' => 'intro', 'from' => 'hero-full' ] );
 unset( $site['./nino/blocks/state'] );
@@ -311,7 +312,7 @@ check( 'the copy of a block of the library is a block of the project with the co
 echo "\nE. The sheet\n";
 
 [ $status, $open ] = themelabCall( $site, 'themelab/open', [ 'key' => 'mein-block' ] );
-$at = Sheet::rootAt( $open['tree'] ?? [] );
+$at = Sheet::rootAt( $site, $open['tree'] ?? [] );
 
 check( 'a block is opened as a sheet: the two calls of the frame of the site and the block between them, its stamp, its name, the schemas of the design - and nothing of the pages: no shared text, no variant, no last state',
 	$status === 200 && $at === 2 && $open['key'] === 'mein-block' && $open['editable'] === true && preg_match( '/^[0-9a-f]{64}$/D', $open['stamp'] ) === 1 && isset( $open['schemas']['section-wrap'] ) === true && $open['level'] === 2 && $open['template'] === 'page-home'
@@ -374,7 +375,7 @@ check( 'the draft is drawn ALONE: the page is the page of the pictures - the sty
 	&& str_contains( $visited, '/templates/frame-header' ) === false );
 
 check( 'the sheet is drawn as the sheet it is - the two calls of the frame and the block between them - so that the marks the drawing leaves have the places of the tree of the sheet, which the editor finds its components by: the block is the third entry of the top level, as in the tree',
-	( static function() use ( $visited ): bool { $nodes = Tree::read( $GLOBALS['site'], $visited ); return Sheet::rootAt( $nodes ) === 2; } )() );
+	( static function() use ( $visited ): bool { $nodes = Tree::read( $GLOBALS['site'], $visited ); return Sheet::rootAt( $GLOBALS['site'], $nodes ) === 2; } )() );
 
 check( 'the draft is drawn as a draft of ONE block - the two calls of the frame and the block - and not drawn without the frame or with free markup beside the block', $drawn === true && $bare === false && $free === false );
 
@@ -389,7 +390,7 @@ $answers = [];
 foreach( $bad as $label => $tree )
 	$answers[$label] = themelabCall( $site, 'themelab/preview', [ 'key' => 'mein-block', 'tree' => $tree, 'texts' => [] ] )[0];
 
-check( 'a draft that is not a sheet - markup of html, the frame taken out, a second block, free markup beside the block - is refused: 400 or 403, and no token is made', array_values( array_unique( array_map( static fn( int $status ): bool => in_array( $status, [ 400, 403 ], true ), $answers ) ) ) === [ true ] && count( $answers ) === 4 && Sheet::rootAt( $bad['a second block'] ) === null && Sheet::rootAt( $bad['the frame taken out'] ) === null && Sheet::rootAt( $bad['free markup beside the block'] ) === null && Sheet::rootAt( $open['tree'] ) === 2 );
+check( 'a draft that is not a sheet - markup of html, the frame taken out, a second block, free markup beside the block - is refused: 400 or 403, and no token is made', array_values( array_unique( array_map( static fn( int $status ): bool => in_array( $status, [ 400, 403 ], true ), $answers ) ) ) === [ true ] && count( $answers ) === 4 && Sheet::rootAt( $site, $bad['a second block'] ) === null && Sheet::rootAt( $site, $bad['the frame taken out'] ) === null && Sheet::rootAt( $site, $bad['free markup beside the block'] ) === null && Sheet::rootAt( $site, $open['tree'] ) === 2 );
 
 // the draft is held for the account that has the right and for nobody else
 ninoUser( $site, 'other@example.com', [ '/_admin/builder/manage' ] );
@@ -421,7 +422,7 @@ sort( $changedFiles );
 
 check( 'a block is saved over itself: the key stays, the new component and its words are in the files of the block in each language, the name and the category are as they were, the answer is the sheet as it is saved - with the stamp of the new files - and only the files of that block changed',
 	$saved === 200 && $answer['key'] === 'mein-block' && $answer['stamp'] !== $open['stamp'] && str_contains( (string) $now['source'], '[section-title ~claim' ) === true && ( $now['texts']['de_DE']['claim'] ?? '' ) === 'Ein Anspruch' && ( $now['texts']['en_US']['claim'] ?? '' ) === 'A claim'
-	&& ( $now['name']['de_DE'] ?? '' ) === 'Mein Block' && ( $now['category'] ?? '' ) === 'content' && array_filter( $changedFiles, static fn( string $file ): bool => str_starts_with( $file, '/private/blocks/mein-block/' ) === false ) === [] && Sheet::rootAt( $answer['tree'] ) === 2 );
+	&& ( $now['name']['de_DE'] ?? '' ) === 'Mein Block' && ( $now['category'] ?? '' ) === 'content' && array_filter( $changedFiles, static fn( string $file ): bool => str_starts_with( $file, '/private/blocks/mein-block/' ) === false ) === [] && Sheet::rootAt( $site, $answer['tree'] ) === 2 );
 
 // another session saved since this one opened the block: not written over unless force says so
 $beforeConflict = themelabSnapshot( $site );
@@ -687,10 +688,10 @@ $groups = array_column( $catalog['blocks'], 'group', 'key' );
 $shown = array_filter( $catalog['blocks'], static fn( array $entry ): bool => in_array( $entry['group'], $catalog['categories'], true ) === false );
 [ , $listing ] = themelabCall( $site, 'themelab/list' );
 $listed = array_column( $listing['blocks'] ?? [], 'group', 'key' );
-$frames = array_filter( \Nino\Blocks::all( $site ), static fn( array $block ): bool => $block['wrap'] !== 'section-wrap' );
+$frames = array_filter( \Nino\Blocks::all( $site ), static fn( array $block ): bool => $block['side'] !== 'page' );
 
 check( 'the dialog groups the blocks as titles, static content, dynamic content, social proof, offer, action and contact - in that order, and no frame is a group of the page: the frame blocks of the kernel are no entry of it',
-	$catalog['categories'] === [ 'intro', 'content', 'dynamic', 'trust', 'offer', 'action', 'contact' ] && in_array( 'frame', $catalog['categories'], true ) === false && $shown === [] && $frames !== [] && array_intersect( array_keys( $frames ), array_keys( $groups ) ) === [] );
+	$catalog['categories'] === [ 'intro', 'content', 'dynamic', 'trust', 'offer', 'action', 'contact' ] && array_intersect( [ 'header', 'footer' ], $catalog['categories'] ) === [] && $shown === [] && $frames !== [] && array_intersect( array_keys( $frames ), array_keys( $groups ) ) === [] );
 
 check( 'a block whose template has a loop - the list and the table over elements - is dynamic content whatever category it has, a block without a loop keeps its category, and the category in block.json is not touched',
 	( $groups['list-over-elements'] ?? '' ) === 'dynamic' && ( $groups['table-over-elements'] ?? '' ) === 'dynamic' && ( $groups['hero-full'] ?? '' ) === \Nino\Blocks::get( $site, 'hero-full' )['category'] && ( $groups['three-columns'] ?? '' ) === \Nino\Blocks::get( $site, 'three-columns' )['category']
@@ -777,6 +778,28 @@ check( 'the panel draws the editor with the editor of the Builder and with nothi
 	&& str_contains( $script, 'panel		: \'themelab\'' ) === true && str_contains( $script, 'sources	: \'block\'' ) === true
 	&& preg_match( '/workLocale\.follow\( \'themelab\', function\(\) \{\s*\/\/[^\n]*\n\s*if\( here\(\)\.panel !== \'themelab\' \)\s*return;/', $script ) === 1
 	&& str_contains( $script, 'Nino.adminUi.notice( Nino.adminUi.api.errorText(' ) === true && str_contains( $script, "'nino-admin-notice'" ) === false );
+
+// A block of the project that the kernel does not read is no row of the list and no failure of it: the list is 200 and says the block, the way of the refusal as a word - the category it names
+// that the kernel does not have, a category that does not fit the root, any other - and no sentence of the kernel's; a block that is read is not said
+foreach( [ 'alt-kopf' => [ 'frame', 'header-wrap' ], 'neuer-kopf' => [ 'header', 'header-wrap' ], 'quer-kopf' => [ 'footer', 'header-wrap' ], 'kaputt' => [ 'header', 'nirgends' ] ] as $folder => [ $category, $rootName ] ) {
+
+	$dir = ninoSandboxDir( $site ). '/private/blocks/'. $folder;
+	mkdir( $dir. '/text', 0755, true );
+	file_put_contents( $dir. '/block.json', json_encode( [ 'name' => [ 'en_US' => $folder ], 'description' => [ 'en_US' => $folder ], 'category' => $category, 'rank' => 5, 'images' => (object) [] ] ) );
+	file_put_contents( $dir. '/block.tpl', '['. $rootName. " id=\"header\"]\n[/". $rootName. "]\n" );
+	file_put_contents( $dir. '/text/en_US.json', '{}' );
+}
+
+unset( $site['./nino/blocks/state'] );
+ninoWarnings();
+[ $refusedStatus, $refusedList ] = themelabCall( $site, 'themelab/list' );
+$refusedRows = array_column( $refusedList['refused'] ?? [], null, 'key' );
+ksort( $refusedRows );
+
+check( 'a block of the project that the kernel does not read is said by the list and no row of it - the list is 200: the key, the way it is refused as a word of the panel (the category it names, a category that does not fit the root with the side of the root, any other) and no sentence of the kernel; a block that is read is not said',
+	$refusedStatus === 200 && array_keys( $refusedRows ) === [ 'alt-kopf', 'kaputt', 'quer-kopf' ]
+	&& array_map( static fn( array $row ): array => [ $row['why'], $row['category'], $row['side'] ], array_values( $refusedRows ) ) === [ [ 'category', 'frame', '' ], [ 'other', '', '' ], [ 'side', 'footer', 'header' ] ]
+	&& in_array( 'alt-kopf', array_column( $refusedList['blocks'] ?? [], 'key' ), true ) === false && in_array( 'neuer-kopf', array_column( $refusedList['blocks'] ?? [], 'key' ), true ) === true );
 
 // The script of the panel has a suite of its own, which runs where node is
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';

@@ -370,7 +370,7 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$registry
 		 *	@param		string		$name
 		 *
-		 *	@return 	array											'label', 'group', 'icon', 'container', 'loop', 'source', 'format', 'id', 'attributes', 'variants', 'standard'
+		 *	@return 	array											'label', 'group', 'icon', 'container', 'markup', 'side', 'loop', 'source', 'format', 'id', 'attributes', 'variants', 'standard'
 		 */
 		public static function schema( array &$appData, array $registry, string $name ): array {
 
@@ -398,7 +398,10 @@ namespace Nino\Modules\Builder {
 				'label'				=> $schema['label'],
 				'group'				=> (string) ( $schema['group'] ?? '' ),
 				'icon'				=> (string) ( $schema['icon'] ?? '' ),
-				'container'		=> isset( $schema['offers'] ) === true && $name !== 'html',
+				'container'		=> isset( $schema['offers'] ) === true && ( $schema['markup'] ?? false ) !== true,
+				'markup'			=> ( $schema['markup'] ?? false ) === true,
+				// The side of a page a block with this component as its root stands on - page, header or footer - and '' for a component that is no root: the screen asks it of the schema, no name
+				'side'				=> \Nino\Blocks::wraps( $appData )[$name] ?? '',
 				'loop'				=> self::_loops( $schema ),
 				'preview'			=> (string) ( $schema['preview'] ?? '' ),
 				'source'			=> (string) ( $schema['source'] ?? 'none' ),
@@ -1086,7 +1089,7 @@ namespace Nino\Modules\Builder {
 
 				if( isset( $node['n'] ) === true ) {
 
-					if( isset( $registry[$node['n']] ) === true && ( $node['n'] !== 'html' || $develop === true ) ) {
+					if( isset( $registry[$node['n']] ) === true && ( ( $registry[$node['n']]['markup'] ?? false ) !== true || $develop === true ) ) {
 
 						if( $run !== [] )
 							$units[] = (string) json_encode( [ $parent, $run ] );
@@ -1108,12 +1111,12 @@ namespace Nino\Modules\Builder {
 						$run = [];
 					}
 
-					$piece = [ (string) json_encode( $node ), $node['n'] === 'html' ];
+					$piece = [ (string) json_encode( $node ), ( $registry[$node['n']]['markup'] ?? false ) === true ];
 				}
 				else if( isset( $node['f'] ) === true )
 					$piece = [ (string) json_encode( $node ), false ];
 				// What the call of html holds is its content: for the one who may develop it is the call's own, as the markup of any call is that of its schema, and no free markup
-				else if( isset( $node['t'] ) === true && trim( (string) $node['t'], " \t\r\n" ) !== '' && ( $develop === false || str_ends_with( $parent, '/html' ) === false ) )
+				else if( isset( $node['t'] ) === true && trim( (string) $node['t'], " \t\r\n" ) !== '' && ( $develop === false || ( $registry[basename( $parent )]['markup'] ?? false ) !== true ) )
 					$piece = [ (string) json_encode( [ 't' => trim( (string) $node['t'], " \t\r\n" ) ] ), false ];
 
 				if( $piece !== null ) {

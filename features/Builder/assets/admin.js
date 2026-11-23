@@ -308,7 +308,7 @@
 	const lockedInside = function( node ) {
 
 		// The text a call of html holds is its content for the account that may develop, no free markup
-		const own = node.n === 'html' && S.level >= DEVELOP;
+		const own = isMarkup( node ) === true && S.level >= DEVELOP;
 
 		return ( node.c ?? [] ).some( function( inner ) {
 
@@ -960,9 +960,9 @@
 
 		// A header and a footer are what they are called: the first words in them are a button or a link
 		// A name is the kind and the first words: where they are longer than a name is, the kind and the id - the whole of the words is the title of the name
-		const text = node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : firstText( [ node ], '', 120 );
+		const text = isFrameRoot( node ) === true ? '' : firstText( [ node ], '', 120 );
 		const named = S.named[idOf( node )];
-		const label = text !== '' && ( whole === true || text.length <= NAMED ) ? text : ( node.n === 'header-wrap' || node.n === 'footer-wrap' ? '' : ( named !== undefined ? localized( named ) : idOf( node ) ) );
+		const label = text !== '' && ( whole === true || text.length <= NAMED ) ? text : ( isFrameRoot( node ) === true ? '' : ( named !== undefined ? localized( named ) : idOf( node ) ) );
 
 		return label === '' ? kindName( node ) : kindName( node )+ ' · '+ label;
 	};
@@ -1131,6 +1131,27 @@
 		return node.n === 'template' || node.n === 'frame';
 	};
 
+	// The side of a page the root of a block stands on - 'page', 'header' or 'footer' - as the schema of the component says it, and '' for a component that is no root of a block
+	const rootSide = function( node ) {
+
+		const schema = node.n === undefined ? undefined : S.schemas[node.n];
+
+		return schema === undefined ? '' : ( schema.side ?? '' );
+	};
+
+	// The root of a header or of a footer: what a frame is made of is told by the side of its root, never by the name of the component
+	const isFrameRoot = function( node ) {
+		return rootSide( node ) === 'header' || rootSide( node ) === 'footer';
+	};
+
+	// Whether the component is the one whose content is the markup of the page itself: its schema says so
+	const isMarkup = function( node ) {
+
+		const schema = node.n === undefined ? undefined : S.schemas[node.n];
+
+		return schema !== undefined && schema.markup === true;
+	};
+
 	// Which side a call of the frame of a page is of, null for another template: by the template it names, the scaffold's or the frame's
 	const sideOfCall = function( node ) {
 
@@ -1232,8 +1253,8 @@
 		if( node.n === undefined )
 			return 'code';
 
-		if( node.n === 'header-wrap' || node.n === 'footer-wrap' )
-			return node.n === 'header-wrap' ? 'panel-top' : 'panel-bottom';
+		if( isFrameRoot( node ) === true )
+			return rootSide( node ) === 'header' ? 'panel-top' : 'panel-bottom';
 
 		const inner = innerCalls( node, [] );
 		const has = function( test ) { return inner.some( test ) };
@@ -1259,7 +1280,7 @@
 		if( has( function( call ) { return call.n.indexOf('button') === 0 } ) === true )
 			return 'mouse-pointer-click';
 
-		if( has( function( call ) { return call.n === 'html' } ) === true )
+		if( has( isMarkup ) === true )
 			return 'code';
 
 		if( has( function( call ) { return call.n === 'text' } ) === true )
@@ -4090,7 +4111,7 @@
 
 			if( target.attribute === true ) {
 				// The picture behind a section of a page is set in the dialog of the section, for the one who designs: it has no button in the page
-				if( S.level < 2 || ( nodeAt( target.path ) ?? {} ).n !== 'section-wrap' )
+				if( S.level < 2 || rootSide( nodeAt( target.path ) ?? {} ) !== 'page' )
 					behind.push( { target : target, element : element } );
 
 				return;
@@ -4688,6 +4709,9 @@
 		S.top = normalize( fixAttrs( response.tree ) );
 		S.extra = {};
 
+		// The schemas come first: what a sheet keeps beside the tree is made from the answer with them - which component is the root of the block is a word of its schema
+		S.schemas = response.schemas ?? S.schemas;
+
 		// What a sheet keeps beside the tree is made from the answer, before the draft is told from the saved
 		if( typeof S.adapter.took === 'function' )
 			S.adapter.took( response, previous );
@@ -4695,7 +4719,6 @@
 		S.shared = response.shared ?? S.shared;
 		S.uses = response.uses ?? S.uses;
 		S.level = response.level ?? S.level;
-		S.schemas = response.schemas ?? S.schemas;
 		S.findings = response.findings ?? {};
 		S.pendingVariants = response.variants ?? [];
 		S.own = response.own ?? S.own;
@@ -9491,7 +9514,7 @@
 		const node = relNode( rel );
 
 		return ( rel === 'root' && S.sheet === 'page' && Object.keys( S.schemas[node.n].attributes ).some( function( name ) { return S.schemas[node.n].attributes[name].type === 'id' } ) )
-			|| ( node.n === 'html' && S.level >= DEVELOP )
+			|| ( isMarkup( node ) === true && S.level >= DEVELOP )
 			|| ( rel === 'root' && S.sheet === 'page' && S.bridge === true );
 	};
 
@@ -9547,7 +9570,7 @@
 			rows.push( row );
 		}
 
-		if( node.n === 'html' && S.level >= DEVELOP )
+		if( isMarkup( node ) === true && S.level >= DEVELOP )
 			rows.push( htmlRow( rel, node ) );
 
 		const bridge = bridgeRow( rel, box );
@@ -10132,7 +10155,7 @@
 			const sections = [];
 
 			// A section of a page is one flat list for the one who designs: its id, the height, the variant, the ground and the picture behind it - no section, no head
-			const flat = S.level >= 2 && placing() === false && now.n === 'section-wrap' && rel === 'root';
+			const flat = S.level >= 2 && placing() === false && rootSide( now ) === 'page' && rel === 'root';
 
 			if( placing() === true ) {
 
@@ -10695,6 +10718,7 @@
 	 *
 	 *	@param		{Object}		options
 	 *	@param		{string}		options.name					What the frame is called: "Header"
+	 *	@param		{string}		options.side					'header' or 'footer': the words of the dialog are those of that side
 	 *	@param		{Element}		options.opener				What opened it: the focus returns there
 	 *	@param		{Function}	options.load					load( done ) - asks the server for the blocks of the kind of the frame; done( status, response )
 	 *	@param		{Function}	options.fail					fail( status, response ) - a request that was refused
@@ -10704,6 +10728,8 @@
 	 *	@param		{Function}	options.apply					apply( key, entry ) - the block that was chosen and confirmed
 	 */
 	const chooseFrameBlock = function( options ) {
+
+		const side = options.side === 'footer' ? 'footer' : 'header';
 
 		options.load( function( status, response ) {
 
@@ -10741,8 +10767,8 @@
 			const blank = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 			const shown = Nino.adminUi.pickDialog( {
-				title		: word('frame/choose-title'),
-				message	: word('frame/pick-note'),
+				title		: word( 'frame/choose-title-'+ side ),
+				message	: word( 'frame/pick-note-'+ side ),
 				items		: sorted.map( function( one ) { return { value : one.entry.key, label : localized( one.entry.name ), description : localized( one.entry.description ), group : one.group, image : blank } } ),
 				cancel	: Nino.adminUi.text('/_admin/common/label/cancel'),
 				opener	: options.opener,
@@ -10758,8 +10784,8 @@
 
 					// The whole frame goes: it is asked, and it can be taken back
 					Nino.adminUi.confirm( 'destructive', {
-						title		: word('frame/confirm-title'),
-						message	: word( 'frame/confirm-message', options.name, localized( entry.name ) ),
+						title		: word( 'frame/confirm-title-'+ side ),
+						message	: word( 'frame/confirm-message-'+ side, options.name, localized( entry.name ) ),
 						yes			: word('frame/confirm-yes'),
 						no			: Nino.adminUi.text('/_admin/common/label/cancel'),
 						kind		: 'danger',
@@ -10838,10 +10864,10 @@
 	const framesList = function( data ) {
 
 		// A frame that was changed since the list was drawn - in the editor of the frames - is not written over: the list is drawn again and says so
-		const frameFailed = function( status, response ) {
+		const frameFailed = function( status, response, side ) {
 
 			if( status === 409 && ( response ?? {} ).code === 'builder_frame_changed' ) {
-				Nino.adminUi.say( word('frame/changed') );
+				Nino.adminUi.say( word( 'frame/changed-'+ ( side === 'footer' ? 'footer' : 'header' ) ) );
 				Nino.admin.builder.reload();
 				return;
 			}
@@ -10863,18 +10889,19 @@
 					dir : data.dir ?? '',
 					load : function( done ) { Nino.admin.builder.call( 'framechoices', { template : frame.template, locale : Nino.admin.workLocale.current }, done ) },
 					tile : function( key, done ) { Nino.admin.builder.call( 'frametile', { template : frame.template, key : key, locale : Nino.admin.workLocale.current }, done ) },
-					fail : frameFailed,
-					none : function() { Nino.adminUi.say( word('frame/none') ) },
+					side : frame.side,
+					fail : function( status, response ) { frameFailed( status, response, frame.side ) },
+					none : function() { Nino.adminUi.say( word( 'frame/none-'+ ( frame.side === 'footer' ? 'footer' : 'header' ) ) ) },
 					apply : function( key, entry ) {
 
 						Nino.admin.builder.call( 'framechoose', { template : frame.template, key : key, base : frame.stamp, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 							if( status !== 200 ) {
-								frameFailed( status, response );
+								frameFailed( status, response, frame.side );
 								return;
 							}
 
-							Nino.adminUi.say( word( 'frame/chosen', name, localized( entry.name ) ) );
+							Nino.adminUi.say( word( 'frame/chosen-'+ ( frame.side === 'footer' ? 'footer' : 'header' ), name, localized( entry.name ) ) );
 							Nino.admin.builder.reload();
 						} );
 					},
@@ -10887,11 +10914,11 @@
 					Nino.admin.builder.call( 'framerestore', { template : frame.template, base : frame.stamp, locale : Nino.admin.workLocale.current }, function( status, response ) {
 
 						if( status !== 200 ) {
-							frameFailed( status, response );
+							frameFailed( status, response, frame.side );
 							return;
 						}
 
-						Nino.adminUi.say( word( 'frame/undone', name ) );
+						Nino.adminUi.say( word( 'frame/undone-'+ ( frame.side === 'footer' ? 'footer' : 'header' ), name ) );
 						Nino.admin.builder.reload();
 					} );
 				}, { small : true, name : word( 'frame/undo-of', name ) } ) );

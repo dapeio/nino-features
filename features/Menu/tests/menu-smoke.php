@@ -219,7 +219,7 @@ check( 'the key is a choice among the first menu and each menu of the data', arr
 
 $blocks = \Nino\Blocks::all( $appData );
 check( 'the block is listed with the feature as its origin, a frame, without a missing feature and without a refusal',
-	isset( $blocks['menu-header'] ) === true && in_array( 'menu', $blocks['menu-header']['features'] ?? [], true ) === true && ( $blocks['menu-header']['category'] ?? '' ) === 'frame'
+	isset( $blocks['menu-header'] ) === true && in_array( 'menu', $blocks['menu-header']['features'] ?? [], true ) === true && ( $blocks['menu-header']['category'] ?? '' ) === 'header' && ( $blocks['menu-header']['side'] ?? '' ) === 'header'
 	&& ( $blocks['menu-header']['missing'] ?? [] ) === [] && \Nino\Blocks::rejected( $appData ) === [] );
 $demo = $group['demo'] ?? '';
 $demoDrawn = $dom( $draw( $demo ) );
@@ -299,6 +299,14 @@ check( 'the form follows the outermost component and, for the old markup, the pl
 	&& $form( '[footer-wrap][footer-col][menu][/footer-col][/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ]
 	&& $form( '[footer-wrap]'. sprintf( $cell, '[menu]' ). '[/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ]
 	&& $form( '[footer-wrap]'. sprintf( $cell, '[button-group][menu][/button-group]' ). '[/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ] );
+// The form follows the side of the outermost component, as its schema says it - a header root and a footer root of another feature, named like no root of the kernel's, are drawn as a header and a footer are
+foreach( [ 'probe-head' => 'header', 'probe-foot' => 'footer' ] as $rootName => $side )
+	\Nino\Components::addComponent( $appData, $rootName, [ 'label' => $rootName, 'in' => [ 'page' ], 'offers' => [ 'flow' ], 'block' => $side, 'attributes' => [], 'template' => '<div class="[[class]]">[[content]]</div>' ] );
+
+check( 'the form follows the side of the outermost component, whatever its name: in the root of a footer of another feature the menu is the foot - open, no button - in a column of the root of a header it is in a row, and in the root of a header itself it is neither',
+	$form( '[probe-foot][menu][/probe-foot]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ] && $form( '[probe-foot]'. sprintf( $cell, '[menu]' ). '[/probe-foot]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ]
+	&& $form( '[probe-head]'. sprintf( $cell, '[menu]' ). '[/probe-head]' ) === [ 'classes' => [ 'menu--in-row' ], 'open' => false ] && $form( '[probe-head][menu][/probe-head]' ) === [ 'classes' => [], 'open' => false ] );
+
 check( 'SAFETY: a call cannot make itself the foot or a row - the class, the place and the root it names are no attributes of the component, the words of its key and its name say nothing of it, and a menu that stands in a column of the header stays what the register says it is - and a context that names a place and no root is told by the place',
 	$form( '[header-wrap]'. sprintf( $cell, '[menu class="menu--footer" place="footer-col" root="footer-wrap" open label="footer-col" key="footer"]' ). '[/header-wrap]' ) === [ 'classes' => [ 'menu--in-row' ], 'open' => false ]
 	&& $form( '[footer-wrap]'. sprintf( $cell, '[menu class="menu--in-row" root="header-wrap"]' ). '[/footer-wrap]' ) === [ 'classes' => [ 'menu--footer' ], 'open' => true ]

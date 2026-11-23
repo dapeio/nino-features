@@ -106,5 +106,16 @@ check( 'the detector finds the old words and lets the technical names be: "der R
 	preg_match( $old['de_DE'], $plain( 'der Rahmen der Seite' ) ) === 1 && preg_match( $old['de_DE'], $plain( 'im Header' ) ) === 1 && preg_match( $old['en_US'], $plain( 'the frame' ) ) === 1
 	&& preg_match( $old['en_US'], $plain( 'frame-header.tpl und [frame header="a"]' ) ) === 0 && preg_match( $old['de_DE'], $plain( 'header-wrap und mail-footer.tpl' ) ) === 0 && preg_match( $old['de_DE'], $plain( 'Rahmenlinie' ) ) === 0 );
 
+// A sentence that is said of one side - its key ends in -header or -footer - names that side and never the word for both; the name of the tab, in quotes, is the tab's
+$both = [];
+
+foreach( [ 'Builder', 'Themelab', 'Themes' ] as $module )
+	foreach( [ 'de_DE' => '/Kopf-\/Fußbereich/u', 'en_US' => '/header\/footer/i' ] as $locale => $pattern )
+		foreach( (array) ( static fn( string $file ): mixed => require $file )( $here. '/features/'. $module. '/text/'. $locale. '.php' ) as $key => $text )
+			if( preg_match( '/-(?:header|footer)\]\]$/D', (string) $key ) === 1 && preg_match( $pattern, (string) preg_replace( '/„[^“]*“|“[^”]*”/u', '', (string) $text ) ) === 1 )
+				$both[] = $module. ' '. $locale. ' '. $key;
+
+check( 'a sentence of the panels that is said of one side - its key ends in -header or -footer - has the word of that side and not the word for both'. ( $both === [] ? '' : ' - '. implode( ' | ', $both ) ), $both === [] );
+
 echo "\n", $checks, ' checks, ', $failures, ' failed', "\n";
 exit( $failures === 0 ? 0 : 1 );

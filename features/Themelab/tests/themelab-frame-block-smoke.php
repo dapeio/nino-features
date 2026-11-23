@@ -5,7 +5,7 @@ declare(strict_types=1);
  *	Nino features
  *	themelab-frame-block-smoke.php	Contract test for a frame of the site kept as a block of the project - "Save as a frame block" in the tab of the frames:
  *
- *												A. what is written: the frame as it is saved becomes a block of the category of the frames under the own blocks - its markup, its words in each language, its
+ *												A. what is written: the frame as it is saved becomes a block of the category of its side under the own blocks - its markup, its words in each language, its
  *												   links and menu - and the frame itself is not touched
  *												B. the way round: that block put in the frame again gives the frame it was - the markup and the words, compared as the kernel reads them
  *												C. what a block may not hold is refused in the words of the panel, naming the part - the call of html, a source only the site knows - and nothing is written
@@ -109,10 +109,10 @@ sort( $added );
 $meta = json_decode( fbFile( $sandbox. '/private/blocks/mein-kopf/block.json' ), true ) ?: [];
 $listed = \Nino\Blocks::all( $site )['mein-kopf'] ?? [];
 
-check( 'a frame is written as a block of the project - the files of an own block, the category of the frames, a name and a description in each language - and the kernel lists it as a block of a header',
+check( 'a frame is written as a block of the project - the files of an own block, the category of its side, a name and a description in each language - and the kernel lists it as a block of a header',
 	$status === 200 && ( $made['key'] ?? '' ) === 'mein-kopf' && $added === [ '/private/blocks/mein-kopf/block.json', '/private/blocks/mein-kopf/block.tpl', '/private/blocks/mein-kopf/text/de_DE.json', '/private/blocks/mein-kopf/text/en_US.json' ]
-	&& ( $meta['category'] ?? '' ) === 'frame' && ( $meta['name']['de_DE'] ?? '' ) === 'Mein Kopf' && ( $meta['name']['en_US'] ?? '' ) === 'My head' && ( $meta['description']['en_US'] ?? '' ) === 'Head of the site'
-	&& ( $listed['origin'] ?? '' ) === 'project' && ( $listed['wrap'] ?? '' ) === 'header-wrap' && ( $listed['category'] ?? '' ) === 'frame' );
+	&& ( $meta['category'] ?? '' ) === 'header' && ( $meta['name']['de_DE'] ?? '' ) === 'Mein Kopf' && ( $meta['name']['en_US'] ?? '' ) === 'My head' && ( $meta['description']['en_US'] ?? '' ) === 'Head of the site'
+	&& ( $listed['origin'] ?? '' ) === 'project' && ( $listed['side'] ?? '' ) === 'header' && ( $listed['category'] ?? '' ) === 'header' );
 
 $tpl = fbFile( $sandbox. '/private/blocks/mein-kopf/block.tpl' );
 $texts = [ 'de_DE' => json_decode( fbFile( $sandbox. '/private/blocks/mein-kopf/text/de_DE.json' ), true ), 'en_US' => json_decode( fbFile( $sandbox. '/private/blocks/mein-kopf/text/en_US.json' ), true ) ];
@@ -229,7 +229,7 @@ check( 'a text with two brackets, a text longer than a block takes and a text in
 // What a frame reads of the project is asked of the kernel: the same footer is refused where the kernel refuses a block that reads it, and written where the kernel takes it
 $projectFooter = "[footer-wrap id=\"footer\"]\n\t[footer-col size=\"100 m:50\"]\n\t\t[footer-logo /logo]\n\t\t[text /project/company/general/description format=\"inline\" size=\"s\"]\n\t[/footer-col]\n[/footer-wrap]\n";
 $probe = static function( array &$site, string $tpl ): bool {
-	$parts = [ 'json' => json_encode( [ 'name' => [ 'en_US' => 'P' ], 'description' => [ 'en_US' => 'P' ], 'category' => 'frame', 'rank' => 0 ] ), 'tpl' => $tpl, 'texts' => [ 'en_US' => '{}' ] ];
+	$parts = [ 'json' => json_encode( [ 'name' => [ 'en_US' => 'P' ], 'description' => [ 'en_US' => 'P' ], 'category' => 'footer', 'rank' => 0 ] ), 'tpl' => $tpl, 'texts' => [ 'en_US' => '{}' ] ];
 	return is_string( \Nino\Blocks::validate( $site, 'probe', $parts ) ) === false;
 };
 $kernelLogo = $probe( $site, "[footer-wrap id=\"p\"]\n\t[footer-col size=\"100\"]\n\t\t[footer-logo /logo]\n\t[/footer-col]\n[/footer-wrap]\n" );
@@ -308,8 +308,8 @@ $listAs = static function( array &$site ): array {
 };
 [ $listStatus, $rows, $counts ] = $listAs( $site );
 
-check( 'the list of the own blocks has the block of a frame - category of the frames, marked as one - and the tab of the theme counts the own blocks of the frames besides the blocks and the frames',
-	$listStatus === 200 && ( $rows['mein-kopf']['frame'] ?? false ) === true && ( $rows['mein-kopf']['category'] ?? '' ) === 'frame' && ( $counts['frameBlocks'] ?? 0 ) === count( array_filter( $rows, static fn( array $row ): bool => ( $row['frame'] ?? false ) === true ) ) && ( $counts['frameBlocks'] ?? 0 ) >= 2 && ( $counts['blocks'] ?? -1 ) === 0 );
+check( 'the list of the own blocks has the block of a frame - the category of its side, marked as a frame - and the tab of the theme counts the own blocks of the frames besides the blocks and the frames',
+	$listStatus === 200 && ( $rows['mein-kopf']['frame'] ?? false ) === true && ( $rows['mein-kopf']['category'] ?? '' ) === 'header' && ( $rows['mein-kopf']['group'] ?? '' ) === 'header' && ( $counts['frameBlocks'] ?? 0 ) === count( array_filter( $rows, static fn( array $row ): bool => ( $row['frame'] ?? false ) === true ) ) && ( $counts['frameBlocks'] ?? 0 ) >= 2 && ( $counts['blocks'] ?? -1 ) === 0 );
 
 [ $copied, $copy ] = fbCall( $site, 'themelab/duplicate', [ 'key' => 'mein-kopf', 'name' => [ 'de_DE' => 'Mein Kopf Kopie', 'en_US' => 'My head copy' ] ] );
 unset( $site['./nino/blocks/state'] );
@@ -318,14 +318,14 @@ $copyTpl = fbFile( $sandbox. '/private/blocks/'. $copyKey. '/block.tpl' );
 
 check( 'a block of a frame is copied as the files it is - the root keeps the id the frame stands on, the words and the category are the first block\'s - and the copy has the name it was given',
 	$copied === 200 && $copyKey !== '' && str_starts_with( $copyTpl, '[header-wrap id="header"' ) === true && fbFile( $sandbox. '/private/blocks/'. $copyKey. '/text/de_DE.json' ) === fbFile( $sandbox. '/private/blocks/mein-kopf/text/de_DE.json' )
-	&& ( \Nino\Blocks::all( $site )[$copyKey]['category'] ?? '' ) === 'frame' && ( \Nino\Blocks::all( $site )[$copyKey]['name']['en_US'] ?? '' ) === 'My head copy' );
+	&& ( \Nino\Blocks::all( $site )[$copyKey]['category'] ?? '' ) === 'header' && ( \Nino\Blocks::all( $site )[$copyKey]['name']['en_US'] ?? '' ) === 'My head copy' );
 
 [ $renamed ] = fbCall( $site, 'themelab/rename', [ 'key' => 'mein-kopf', 'name' => [ 'de_DE' => 'Kopf der Seite', 'en_US' => 'Page head' ], 'description' => [ 'en_US' => 'Page head block' ], 'category' => 'content', 'rank' => 3 ] );
 unset( $site['./nino/blocks/state'] );
 $after = \Nino\Blocks::all( $site )['mein-kopf'] ?? [];
 
-check( 'the details of the block of a frame are changed in the list - the name, the description, the rank - and its category stays the category of the frames, whatever the request says',
-	$renamed === 200 && ( $after['name']['en_US'] ?? '' ) === 'Page head' && ( $after['category'] ?? '' ) === 'frame' && ( $after['rank'] ?? 0 ) === 3 && ( $after['wrap'] ?? '' ) === 'header-wrap' );
+check( 'the details of the block of a frame are changed in the list - the name, the description, the rank - and its category stays the category of its side, whatever the request says',
+	$renamed === 200 && ( $after['name']['en_US'] ?? '' ) === 'Page head' && ( $after['category'] ?? '' ) === 'header' && ( $after['rank'] ?? 0 ) === 3 && ( $after['side'] ?? '' ) === 'header' );
 
 // the package of it, taken in by a second site
 [ $exported, $bytes ] = fbCall( $site, 'themelab/export', [ 'keys' => [ 'mein-kopf' ], 'key' => 'koepfe', 'version' => '1.0.0', 'name' => 'Koepfe', 'description' => 'Ein Kopf.' ] );
@@ -357,8 +357,8 @@ $id = (string) ( $_SESSION[\Nino\Modules\Themelab\Package::SESSION]['id'] ?? '' 
 unset( $other['./nino/blocks/state'] );
 $taken = \Nino\Blocks::all( $other )['mein-kopf'] ?? [];
 
-check( 'a block of a frame goes out in a package and comes in at a second site as the block it was - in the category of the frames, the root with the id of the frame - and is offered there for the header',
-	$exported === 200 && is_array( $files ) === true && isset( $files['mein-kopf/block.tpl'] ) === true && $checked === 200 && $imported === 200 && ( $taken['wrap'] ?? '' ) === 'header-wrap' && ( $taken['category'] ?? '' ) === 'frame'
+check( 'a block of a frame goes out in a package and comes in at a second site as the block it was - in the category of its side, the root with the id of the frame - and is offered there for the header',
+	$exported === 200 && is_array( $files ) === true && isset( $files['mein-kopf/block.tpl'] ) === true && $checked === 200 && $imported === 200 && ( $taken['side'] ?? '' ) === 'header' && ( $taken['category'] ?? '' ) === 'header'
 	&& str_starts_with( fbFile( $otherDir. '/private/blocks/mein-kopf/block.tpl' ), '[header-wrap id="header"' ) === true && in_array( 'mein-kopf', array_column( fbCall( $other, 'builder/framechoices', [ 'template' => 'frame-header' ] )[1]['blocks'] ?? [], 'key' ), true ) === true );
 
 [ $dropped ] = fbCall( $site, 'themelab/remove', [ 'key' => $copyKey ] );
@@ -380,9 +380,9 @@ $forged = [ [ 'n' => 'header-wrap', 's' => '', 'a' => [ 'id' => 'header' ], 'c' 
 unset( $site['./nino/blocks/state'] );
 $madeUp = fbFile( $sandbox. '/private/blocks/erfunden/block.tpl' );
 
-check( 'the request names nothing of what is in the frame: a tree, words, pictures, a template or a place that it brings are not read - the block is the frame as it is saved, with its words, in the category of the frames',
+check( 'the request names nothing of what is in the frame: a tree, words, pictures, a template or a place that it brings are not read - the block is the frame as it is saved, with its words, in the category of its side',
 	$forgedStatus === 200 && $madeUp === fbFile( $sandbox. '/private/blocks/mein-kopf/block.tpl' ) && str_contains( fbFile( $sandbox. '/private/blocks/erfunden/text/de_DE.json' ), 'Schreib uns' ) === true && str_contains( fbFile( $sandbox. '/private/blocks/erfunden/text/en_US.json' ), 'Erfunden' ) === false
-	&& ( \Nino\Blocks::all( $site )['erfunden']['category'] ?? '' ) === 'frame' );
+	&& ( \Nino\Blocks::all( $site )['erfunden']['category'] ?? '' ) === 'header' );
 
 // A language that has no text: nothing is made up for it
 \Nino\Filesystem::putFileContent( $site, '/text/en_US.php', [ '[[/template/frame-header/header/other]]' => 'x' ] );
@@ -419,7 +419,19 @@ check( 'a name or a description with a character that turns the line round, join
 // What the writing refuses of a frame is said as the refusal of a frame
 $state = \Nino\Modules\Builder\Store::state( $site, 'frame-header' );
 $nodes = \Nino\Modules\Builder\Tree::read( $site, $state['source'] );
-$taken = \Nino\Modules\Builder\Custom::save( $site, 'frame-header', $state, $nodes, [ 'at' => '0', 'key' => 'mein-kopf', 'name' => 'Zwei', 'category' => 'frame', 'locale' => 'de_DE' ] );
+$taken = \Nino\Modules\Builder\Custom::save( $site, 'frame-header', $state, $nodes, [ 'at' => '0', 'key' => 'mein-kopf', 'name' => 'Zwei', 'category' => 'header', 'locale' => 'de_DE' ] );
+
+// A block is made of the root the side of the frame says: the root of a footer is none for a header, whoever names it
+$footerRoot = \Nino\Modules\Builder\Tree::read( $site, "[footer-wrap id=\"footer\"]\n[/footer-wrap]\n" );
+$crossed = \Nino\Modules\Builder\Custom::parts( $site, 'frame-header', $state, $footerRoot, [ 'at' => '0', 'key' => 'mein-fuss-kopf', 'name' => 'Fuss', 'category' => 'header', 'locale' => 'de_DE' ] );
+$matching = \Nino\Modules\Builder\Custom::parts( $site, 'frame-header', $state, $nodes, [ 'at' => '0', 'key' => 'mein-fuss-kopf', 'name' => 'Kopf', 'category' => 'header', 'locale' => 'de_DE' ] );
+
+\Nino\Components::addComponent( $site, 'probe-raw', [ 'label' => 'Raw', 'in' => [ 'flow' ], 'offers' => [], 'markup' => true, 'template' => '[[content]]' ] );
+$raw = \Nino\Modules\Builder\Tree::read( $site, "[header-wrap id=\"header\"]\n\t[probe-raw]<b>x</b>[/probe-raw]\n[/header-wrap]\n" );
+$markup = \Nino\Modules\Builder\Custom::parts( $site, 'frame-header', $state, $raw, [ 'at' => '0', 'key' => 'mein-roh', 'name' => 'Roh', 'category' => 'header', 'locale' => 'de_DE' ] );
+
+check( 'the block of a frame is made of the root of the side of the frame: the root of a footer is no block of a header - 404 - and the root of the header is; a call of the component whose schema says markup is refused as markup - the part "html" - whatever its name',
+	( $crossed['failure'][0] ?? 0 ) === 404 && isset( $matching['parts'] ) === true && str_contains( (string) ( $markup['failure'][1] ?? '' ), 'html [probe-raw]' ) === true && isset( $markup['parts'] ) === false );
 
 check( 'the block that is written over a key that is taken says so as a frame does: the code of a frame, 409',
 	( $taken['failure'][0] ?? 0 ) === 409 && ( $taken['failure'][2] ?? '' ) === 'builder_frame_taken' );

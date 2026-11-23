@@ -100,8 +100,8 @@ namespace Nino\Modules\Builder {
 
 			$schema = $registry[$node['n']] ?? null;
 
-			if( $schema === null || $node['n'] === 'html' )
-				return self::_bad( $node['n'] === 'html' ? 'html' : 'locked', $node );
+			if( $schema === null || ( $schema['markup'] ?? false ) === true )
+				return self::_bad( $schema === null ? 'locked' : 'html', $node );
 
 			$idName = Tree::idAttribute( $schema );
 			$isLoop = ( Tree::schema( $appData, $registry, $node['n'] )['loop'] ?? false ) === true;
@@ -266,15 +266,15 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@return 	array											[ 'key', 'parts' => [ json, tpl, texts => language => json ] ] - or 'failure' => [ status, message, code, params, field ]
 		 */
-		public static function parts( array &$appData, string $template, array $state, array $nodes, array $input, ?string $wrap = null ): array {
+		public static function parts( array &$appData, string $template, array $state, array $nodes, array $input, ?string $side = null ): array {
 
-			// The root is the one the template of a frame has - or the one the caller names, for a block of a frame that is worked on in a page that is no frame
-			$wrap ??= Library::wrapOf( $template );
-			self::$frame = $wrap !== Library::PAGE;
+			// The side is the one the template of a frame has - or the one the caller names, for a block of a frame that is worked on in a page that is no frame
+			$side ??= Library::sideOf( $template );
+			self::$frame = $side !== Library::PAGE;
 			self::$problems = [];
 
 			try {
-				$made = self::_parts( $appData, $template, $state, $nodes, $input, $wrap );
+				$made = self::_parts( $appData, $template, $state, $nodes, $input, $side );
 			}
 			finally {
 				self::$frame = false;
@@ -282,16 +282,17 @@ namespace Nino\Modules\Builder {
 			}
 
 			// A frame says what it was refused for in the words of a frame
-			if( isset( $made['failure'] ) === true && $wrap !== Library::PAGE )
+			if( isset( $made['failure'] ) === true && $side !== Library::PAGE )
 				$made['failure'][2] = str_replace( 'builder_own_', 'builder_frame_', (string) $made['failure'][2] );
 
 			return $made;
 		}
 
 		/**
-		 *	parts() for the root of a page or of a frame: the one place where a block of the library and a page or a frame are mapped to one another
+		 *	parts() for the root of a page or of a frame: the one place where a block of the library and a page or a frame are mapped to one another. The side is the side of the root
+		 *	that the schema of its component says
 		 */
-		private static function _parts( array &$appData, string $template, array $state, array $nodes, array $input, string $wrap ): array {
+		private static function _parts( array &$appData, string $template, array $state, array $nodes, array $input, string $side ): array {
 
 			$registry = \Nino\Components::components( $appData );
 			$at = is_string( $input['at'] ?? null ) === true && preg_match( '/^\d+$/D', $input['at'] ) === 1 ? (int) $input['at'] : -1;
@@ -301,7 +302,7 @@ namespace Nino\Modules\Builder {
 			$description = is_string( $input['description'] ?? null ) === true && trim( $input['description'] ) !== '' ? trim( $input['description'] ) : $name;
 			$category = is_string( $input['category'] ?? null ) === true ? $input['category'] : '';
 
-			if( is_array( $root ) === false || Tree::kind( $root, $registry ) !== 'block' || $root['n'] !== $wrap )
+			if( is_array( $root ) === false || Tree::kind( $root, $registry ) !== 'block' || Library::sideOfRoot( $appData, (string) $root['n'] ) !== $side )
 				return self::_fail( 404, 'block', 'at' );
 
 			if( $key === '' || strlen( $key ) > \Nino\Components::NAME_LENGTH || preg_match( \Nino\Components::NAME, $key ) !== 1 )
@@ -310,13 +311,13 @@ namespace Nino\Modules\Builder {
 			if( $name === '' || mb_strlen( $name ) > \Nino\Blocks::MAX_NAME || mb_strlen( $description ) > \Nino\Blocks::MAX_DESCRIPTION || preg_match( self::UNSAFE, $name. $description ) === 1 )
 				return self::_fail( 400, 'name', 'name' );
 
-			// A frame is a block of the category of the frames and nothing else; a block of a page is any other
-			if( in_array( $category, $wrap === Library::PAGE ? array_diff( \Nino\Blocks::CATEGORIES, [ 'frame' ] ) : [ 'frame' ], true ) === false )
+			// A header is a block of the category header and a footer one of the category footer, nothing else; a block of a page is any other
+			if( in_array( $category, Library::categories( $side ), true ) === false )
 				return self::_fail( 400, 'category', 'category' );
 
 			$rootId = (string) ( $root['a'][Tree::idAttribute( $registry[$root['n']] )] ?? '' );
 			// A frame stands on the id it has - there is no copy number to take off of it - so that what the site says of the id is said of the block
-			$base = $wrap === Library::PAGE ? (string) preg_replace( '/-\d+$/', '', $rootId ) : $rootId;
+			$base = $side === Library::PAGE ? (string) preg_replace( '/-\d+$/', '', $rootId ) : $rootId;
 
 			if( Tree::isId( $rootId ) === false || Tree::isId( $base ) === false )
 				return self::_fail( 400, 'id', 'at' );
@@ -827,7 +828,7 @@ namespace Nino\Modules\Builder {
 			$written = self::write( $appData, $made['key'], $made['parts'] );
 
 			// What the writing refuses of a frame is said in the words of a frame
-			if( isset( $written['failure'] ) === true && Library::wrapOf( $template ) !== Library::PAGE )
+			if( isset( $written['failure'] ) === true && Library::sideOf( $template ) !== Library::PAGE )
 				$written['failure'][2] = str_replace( 'builder_own_', 'builder_frame_', (string) $written['failure'][2] );
 
 			return $written;

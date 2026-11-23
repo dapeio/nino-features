@@ -82,7 +82,7 @@ const pageAnswer = function( extra ) {
 		sources : [], slots : [], images : {}, stamp : 'a', address : '/', last : 0, unback : '', fresh : { de_DE : 'Neu', en_US : 'New' },
 		texts : { '/template/page-home/hero/title' : { de_DE : 'Hallo', en_US : 'Hello' }, '/template/page-home/cards/title' : { de_DE : 'Karten', en_US : 'Cards' } },
 		known : { 'section-wrap' : { label : 'Section', icon : 'panel-top', id : 'id', source : 'none' }, 'section-title' : { label : 'Title', icon : 'heading', id : '', source : 'text' }, 'section-row' : { label : 'Row', icon : 'rows-2', id : '', source : 'none' }, 'section-col' : { label : 'Column', icon : 'columns-3', id : 'id', source : 'none' }, collection : { label : 'Collection', icon : 'database', id : '', source : 'none' } },
-		schemas : { 'section-wrap' : schema( 'Section', 'panel-top', 'none' ), 'section-title' : schema( 'Title', 'heading', 'text' ), collection : schema( 'Collection', 'database', 'none', { loop : true } ), 'section-row' : schema( 'Row', 'rows-2', 'none' ), 'section-col' : schema( 'Column', 'columns-3', 'none' ) },
+		schemas : { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page' } ), 'section-title' : schema( 'Title', 'heading', 'text' ), collection : schema( 'Collection', 'database', 'none', { loop : true } ), 'section-row' : schema( 'Row', 'rows-2', 'none' ), 'section-col' : schema( 'Column', 'columns-3', 'none' ) },
 		findings : {}, links : [], contentLocale : 'de_DE', native : 'de_DE', locales : LOCALES, dir : '', level : 3, dim : 'frame',
 	}, extra ?? {} );
 };
@@ -455,6 +455,15 @@ const typed = function( dialog, values ) {
 
 		return textOf( empty.page ).indexOf( W('msg/none-project') ) !== -1 && textOf( none.page ).indexOf( W('msg/none-theme') ) !== -1 && findAll( empty.page, function( el ) { return el.tagName === 'BUTTON' && textOf( el ) === W('new/button') } ).length === 1;
 	} )() );
+	check( 'A. the own blocks that the kernel does not read are said in ONE notice at the top of the lists that have the own blocks - each way of a refusal once, with the keys of its blocks, in the words of the panel - and in the list of a theme it is none',
+		( function() {
+			const refused = [ { key : 'alt-kopf', why : 'category', category : 'frame', side : '' }, { key : 'quer-kopf', why : 'side', category : 'footer', side : 'header' }, { key : 'kaputt', why : 'other', category : '', side : '' }, { key : 'alt-fuss', why : 'category', category : 'frame', side : '' } ];
+			const page = shown( '#themelab', LIST( { refused : refused } ) ).w.page;
+			const notices = findAll( page, function( el ) { return String( el.className ).indexOf('nino-admin-notice') !== -1 } );
+			const theme = textOf( shown( '#themelab/@blocks/nino', THEME( { refused : refused } ) ).w.page );
+
+			return notices.length === 1 && textOf( notices[0] ) === W( 'msg/refused', [ W( 'msg/refused-category', [ W( 'msg/refused-item', 'alt-kopf', 'frame' ), W( 'msg/refused-item', 'alt-fuss', 'frame' ) ].join( ', ' ) ), W( 'msg/refused-side', W( 'msg/refused-item-side', 'quer-kopf', 'footer', W('cat/header') ) ), W( 'msg/refused-other', W( 'msg/refused-key', 'kaputt' ) ) ].join( ' ' ) ) && theme.indexOf( 'alt-kopf' ) === -1;
+		} )() );
 	check( 'A. a click on a row opens the block, and the choice of another source is the address of the list of that source', ( function() {
 		const x = shown('#themelab');
 
@@ -625,7 +634,7 @@ const sheetOf = function( hash, extra ) {
 
 {
 	const choice = { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'dark' ], optionLabels : null, responsive : false };
-	const w = sheetOf( '#themelab/@theme-blocks/karten', { editable : false, schemas : Object.assign( {}, pageAnswer().schemas, { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : choice } } ) } ) } );
+	const w = sheetOf( '#themelab/@theme-blocks/karten', { editable : false, schemas : Object.assign( {}, pageAnswer().schemas, { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : choice } } ) } ) } );
 	const sheet = w.builder.editor.state();
 	const model = w.builder.model;
 	const before = JSON.stringify( sheet.top );
@@ -1202,7 +1211,7 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 	const VARIED = function( extra ) {
 
 		const schemas = Object.assign( {}, pageAnswer().schemas, {
-			'section-wrap' : schema( 'Section', 'panel-top', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '', options : null, optionLabels : null, responsive : false, min : null, max : null, class : false }, ground : attribute( 'Ground', 'ground', 'base', [ 'base', 'tint' ], true ) } } ),
+			'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '', options : null, optionLabels : null, responsive : false, min : null, max : null, class : false }, ground : attribute( 'Ground', 'ground', 'base', [ 'base', 'tint' ], true ) } } ),
 			'section-row' : schema( 'Row', 'rows-2', 'none', { variants : [ 'regular', 'card' ], standard : 'regular', attributes : { reverse : attribute( 'Reverse', 'reverse', 'off', [ 'off', 'on' ], true ), gap : attribute( 'Gap', 'gap', '2', [ '1', '2', '3' ], false ) } } ),
 		} );
 
@@ -1231,6 +1240,14 @@ check( 'C2. the panel holds the place of the column before it draws the sheet an
 	check( 'E. the sets of the variants stand on the calls they are about - the one that sets the reverse of the row has it in v, and the value the template has in o - and the first variant, the template, is the one that is edited: the row has the reverse of the template',
 		JSON.stringify( sheet.extra.vars.map( function( variant ) { return variant.name } ) ) === '["standard","right"]' && sheet.extra.edited === 'standard' && JSON.stringify( row().v ) === '{"right":{"reverse":"on"}}' && row().o.reverse === null && row().a.reverse === undefined
 		&& canon().variants[1].set['3'].reverse === 'on' && canon().tree.length === sheet.top.length );
+
+	// The root of the block is the one the schemas the server sent say is of the side page - a root of another name has its variants as well
+	const other = JSON.parse( JSON.stringify( SHEET( VARIED() ) ).split( 'section-wrap' ).join( 'probe-top' ) );
+	const otherSheet = sheetOf( '#themelab/karten', other ).builder.editor.state();
+	const otherCanon = otherSheet.adapter.canon( otherSheet.top, otherSheet.extra );
+
+	check( 'E. the sets of the variants stand on the calls of a block whose root has a name of its own: the root is the call whose schema says the page, never a name',
+		otherSheet.top.some( function( node ) { return node.n === 'probe-top' } ) === true && otherSheet.top.some( function( node ) { return node.n === 'section-wrap' } ) === false && otherCanon.variants[1].set['3'] !== undefined && otherCanon.variants[1].set['3'].reverse === 'on' );
 
 	check( 'E. the question before a variant is deleted is asked by the workbench\'s confirm() of the dialog that manages the variants - nested, in red, for no visitor - and no question of the panel\'s own is made for it',
 		/Nino\.adminUi\.confirm\( 'destructive', \{\s*title\s*: word\('variants\/delete-title'\),[\s\S]*?kind\s*: 'danger',\s*visitors\s*: false,[\s\S]*?nested\s*: true,/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === true && /Nino\.adminUi\.choiceDialog\( \{[^}]*variants\/delete-title/.test( fs.readFileSync( scriptPath, 'utf8' ) ) === false );
@@ -1774,13 +1791,13 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 // The block of a frame stands in the list of the own blocks as the block of a frame: its category is the frame's, its picture is the tile of its frame - asked the way
 // of the frames, naming the template - and a press on the row opens the editor, as for any own block; the details, which the pencil opens, do not ask for a category
 {
-	const list = LIST( { counts : { blocks : 2, frames : 2, frameBlocks : 1 }, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'frame', group : 'frame', variants : 0, rank : 0, frame : true, template : 'frame-header', origin : 'project', own : true, openable : true } ] ) } );
+	const list = LIST( { counts : { blocks : 2, frames : 2, frameBlocks : 1 }, blocks : LIST().blocks.concat( [ { key : 'mein-kopf', name : { de_DE : 'Mein Kopf', en_US : 'My head' }, description : { de_DE : 'Kopf', en_US : 'Head' }, category : 'header', group : 'header', variants : 0, rank : 0, frame : true, template : 'frame-header', origin : 'project', own : true, openable : true } ] ) } );
 	const { w } = shown( '#themelab', list );
 	const head = rowsOfList( w ).find( function( row ) { return row.dataset.row === 'mein-kopf' } );
 	const tiles = asked( w, 'themelab/frame-tile' ).concat( asked( w, 'themelab/tile' ) ).map( function( entry ) { return entry.action+ ':'+ entry.payload.key+ ':'+ ( entry.payload.template ?? '' ) } );
 
 	check( 'H. the block of a frame is a row of the list with the category of the frames and no line that sends the person to the frames of the site - it is edited like any block; its picture is asked for by the action of the frames, with the template of its frame - and the blocks of a page by the action they had',
-		head !== undefined && textOf( head ).indexOf( W('cat/frame') ) !== -1 && findAll( head, function( el ) { return String( el.className ).indexOf('builder-cell-note') !== -1 } ).length === 0 && tiles.indexOf( 'themelab/frame-tile:mein-kopf:frame-header' ) !== -1 && tiles.indexOf( 'themelab/tile:karten:' ) !== -1 && tiles.indexOf( 'themelab/tile:mein-kopf:' ) === -1 );
+		head !== undefined && textOf( head ).indexOf( W('cat/header') ) !== -1 && findAll( head, function( el ) { return String( el.className ).indexOf('builder-cell-note') !== -1 } ).length === 0 && tiles.indexOf( 'themelab/frame-tile:mein-kopf:frame-header' ) !== -1 && tiles.indexOf( 'themelab/tile:karten:' ) !== -1 && tiles.indexOf( 'themelab/tile:mein-kopf:' ) === -1 );
 
 	w.requests.length = 0;
 	fire( head, 'click' );
@@ -1801,7 +1818,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	pressed( opened, W('details/submit') );
 	const sent = request( again, 'themelab/rename' );
 
-	check( 'H. what the details of a block of a frame send has the category of the frames', sent !== undefined && sent.payload.category === 'frame' && sent.payload.key === 'mein-kopf' );
+	check( 'H. what the details of a block of a frame send has the category of its side', sent !== undefined && sent.payload.category === 'header' && sent.payload.key === 'mein-kopf' );
 
 	fire( opened, 'close' );
 }
@@ -1822,7 +1839,8 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	const inputs = inputsOf( dialog );
 
 	check( 'H. the dialog names the frame, begins with the name "Header of the site" in the working language and the key made of it, and has a description in each language',
-		textOf( dialog ).indexOf( W( 'adopt/title', W('frames/header') ) ) !== -1 && inputs[0].value === W( 'adopt/default-name', W('frames/header') ) && inputs[2].value === 'header-of-the-site' && findAll( dialog, function( el ) { return el.tagName === 'TEXTAREA' } ).length === 2 );
+		textOf( dialog ).indexOf( W( 'adopt/title', W('frames/header') ) ) !== -1 && inputs[0].value === W( 'adopt/default-name', W('frames/header') ) && inputs[2].value === 'header-of-the-site' && findAll( dialog, function( el ) { return el.tagName === 'TEXTAREA' } ).length === 2
+		&& textOf( dialog ).indexOf( W('adopt/message-header') ) !== -1 && textOf( dialog ).indexOf( W('adopt/message-footer') ) === -1 );
 
 	inputs[0].value = 'Mein Kopf';
 	fire( inputs[0], 'input' );
@@ -1976,7 +1994,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 
 	check( 'I. "Made of a block" asks the blocks that this panel has for the side that was chosen, and makes nothing yet', listing.length === 1 && listing[0].payload.template === 'frame-footer' && asked( w, 'themelab/frame-create' ).length === 0 );
 
-	answerOf( listing[0], 200, { blocks : [ { key : 'footer-line', name : { de_DE : 'Eine Zeile', en_US : 'One line' }, description : {}, category : 'frame', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
+	answerOf( listing[0], 200, { blocks : [ { key : 'footer-line', name : { de_DE : 'Eine Zeile', en_US : 'One line' }, description : {}, category : 'footer', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
 
 	const blocks = dialogOf( w );
 
@@ -2076,7 +2094,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	pressed( form, W('frames/create') );
 	fire( form, 'close' );
 
-	answerOf( asked( w, 'themelab/frame-blocks' )[0], 200, { blocks : [ { key : 'header-line', name : { de_DE : 'Eine Zeile' }, description : {}, category : 'frame', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
+	answerOf( asked( w, 'themelab/frame-blocks' )[0], 200, { blocks : [ { key : 'header-line', name : { de_DE : 'Eine Zeile' }, description : {}, category : 'header', origin : { kind : 'project', label : 'Project' }, own : true, source : 'project', applied : false, off : null } ], categories : [] } );
 
 	const blocks = dialogOf( w );
 
@@ -2167,12 +2185,12 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 {
 	const head = { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'button', s : '~button', a : {}, c : null }, { t : '\n\t' }, { n : 'button', s : '/project/company/general/name', a : {}, c : null }, { t : '\n' } ] };
 	const w = sheetOf( '#themelab/mein-kopf', {
-		key : 'mein-kopf', wrap : 'header-wrap', stamp : 'f1', filled : [ { locale : 'en_US', parts : [ '[button]' ] } ], name : { de_DE : 'Mein Kopf', en_US : 'My head' },
+		key : 'mein-kopf', side : 'header', stamp : 'f1', filled : [ { locale : 'en_US', parts : [ '[button]' ] } ], name : { de_DE : 'Mein Kopf', en_US : 'My head' },
 		tree : [ FRAME_HEAD, { t : '\n' }, head, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
 		texts : { '/template/page-home/header/button' : { de_DE : 'Hallo', en_US : 'Hello' } },
 		known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, button : { label : 'Button', icon : 'mouse-pointer-click', id : '', source : 'text' } },
-		schemas : Object.assign( {}, pageAnswer().schemas, { 'header-wrap' : schema( 'Header', 'panel-top', 'none' ), button : schema( 'Button', 'mouse-pointer-click', 'text' ) } ),
-		details : { wrap : 'header-wrap', reads : [ '/project/company/general/name' ], names : { de_DE : 'Mein Kopf', en_US : 'My head' }, descriptions : { de_DE : 'K', en_US : 'H' }, category : 'frame', rank : 0, images : {}, locales : [ 'de_DE', 'en_US' ], placeholders : [] },
+		schemas : Object.assign( {}, pageAnswer().schemas, { 'header-wrap' : schema( 'Header', 'panel-top', 'none', { side : 'header' } ), button : schema( 'Button', 'mouse-pointer-click', 'text' ) } ),
+		details : { side : 'header', reads : [ '/project/company/general/name' ], names : { de_DE : 'Mein Kopf', en_US : 'My head' }, descriptions : { de_DE : 'K', en_US : 'H' }, category : 'header', rank : 0, images : {}, locales : [ 'de_DE', 'en_US' ], placeholders : [] },
 	} );
 	const sheet = w.builder.editor.state();
 
@@ -2186,7 +2204,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	const box = dialogOf( w );
 	const heads = findAll( box, function( el ) { return el.tagName === 'BUTTON' && el.attributes['aria-expanded'] !== undefined } ).map( function( el ) { return textOf( el ).trim() } );
 
-	check( 'M. the details of the block of a frame are the name, the choice - the rank only, the category is the frames\' - and what the block reads of the website: no places of pictures',
+	check( 'M. the details of the block of a frame are the name, the choice - the rank only, the category is its side\'s - and what the block reads of the website: no places of pictures',
 		heads.length === 3 && heads[0].indexOf( W('details/name') ) === 0 && heads[1].indexOf( W('details/order') ) === 0 && heads[2].indexOf( W('details/reads') ) === 0 && heads[2].indexOf( '1' ) !== -1 && findAll( box, function( el ) { return el.tagName === 'SELECT' } ).length === 0 );
 
 	findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/order') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } );
@@ -2194,7 +2212,7 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	check( 'M. the details say which languages were given the text of the working language at the last save, and for which parts - the name of the language and the part',
 		textOf( box ).indexOf( '[button]' ) !== -1 && textOf( box ).indexOf( 'English' ) !== -1 && sheet.extra.filled.length === 1 );
 
-	check( 'M. the choice of the block of a frame has the rank and no category to choose: it is of the category of the frames', findAll( box, function( el ) { return el.tagName === 'SELECT' } ).length === 0 && findAll( box, function( el ) { return el.tagName === 'INPUT' && el.type === 'number' } ).length === 1 );
+	check( 'M. the choice of the block of a frame has the rank and no category to choose: it is of the category of its side', findAll( box, function( el ) { return el.tagName === 'SELECT' } ).length === 0 && findAll( box, function( el ) { return el.tagName === 'INPUT' && el.type === 'number' } ).length === 1 );
 
 	findAll( box, function( el ) { return el.tagName === 'BUTTON' && textOf( el ).indexOf( W('details/reads') ) === 0 } )[0].dispatchEvent( { type : 'click', bubbles : true } );
 
@@ -2220,17 +2238,17 @@ const asked = function( w, action ) { return w.requests.filter( function( entry 
 	const pick = function( label, fallback, options, extra ) { return Object.assign( { type : 'choice', label : label, hint : '', default : fallback, options : options, optionLabels : null, responsive : false, min : null, max : null, class : true }, extra ?? {} ) };
 	const flag = function( label ) { return { type : 'bool', label : label, hint : '', default : false, options : null, optionLabels : null, responsive : false, min : null, max : null, class : true } };
 	const w = sheetOf( '#themelab/mein-kopf', {
-		key : 'mein-kopf', wrap : 'header-wrap', stamp : 'f1', name : { de_DE : 'Mein Kopf', en_US : 'My head' },
+		key : 'mein-kopf', side : 'header', stamp : 'f1', name : { de_DE : 'Mein Kopf', en_US : 'My head' },
 		tree : [ FRAME_HEAD, { t : '\n' }, { n : 'header-wrap', s : '', a : { id : 'header' }, c : [ { t : '\n\t' }, { n : 'section-row', s : '', a : {}, c : [ { t : '\n\t\t' }, { n : 'section-col', s : '', a : { size : 'fill' }, c : [ { t : '\n\t\t\t' }, { n : 'header-nav', s : '', a : {}, c : [] }, { t : '\n\t\t' } ] }, { t : '\n\t' } ] }, { t : '\n' } ] }, { t : '\n' }, FRAME_FOOT, { t : '\n' } ],
 		known : { 'header-wrap' : { label : 'Header', icon : 'panel-top', id : 'id', source : 'none' }, 'section-row' : { label : 'Row', icon : 'rows-2', id : '', source : 'none' }, 'section-col' : { label : 'Column', icon : 'columns-3', id : '', source : 'none' }, 'header-nav' : { label : 'Menu', icon : 'menu', id : '', source : 'none' } },
 		schemas : Object.assign( {}, pageAnswer().schemas, {
-			'header-wrap' : schema( 'Header', 'panel-top', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, sticky : { type : 'bool', label : 'Stays at the top', hint : '', default : false },
+			'header-wrap' : schema( 'Header', 'panel-top', 'none', { side : 'header', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, sticky : { type : 'bool', label : 'Stays at the top', hint : '', default : false },
 				ground : pick( 'Ground', 'base', [ 'base', 'alt', 'tint', 'primary', 'dark' ] ), image : { type : 'image', label : 'Picture', hint : '', default : '', class : false }, picture : pick( 'Show picture', 'on', [ 'on', 'off' ] ), dim : flag( 'Dim the picture' ), height : pick( 'Height', 'auto', [ 'auto', '60', '80', '100' ] ) } } ),
 			'section-row' : schema( 'Row', 'rows-2', 'none', { attributes : { width : pick( 'Width', 'regular', [ 'narrow', 'regular', 'wide', 'full' ] ), gap : pick( 'Gap', '2', [ '0', '1', '2', '3', '4' ] ), valign : pick( 'Vertical alignment', 'start', [ 'start', 'center', 'end' ] ), halign : pick( 'Horizontal alignment', 'start', [ 'start', 'center', 'end', 'between' ] ), reverse : pick( 'Reverse', 'off', [ 'off', 'on' ], { responsive : true } ) } } ),
 			'section-col' : schema( 'Column', 'columns-3', 'none', { attributes : { size : pick( 'Width', '100', [ '25', '50', '100', 'auto', 'fill' ], { responsive : true } ), align : pick( 'Alignment', 'start', [ 'start', 'center', 'end' ], { responsive : true } ), hide : pick( 'Hide', 'off', [ 'off', 'on' ], { responsive : true } ), ground : pick( 'Ground', 'none', [ 'none', 'base', 'alt', 'tint', 'primary', 'dark' ] ), pad : pick( 'Padding', 'auto', [ 'auto', '0', '1', '2', '3', '4' ] ) } } ),
 			'header-nav' : schema( 'Menu', 'menu', 'none', { attributes : { collapse : choice } } ),
 		} ),
-		details : { wrap : 'header-wrap', reads : [], names : { de_DE : 'Mein Kopf', en_US : 'My head' }, descriptions : { de_DE : 'K', en_US : 'H' }, category : 'frame', rank : 0, images : {}, locales : [ 'de_DE', 'en_US' ], placeholders : [] },
+		details : { side : 'header', reads : [], names : { de_DE : 'Mein Kopf', en_US : 'My head' }, descriptions : { de_DE : 'K', en_US : 'H' }, category : 'header', rank : 0, images : {}, locales : [ 'de_DE', 'en_US' ], placeholders : [] },
 	} );
 	const sheet = w.builder.editor.state();
 	const keysOf = function( node ) { return findAll( node, function( el ) { return el.dataset !== undefined && ( el.dataset.key !== undefined || el.dataset.stepKey !== undefined ) } ).map( function( el ) { return el.dataset.key ?? el.dataset.stepKey } ).sort() };

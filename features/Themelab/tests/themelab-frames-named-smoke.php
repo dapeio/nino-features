@@ -86,9 +86,9 @@ check( 'the frames of a site are listed from one place: of each side the standar
 check( 'side() says which side a name is of by the form of the name alone - a path, a capital, a dot, a space, a double hyphen, none, default, a word of 41 characters, another side and a page are none - and isFrame() asks for the file of a named one',
 	$wrong === [] && Store::isFrame( $site, 'frame-header-landing' ) === true && Store::isFrame( $site, 'frame-header-nofile' ) === false && Store::isFrame( $site, 'frame-header' ) === true );
 
-check( 'the root a block must have for a frame follows its side - a header-wrap for a header, a named one too, a footer-wrap for a footer - and a section-wrap for everything else; a folder that has the name of a frame is none',
-	\Nino\Modules\Builder\Library::wrapOf( 'frame-header-landing' ) === 'header-wrap' && \Nino\Modules\Builder\Library::wrapOf( 'frame-footer-alt' ) === 'footer-wrap' && \Nino\Modules\Builder\Library::wrapOf( 'frame-header' ) === 'header-wrap'
-	&& \Nino\Modules\Builder\Library::wrapOf( 'page-x' ) === 'section-wrap' && \Nino\Modules\Builder\Library::wrapOf( 'frame-header-X' ) === 'section-wrap' && isset( $frames['header-folder'] ) === false );
+check( 'the side a block must be of for a frame follows the side of the frame - the header for a header, a named one too, the footer for a footer - and the page for everything else; a folder that has the name of a frame is none',
+	\Nino\Modules\Builder\Library::sideOf( 'frame-header-landing' ) === 'header' && \Nino\Modules\Builder\Library::sideOf( 'frame-footer-alt' ) === 'footer' && \Nino\Modules\Builder\Library::sideOf( 'frame-header' ) === 'header'
+	&& \Nino\Modules\Builder\Library::sideOf( 'page-x' ) === 'page' && \Nino\Modules\Builder\Library::sideOf( 'frame-header-X' ) === 'page' && isset( $frames['header-folder'] ) === false );
 
 /** The templates that count as frames by the answer of the kernel - where it has one - and by the folder: the same, whatever the form of each */
 $agree = static function( array &$site ) use ( $sandbox ): array {

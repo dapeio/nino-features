@@ -106,13 +106,13 @@ $page = [ 'template' => 'page-home' ];
 echo "\nA. Opened\n";
 
 [ $openStatus, $open ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-kopf' ] );
-$rootAt = static function( array $tree ): ?int { foreach( $tree as $at => $node ) if( isset( $node['n'] ) === true && str_ends_with( (string) $node['n'], '-wrap' ) === true ) return (int) $at; return null; };
+$rootAt = static function( array $tree ): ?int { foreach( $tree as $at => $node ) if( isset( $node['n'] ) === true && ( \Nino\Blocks::wraps( $GLOBALS['site'] )[$node['n']] ?? '' ) !== '' ) return (int) $at; return null; };
 $at = $rootAt( $open['tree'] ?? [] );
 
 $sharedAtOpen = (array) ( $open['shared'] ?? [ 'x' ] );
 
 check( 'the block of a header is opened in the editor: its root is the header, it is the project\'s - editable -, it has a stamp, the words of each language under the page the sheet is drawn on',
-	$adopted === 200 && $openStatus === 200 && ( $open['wrap'] ?? '' ) === 'header-wrap' && ( $open['editable'] ?? false ) === true && ( $open['tree'][$at]['n'] ?? '' ) === 'header-wrap' && ( $open['stamp'] ?? '' ) !== ''
+	$adopted === 200 && $openStatus === 200 && ( $open['side'] ?? '' ) === 'header' && ( $open['editable'] ?? false ) === true && ( $open['tree'][$at]['n'] ?? '' ) === 'header-wrap' && ( $open['stamp'] ?? '' ) !== ''
 	&& ( $open['texts']['/template/page-home/header/button']['de_DE'] ?? '' ) === 'Schreib uns' && ( $open['texts']['/template/page-home/header/button']['en_US'] ?? '' ) === 'Write to us' && $sharedAtOpen === [] );
 
 // a block of a page is no frame and the other way round: the kernel's word for the root decides, never the request's
@@ -155,9 +155,9 @@ sort( $written );
 $block = json_decode( feFile( $sandbox. '/private/blocks/mein-kopf/text/de_DE.json' ), true ) ?: [];
 $tpl = feFile( $sandbox. '/private/blocks/mein-kopf/block.tpl' );
 
-check( 'the words of a block of a frame are saved in each language, below the folder of the block and nowhere else: the header is still a header, the block is still a block of the category of the frames',
-	$saved === 200 && ( $answer['wrap'] ?? '' ) === 'header-wrap' && $written !== [] && array_filter( $written, static fn( string $file ): bool => str_starts_with( $file, '/private/blocks/mein-kopf/' ) === false ) === [] && ( $block['button'] ?? '' ) === 'Melde Dich'
-	&& str_starts_with( $tpl, '[header-wrap id="header"' ) === true && str_contains( $tpl, 'sticky' ) === false && ( \Nino\Blocks::all( $site )['mein-kopf']['category'] ?? '' ) === 'frame' && ( \Nino\Blocks::all( $site )['mein-kopf']['wrap'] ?? '' ) === 'header-wrap' );
+check( 'the words of a block of a frame are saved in each language, below the folder of the block and nowhere else: the header is still a header, the block is still a block of the category of its side',
+	$saved === 200 && ( $answer['side'] ?? '' ) === 'header' && $written !== [] && array_filter( $written, static fn( string $file ): bool => str_starts_with( $file, '/private/blocks/mein-kopf/' ) === false ) === [] && ( $block['button'] ?? '' ) === 'Melde Dich'
+	&& str_starts_with( $tpl, '[header-wrap id="header"' ) === true && str_contains( $tpl, 'sticky' ) === false && ( \Nino\Blocks::all( $site )['mein-kopf']['category'] ?? '' ) === 'header' && ( \Nino\Blocks::all( $site )['mein-kopf']['side'] ?? '' ) === 'header' );
 
 // a text of the site as the source of a component, and a component put in
 unset( $site['./nino/blocks/state'] );
@@ -176,7 +176,7 @@ check( 'a component of a block of a frame reads a text of the site - a key of th
 check( 'what the text of the site says is given to the editor in the language of the sheet - so that the component shows it - and is no text of the block: the texts of the block are its own',
 	( ( (array) $reopened['shared'] )['/project/company/general/name'] ?? '' ) === 'Probe GmbH' && isset( ( (array) $reopened['texts'] )['/project/company/general/name'] ) === false );
 
-// a text that is new has the words of one language: the block takes it for the others from the language the sheet is worked on, and the category of the block is the frames' and no other
+// a text that is new has the words of one language: the block takes it for the others from the language the sheet is worked on, and the category of the block is its side's and no other
 [ , $fresh ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-kopf' ] );
 $extra = $fresh['texts'];
 $extra['/template/page-home/header/extra'] = [ 'de_DE' => 'Neu hier' ];
@@ -186,10 +186,11 @@ $english = json_decode( feFile( $sandbox. '/private/blocks/mein-kopf/text/en_US.
 unset( $site['./nino/blocks/state'] );
 [ , $fresh2 ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-kopf' ] );
 [ $content ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'tree' => $fresh2['tree'], 'texts' => $fresh2['texts'], 'base' => $fresh2['stamp'], 'details' => [ 'category' => 'content' ] ] );
-[ $frames ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'tree' => $fresh2['tree'], 'texts' => $fresh2['texts'], 'base' => $fresh2['stamp'], 'details' => [ 'category' => 'frame' ] ] );
+[ $footerCategory ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'tree' => $fresh2['tree'], 'texts' => $fresh2['texts'], 'base' => $fresh2['stamp'], 'details' => [ 'category' => 'footer' ] ] );
+[ $frames ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'tree' => $fresh2['tree'], 'texts' => $fresh2['texts'], 'base' => $fresh2['stamp'], 'details' => [ 'category' => 'header' ] ] );
 
-check( 'a text that is new, written in one language, is the block\'s in the others as well - from the language the sheet is worked on - and the block stays of the category of the frames: the category "content" is refused, "frame" is taken',
-	$filled === 200 && ( $english['extra'] ?? '' ) === 'Neu hier' && $content === 400 && $frames === 200 );
+check( 'a text that is new, written in one language, is the block\'s in the others as well - from the language the sheet is worked on - and the block stays of the category of its side: the category "content" and the category of the other side are refused, its own is taken',
+	$filled === 200 && ( $english['extra'] ?? '' ) === 'Neu hier' && $content === 400 && $footerCategory === 400 && $frames === 200 );
 
 echo "\nC. Who and what\n";
 
@@ -236,8 +237,8 @@ check( 'the texts of the site are offered for the block of a frame - the keys of
 $heldRequest = [ '/nino/http/request' => [ 'query' => [ \Nino\Preview::QUERY => $preview['token'] ?? 'x' ] ] ];
 $held = \Nino\Preview::held( $site, $heldRequest, \Nino\Modules\Themelab::KIND, \Nino\Modules\Themelab::PERM );
 
-check( 'the picture of the block of a header is drawn for the root the kernel gives the block: the draft says header-wrap, and the preview answers the page the sheet is drawn on',
-	$previewStatus === 200 && ( $preview['address'] ?? '' ) !== '' && ( $held['data']['wrap'] ?? '' ) === 'header-wrap' );
+check( 'the picture of the block of a header is drawn for the side the kernel gives the block: the draft says the header, and the preview answers the page the sheet is drawn on',
+	$previewStatus === 200 && ( $preview['address'] ?? '' ) !== '' && ( $held['data']['side'] ?? '' ) === 'header' );
 
 // the footer is a block of a frame as well: its root is the footer, and the preview puts the quiet page over it
 [ $footerAdopted ] = feCall( $site, 'themelab/frame-adopt', [ 'template' => 'frame-footer', 'key' => 'mein-fuss', 'name' => [ 'de_DE' => 'Mein Fuss', 'en_US' => 'My foot' ], 'description' => [ 'de_DE' => 'Fuss', 'en_US' => 'Foot' ] ] );
@@ -247,23 +248,23 @@ unset( $site['./nino/blocks/state'] );
 [ $swapped ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'tree' => $footerOpen['tree'] ?? [], 'texts' => $footerOpen['texts'] ?? [], 'base' => $now['stamp'] ] );
 
 check( 'the block of a footer is opened and saved with the root of a footer - a tree of a footer is no tree for a header - ',
-	$footerAdopted === 200 && $footerOpened === 200 && ( $footerOpen['wrap'] ?? '' ) === 'footer-wrap' && $footerSaved === 200 && ( $footerAnswer['wrap'] ?? '' ) === 'footer-wrap' && $swapped === 400
+	$footerAdopted === 200 && $footerOpened === 200 && ( $footerOpen['side'] ?? '' ) === 'footer' && $footerSaved === 200 && ( $footerAnswer['side'] ?? '' ) === 'footer' && $swapped === 400
  );
 
 echo "\nE. Fixrunde: the root, the page of the picture, the keys the kernel takes, the languages\n";
 
 // the root is the kernel's word for the block: a request that names one changes nothing
-[ , $named ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-kopf', 'wrap' => 'footer-wrap' ] );
-[ , $named2 ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-fuss', 'wrap' => 'section-wrap' ] );
+[ , $named ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-kopf', 'side' => 'footer' ] );
+[ , $named2 ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-fuss', 'side' => 'page' ] );
 [ , $plain ] = feCall( $site, 'themelab/open', [ 'key' => 'mein-kopf' ] );
-[ $withWrap ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'wrap' => 'section-wrap', 'tree' => $plain['tree'], 'texts' => $plain['texts'], 'base' => $plain['stamp'] ] );
-[ $swapRoot ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'wrap' => 'footer-wrap', 'tree' => $footerOpen['tree'] ?? [], 'texts' => $plain['texts'], 'base' => $plain['stamp'] ] );
-[ , $previewNamed ] = feCall( $site, 'themelab/preview', [ 'key' => 'mein-kopf', 'wrap' => 'footer-wrap', 'tree' => $plain['tree'], 'texts' => $plain['texts'] ] );
+[ $withWrap ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'side' => 'page', 'tree' => $plain['tree'], 'texts' => $plain['texts'], 'base' => $plain['stamp'] ] );
+[ $swapRoot ] = feCall( $site, 'themelab/save', [ 'key' => 'mein-kopf', 'side' => 'footer', 'tree' => $footerOpen['tree'] ?? [], 'texts' => $plain['texts'], 'base' => $plain['stamp'] ] );
+[ , $previewNamed ] = feCall( $site, 'themelab/preview', [ 'key' => 'mein-kopf', 'side' => 'footer', 'tree' => $plain['tree'], 'texts' => $plain['texts'] ] );
 $heldRequest = [ '/nino/http/request' => [ 'query' => [ \Nino\Preview::QUERY => $previewNamed['token'] ?? 'x' ] ] ];
 $heldNamed = \Nino\Preview::held( $site, $heldRequest, \Nino\Modules\Themelab::KIND, \Nino\Modules\Themelab::PERM );
 
-check( 'the root is the kernel\'s word for the block and never the request\'s: a request that names a footer for a header, or a section for a footer, opens the root the block has, saves it and is drawn for it - and a tree of another root is refused whatever the request says',
-	( $named['wrap'] ?? '' ) === 'header-wrap' && ( $named2['wrap'] ?? '' ) === 'footer-wrap' && $withWrap === 200 && $swapRoot === 400 && ( $heldNamed['data']['wrap'] ?? '' ) === 'header-wrap' );
+check( 'the side is the kernel\'s word for the block and never the request\'s: a request that names a footer for a header, or a page for a footer, opens the side the block has, saves it and is drawn for it - and a tree of another side is refused whatever the request says',
+	( $named['side'] ?? '' ) === 'header' && ( $named2['side'] ?? '' ) === 'footer' && $withWrap === 200 && $swapRoot === 400 && ( $heldNamed['data']['side'] ?? '' ) === 'header' );
 
 // the page of the picture: a header stands over it and a footer under it, by the root of the block; the root of the draft is the one asked for
 [ , $headPreview ] = feCall( $site, 'themelab/preview', [ 'key' => 'mein-kopf', 'tree' => $plain['tree'], 'texts' => $plain['texts'] ] );
@@ -274,10 +275,10 @@ $headDraft = $draftOf( $headPreview );
 $footDraft = $draftOf( $footPreview );
 $headPage = \Nino\Modules\Themelab::sheetPage( $site, $headDraft );
 $footPage = \Nino\Modules\Themelab::sheetPage( $site, $footDraft );
-$mixed = \Nino\Modules\Themelab::sheetPage( $site, [ 'wrap' => 'section-wrap' ] + $headDraft );
+$mixed = \Nino\Modules\Themelab::sheetPage( $site, [ 'side' => 'page' ] + $headDraft );
 $hintWord = \Nino\Modules\Themelab\Sheet::words( [ 'de_DE' ], 'preview/page' )['de_DE'];
 
-check( 'the picture of the block of a header has the quiet page after the block and one of a footer before it; a draft whose root is not the one of its source is no picture, and the sentence on the page is the panel\'s own word for the language',
+check( 'the picture of the block of a header has the quiet page after the block and one of a footer before it; a draft whose side is not the one of its source is no picture, and the sentence on the page is the panel\'s own word for the language',
 	$headPage !== null && $footPage !== null && str_contains( $headPage[1], 'themelab-place' ) === true && str_contains( $headPage[0], 'themelab-place' ) === false && str_contains( $footPage[0], 'themelab-place' ) === true && str_contains( $footPage[1], 'themelab-place' ) === false
 	&& $mixed === null && $hintWord !== '' && str_contains( $headPage[1], $hintWord ) === true );
 
@@ -297,7 +298,7 @@ $passes = static function( string $key ) use ( &$site ): bool {
 
 	$flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 	$name = [ 'en_US' => 'Probe' ];
-	$parts = [ 'json' => json_encode( [ 'name' => $name, 'description' => $name, 'category' => 'frame', 'rank' => 0 ], $flags ). "\n", 'tpl' => "[header-wrap id=\"probe\"]\n\t[header-actions]\n\t\t[button ". $key. "]\n\t[/header-actions]\n[/header-wrap]\n", 'texts' => [ 'en_US' => "{}\n" ] ];
+	$parts = [ 'json' => json_encode( [ 'name' => $name, 'description' => $name, 'category' => 'header', 'rank' => 0 ], $flags ). "\n", 'tpl' => "[header-wrap id=\"probe\"]\n\t[header-actions]\n\t\t[button ". $key. "]\n\t[/header-actions]\n[/header-wrap]\n", 'texts' => [ 'en_US' => "{}\n" ] ];
 
 	return is_array( \Nino\Blocks::validate( $site, 'probe', $parts ) );
 };

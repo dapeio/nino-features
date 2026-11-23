@@ -173,6 +173,60 @@ foreach( [ 'builder/framechoices', 'builder/framechoose', 'builder/framerestore'
 check( 'a request for the choice, the choices or the way back that comes without the token of the session is refused, 403, and nothing is written',
 	array_unique( array_values( $untokened ) ) === [ 403 ] && frameSnapshot( $site ) === $snapshot );
 
+echo "\nC. The side a block is offered for is the one the schema of its root says - no name of a root decides\n";
+
+// A feature of the test with a root for each side, none of them named like a root of the kernel's, and a block of each in the project
+foreach( [ 'probe-top' => 'page', 'probe-head' => 'header', 'probe-foot' => 'footer' ] as $root => $side )
+	\Nino\Components::addComponent( $site, $root, [ 'label' => $root, 'in' => [ 'page' ], 'offers' => [ 'flow' ], 'block' => $side, 'attributes' => [ 'id' => [ 'type' => 'id', 'default' => '' ] ], 'template' => '<div[[id]] class="[[class]]">[[content]]</div>' ] );
+
+foreach( [ 'probe-top' => 'content', 'probe-head' => 'header', 'probe-foot' => 'footer' ] as $root => $category ) {
+
+	$folder = ninoSandboxDir( $site ). '/private/blocks/'. $root. '-block';
+	mkdir( $folder. '/text', 0755, true );
+	file_put_contents( $folder. '/block.json', json_encode( [ 'name' => [ 'en_US' => $root ], 'description' => [ 'en_US' => $root ], 'category' => $category, 'rank' => 5, 'images' => (object) [] ] ) );
+	file_put_contents( $folder. '/block.tpl', '['. $root. " id=\"x\"]\n[/". $root. "]\n" );
+	file_put_contents( $folder. '/text/en_US.json', '{}' );
+}
+
+\Nino\Filesystem::putFileContent( $site, '/templates/page-side.tpl', "[template /templates/html-header]\n[section-wrap id=\"x\"]\n[/section-wrap]\n[template /templates/html-footer]\n" );
+// Two blocks whose root is a component of a feature that is off - Menu is not on in this sandbox - one filed as a header and one as a block of the page: each is listed, grey, for its own side only
+foreach( [ 'probe-off-head' => 'header', 'probe-off-page' => 'content' ] as $key => $category ) {
+
+	$folder = ninoSandboxDir( $site ). '/private/blocks/'. $key;
+	mkdir( $folder. '/text', 0755, true );
+	file_put_contents( $folder. '/block.json', json_encode( [ 'name' => [ 'en_US' => $key ], 'description' => [ 'en_US' => $key ], 'category' => $category, 'rank' => 5, 'images' => (object) [] ] ) );
+	file_put_contents( $folder. '/block.tpl', "[menu id=\"x\"]\n[/menu]\n" );
+	file_put_contents( $folder. '/text/en_US.json', '{}' );
+}
+
+unset( $site['./nino/blocks/state'] );
+$probes = [ 'probe-top-block', 'probe-head-block', 'probe-foot-block', 'probe-off-head', 'probe-off-page' ];
+$offeredFor = static function( string $template ) use ( &$site, $probes ): array { return array_values( array_intersect( $probes, array_column( frameCall( $site, 'builder/framechoices', [ 'template' => $template ] )[1]['blocks'] ?? [], 'key' ) ) ); };
+$forPage = array_values( array_intersect( $probes, array_column( frameCall( $site, 'builder/blocks', [ 'template' => 'page-side' ] )[1]['blocks'] ?? [], 'key' ) ) );
+
+check( 'the blocks a header is offered are those of the side header, a footer those of the side footer, a page those of the side page - by the side the schema of the root says, for roots with names of their own; a block whose root a feature that is off brings stands, grey, in the list of its own side only',
+	$offeredFor( 'frame-header' ) === [ 'probe-head-block', 'probe-off-head' ] && $offeredFor( 'frame-footer' ) === [ 'probe-foot-block' ] && $forPage === [ 'probe-top-block', 'probe-off-page' ] );
+
+$stamp = $stampOf();
+$footStamp = array_column( frameCall( $site, 'builder/list' )[1]['frames'] ?? [], 'stamp', 'key' )['footer'] ?? '';
+$snapshot = frameSnapshot( $site );
+$crossed = [
+	'a block of the page for a header'		=> frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-header', 'key' => 'probe-top-block', 'base' => $stamp ] )[0],
+	'a block of a footer for a header'		=> frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-header', 'key' => 'probe-foot-block', 'base' => $stamp ] )[0],
+	'a block of a header for a footer'		=> frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-footer', 'key' => 'probe-head-block', 'base' => $footStamp ] )[0],
+	'the picture of a footer for a header'	=> frameCall( $site, 'builder/frametile', [ 'template' => 'frame-header', 'key' => 'probe-foot-block' ] )[0],
+	'a block of a header for a page'			=> frameCall( $site, 'builder/block', [ 'template' => 'page-side', 'key' => 'probe-head-block' ] )[0],
+	'the picture of a footer for a page'	=> frameCall( $site, 'builder/tile', [ 'template' => 'page-side', 'key' => 'probe-foot-block' ] )[0],
+];
+
+check( 'a request that names a block of another side is refused, whatever the name of its root: a block of the page or of a footer for a header, one of a header for a footer, one of a header or a footer for a page - 400 or 404 - and nothing is written',
+	array_filter( $crossed, static fn( int $status ): bool => in_array( $status, [ 400, 404 ], true ) === false ) === [] && frameSnapshot( $site ) === $snapshot );
+
+[ $chosen ] = frameCall( $site, 'builder/framechoose', [ 'template' => 'frame-header', 'key' => 'probe-head-block', 'base' => $stamp ] );
+
+check( 'the block of the side of the frame is chosen: the header is the block of the root the schema says is a header',
+	$chosen === 200 && str_starts_with( (string) @file_get_contents( ninoSandboxDir( $site ). '/private/templates/frame-header.tpl' ), '[probe-head id="x"' ) === true );
+
 check( 'the feature Themelab is not in this sandbox and the choice, the way back and the list have worked without it',
 	in_array( '\\Nino\\Modules\\Themelab', (array) $site['/nino/modules'], true ) === false );
 

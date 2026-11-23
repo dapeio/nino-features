@@ -2554,6 +2554,31 @@ check( 'the answers tell the content step the schemas and no finding, link or va
 \Nino\Filesystem::putFileContent( $site, '/templates/page-home.tpl', (string) file_get_contents( __DIR__. '/fixtures/pages/page-home.tpl' ) );
 \Nino\Filesystem::putFileContent( $site, '/templates/page-contact.tpl', $contactWas );
 
+// What the editor tells the screen of a component is what the schema says - never the name: the root of a block with the side of its schema, the component whose content is the markup of the page
+// with its own word, and that markup is for the one who develops only. Three components of a feature of the test, named like none of the kernel's
+foreach( [ 'probe-top' => 'page', 'probe-head' => 'header', 'probe-foot' => 'footer' ] as $rootName => $side )
+	\Nino\Components::addComponent( $site, $rootName, [ 'label' => $rootName, 'in' => [ 'page' ], 'offers' => [ 'flow' ], 'block' => $side, 'attributes' => [ 'id' => [ 'type' => 'id', 'default' => '' ] ], 'template' => '<div[[id]] class="[[class]]">[[content]]</div>' ] );
+
+\Nino\Components::addComponent( $site, 'probe-raw', [ 'label' => 'Raw', 'in' => [ 'flow' ], 'offers' => [], 'markup' => true, 'template' => '[[content]]' ] );
+$probeRegistry = \Nino\Components::components( $site );
+$told = array_map( static fn( string $name ): array => [ Tree::schema( $site, $probeRegistry, $name )['side'], Tree::schema( $site, $probeRegistry, $name )['markup'], Tree::schema( $site, $probeRegistry, $name )['container'] ], [ 'probe-top', 'probe-head', 'probe-foot', 'probe-raw', 'section-wrap', 'header-wrap', 'text' ] );
+$probeOld = Tree::read( $site, "[template /templates/html-header]\n[probe-top id=\"x\"]\n[/probe-top]\n[template /templates/html-footer]\n" );
+$probeNew = Tree::read( $site, "[template /templates/html-header]\n[probe-top id=\"x\"]\n\t[probe-raw]<b>y</b>[/probe-raw]\n[/probe-top]\n[template /templates/html-footer]\n" );
+$designed = static fn( bool $develop ): ?string => Tree::designed( $site, $probeOld, $probeNew, $probeRegistry, Tree::taken( $probeOld, $probeRegistry, [] ), $develop );
+
+check( 'the schema the screen is told has the side of a root - page, header or footer, empty for what is no root - and whether the component is the markup of the page, whatever the name, and the markup is no container',
+	$told === [ [ 'page', false, true ], [ 'header', false, true ], [ 'footer', false, true ], [ '', true, false ], [ 'page', false, true ], [ 'header', false, true ], [ '', false, false ] ] );
+check( 'the call of the component whose schema says markup is a piece of free markup for the one who designs - the draft that brings one is refused as html - and a call like any other for the one who develops',
+	$designed( false ) === 'html' && $designed( true ) === null );
+
+// The dialog of the places: the component whose schema says markup is no choice for a step that has not the right to write it - not even grey - and is one for the step of the development
+$offerTree = Tree::read( $site, "[template /templates/html-header]\n[section-wrap id=\"x\"]\n\t[section-row]\n\t[/section-row]\n[/section-wrap]\n[template /templates/html-footer]\n" );
+$offerRow = builderFind( $offerTree, static fn( array $node ): bool => ( $node['n'] ?? '' ) === 'section-row' ) ?? '';
+$offerNames = static fn( int $level ): array => array_column( \Nino\Modules\Builder\Admin::offered( $site, $offerTree, $offerRow, $level )['offers'] ?? [], 'name' );
+
+check( 'the place for a component does not list the component whose schema says markup to a step below the development, and lists it, grey, for the development - whatever the name of the component',
+	$offerRow !== '' && in_array( 'probe-raw', $offerNames( \Nino\Modules\Builder::LEVEL_DESIGN ), true ) === false && in_array( 'probe-raw', $offerNames( \Nino\Modules\Builder::LEVEL_DEVELOP ), true ) === true );
+
 // The script of the panel has three suites of its own - the model, the list and the view that makes a page, and the surface of a page that is worked on - which run where node is
 $node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 

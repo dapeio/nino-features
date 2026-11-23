@@ -263,7 +263,7 @@ check( 'the package is put in place, and the theme is in the list as one that wa
 	&& array_keys( $card['parts'] ?? [] ) === [ 'button' ] && ( $card['parts']['button']['ok'] ?? false ) === true && array_key_exists( 'active', $list ) === true && $list['active'] === null && isset( $_SESSION[Upload::SESSION] ) === false );
 
 check( 'the blocks of the package are blocks of the kernel with the key of the theme as their origin - the one with a frame among them - and the list of the shipped theme is the one it was',
-	( $blocks['second-split']['origin'] ?? '' ) === 'second-look' && ( $blocks['second-foot']['origin'] ?? '' ) === 'second-look' && ( $blocks['second-foot']['category'] ?? '' ) === 'frame'
+	( $blocks['second-split']['origin'] ?? '' ) === 'second-look' && ( $blocks['second-foot']['origin'] ?? '' ) === 'second-look' && ( $blocks['second-foot']['category'] ?? '' ) === 'footer'
 	&& array_column( array_filter( $list['themes'], static fn( array $one ): bool => $one['kind'] === 'theme' ), 'origin', 'key' ) === [ 'nino' => 'shipped', 'second-look' => 'uploaded' ] );
 
 // the same key again: replaced only where it is asked for
@@ -786,6 +786,33 @@ $cut = rtrim( $text, '…' );
 check( 'beside each key a frame reads the text the site has at it today stands, in the working language of the workbench, as a line of text without markup and cut at the end of a word with a mark that it goes on',
 	( $read['key'] ?? '' ) === '/project/company/general/name' && $text !== '' && str_ends_with( $text, '…' ) === true && mb_strlen( $cut ) <= 80 && str_starts_with( $long, $cut ) === true && $long[mb_strlen( $cut )] === ' ' && str_contains( $text, '<' ) === false
 	&& ( $read['text'] ?? '' ) !== 'Name of the company' );
+
+// what a block of a package may read is the right of the side of its root, as the kernel's schema says it, never of the name of the root: a header root and a page root of a feature of
+// the test, each with a block that names a text of the site
+foreach( [ 'probe-head' => 'header', 'probe-top' => 'page' ] as $rootName => $side )
+	\Nino\Components::addComponent( $site, $rootName, [ 'label' => $rootName, 'in' => [ 'page' ], 'offers' => [ 'flow' ], 'block' => $side, 'attributes' => [ 'id' => [ 'type' => 'id', 'default' => '' ] ], 'template' => '<div[[id]] class="[[class]]">[[content]]</div>' ] );
+
+$withRoot = static function( string $rootName, string $category ): array {
+
+	$files = upRich( 'rich-sides', '1.0.0' );
+
+	foreach( array_keys( $files ) as $path )
+		if( str_starts_with( $path, 'blocks/' ) === true )
+			unset( $files[$path] );
+
+	$files['blocks/'. $rootName. '-block/block.json'] = (string) json_encode( [ 'name' => [ 'en_US' => $rootName ], 'description' => [ 'en_US' => $rootName ], 'category' => $category, 'rank' => 5, 'images' => (object) [] ] );
+	$files['blocks/'. $rootName. '-block/block.tpl'] = '['. $rootName. ' id="x"]'. "\n\t[text /project/company/general/name]\n[/". $rootName. "]\n";
+	$files['blocks/'. $rootName. '-block/text/en_US.json'] = '{}';
+
+	return $files;
+};
+[ $headStatus, $shownHead ] = upChoose( $site, upPack( $withRoot( 'probe-head', 'header' ) ) );
+[ $topStatus, $refusedTop ] = upChoose( $site, upPack( $withRoot( 'probe-top', 'content' ) ) );
+$headBlock = array_column( $shownHead['theme']['blocks'] ?? [], null, 'key' )['probe-head-block'] ?? [];
+
+check( 'a block of a package reads the text of the site by the side its root says: the header root of another feature is a frame that reads it, its page root is refused with the block - 400 - for the same text',
+	$headStatus === 200 && ( $headBlock['frame'] ?? null ) === true && ( $headBlock['side'] ?? '' ) === 'header' && in_array( '/project/company/general/name', array_column( $headBlock['reads'] ?? [], 'key' ), true ) === true
+	&& $topStatus === 400 && ( $refusedTop['code'] ?? '' ) === 'themes_upload_package_block_source' );
 
 echo "\nJ. The right of the panel, and the bytes that stay\n";
 

@@ -170,7 +170,7 @@ namespace Nino\Modules {
 		 *	sentence is cleaned of tags, markup characters and control characters, and what is left is written as text
 		 *
 		 *	@param		array 		&$appData
-		 *	@param		array			$draft				template, source, hint, wrap as the server wrote them
+		 *	@param		array			$draft				template, source, hint, side as the server wrote them
 		 *
 		 *	@return 	array|null								[ head, foot ]; null for a source that is no sheet of that root
 		 */
@@ -179,15 +179,15 @@ namespace Nino\Modules {
 			if( is_string( $draft['source'] ?? null ) === false )
 				return null;
 
-			$wrap = in_array( $draft['wrap'] ?? '', [ 'header-wrap', 'footer-wrap' ], true ) === true ? (string) $draft['wrap'] : \Nino\Modules\Builder\Library::PAGE;
+			$side = in_array( $draft['side'] ?? '', [ 'header', 'footer' ], true ) === true ? (string) $draft['side'] : \Nino\Modules\Builder\Library::PAGE;
 			$nodes = \Nino\Modules\Builder\Tree::read( $appData, $draft['source'] );
 
-			if( \Nino\Modules\Themelab\Sheet::rootAt( $nodes, $wrap ) === null )
+			if( \Nino\Modules\Themelab\Sheet::rootAt( $appData, $nodes, $side ) === null )
 				return null;
 
 			[ $head, $foot ] = array_pad( explode( '[[block]]', \Nino\Feature::template( $appData, '/features/Builder/templates', 'tile' ), 2 ), 2, '' );
 
-			if( $wrap === \Nino\Modules\Builder\Library::PAGE )
+			if( $side === \Nino\Modules\Builder\Library::PAGE )
 				return [ $head, $foot ];
 
 			$hint = trim( mb_substr( (string) preg_replace( '/[\x00-\x1F\x7F<>&"\[\]]+/u', ' ', strip_tags( (string) ( $draft['hint'] ?? '' ) ) ), 0, 80, 'UTF-8' ) );
@@ -198,7 +198,7 @@ namespace Nino\Modules {
 			$top = str_ends_with( rtrim( $head ), $open ) === true ? substr( rtrim( $head ), 0, -strlen( $open ) ) : $head;
 			$bottom = str_starts_with( ltrim( $foot ), $close ) === true ? substr( ltrim( $foot ), strlen( $close ) ) : $foot;
 
-			return $wrap === 'header-wrap' ? [ $top, $place. $bottom ] : [ $top. $place, $bottom ];
+			return $side === 'header' ? [ $top, $place. $bottom ] : [ $top. $place, $bottom ];
 		}
 
 		/**

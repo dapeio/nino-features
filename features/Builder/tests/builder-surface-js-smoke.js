@@ -84,7 +84,7 @@ const pageAnswer = function( extra ) {
 		sources : [], slots : [], images : {}, stamp : 'a', address : '/', last : 0, unback : '', fresh : { de_DE : 'Neu', en_US : 'New' },
 		texts : { '/template/page-home/hero/title' : { de_DE : 'Hallo', en_US : 'Hello' }, '/template/page-home/cards/title' : { de_DE : 'Karten', en_US : 'Cards' } },
 		known : { 'section-wrap' : { label : 'Section', icon : 'panel-top', id : 'id', source : 'none' }, 'section-title' : { label : 'Title', icon : 'heading', id : '', source : 'text' }, 'section-row' : { label : 'Row', icon : 'rows-2', id : '', source : 'none' }, 'section-col' : { label : 'Column', icon : 'columns-3', id : 'id', source : 'none' }, collection : { label : 'Collection', icon : 'database', id : '', source : 'none' } },
-		schemas : { 'section-wrap' : schema( 'Section', 'panel-top', 'none' ), 'section-title' : schema( 'Title', 'heading', 'text' ), collection : schema( 'Collection', 'database', 'none', { loop : true } ), 'section-row' : schema( 'Row', 'rows-2', 'none' ), 'section-col' : schema( 'Column', 'columns-3', 'none' ) },
+		schemas : { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page' } ), 'section-title' : schema( 'Title', 'heading', 'text' ), collection : schema( 'Collection', 'database', 'none', { loop : true } ), 'section-row' : schema( 'Row', 'rows-2', 'none' ), 'section-col' : schema( 'Column', 'columns-3', 'none' ), html : schema( 'HTML', 'code', 'none', { markup : true, container : false } ) },
 		findings : {}, links : [], contentLocale : 'de_DE', native : 'de_DE', locales : LOCALES, dir : '', level : 3, dim : 'frame',
 	}, extra ?? {} );
 };
@@ -357,6 +357,15 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 		return rowsOf( w ).map( function( row ) { return row.dataset.id } ).join() === '@header,hero,cards,team,@footer'
 			&& items.map( function( item ) { return item.icon } ).join() === 'panel-top,heading,columns-3,repeat,panel-bottom' && items.map( function( item ) { return item.label } ).join() === W('word/frame-header')+ ',hero,cards,team,'+ W('word/frame-footer');
 	} )() );
+	check( 'B. the root of a header and of a footer is told by the side its schema says - the icon of the top and of the bottom of the page, and no words of the block beside its kind - and a component with the name of a root and no side is none',
+		( function() {
+			const S = model.state;
+			const was = S.schemas;
+			S.schemas = Object.assign( {}, was, { 'probe-head' : schema( 'Head', 'x', 'none', { side : 'header' } ), 'probe-foot' : schema( 'Foot', 'x', 'none', { side : 'footer' } ), 'header-wrap' : schema( 'Header', 'x', 'none' ) } );
+			const answer = [ model.iconOf( { n : 'probe-head', s : '', a : { id : 'h' }, c : [] } ), model.iconOf( { n : 'probe-foot', s : '', a : { id : 'f' }, c : [] } ), model.iconOf( { n : 'header-wrap', s : '', a : { id : 'h' }, c : [] } ) ];
+			S.schemas = was;
+			return answer[0] === 'panel-top' && answer[1] === 'panel-bottom' && answer[2] !== 'panel-top' && answer[2] !== 'panel-bottom';
+		} )() );
 	check( 'B. blocks of different kinds have different icons - a loop, columns, a text, a picture, a table, free markup - and none has the icon of the head of the page', ( function() {
 		const of = function( calls ) { return model.iconOf( block( 'x', calls ) ) };
 		const call = function( n, a ) { return [ { n : n, s : '', a : a ?? {}, c : [] } ] };
@@ -569,7 +578,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 
 	check( 'F294 T5. the advanced part is where an anchor is read - the id of a section of the page - and nowhere else: a component below it has no "Id" row and no part; the section has the id as text, in the one flat list of its dialog, and a button to rename it - and a section with no id and nothing else says there is nothing to set',
 		( function() {
-			const w = opened( { page : pageAnswer( { tree : tree, level : 3, schemas : Object.assign( {}, pageAnswer().schemas, attributes, { 'section-wrap' : schema( 'Section', 'rows', 'none', { attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' } } } ) } ) } ) } );
+			const w = opened( { page : pageAnswer( { tree : tree, level : 3, schemas : Object.assign( {}, pageAnswer().schemas, attributes, { 'section-wrap' : schema( 'Section', 'rows', 'none', { side : 'page', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' } } } ) } ) } ) } );
 			const x = { w : w, S : w.panel.model.state, model : w.panel.model };
 
 			x.S.hot = '';
@@ -1286,7 +1295,7 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 			href : { type : 'link', label : 'Target', hint : '', default : '' },
 			alt : { type : 'text', label : 'Alt', hint : '', default : '' },
 		} } ),
-		html : schema( 'HTML', 'code', 'none' ),
+		html : schema( 'HTML', 'code', 'none', { markup : true, container : false } ),
 	};
 	const tree = [
 		{ n : 'template', s : '/templates/html-header', a : {}, c : null }, { t : '\n' },
