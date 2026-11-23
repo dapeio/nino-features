@@ -13,6 +13,9 @@ declare(strict_types=1);
  *														B. set up, in the order of the file: Basis is placed first, its archive asked for once, and every other feature is placed and
  *														   switched on, the application is applied and the Features panel has Basis once
  *														C. a second round places and switches on nothing
+ *														D. the application Website, which provides the start page: the wizard's steps run to their end - Setup, the account, each feature of
+ *														   it placed and switched on through the Applications step, Finish -, and the project has the pages of Website start in components, drawn
+ *														   by requests, and no page of the starter of the kernel beside them
  *
  *	Usage: php tests/applications-smoke.php
  *	       NINO_ROOT=/path/to/nino php tests/applications-smoke.php
@@ -211,6 +214,96 @@ foreach( $applications as $application ) {
 
 	check( 'a second round places and switches on nothing: every feature is on already',
 		array_filter( $again, static fn( array $result ): bool => $result !== [ 'placed' => false, 'activated' => false, 'reason' => '', 'status' => 200 ] ) === [] );
+}
+
+// --- D. The application Website through the steps of the wizard ---------------------------------------------------
+
+require $root. '/_admin/install/Install.php';
+
+// Website and Blog - the Blog is the Website and its posts - provide the start page, each run through the steps of the wizard
+foreach( [ 'website', 'blog' ] as $appKey ) {
+
+echo "\nThe application ". $appKey. ", to the end of the wizard\n";
+
+$website = array_values( array_filter( $applications, static fn( array $entry ): bool => $entry['key'] === $appKey ) )[0] ?? [];
+$order = $website['features'] ?? [];
+
+check( 'The application provides its own start page and lists Website start right behind Basis, the feature whose components its pages are made of', ( $website['start'] ?? '' ) === 'own' && array_search( 'websitestart', $order, true ) === array_search( 'basis', $order, true ) + 1 );
+
+$app = $project( 'applications-'. $appKey. '-wizard' );
+$dir = ninoSandboxDir( $app );
+$app['/nino/html/navs'] = \Nino\AppData::DEFAULTS['/nino/html/navs'];
+$app['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Elements', '\\Nino\\Modules\\Template', '\\Nino\\Modules\\Jstext', '\\Nino\\Modules\\Csrf' ];
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+[ $setup ] = ninoCall( $app, [ \Nino\Install\Setup::class, 'apiApply' ], [ 'locales' => [ 'de_DE' ], 'native' => 'de_DE', 'modules' => [] ] );
+[ $account ] = ninoCall( $app, [ \Nino\Install\Accounts::class, 'apiCreate' ], [ 'mail' => 'owner@example.com', 'pw' => 'a long enough password' ] );
+$app[ \Nino\Install\Applications::KEY_OVERRIDE ] = $publicKey;
+
+$step = static function( string $action, array $data ) use ( &$app ): array {
+	return ninoCall( $app, [ \Nino\Install\Install::class, 'handlePost' ], $data, $action );
+};
+
+$step( 'applications/list', [] );
+[ , $plan ] = $step( 'applications/plan', [ 'applications' => [ $appKey ] ] );
+$answers = [];
+
+foreach( (array) ( $plan['features'] ?? [] ) as $feature )
+	$answers[$feature['key']] = $step( 'applications/apply', [ 'applications' => [ $appKey ], 'feature' => $feature['key'] ] )[0];
+
+unset( $app['./nino/features/all'] );
+[ $finished ] = ninoCall( $app, [ \Nino\Install\Finish::class, 'apiComplete' ], [ 'password' => 'a brand new dev password', 'applications' => [ $appKey ] ] );
+
+check( 'Setup, the account, every feature of it in its order and the end of the wizard answer 200', $setup === 200 && $account === 200 && $finished === 200 && array_keys( $answers ) === $order && array_values( array_unique( $answers ) ) === [ 200 ] );
+
+$config = \Nino\Filesystem::getFileContent( $app, '/config.php', [] );
+$pageRoutes = array_keys( array_filter( (array) $config['/nino/http/routes'], static fn( mixed $route, string $key ): bool => str_starts_with( $key, 'GET://' ) === true && preg_match( '~^\[template /templates/page-(?!legal)~', (string) ( $route['body'] ?? '' ) ) === 1, ARRAY_FILTER_USE_BOTH ) );
+
+check( 'the project has the three pages of Website start and no other, in components: the header and the footer are the unit\'s, no template of the starter site of the kernel is there',
+	$pageRoutes === [ 'GET://', 'GET://contact', 'GET://404' ] && str_contains( (string) file_get_contents( $dir. '/private/templates/frame-header.tpl' ), '[header-wrap' ) === true && str_contains( (string) file_get_contents( $dir. '/private/templates/page-home.tpl' ), '[section-wrap' ) === true
+	&& array_filter( glob( $dir. '/private/templates/*.tpl' ) ?: [], static fn( string $file ): bool => str_contains( (string) file_get_contents( $file ), 'site-header' ) === true || str_contains( (string) file_get_contents( $file ), 'class="hero' ) === true ) === [] );
+
+// A visitor's request of the project: booted as a request boots it
+$booted = [ './nino/uid' => $dir ];
+\Nino\AppData::prepare( $booted );
+
+foreach( [ 'path' => $dir, 'configpath' => $dir. '/private', 'contentpath' => $dir. '/private', 'publicpath' => $dir. '/public' ] as $part => $path )
+	$booted['./nino/filesystem/'. $part] = $path;
+
+\Nino\Filesystem::init( $booted );
+\Nino\AppData::init( $booted );
+$booted['/nino/dir'] = '';
+\Nino\Locales::init( $booted );
+\Nino\Csrf::init( $booted );
+\Nino\Html::init( $booted );
+\Nino\Auth::init( $booted );
+\Nino\Features::registerAssets( $booted );
+\Nino\Features::registerComponents( $booted );
+\Nino\Modules::callModules( $booted, 'init' );
+\Nino\Features::registerParts( $booted );
+$booted['./nino/locales/current'] = 'de_DE';
+
+$visit = static function( string $uri ) use ( $booted ): array {
+
+	$copy = $booted;
+	$request = \Nino\request( $copy, [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => $uri, 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'example.com', 'HTTPS' => 'on' ] );
+
+	return [ (int) ( $request['/nino/http/response']['statusCode'] ?? 0 ), (string) ( $request['/nino/http/response']['body'] ?? '' ) ];
+};
+
+$drawn = [ 'start' => $visit( '/' ), 'contact' => $visit( '/contact' ), 'none' => $visit( '/not-here' ), 'imprint' => $visit( '/impressum' ) ];
+$posts = $appKey === 'blog' ? $visit( '/blog' ) : [ 200, '<header class="header-wrap"><footer><h1>' ];
+$legal = \Nino\Modules\Legal::check( $booted );
+
+check( 'the pages are drawn from components, one header, one footer and one h1 each, with the header of Basis and its menu: Start 200, Contact 200, an address that is not there 404, the imprint 200 - and the log has nothing to say',
+	array_column( $drawn, 0 ) === [ 200, 200, 404, 200 ] && array_filter( $drawn, static fn( array $page ): bool => substr_count( $page[1], '<header' ) !== 1 || substr_count( $page[1], '<footer' ) !== 1 || substr_count( $page[1], '<h1' ) !== 1
+		|| str_contains( $page[1], 'class="header-wrap' ) === false || str_contains( $page[1], 'class="header-nav' ) === false ) === [] && ninoWarnings() === [] );
+check( '...the page of the posts, where the application has them, is drawn in the same header and footer, and the legal check finds nothing to tell', $posts[0] === 200 && substr_count( $posts[1], '<header' ) === 1 && substr_count( $posts[1], '<footer' ) === 1 && $legal === [] && ninoWarnings() === [] );
+check( 'the start page, the header and the footer are those of Website start, byte for byte, whatever the features that stand before it in the list brought: no feature of the application places a page ahead of the feature that is the start of the site',
+	(string) file_get_contents( $dir. '/private/templates/page-home.tpl' ) === (string) file_get_contents( $repo. '/features/WebsiteStart/install/templates/page-home.tpl' )
+	&& (string) file_get_contents( $dir. '/private/templates/page-contact.tpl' ) === (string) file_get_contents( $repo. '/features/WebsiteStart/install/templates/page-contact.tpl' )
+	&& ( $config['/nino/http/routes']['GET://']['body'] ?? '' ) === '[template /templates/page-home]' && ( $config['/nino/http/routes']['GET://404']['statusCode'] ?? 0 ) === 404 );
+check( 'the application is applied: every feature of it is on at the version of its directory', \Nino\Applications::isApplied( $app, $website ) === true );
+
 }
 
 $empty = [];

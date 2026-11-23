@@ -7,8 +7,8 @@ return [
 		'en_US' => 'The website, and posts that readers find by search, with a table of contents and a reading progress bar.',
 		'de_DE' => 'Die Website, dazu Beiträge, die Leserinnen und Leser über die Suche finden, mit Inhaltsverzeichnis und Lesefortschritt.',
 	],
-	'features'		=> [ 'basis', 'themes', 'builder', 'forms', 'consent', 'modeswitch', 'seo', 'collections', 'posts', 'search', 'toc', 'progress' ],
+	'features'		=> [ 'basis', 'websitestart', 'themes', 'builder', 'forms', 'consent', 'modeswitch', 'seo', 'collections', 'posts', 'search', 'toc', 'progress' ],
 	'next'				=> '/_admin/#builder',
-	'start'				=> 'starter',
+	'start'				=> 'own',
 	'menu'				=> null,
 ];

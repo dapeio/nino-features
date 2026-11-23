@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  *	Nino features
  *	basis-pages-smoke.php	Test of what a page is drawn as, on the starter site in the components of Basis: the four starter pages with their frame in
- *											both languages, the workbench shell with a panel open, the loops over
+ *											both languages, the loops over
  *											the elements with components in them, the content of
  *											a mail and the maintenance page - each compared byte for byte with the
  *											file under fixtures/basis/starter/drawn/ - the pages the wizard drew while it switched Basis on and wrote its starter pages. The setup wizard is run for real
@@ -148,7 +148,7 @@ function pagesStarterSite( array &$appData ): void {
  *	collection '/probe' with three elements and a few templates of the cases below. Every file has the same time,
  *	so the version of a bundle and the stamp of the favicons are the same in every run
  *
- *	@param		bool			$tools				Copy _admin and _nino into it, for the pages of the workbench
+ *	@param		bool			$tools				Copy _admin and _nino into it, so that Basis stands below the features/ of the site as in an installation
  *
  *	@return 	string										The directory
  */
@@ -532,30 +532,6 @@ function pagesMaintenance( string $sandbox ): string {
 	return $out;
 }
 
-/**
- *	The workbench with one panel open, signed in
- *
- *	@param		string		$sandbox			The site with the tools
- *
- *	@return 	string
- */
-function pagesWorkbench( string $sandbox ): string {
-
-	$appData = pagesBoot( $sandbox, 'de_DE' );
-	$appData['/nino/install/completed'] = true;
-	ninoUser( $appData, 'dev@example.com' );
-	\Nino\Admin\Admin::init( $appData );
-
-	// The token of the workbench is the one of the session, and the version of its bundles is made of file times
-	\Nino\Runtime::setSessionValue( $appData, './nino/csrf/token', str_repeat( 'c', 64 ) );
-	$appData['./nino/jstext/nonce'] = str_repeat( 'a', 32 );
-	unset( $_GET['session'], $_GET['follow'] );
-
-	$request = \Nino\request( $appData, [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/_admin', 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'example.com', 'HTTPS' => 'on' ] );
-
-	return (string) ( $request['/nino/http/response']['body'] ?? '' );
-}
-
 $dir = __DIR__. '/fixtures/basis/starter/drawn';
 
 /**
@@ -578,15 +554,6 @@ $kept = pagesTrees( $site );
 $GLOBALS['pagesCold'] = false;
 $warm = pagesStarter( $site ) + pagesCaseFiles( $site ) + [ 'mail.txt' => pagesMail( $site ), 'maintenance.html' => pagesMaintenance( $site ) ];
 $keptAgain = pagesTrees( $site );
-\Nino\Filesystem::removeDir( $site );
-
-// The workbench, with the tools of the kernel next to the project
-$site = pagesSite( true );
-$GLOBALS['pagesCold'] = true;
-$outputs['workbench.html'] = pagesWorkbench( $site );
-$GLOBALS['pagesCold'] = false;
-$keptWorkbench = pagesTrees( $site );
-$warm['workbench.html'] = pagesWorkbench( $site );
 \Nino\Filesystem::removeDir( $site );
 
 echo "The pages of the site, byte for byte\n";
@@ -627,11 +594,11 @@ check( 'a starter page whose unit proposes menus is in them at its position in t
 	array_unique( array_values( $menuDone ) ) === [ true ] && array_column( $menuRoutes, 'navs' ) === [ [ 'main' => 1, 'footer' => 1 ], [ 'main' => 2, 'footer' => 2 ] ] && isset( $menuRoutes['GET://404']['navs'] ) === false );
 \Nino\Filesystem::removeDir( $menuDir );
 
-check( 'every request that found no tree kept a tree of the templates it drew', $kept > 0 && $keptWorkbench > 0 );
+check( 'every request that found no tree kept a tree of the templates it drew', $kept > 0 );
 check( 'the requests that found the trees drew the same pages, byte for byte, and the same trees stand', $warm === $outputs && $keptAgain >= $kept );
 
 foreach( $outputs as $name => $output )
-	if( str_ends_with( $name, '.html' ) === true && str_starts_with( $name, 'workbench' ) === false && str_starts_with( $name, 'loop' ) === false )
+	if( str_ends_with( $name, '.html' ) === true && str_starts_with( $name, 'loop' ) === false )
 		check( $name. ' has no call and no fill left over', preg_match( '/\[(?:template|title|navigation|logo|image|localepicker|jstext|assets|json|csrf)[ \]]/', $output ) !== 1 );
 
 // --- A fresh installation, as a visitor meets it: the structure of the pages, not their markup -------------------

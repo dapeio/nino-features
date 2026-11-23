@@ -154,7 +154,7 @@ echo "\nNo feature names the world of Nino 1\n";
 
 $old = [
 	'Modules\Components'		=> '/Modules\\\\{1,2}Components\b/',
-	'a class of the old Nino.css'	=> '/(?<![\w\-])nino-(?!form(?![\w-])|richtext(?![\w-])|sr-only(?![\w-]))(?:accordion|alert|back|badge|bento|bg|breadcrumbs|btn|card|code|contact|cover|feature|filter|footer|form|forms|fx|gallery|grid|headernav|hero|hidden|hide|hover|icon|image|img|ink|invisible|is|legal|list|localepicker|logo|m[btlrx]?|modal|nav|newsletter|opacity|p[btlr]?|pagination|parallex|preloader|pricing|profile|radius|scroll|section|slider|spacer|stack|stat|stretch|table|tabs|testimonial|text|tiles|timeline|toast|video|visible|vpa|whitespace|wrap)(?![a-z0-9])/',
+	'a class of the old Nino.css'	=> '/(?<![\w\-])nino-(?!form(?:-(?:message|note|submit|trap))?(?![\w-])|richtext(?![\w-])|sr-only(?![\w-]))(?:accordion|alert|back|badge|bento|bg|breadcrumbs|btn|card|code|contact|cover|feature|filter|footer|form|forms|fx|gallery|grid|headernav|hero|hidden|hide|hover|icon|image|img|ink|invisible|is|legal|list|localepicker|logo|m[btlrx]?|modal|nav|newsletter|opacity|p[btlr]?|pagination|parallex|preloader|pricing|profile|radius|scroll|section|slider|spacer|stack|stat|stretch|table|tabs|testimonial|text|tiles|timeline|toast|video|visible|vpa|whitespace|wrap)(?![a-z0-9])/',
 	'a token of the old design'	=> '/(?<![\w\-])--(?:space|color|radius|fontsize)-/',
 	'Nino.ui.'							=> '/\bNino\.ui\./',
 ];

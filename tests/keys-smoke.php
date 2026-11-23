@@ -42,6 +42,12 @@ const KEYS_PAGES = [
 		'/.newsletter'             => [ [ 'Newsletter.php', '/\'GET:\/\/\.newsletter\'/' ] ],
 		'/.newsletter/unsubscribe' => [ [ 'Newsletter.php', '/\'GET:\/\/\.newsletter\/unsubscribe\'/' ] ],
 	],
+	// Its pages are the routes of its unit, not of its code
+	'websitestart' => [
+		'/home'    => [ [ 'install/manifest.php', '/\'GET:\/\/\'\s*=>\s*\[\s*\'uri\'\s*=>\s*\'\/home\'/' ] ],
+		'/contact' => [ [ 'install/manifest.php', '/\'GET:\/\/contact\'\s*=>\s*\[\s*\'uri\'\s*=>\s*\'\/contact\'/' ] ],
+		'/404'     => [ [ 'install/manifest.php', '/\'GET:\/\/404\'\s*=>\s*\[\s*\'uri\'\s*=>\s*\'\/404\'/' ] ],
+	],
 ];
 
 /*	The labels of the Elements panel for the fields of an element type that a unit brings: the workbench's words and no site's, so the unit's

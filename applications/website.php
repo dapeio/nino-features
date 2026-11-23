@@ -7,8 +7,8 @@ return [
 		'en_US' => 'A website you compose and style yourself, with a consent banner, forms, a dark mode and search engine settings.',
 		'de_DE' => 'Eine Website, die Du selbst aufbaust und gestaltest, mit Einwilligungsbanner, Formularen, Dunkelmodus und Suchmaschineneinstellungen.',
 	],
-	'features'		=> [ 'basis', 'themes', 'builder', 'forms', 'consent', 'modeswitch', 'seo' ],
+	'features'		=> [ 'basis', 'websitestart', 'themes', 'builder', 'forms', 'consent', 'modeswitch', 'seo' ],
 	'next'				=> '/_admin/#builder',
-	'start'				=> 'starter',
+	'start'				=> 'own',
 	'menu'				=> null,
 ];
