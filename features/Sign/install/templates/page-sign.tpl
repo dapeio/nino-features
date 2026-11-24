@@ -1,0 +1,11 @@
+<!-- nino:template-name Sign -->
+[template /templates/html-header]
+[section-wrap id="intro"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title /template/page-sign/intro/title tag="h1"]
+			[sign-form]
+		[/section-col]
+	[/section-row]
+[/section-wrap]
+[template /templates/html-footer]

@@ -1,0 +1,1 @@
+<h2 class="sign-form-title">[[document]]</h2>

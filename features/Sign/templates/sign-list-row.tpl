@@ -1,0 +1,1 @@
+<li class="sign-list-row" data-sign-id="[[id]]" data-sign-state="[[state]]"><span class="sign-list-title">[[document]]</span><span class="sign-list-state">[[status]]</span><time class="sign-list-date" datetime="[[created]]">[[date]]</time><a class="sign-list-page" href="[[/nino/dir]]/.sign?r=[[id]]">[[/feature/sign/list/page]]</a>[[signed]]</li>

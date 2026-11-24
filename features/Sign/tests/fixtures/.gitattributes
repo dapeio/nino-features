@@ -1,0 +1,2 @@
+# The files of data/ as the source wrote them (var_export leaves a blank at the end of some lines): kept as they are, whitespace and line ends unchecked, so that the round trip pins bytes
+* -whitespace -text

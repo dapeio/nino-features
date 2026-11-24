@@ -1,0 +1,1 @@
+<p class="sign-form-state" id="[[id]]" role="status" data-sign-state="[[name]]">[[text]]</p>

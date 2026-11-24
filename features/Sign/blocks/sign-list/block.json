@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Dokumente zum Unterschreiben", "en_US": "Documents to sign" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und die Liste der Dokumente, die ein angemeldetes Mitglied unterschreiben soll.", "en_US": "A headline, a sentence and the list of the documents a signed-in member is to sign." },
+	"category": "content",
+	"rank": 97,
+	"images": {}
+}

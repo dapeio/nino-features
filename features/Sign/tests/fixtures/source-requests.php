@@ -1,0 +1,106 @@
+<?php return array (
+  'a1b2c3d4e5f6' => 
+  array (
+    'template' => 'contract',
+    'data' => 
+    array (
+      'tokens' => 
+      array (
+        'client' => 'Ada Lovelace',
+        'nested' => 
+        array (
+          'a' => 
+          array (
+            'b' => 'c',
+          ),
+        ),
+      ),
+      'slots' => 
+      array (
+      ),
+      'inputs' => 
+      array (
+        'note' => 'one
+two',
+      ),
+    ),
+    'title' => 'Service contract',
+    'account' => '0123456789ab',
+    'status' => 'signed',
+    'token' => '628b49d96dcde97a430dd4f597705899e09a968f793491e4b704cae33a40dc02',
+    'expires' => 4102444800,
+    'created' => '2026-10-01T09:30:00Z',
+    'viewed' => '2026-10-01T10:00:00Z',
+    'signed' => '2026-10-01T10:05:00Z',
+    'declined' => NULL,
+    'changed' => NULL,
+    'hashShown' => '70facc0e08650e60999b2f4e76a8fe459bee008d55b2601cab51e8f1783933ed',
+    'hashSigned' => '513eac0a109c2a0b779f5ed60780b4ce1c39469f20fa90d885efe7e0f027e1cf',
+    'method' => 'drawn',
+    'record' => 
+    array (
+      'ip' => '203.0.113.7',
+      'agent' => 'Mozilla/5.0 (X11)',
+      'consent' => 'I agree.',
+    ),
+    'page' => '/club/documents',
+  ),
+  123456789012 => 
+  array (
+    'template' => 'privacy',
+    'data' => 
+    array (
+    ),
+    'title' => 'Privacy',
+    'account' => '100000000001',
+    'status' => 'requested',
+    'token' => 'c44474038d459e40e4714afefa7bf8dae9f9834b22f5e8ec1dd434ecb62b512e',
+    'expires' => 4102444900,
+    'created' => '2026-10-02T09:30:00Z',
+    'viewed' => NULL,
+    'signed' => NULL,
+    'declined' => NULL,
+    'changed' => NULL,
+    'hashShown' => '65637f6fb1f54641938bb1c068567b4a2068949179a7131353496b780dd4cc28',
+    'hashSigned' => '',
+    'method' => '',
+    'record' => 
+    array (
+      'ip' => '',
+      'agent' => '',
+      'consent' => '',
+    ),
+    'page' => '',
+  ),
+  'ffeeddccbbaa' => 
+  array (
+    'template' => 'contract',
+    'data' => 
+    array (
+      'inputs' => 
+      array (
+        'note' => 'x',
+      ),
+    ),
+    'title' => 'Changed one',
+    'account' => '0123456789ab',
+    'status' => 'changed',
+    'token' => 'cece8a9cecfb6c7e7ee4f3346d5e2544138bfb6e33bec6042a17333a4d3180b0',
+    'expires' => 4102445000,
+    'created' => '2026-10-03T09:30:00Z',
+    'viewed' => NULL,
+    'signed' => NULL,
+    'declined' => NULL,
+    'changed' => '2026-10-03T11:00:00Z',
+    'hashShown' => 'e715bbf6af941798b71234623dc5bfd159898b642583ed0fcaec1f713c7b0c6d',
+    'hashSigned' => '',
+    'method' => '',
+    'record' => 
+    array (
+      'ip' => '',
+      'agent' => '',
+      'consent' => '',
+    ),
+    'page' => '',
+  ),
+);

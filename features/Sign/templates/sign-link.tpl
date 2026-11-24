@@ -1,0 +1,1 @@
+<p class="sign-form-link"><a href="[[document]]">[[/feature/sign/form/signed-link]]</a></p>

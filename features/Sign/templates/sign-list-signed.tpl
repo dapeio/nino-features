@@ -1,0 +1,1 @@
+<a class="sign-list-signed" href="[[/nino/dir]]/.sign/pdf?r=[[id]]&amp;kind=signed">[[/feature/sign/list/signed]]</a>

@@ -1,0 +1,31 @@
+/*	sign - the standard part: the form of the signing page with the frame of the document and the pad, and the list of a member's requests	*/
+:root {
+	--sign-form-space: calc( var(--page-space-2) * 1.5 );
+	--sign-form-radius: var(--page-radius);
+}
+.sign-form, .sign-list { box-sizing: border-box; max-width: 44rem; margin: 0 auto var(--page-space-2); padding: var(--sign-form-space); border: var(--page-line) solid var(--brand-line); border-radius: var(--sign-form-radius); background: var(--brand-ground); color: var(--brand-ink); text-align: start; }
+.sign-form-title { margin: 0 0 var(--page-space-2); font-size: var(--page-text-4); font-weight: var(--page-weight-title); overflow-wrap: anywhere; }
+.sign-form-intro { margin: 0 0 var(--page-space-2); }
+.sign-form-frame { display: block; box-sizing: border-box; width: 100%; height: 24rem; border: var(--page-line) solid var(--brand-line); border-radius: var(--sign-form-radius); background: var(--brand-ground-alt); }
+.sign-form-frame:focus-visible, .sign-form-input:focus-visible, .sign-form-button:focus-visible, .sign-form-check:focus-visible, .sign-form-pad-canvas:focus-visible, .sign-form-open a:focus-visible, .sign-list a:focus-visible, .sign-form-link a:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.sign-form-open, .sign-form-link { margin: var(--page-space-1) 0 var(--page-space-2); }
+.sign-form-open a, .sign-form-link a, .sign-list a { display: inline-block; min-height: 1.75rem; color: var(--brand-ink); text-decoration: underline; }
+.sign-form-consent { margin: 0 0 var(--page-space-2); }
+.sign-form-consent label { display: flex; align-items: flex-start; gap: var(--page-space-1); min-height: 2.75rem; cursor: pointer; }
+.sign-form-check { flex: none; width: 1.5rem; height: 1.5rem; margin: 0; }
+.sign-form-pad { margin: 0 0 var(--page-space-2); }
+.sign-form-pad-draw { margin: 0 0 var(--page-space-2); }
+.sign-form-pad-label { display: block; margin: 0 0 var(--page-space-1); font-weight: var(--page-weight-title); }
+.sign-form-pad-canvas { display: block; box-sizing: border-box; width: 100%; max-width: 600px; aspect-ratio: 3 / 1; height: auto; margin: 0 0 var(--page-space-1); border: var(--page-line) dashed var(--brand-ink-quiet); border-radius: var(--sign-form-radius); background: var(--brand-ground-alt); color: var(--brand-ink); touch-action: none; cursor: crosshair; }
+.sign-form-input { box-sizing: border-box; width: 100%; min-height: 2.75rem; padding: .6em .75em; border: var(--page-line) solid var(--brand-ink-quiet); border-radius: var(--sign-form-radius); background: var(--brand-ground); color: var(--brand-ink); font: inherit; font-size: max( 16px, 1em ); line-height: 1.3; }
+.sign-form-actions { display: flex; flex-wrap: wrap; gap: var(--page-space-2); }
+.sign-form-button { box-sizing: border-box; min-height: 2.75rem; margin: 0; padding: .6em 1.25em; border: var(--page-line) solid var(--brand-accent); border-radius: var(--sign-form-radius); background: var(--brand-accent); color: var(--brand-on-accent); font: inherit; font-family: var(--brand-font-button); line-height: 1.2; cursor: pointer; }
+.sign-form-button-quiet { background: transparent; color: var(--brand-ink); border-color: var(--brand-ink-quiet); }
+.sign-form-button:hover:not(:disabled) { background: transparent; color: var(--brand-accent); }
+.sign-form-button:disabled { opacity: .6; cursor: not-allowed; }
+.sign-form-state { margin: 0 0 var(--page-space-2); padding: var(--page-space-1) var(--page-space-2); border-inline-start: 4px solid var(--brand-accent); background: var(--brand-ground-alt); font-weight: var(--page-weight-title); overflow-wrap: anywhere; }
+.sign-list-rows { margin: 0; padding: 0; list-style: none; }
+.sign-list-row, .sign-list-none { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--page-space-1) var(--page-space-2); padding: var(--page-space-1) 0; border-top: var(--page-line) solid var(--brand-line); }
+.sign-list-row:first-child, .sign-list-none:first-child { border-top: 0; }
+.sign-list-title { flex: 1 1 12rem; font-weight: var(--page-weight-title); overflow-wrap: anywhere; }
+.sign-list-state, .sign-list-date { color: var(--brand-ink-quiet); }
