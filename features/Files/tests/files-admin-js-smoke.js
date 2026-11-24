@@ -8,7 +8,7 @@
  *													   where there are two groups, the upload mark as a badge, the buttons of a row - the first opens the folder - and the one bar
  *													B. what narrows it: the group and the search, and what the box of the head chooses; a deletion of the chosen asks and says how many
  *													C. a folder is made and renamed in dialogs, with the refusals of the server said at their field; the mark is an immediate action
- *													D. the address: #files/files/@folder/<id> is the folder with its files, #files/files/<folder>-<file> the record over it, a folder that
+ *													D. the address: #files/files/<folder> is the folder with its files, #files/files/<folder>/<file> the record over it, a folder that
  *													   is not there is the directory and the address says so - and a reload at each of them draws it
  *													E. the folder: its files as rows, a removed file offers nothing but deletion, the bar has the danger at the left, the main button at the right
  *													F. the record of a file: the form holds what the file has, posts only what changed, refusals at the name, the deletion asks nested
@@ -34,6 +34,21 @@ const path = require('path');
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
 const { check, done, fills, load, adminPage, element, findAll, fire } = require( path.join( root, 'tests/harness.js' ) );
 
+// A suite that is stopped by an error says so as a failed check and ends with its count, as every other failure does - it is no crash that the run would have to read
+let ended = false;
+const stopped = function( error ) {
+
+	if( ended === true )
+		return;
+
+	ended = true;
+	check( 'the suite ran to its end - it was stopped by: '+ String( error && error.message ? error.message : error ).slice( 0, 120 ), false );
+	done();
+};
+
+process.on( 'uncaughtException', stopped );
+process.on( 'unhandledRejection', stopped );
+
 const featureDir = path.join( __dirname, '..' );
 const relative = path.relative( root, path.join( featureDir, 'assets/admin.js' ) );
 const own = function( locale ) { return fills( path.relative( root, path.join( featureDir, 'text/'+ locale+ '.php' ) ) ) };
@@ -45,8 +60,8 @@ const hasClass = function( node, name ) { return String( node.className ).split(
 const byClass = function( root, name ) { return findAll( root, function( node ) { return hasClass( node, name ) } ) };
 const buttons = function( root ) { return findAll( root, function( node ) { return node.tagName === 'BUTTON' } ) };
 const named = function( root, label ) { return buttons( root ).filter( function( button ) { return button.textContent === label || button.attributes['aria-label'] === label } ) };
-const atFolder = function( id ) { return function( h ) { return h.router.href( 'files', [ h.router.word('folder'), id ] ) } };
-const atFile = function( key ) { return function( h ) { return h.router.href( 'files', [ key ] ) } };
+const atFolder = function( id ) { return function( h ) { return h.router.href( 'files', [ id ] ) } };
+const atFile = function( folder, file ) { return function( h ) { return h.router.href( 'files', [ folder, file ] ) } };
 const choose = function( root, ids ) { ids.forEach( function( id ) { const row = rowsOf( root ).filter( function( each ) { return each.dataset.row === id } )[0]; const box = findAll( row, function( node ) { return node.tagName === 'INPUT' && node.type === 'checkbox' } )[0]; box.checked = true; fire( box, 'click' ) } ) };
 const clone = function( value ) { return JSON.parse( JSON.stringify( value ) ) };
 const text = function( root ) { return findAll( root, function() { return true } ).map( function( node ) { return node.textContent } ).join('\n') };
@@ -60,7 +75,7 @@ const folder = function( id, group, name, upload, count, bytes ) {
 };
 
 const file = function( folderId, id, name, extra ) {
-	return Object.assign( { id : id, key : folderId+ '-'+ id, folder : folderId, name : name, ext : name.split('.').pop(), size : 2400, mime : 'audio/mpeg', sha256 : 'a'.repeat( 64 ), by : { kind : 'owner', id : '', label : '' }, visible : true, final : false, created : '2026-11-02T10:15:00Z', url : '/.files/'+ id }, extra ?? {} );
+	return Object.assign( { id : id, key : id, folder : folderId, name : name, ext : name.split('.').pop(), size : 2400, mime : 'audio/mpeg', sha256 : 'a'.repeat( 64 ), by : { kind : 'owner', id : '', label : '' }, visible : true, final : false, created : '2026-11-02T10:15:00Z', url : '/.files/'+ id }, extra ?? {} );
 };
 
 const FOLDERS = [
@@ -314,9 +329,9 @@ function words( key ) { return english[key] }
 	w.open();
 	buttons( rowsOf( w.folders )[0] )[0].listeners.click[0]();
 
-	check( 'D. opening a folder writes #files/files/@folder/<id> as a new entry of the history and asks for the list of that folder', w.h.hash() === atFolder( ROOM )( w.h ) && w.requests[0].action === 'files/list' && w.requests[0].payload.folder === ROOM );
+	check( 'D. opening a folder writes #files/files/<folder> as a new entry of the history and asks for the list of that folder', w.h.hash() === atFolder( ROOM )( w.h ) && w.requests[0].action === 'files/list' && w.requests[0].payload.folder === ROOM );
 	w.answer( 200, LIST( ROOM ) );
-	check( 'D. ... the files are the rows of the directory of the folder, by their keys: the folder, a hyphen and the file', idsOf( w.view ) === [ ROOM+ '-'+ F1, ROOM+ '-'+ F2, ROOM+ '-'+ F3 ].join() );
+	check( 'D. ... the files are the rows of the directory of the folder, by their ids', idsOf( w.view ) === [ F1, F2, F3 ].join() );
 	check( 'D. ... its name is the title with the group beside it, and the one way back goes to the folders, an address that is a real link', byClass( w.view, 'nino-admin-contextbar-title' )[0].textContent === 'Room' && byClass( w.view, 'nino-admin-back-link' ).length === 1
 		&& byClass( w.view, 'nino-admin-back-link' )[0].href === w.h.router.href( 'files', [] ) );
 }
@@ -329,7 +344,7 @@ function words( key ) { return english[key] }
 }
 
 {
-	const w = world( null, atFile( ROOM+ '-'+ F2 ) );
+	const w = world( null, atFile( ROOM, F2 ) );
 
 	w.open();
 	check( 'D. a reload at the address of a file opens the record of it over its folder', w.h.dialogs.filter( function( d ) { return d.open } ).length === 1 && idsOf( w.view ).split(',').length === 3
@@ -351,7 +366,6 @@ function words( key ) { return english[key] }
 	w.open();
 
 	const rows = rowsOf( w.view );
-	const keys = [ ROOM+ '-'+ F1, ROOM+ '-'+ F2, ROOM+ '-'+ F3 ];
 
 	check( 'E. a name with markup and a key in it is text', findAll( w.view, function( node ) { return node.tagName === 'B' } ).length === 0 && text( rows[1] ).indexOf('<b>bold</b> [csrf].mp3') !== -1 );
 	check( 'E. the state is a badge with a word and a sign; a member who is gone is said as such, the owner as the owner, a member by name', text( rows[0] ).indexOf('✓ '+ W('state/visible') ) !== -1 && text( rows[1] ).indexOf('● '+ W('state/hidden') ) !== -1 && text( rows[2] ).indexOf( W('state/removed') ) !== -1
@@ -370,14 +384,14 @@ function words( key ) { return english[key] }
 
 	const dialog = w.h.dialogs.filter( function( d ) { return d.open } )[0];
 
-	check( 'F. a click on a row opens the record of the file at #files/files/<folder>-<file>, with the name in its head and its id under it', dialog !== undefined && w.h.hash() === atFile( keys[0] )( w.h ) && byClass( dialog, 'nino-admin-dialog-title' )[0].textContent === FILES[0].name
+	check( 'F. a click on a row opens the record of the file at #files/files/<folder>/<file>, with the name in its head and its id under it', dialog !== undefined && w.h.hash() === atFile( ROOM, F1 )( w.h ) && byClass( dialog, 'nino-admin-dialog-title' )[0].textContent === FILES[0].name
 		&& byClass( dialog, 'nino-admin-dialog-subtitle' )[0].textContent === F1 );
 	check( 'F. its form holds the name, the other folders of the group, whether the members see it and whether it is final - and reads the sender, the day, the size, the type and the checksum', findAll( dialog, function( node ) { return node.tagName === 'INPUT' && node.type === 'text' } ).length >= 1
 		&& findAll( dialog, function( node ) { return node.tagName === 'SELECT' } ).length === 1 && findAll( dialog, function( node ) { return node.tagName === 'SELECT' } )[0].children.length === 2 && byClass( dialog, 'nino-admin-readline' ).length === 5 );
 }
 
 {
-	const w = world( null, atFile( ROOM+ '-'+ F2 ) );
+	const w = world( null, atFile( ROOM, F2 ) );
 
 	w.open();
 
@@ -401,11 +415,11 @@ function words( key ) { return english[key] }
 	w.questions[0].options.onChoose( true );
 	check( 'F. a yes posts the one action of the server for this id', w.requests.length === 1 && w.requests[0].action === 'files/delete' && w.requests[0].payload.id === F2 );
 	w.answer( 200, { deleted : true } );
-	check( 'F. the file goes from the directory and the record is closed', idsOf( w.view ) === [ ROOM+ '-'+ F1, ROOM+ '-'+ F3 ].join() && w.h.dialogs.filter( function( d ) { return d.open } ).length === 0 );
+	check( 'F. the file goes from the directory and the record is closed', idsOf( w.view ) === [ F1, F3 ].join() && w.h.dialogs.filter( function( d ) { return d.open } ).length === 0 );
 }
 
 {
-	const w = world( null, atFile( ROOM+ '-'+ F2 ) );
+	const w = world( null, atFile( ROOM, F2 ) );
 
 	w.open();
 
@@ -437,6 +451,24 @@ function words( key ) { return english[key] }
 }
 
 
+{
+	// A file moved to another folder by its record: the record stays on it, the address has the other folder as its prefix and the screen is that folder's
+	const w = world( null, atFile( ROOM, F1 ) );
+
+	w.open();
+
+	const dialog = w.h.dialogs.filter( function( d ) { return d.open } )[0];
+	const target = findAll( dialog, function( node ) { return node.tagName === 'SELECT' } )[0];
+	const save = named( dialog, words('/_admin/common/label/save') )[0];
+
+	target.value = SIDE;
+	fire( target, 'change' );
+	fire( save, 'click' );
+	check( 'F. the move of a file by its record posts the other folder', w.requests.length === 1 && w.requests[0].action === 'files/save' && w.requests[0].payload.folder === SIDE );
+	w.answer( 200, { file : Object.assign( {}, FILES[0], { folder : SIDE } ) } );
+	check( 'F. ... the address is the one of the file in the other folder, and the other folder is read', w.h.hash() === atFile( SIDE, F1 )( w.h ) && w.requests.length === 1 && w.requests[0].action === 'files/list' && w.requests[0].payload.folder === SIDE );
+}
+
 // --- G. a selection in the folder ---------------------------------------------------------------------------------------------
 
 {
@@ -444,7 +476,7 @@ function words( key ) { return english[key] }
 
 	w.open();
 
-	choose( w.view, [ ROOM+ '-'+ F2, ROOM+ '-'+ F3 ] );
+	choose( w.view, [ F2, F3 ] );
 
 	const bulk = function( label ) {
 		return findAll( w.view, function( node ) { return node.tagName === 'BUTTON' && node.textContent === label && rowsOf( w.view ).every( function( row ) { return findAll( row, function( inner ) { return inner === node } ).length === 0 } ) } )[0];
@@ -554,13 +586,17 @@ async function addresses() {
 	const raw = function( tail ) { return function( h ) { return h.router.href( 'files', [] )+ '/files'+ tail } };
 
 	// A part nobody knows is written over by the address of what is shown: the folders, or the folder
+	const inFolder = function( w ) { return hrefOf( w, [ ROOM ] ) };
 	const cases = [
-		[ 'a word nobody knows', raw('/zzz'), '', function( w ) { return hrefOf( w, [] ) } ],
-		[ 'a word that looks like a folder word', raw('/@nope'), '', function( w ) { return hrefOf( w, [] ) } ],
-		[ 'a key that is no key of a file', raw('/'+ ROOM+ '-'+ F2+ 'x'), '', function( w ) { return hrefOf( w, [] ) } ],
+		[ 'a key nobody knows', raw('/zzz'), '', function( w ) { return hrefOf( w, [] ) } ],
+		[ 'a word nobody knows', raw('/@nope'), '', function( w ) { return hrefOf( w, [] ) } ],
+		[ 'a word in front of a key', raw('/@folder/'+ ROOM), '', function( w ) { return hrefOf( w, [] ) } ],
+		[ 'a key that is no key of a folder', raw('/'+ ROOM+ 'x'), '', function( w ) { return hrefOf( w, [] ) } ],
 		[ 'an escape that is none', raw('/%zz'), '', function( w ) { return hrefOf( w, [] ) } ],
-		[ 'a part behind the folder', raw('/@folder/'+ ROOM+ '/extra'), ROOM, function( w ) { return hrefOf( w, [ w.h.router.word('folder'), ROOM ] ) } ],
-		[ 'a file the folder has not', raw('/'+ ROOM+ '-000000000000'), ROOM, function( w ) { return hrefOf( w, [ w.h.router.word('folder'), ROOM ] ) } ],
+		[ 'a key that is no key of a file', raw('/'+ ROOM+ '/'+ F2+ 'x'), ROOM, inFolder ],
+		[ 'a part behind the file', raw('/'+ ROOM+ '/'+ F2+ '/extra'), ROOM, inFolder ],
+		[ 'a word behind the folder', raw('/'+ ROOM+ '/@nope'), ROOM, inFolder ],
+		[ 'a file the folder has not', raw('/'+ ROOM+ '/000000000000'), ROOM, inFolder ],
 	];
 
 	cases.forEach( function( each ) {
@@ -572,28 +608,33 @@ async function addresses() {
 	} );
 
 	{
-		const w = world( null, raw('/'+ ROOM+ '-000000000000') );
+		const w = world( null, raw('/'+ ROOM+ '/000000000000') );
 
 		w.open();
 		check( 'J. a key that is one of a file and names none is said over the folder ("not found")', text( w.view ).indexOf( W('error/missing-file') ) !== -1 );
+
+		const e = world( null, raw('/'+ ROOM+ '/'+ F2+ '/extra') );
+
+		e.open();
+		check( 'J. a part behind a file that is there is only written over - the file exists, so no sentence says it does not', text( e.view ).indexOf( W('error/missing-file') ) === -1 && e.h.hash() === hrefOf( e, [ ROOM ] ) );
 
 		const v = world( null, raw('/zzz') );
 
 		v.open();
 		check( 'J. a part that could be no identifier is only written over: no sentence about a file or a folder', text( v.folders ).indexOf( W('error/missing-file') ) === -1 && text( v.folders ).indexOf( W('error/missing-folder') ) === -1 );
 
-		const u = world( null, function( h ) { return h.router.href( 'files', [ h.router.word('folder'), 'ffffffffffff' ] ) } );
+		const u = world( null, function( h ) { return h.router.href( 'files', [ 'ffffffffffff' ] ) } );
 
 		u.open();
 		check( 'J. a folder that could be one and is not there is said over the folders, and the address is theirs', text( u.folders ).indexOf( W('error/missing-folder') ) !== -1 && u.h.hash() === hrefOf( u, [] ) );
 	}
 
 	{
-		// A key typed with an escape in it opens the record and is written in its own form
-		const w = world( null, raw('/'+ ROOM+ '%2D'+ F1) );
+		// A part typed with an escape in it that names a file opens the record, whose address is the one the router writes
+		const w = world( null, raw('/'+ ROOM+ '/%'+ F1.charCodeAt( 0 ).toString( 16 )+ F1.slice( 1 )) );
 
 		w.open();
-		check( 'J. a key typed as <folder>%2D<file> opens the record of the file over the folder and the address is written as the router writes it', w.h.dialogs.filter( function( d ) { return d.open } ).length === 1 && w.h.hash() === atFile( ROOM+ '-'+ F1 )( w.h ) );
+		check( 'J. an id typed with an escape in it opens the record of the file over the folder and the address is written as the router writes it', w.h.dialogs.filter( function( d ) { return d.open } ).length === 1 && w.h.hash() === atFile( ROOM, F1 )( w.h ) );
 	}
 
 	{
@@ -622,7 +663,7 @@ async function addresses() {
 
 	{
 		// A record that a typed address opened: closed, the address is the one of the folder that stays on screen, and a reload shows the same
-		const w = world( null, atFile( ROOM+ '-'+ F1 ) );
+		const w = world( null, atFile( ROOM, F1 ) );
 
 		w.open();
 
@@ -631,18 +672,30 @@ async function addresses() {
 
 		fire( close, 'click' );
 		await Promise.resolve();
-		check( 'J. the cross of a record that a typed address opened writes the address of the folder, which stays on screen', w.h.dialogs.filter( function( d ) { return d.open } ).length === 0 && w.h.hash() === hrefOf( w, [ w.h.router.word('folder'), ROOM ] ) && idsOf( w.view ).split(',').length === 3 );
+		check( 'J. the cross of a record that a typed address opened writes the address of the folder, which stays on screen', w.h.dialogs.filter( function( d ) { return d.open } ).length === 0 && w.h.hash() === hrefOf( w, [ ROOM ] ) && idsOf( w.view ).split(',').length === 3 );
 
 		// The same by a step to a file that is not there: the record says so and the folder's address is written, not the directory's
-		w.h.box.location.hash = atFile( ROOM+ '-999999999999' )( w.h );
+		w.h.box.location.hash = atFile( ROOM, '999999999999' )( w.h );
 		w.h.hashchange();
 		w.panel.showCurrent();
 		await Promise.resolve();
-		check( 'J. a step to a file that the folder has not leaves the folder on screen with its address and a sentence', w.h.hash() === hrefOf( w, [ w.h.router.word('folder'), ROOM ] ) && text( w.view ).indexOf( W('error/missing-file') ) !== -1 );
+		check( 'J. a step to a file that the folder has not leaves the folder on screen with its address and a sentence', w.h.hash() === hrefOf( w, [ ROOM ] ) && text( w.view ).indexOf( W('error/missing-file') ) !== -1 );
+	}
+
+	{
+		// A step, with a record open, to a part that could be no id: the record is gone, the folder's address is written, and no sentence says that a file is missing
+		const w = world( null, atFile( ROOM, F1 ) );
+
+		w.open();
+		w.h.box.location.hash = w.h.router.href( 'files', [ ROOM ] )+ '/zzz';
+		w.h.hashchange();
+		w.panel.showCurrent();
+		await Promise.resolve();
+		check( 'J. a step from a record to a part that could be no id closes the record, writes the folder\'s address and says nothing of a missing file', w.h.dialogs.filter( function( d ) { return d.open } ).length === 0 && w.h.hash() === hrefOf( w, [ ROOM ] ) && text( w.view ).indexOf( W('error/missing-file') ) === -1 );
 	}
 	{
 		// The record: "Save and continue" beside Save, the deletion at the left, and "Remove from the server" drawn red - it takes the bytes away - with a question that says what stays and what goes
-		const w = world( null, atFile( ROOM+ '-'+ F1 ) );
+		const w = world( null, atFile( ROOM, F1 ) );
 
 		w.open();
 		await Promise.resolve();

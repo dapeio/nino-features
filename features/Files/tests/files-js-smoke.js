@@ -23,6 +23,21 @@ const vm = require('vm');
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
 const { check, done, fills, load, findAll, fire, element, documentOf } = require( path.join( root, 'tests/harness.js' ) );
 
+// A suite that is stopped by an error says so as a failed check and ends with its count, as every other failure does - it is no crash that the run would have to read
+let ended = false;
+const stopped = function( error ) {
+
+	if( ended === true )
+		return;
+
+	ended = true;
+	check( 'the suite ran to its end - it was stopped by: '+ String( error && error.message ? error.message : error ).slice( 0, 120 ), false );
+	done();
+};
+
+process.on( 'uncaughtException', stopped );
+process.on( 'unhandledRejection', stopped );
+
 /** A file of the feature the way load() and fills() want it: from the root of the checkout */
 function own( relative ) {
 	return path.relative( root, fs.realpathSync( path.join( __dirname, '..', relative ) ) );

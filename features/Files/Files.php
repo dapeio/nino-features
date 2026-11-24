@@ -86,9 +86,6 @@ namespace Nino\Modules {
 		// How many upload forms this request has drawn
 		private const string FORMS = './files/forms';
 
-		// What a request of a visitor leaves for after its answer (see _later())
-		private const string OUTBOX = './files/outbox';
-
 		// How many mails the last call of notifyMembers() delivered
 		private const string MAILED = './nino/files/mailed';
 
@@ -120,28 +117,9 @@ namespace Nino\Modules {
 			// The accounts Members deletes: what they uploaded stays, and no longer says who sent it
 			\Nino\Callbacks::registerCallback( $appData, '/members/removed', [ self::class, 'callbackRemoved' ] );
 
-			// The mail to the owner goes after the answer; where the kernel cannot let the client go before, it is done as the request ends
-			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
-
 			// The words of the upload script: a published key is public, so the two lists are the words the script reads and nothing else
 			if( class_exists( '\\Nino\\Modules\\Jstext' ) === true )
 				\Nino\Modules\Jstext::publish( $appData, [ '/feature/files/state/', '/feature/files/script/' ] );
-		}
-
-		/**
-		 *	'/nino/http/output': the answer is about to go out. What a request of a member left to do after it (see _later()) is given to the kernel for after the
-		 *	answer, and where the kernel cannot let the client go before - it says so after this callback, and drops the work - it is done as the request ends, so that no
-		 *	mail is lost
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		&$request			(reference) Current server request
-		 *
-		 *	@return 	void
-		 */
-		public static function callbackOutput( array &$appData, array &$request ): void {
-
-			if( ( $appData[self::OUTBOX] ?? [] ) !== [] )
-				register_shutdown_function( static function() use ( &$appData ): void { self::_flush( $appData ); } );
 		}
 
 		/**
@@ -535,9 +513,10 @@ namespace Nino\Modules {
 
 				\Nino\Callbacks::doCallbacks( $appData, '/files/upload', $entry );
 
-				// The mail to the owner is for after the answer: the member who uploaded has no business waiting for a transport
+				// The mail to the owner waits in the outbox of the kernel, which delivers it after the answer: the member who uploaded has no business waiting for a transport,
+				// and the upload is in whatever becomes of the mail
 				if( \Nino\Features::setting( $appData, self::FEATURE_KEY, 'notifyOwner', false ) === true )
-					self::_later( $appData, static function() use ( &$appData, $entry, $folder, $member ): void { self::notifyOwner( $appData, $entry, $folder, $member ); } );
+					self::notifyOwner( $appData, $entry, $folder, $member );
 
 				if( $plain === true ) {
 					\Nino\Http::redirect( $appData, $request, $return. '?files=sent', 303 );
@@ -708,17 +687,19 @@ namespace Nino\Modules {
 
 		/**
 		 *	Tell the owner of a member's upload, where the setting notifyOwner is on: one mail to the contact address
-		 *	of the website, with the name of the file, its folder and who put it there. A site without an address, or
-		 *	without a contact address that is one, sends none and says so in a warning that names neither; a mail that
-		 *	is not delivered, or that the kernel's cap of mails an hour refuses, is a warning too, naming the file by its
-		 *	id and never an address. A member's upload asks for it after the answer (see callbackUpload())
+		 *	of the website, with the name of the file, its folder and who put it there, kept in the outbox of the kernel
+		 *	(\Nino\Mail::queue(), key 'files/upload-<id>'), which delivers it after the answer and tries again where the
+		 *	transport does not answer. A site without an address, or without a contact address that is one, sends none and
+		 *	says so in a warning that names neither; a mail the outbox refuses (invalid, size, full, conflict, ratelimited,
+		 *	unwritable) is a warning too, naming the file by its id and the reason and never an address - the upload is in
+		 *	whatever becomes of the mail
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$file					The entry, with its id
 		 *	@param		array 		$folder				Its folder
 		 *	@param		array 		$member				The account that uploaded it
 		 *
-		 *	@return 	bool										Whether a mail was delivered
+		 *	@return 	bool										Whether the mail is in the outbox
 		 */
 		public static function notifyOwner( array &$appData, array $file, array $folder, array $member ): bool {
 
@@ -726,7 +707,7 @@ namespace Nino\Modules {
 				return false;
 
 			$to = trim( (string) \Nino\Html::resolveTextfill( $appData, '/project/company/contact/email' ) );
-			$link = \Nino\Html::absoluteUrl( $appData, '/_admin'. \Nino\AdminAddress::of( 'files', [ \Nino\AdminAddress::word( 'folder' ), $folder['id'] ] ) );
+			$link = \Nino\Html::absoluteUrl( $appData, '/_admin'. \Nino\AdminAddress::of( 'files', [ $folder['id'] ] ) );
 
 			if( filter_var( $to, FILTER_VALIDATE_EMAIL ) === false || $link === '' ) {
 				trigger_error( 'Files: no mail was sent to the owner, the site has no contact address or no address of its own', E_USER_WARNING );
@@ -744,10 +725,14 @@ namespace Nino\Modules {
 				];
 			} );
 
-			if( \Nino\Mail::send( $appData, $to, $mail['subject'], $mail['body'], '' ) === true )
+			// One mail for one file, however often the request comes: the key is the feature's name and the id of the file
+			$id = \Nino\Mail::queue( $appData, [ 'to' => $to, 'subject' => $mail['subject'], 'body' => $mail['body'], 'replyTo' => '' ], \Nino\Mail::CLIENT, 'files/upload-'. $file['id'] );
+
+			if( $id !== '' )
 				return true;
 
-			trigger_error( 'Files: the mail to the owner about the file '. $file['id']. ( \Nino\Mail::rateLimited( $appData ) === true ? ' was refused by the cap of mails an hour' : ' was not delivered' ), E_USER_WARNING );
+			// The upload is in; the mail is a message and no part of the answer: said in the log - by the id of the file and the reason, never an address - and not an error
+			trigger_error( 'Files: the mail to the owner about the file '. $file['id']. ' was not kept for delivery: '. \Nino\Mail::queueRefused( $appData ), E_USER_WARNING );
 
 			return false;
 		}
@@ -895,7 +880,7 @@ namespace Nino\Modules {
 						$labels[$who] = $account === null ? '' : ( $account['name'] !== '' ? $account['name'] : $account['email'] );
 					}
 
-					$files[] = array_merge( $file, [ 'key' => $file['folder']. '-'. $file['id'], 'by' => $file['by'] + [ 'label' => $file['by']['kind'] === 'member' ? $labels[$who] : '' ], 'url' => self::url( $appData, $file['id'] ) ] );
+					$files[] = array_merge( $file, [ 'key' => $file['id'], 'by' => $file['by'] + [ 'label' => $file['by']['kind'] === 'member' ? $labels[$who] : '' ], 'url' => self::url( $appData, $file['id'] ) ] );
 				}
 			}
 
@@ -1270,36 +1255,6 @@ namespace Nino\Modules {
 			sort( $groups );
 
 			return $groups;
-		}
-
-		/**
-		 *	Leave work for after the answer: the mail to the owner about a member's upload. The kernel runs it once the client is let go
-		 *	(\Nino\Http::afterResponse()); where it cannot - it says so after '/nino/http/output', see callbackOutput() - the work is done
-		 *	as the request ends
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		callable	$work					The work, without arguments
-		 *
-		 *	@return 	void
-		 */
-		private static function _later( array &$appData, callable $work ): void {
-
-			$appData[self::OUTBOX][] = $work;
-
-			\Nino\Http::afterResponse( $appData, static function() use ( &$appData ): void { self::_flush( $appData ); } );
-		}
-
-		/**
-		 *	Do what a request left for after the answer, once each
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		private static function _flush( array &$appData ): void {
-
-			while( is_array( $appData[self::OUTBOX] ?? null ) === true && $appData[self::OUTBOX] !== [] )
-				( array_shift( $appData[self::OUTBOX] ) )();
 		}
 
 		/**

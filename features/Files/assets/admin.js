@@ -12,9 +12,10 @@
  *							(what is asked of the server, each ending in a callback with its status and answer) and the SCREEN, which draws the
  *							first with the blocks and calls the second.
  *
- *							The addresses are #files (the folders), #files/files/@folder/<folder> (a folder with its files: the word @folder and
- *							the key of the folder) and #files/files/<folder>-<file> (a file in the record over its folder: the key is ONE part,
- *							since the record names an entry by one - the kernel's record writes no more).
+ *							The addresses are #files (the folders), #files/files/<folder> (a folder with its files) and #files/files/<folder>/<file>
+ *							(a file in the record over its folder): the record has the folder as its prefix, the file as its entry. An address that
+ *							names none of these is written over by the one of the screen; a folder or a file that could be named and is not there is
+ *							said as well.
  */
 
 ( function(wn,dc) {
@@ -32,8 +33,8 @@
 	const FIELD = { files_name : 'name', files_long : 'name', files_filename : 'name', files_extension : 'name', files_version : 'name', files_group : 'group', files_target : 'folder' };
 
 	// The key of a file in the address: its folder, a hyphen and its id (twelve hexadecimal characters each)
-	const FILE_KEY = /^([a-f0-9]{12})-([a-f0-9]{12})$/;
-	const FOLDER_ID = /^[a-f0-9]{12}$/;
+	// The shape of the id of a folder and of a file: the only parts of an address that can name one
+	const ID = /^[a-f0-9]{12}$/;
 
 	// --- the data: folders, files, and what is made of them --------------------------------------------------------------------
 
@@ -157,7 +158,7 @@
 		},
 
 		/**
-		 *	The rows of the directory of the files of a folder: a file as it is drawn - named in the address by its folder and its id
+		 *	The rows of the directory of the files of a folder: a file as it is drawn - named in the address by its id, behind its folder
 		 *
 		 *	@param		{Array}		files
 		 *
@@ -311,25 +312,20 @@
 		return Nino.adminUi.format( w( count === 1 ? one : many ), ...params, count );
 	};
 
-	// The folder the address names: its own view (@folder/<folder>) or the record of a file in it (<folder>-<file>); '' for the directory
+	// The folder the address names: its own view (<folder>) or the record of a file in it (<folder>/<file>); '' for the directory
 	const addressFolder = function() {
 
 		const at = Nino.admin.router.current();
 
-		if( at.panel !== 'files' || at.parts.length === 0 )
+		if( at.panel !== 'files' || at.parts.length === 0 || Nino.admin.router.wordOf( at.parts, 0 ) !== '' )
 			return '';
 
-		if( Nino.admin.router.isWord( at.parts, 0, 'folder' ) === true )
-			return typeof at.parts[1] === 'string' ? at.parts[1] : '';
-
-		const found = at.parts.length === 1 && typeof at.parts[0] === 'string' ? FILE_KEY.exec( at.parts[0] ) : null;
-
-		return found === null ? '' : found[1];
+		return ID.test( String( at.parts[0] ) ) === true ? String( at.parts[0] ) : '';
 	};
 
-	// The address of a folder's view
+	// The address of a folder's view: the folder is a key and the prefix of the record
 	const viewParts = function( id ) {
-		return id === '' ? [] : [ Nino.admin.router.word('folder'), id ];
+		return id === '' ? [] : [ id ];
 	};
 
 	// A move of the person inside the panel: the address is a new entry of the history, and the screen follows it
@@ -427,7 +423,8 @@
 	};
 
 	// The address is the one of what is on screen: one that names what is shown (the folders, a folder, a file of the folder the record opens over it) stays, any other - a part nobody
-	// knows, a folder or a file that is not there - is written over by the address of the screen. A part that could be an identifier and names nothing is said; any other is only written over
+	// knows, a folder or a file that is not there, a part too many - is written over by the address of the screen. A part that could name a folder or a file and names none is said; any
+	// other is only written over. What a record does with an address of its own - its entry, its directory - is the record's
 	const settle = function() {
 
 		const router = Nino.admin.router;
@@ -437,26 +434,20 @@
 			return;
 
 		const parts = at.parts.map( String );
-		const expected = viewParts( S.loaded ).map( String );
-		const key = parts.length === 1 ? parts[0] : '';
-		const found = FILE_KEY.exec( key );
+		const keyed = at.parts.every( function( part, index ) { return router.wordOf( at.parts, index ) === '' } );
+		const expected = viewParts( S.loaded );
 
-		// The file the record is about to open over the folder: its address is the one the router writes - a key typed with an escape in it (%2D) is written in its own form
-		if( found !== null && S.loaded !== '' && found[1] === S.loaded && fileOf( key ) !== null ) {
-
-			if( wn.location.hash !== router.href( 'files', [ key ] ) )
-				router.set( 'files', [ key ] );
-
+		// The file the record is about to open over the folder: the record writes its address as it opens
+		if( keyed === true && S.loaded !== '' && parts.length === 2 && parts[0] === S.loaded && fileOf( parts[1] ) !== null )
 			return;
-		}
 
 		// What the screen shows
-		if( parts.join('/') === expected.join('/') && wn.location.hash === router.href( 'files', viewParts( S.loaded ) ) )
+		if( keyed === true && parts.join('/') === expected.join('/') && wn.location.hash === router.href( 'files', expected ) )
 			return;
 
-		const asked = ( parts.length >= 2 && parts[0] === '@folder' && FOLDER_ID.test( parts[1] ) === true && S.loaded === '' ) ? 'folder' : ( found !== null ? 'file' : '' );
+		const asked = keyed === false ? '' : ( S.loaded === '' && parts.length >= 1 && ID.test( parts[0] ) === true ? 'folder' : ( S.loaded !== '' && parts.length >= 2 && parts[0] === S.loaded && ID.test( parts[1] ) === true && fileOf( parts[1] ) === null ? 'file' : '' ) );
 
-		router.set( 'files', viewParts( S.loaded ) );
+		router.set( 'files', expected );
 
 		if( asked === 'folder' && S.list !== null )
 			S.list.notice( w('error/missing-folder') );
@@ -1236,6 +1227,12 @@
 
 			S.view.update( rows, row.key );
 			done( true, { row : rows.find( function( each ) { return each.key === row.key } ) ?? data.fileRows( [ now ] )[0] } );
+
+			// The file is in another folder: the record stays on it, and the address - the folder is its prefix - and the screen are the other folder's
+			if( changed.folder !== undefined ) {
+				Nino.admin.router.set( 'files', [ changed.folder, row.id ] );
+				load();
+			}
 		} );
 	};
 
@@ -1280,23 +1277,15 @@
 	const proxy = {
 		rows : function() { return S.view === null ? [] : S.view.rows() },
 		reveal : function( key ) { if( S.view !== null ) S.view.reveal( key ) },
-		focusRow : function( key ) {
-
-			// The record that stood over the folder is closed: an address that was typed is written over by the one of the directory of the screen, which is the folder's while the folder is shown
-			const at = Nino.admin.router.current();
-
-			if( S.loaded !== '' && at.panel === 'files' && at.parts.length === 0 )
-				Nino.admin.router.set( 'files', viewParts( S.loaded ) );
-
-			if( S.view !== null )
-				S.view.focusRow( key );
-		},
+		focusRow : function( key ) { if( S.view !== null ) S.view.focusRow( key ) },
 	};
 
 	const makeRecord = function() {
 
 		return Nino.adminUi.record( {
 			screen	: 'files',
+			// The files are under a part of the screen: the folder - #files/files/<folder>/<file>
+			prefix	: function() { return viewParts( S.loaded ) },
 			directory	: proxy,
 			keyOf		: function( row ) { return row.key },
 			find		: function( key ) {
@@ -1315,17 +1304,9 @@
 			],
 			missing	: function( key ) {
 
-				// A key that could be a file is said, any other is no file and is only written over; the record writes the address of the screen after this, so the folder's is written after that
-				if( FILE_KEY.test( key ) === true )
+				// The record writes the address of the folder; a key that could be a file is said, any other is no file and is only written over
+				if( ID.test( key ) === true )
 					missingFile();
-
-				Promise.resolve().then( function() {
-
-					const at = Nino.admin.router.current();
-
-					if( S.loaded !== '' && at.panel === 'files' && at.parts.length === 0 )
-						Nino.admin.router.set( 'files', viewParts( S.loaded ) );
-				} );
 			},
 		} );
 	};

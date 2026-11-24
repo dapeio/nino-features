@@ -309,7 +309,7 @@ check( 'it says all six sections of its manual in both languages, and the lines 
 		&& count( $manifest['manual']['routes'] ) === 5 && count( $manifest['manual']['panel'] ) >= 3;
 } )() );
 check( 'the callbacks of the manual are the ones it fires and hears, and the lines "for other features" name the classes - nothing the code does not have',
-	array_diff( [ '/files/upload', '/files/add', '/files/delete', '/files/granted', '/files/allowed', '/members/removed', '/nino/admin/restore', '/nino/http/output' ], array_keys( $manifest['manual']['callbacks'] ) ) === []
+	array_diff( [ '/files/upload', '/files/add', '/files/delete', '/files/granted', '/files/allowed', '/members/removed', '/nino/admin/restore' ], array_keys( $manifest['manual']['callbacks'] ) ) === []
 	&& isset( $manifest['manual']['callbacks']['For other features: \Nino\Modules\Files, read'], $manifest['manual']['callbacks']['For other features: \Nino\Modules\Files\Store, data'], $manifest['manual']['callbacks']['For other features: \Nino\Modules\Files, the owner\'s operations'] ) === true );
 
 // The catalogue's preview reads every manifest through the kernel, and is a script of the catalogue: it is there when this test runs in the
@@ -401,10 +401,10 @@ else {
 \Nino\Features::registerParts( $appData );
 $ignored = ninoWarnings();
 
-check( 'init registers the two routes with their handlers, the merge of a restore, the hook of a deleted account and the work after the answer - and no shortcode of its own beside the components of the folders',
+check( 'init registers the two routes with their handlers, the merge of a restore and the hook of a deleted account - and nothing of its own at the output of the answer, no shortcode of its own beside the components of the folders',
 	( $appData['/nino/http/routes']['GET://.files/*']['uri'] ?? null ) === '/.files/*' && ( $appData['/nino/http/routes']['POST://.files/upload']['uri'] ?? null ) === '/.files/upload'
 	&& isset( $appData['./nino/callbacks']['/nino/http/response/GET://.files/*'], $appData['./nino/callbacks']['/nino/http/response/POST://.files/upload'], $appData['./nino/callbacks']['/nino/admin/restore'], $appData['./nino/callbacks']['/members/removed'] ) === true
-	&& in_array( [ \Nino\Modules\Files::class, 'callbackOutput' ], \Nino\Callbacks::registered( $appData, '/nino/http/output' ), true ) === true && $ignored === [] );
+	&& array_filter( \Nino\Callbacks::registered( $appData, '/nino/http/output' ), static fn( mixed $callback ): bool => is_array( $callback ) === true && ( $callback[0] ?? null ) === \Nino\Modules\Files::class ) === [] && $ignored === [] );
 
 echo "\n";
 
@@ -2191,7 +2191,7 @@ $mail = $mails[0] ?? [];
 $text = strip_tags( (string) ( $mail['body'] ?? '' ) );
 check( 'with it on one mail goes to the contact address of the website after a member\'s upload: the file named, its folder, the member, a link to the panel on the website\'s address, no key or token left in it',
 	$onStatus === 200 && count( $mails ) === 1 && $mail['to'] === 'owner@example.org' && trim( (string) $mail['subject'] ) !== '' && str_contains( (string) $mail['subject'], '[[' ) === false && str_contains( (string) $mail['body'], '[[' ) === false
-	&& str_contains( $text, 'Mail Take.mp3' ) === true && str_contains( $text, 'Room' ) === true && str_contains( $text, 'Ada Lovelace' ) === true && str_contains( (string) $mail['body'], 'href="https://example.org/club/_admin#files/files/@folder/'. $room['id']. '"' ) === true );
+	&& str_contains( $text, 'Mail Take.mp3' ) === true && str_contains( $text, 'Room' ) === true && str_contains( $text, 'Ada Lovelace' ) === true && str_contains( (string) $mail['body'], 'href="https://example.org/club/_admin#files/files/'. $room['id']. '"' ) === true );
 
 $mails = [];
 filesAs( 'ada' );
@@ -2217,8 +2217,51 @@ $refusedMail = filesMemberUpload( $appData, 'ada', 'Unsent.mp3', $room['id'], $s
 $delivery = true;
 $unsentWarnings = ninoWarnings();
 $unsentId = array_values( array_filter( \Nino\Modules\Files::files( $appData, $room['id'] ), static fn( array $file ): bool => $file['name'] === 'Unsent.mp3' ) )[0]['id'] ?? '';
-check( 'a mail no transport takes does not undo the upload: the file is in, the answer is the same', $refusedMail === 200 && count( $mails ) === 1 && \Nino\Modules\Files::files( $appData, $room['id'] ) !== [] );
-check( '...and it leaves a trace: one warning that names the file by its id and holds no address', $unsentId !== '' && count( $unsentWarnings ) === 1 && str_contains( $unsentWarnings[0], $unsentId ) === true && str_contains( $unsentWarnings[0], '@' ) === false );
+$waitingOutbox = \Nino\Mail::queued( $appData );
+check( 'a mail no transport takes does not undo the upload: the file is in, the answer is the same - and the mail is not lost: it waits in the outbox of the kernel for its next attempt',
+	$refusedMail === 200 && $unsentId !== '' && $waitingOutbox['waiting'] === 1 );
+foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE ] as $outbox )
+	@unlink( \Nino\Filesystem::path( $appData, $outbox ) );
+$mails = [];
+check( '...and the feature has nothing to say about it: the attempts and the end of them are the outbox\'s - no warning of its own', $unsentWarnings === [] );
+
+// What the outbox refuses is said at the call: the upload is in, one warning names the file by its id and the reason and holds no address
+$capBefore = $appData['/nino/mail/cap'] ?? null;
+$appData['/nino/mail/cap'] = 1000;
+filesFresh( $appData );
+for( $n = 0; $n < \Nino\MailQueue::MAX_CLIENT; $n++ )
+	\Nino\Mail::queue( $appData, [ 'to' => 'fill'. $n. '@example.net', 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT, 'fill/n'. $n );
+ninoWarnings();
+$fullAnswer = filesUpload( $appData, 'filesMemberSend', 'Full.mp3', $smallFile, [ 'folder' => $room['id'] ] );
+$fullWarnings = ninoWarnings();
+$fullId = array_values( array_filter( \Nino\Modules\Files::files( $appData, $room['id'] ), static fn( array $file ): bool => $file['name'] === 'Full.mp3' ) )[0]['id'] ?? '';
+check( 'a mail the outbox refuses (it holds the most mails of visitors it keeps) does not undo the upload either: the answer is 200, the file is in, and one warning names the file by its id and "full" and holds no address',
+	$fullAnswer[0][0] === 200 && $fullId !== '' && count( $fullWarnings ) === 1 && str_contains( $fullWarnings[0], $fullId ) === true && str_contains( $fullWarnings[0], 'full' ) === true && str_contains( $fullWarnings[0], '@' ) === false );
+foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE ] as $outbox )
+	@unlink( \Nino\Filesystem::path( $appData, $outbox ) );
+
+// The cap of mails an hour of the client is charged when the mail is queued: over it the mail is refused as "ratelimited", the upload is in
+$appData['/nino/mail/cap'] = 1;
+filesAs( 'ada' );
+filesFresh( $appData );
+filesUpload( $appData, 'filesMemberSend', 'Cap One.mp3', $smallFile, [ 'folder' => $room['id'] ] );
+ninoWarnings();
+$capAnswer = filesUpload( $appData, 'filesMemberSend', 'Cap Two.mp3', $smallFile, [ 'folder' => $room['id'] ] )[0][0];
+$capWarnings = ninoWarnings();
+check( 'over the cap of mails an hour the mail of an upload is refused by the outbox as "ratelimited": the answer is 200 and one warning says so with the id of the file and no address',
+	$capAnswer === 200 && count( $capWarnings ) === 1 && str_contains( $capWarnings[0], 'ratelimited' ) === true && str_contains( $capWarnings[0], '@' ) === false );
+foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE ] as $outbox )
+	@unlink( \Nino\Filesystem::path( $appData, $outbox ) );
+if( $capBefore === null )
+	unset( $appData['/nino/mail/cap'] );
+else
+	$appData['/nino/mail/cap'] = $capBefore;
+filesFresh( $appData );
+$mails = [];
+
+// A request that comes twice - a double click, a retry of the browser - is one mail: the key is the name of the feature and the id of the file
+check( 'the mail of an upload is queued under a key that begins with the name of the feature and holds the id of the file, so a request that comes twice is one mail',
+	preg_match( '~Mail::queue\( \$appData, \[[^;]*\'files/upload-\'\s*\.\s*\$file\[\'id\'\]~', (string) file_get_contents( dirname( __DIR__ ). '/Files.php' ) ) === 1 );
 
 // ...and so does a mail the kernel's cap of mails an hour refuses: nothing is sent, the upload is in, one warning
 filesAs( 'ada' );
@@ -3463,13 +3506,13 @@ function filesSpecChecks( array &$appData, array $room, callable $panel ): void 
 
 		return array_values( $list );
 	};
-	$kernel = [ 'adminPanels', 'callbackDownload', 'callbackOutput', 'callbackRemoved', 'callbackRestore', 'callbackUpload', 'componentFilesBrowser', 'componentFilesUpload', 'doShortcodeMailHead', 'init' ];
+	$kernel = [ 'adminPanels', 'callbackDownload', 'callbackRemoved', 'callbackRestore', 'callbackUpload', 'componentFilesBrowser', 'componentFilesUpload', 'doShortcodeMailHead', 'init' ];
 	$ours = $methods( \Nino\Modules\Files::class );
 	$data = $methods( $store );
 	$unnamed = array_values( array_unique( array_merge( ...array_values( array_map( static fn( string $text ): array => array_filter( array_merge( $ours, $data ), static fn( string $name ): bool => str_contains( $text, $name ) === false ), $manuals ) ) ) ) );
 
-	check( 'the interface of \Nino\Modules\Files is these 32 public methods, those of the Store these 37 - the manual names every one of them in both languages but the ones the kernel calls (the init, the callbacks, the components and the panels), which it says are no interface',
-		$ours === [ 'adminPanels', 'allowed', 'callbackDownload', 'callbackOutput', 'callbackRemoved', 'callbackRestore', 'callbackUpload', 'change', 'componentFilesBrowser', 'componentFilesUpload', 'createFolder', 'deleteFile', 'deleteFolder', 'disposition',
+	check( 'the interface of \Nino\Modules\Files is these 31 public methods, those of the Store these 37 - the manual names every one of them in both languages but the ones the kernel calls (the init, the callbacks, the components and the panels), which it says are no interface',
+		$ours === [ 'adminPanels', 'allowed', 'callbackDownload', 'callbackRemoved', 'callbackRestore', 'callbackUpload', 'change', 'componentFilesBrowser', 'componentFilesUpload', 'createFolder', 'deleteFile', 'deleteFolder', 'disposition',
 			'doShortcodeMailHead', 'file', 'files', 'folders', 'grouped', 'init', 'markFolder', 'notify', 'notifyMembers', 'notifyOwner', 'overview', 'page', 'path', 'removeFile', 'renameFolder', 'upload', 'url', 'version' ]
 		&& count( $data ) === 37 && array_diff( $unnamed, $kernel ) === [] && count( array_intersect( $unnamed, $kernel ) ) === count( $unnamed ) );
 
@@ -3481,8 +3524,8 @@ function filesSpecChecks( array &$appData, array $room, callable $panel ): void 
 	$listed = array_values( array_filter( array_keys( $feature['manual']['callbacks'] ), static fn( string $key ): bool => str_starts_with( $key, '/' ) ) );
 	sort( $listed );
 
-	check( 'the hooks of the manual are the ones the code fires, hears or asks - /files/upload, /files/add, /files/delete, /files/granted, /files/allowed, /members/removed, /nino/admin/restore and /nino/http/output - and none besides',
-		$used === $listed && $listed === [ '/files/add', '/files/allowed', '/files/delete', '/files/granted', '/files/upload', '/members/removed', '/nino/admin/restore', '/nino/http/output' ] );
+	check( 'the hooks of the manual are the ones the code fires, hears or asks - /files/upload, /files/add, /files/delete, /files/granted, /files/allowed, /members/removed, and /nino/admin/restore - and none besides',
+		$used === $listed && $listed === [ '/files/add', '/files/allowed', '/files/delete', '/files/granted', '/files/upload', '/members/removed', '/nino/admin/restore' ] );
 
 	// --- a deleted account: the uploads stay and the sender has no name
 	$dora = \Nino\Modules\Members::add( $appData, 'dora@example.org', 'Dora', 'staff' );
@@ -3615,7 +3658,7 @@ function filesSpecChecks( array &$appData, array $room, callable $panel ): void 
 	$mails = [];
 	filesMemberUpload( $appData, 'ada', $tokenName, $room['id'], $smallFile );
 	$ownerMail = strip_tags( (string) ( $mails[0]['body'] ?? '' ) );
-	$ownerLinks = substr_count( (string) ( $mails[0]['body'] ?? '' ), 'href="https://example.org/club/_admin#files/files/@folder/' );
+	$ownerLinks = substr_count( (string) ( $mails[0]['body'] ?? '' ), 'href="https://example.org/club/_admin#files/files/' );
 	$mails = [];
 	filesWorkbench( 'admin' );
 	filesOwnerUpload( $appData, $tokenName, $room['id'] );

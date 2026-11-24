@@ -100,6 +100,10 @@ return [
 				'en_US' => 'A file that is being uploaded holds its declared size against the quota until it is in or has had no chunk for 15 minutes.',
 				'de_DE' => 'Eine Datei, die hochgeladen wird, belegt ihre erklärte Größe im Kontingent, bis sie fertig ist oder 15 Minuten kein Teil kam.',
 			],
+			'The mail to the owner about an upload' => [
+				'en_US' => 'With the setting notifyOwner a member\'s upload puts one mail for the contact address into the outbox of the kernel, which delivers it after the answer.',
+				'de_DE' => 'Mit der Einstellung notifyOwner legt der Upload eines Mitglieds eine Mail für die Kontaktadresse in den Postausgang des Kernels, der sie nach der Antwort ausliefert.',
+			],
 			'The mail to the group: the page it links' => [
 				'en_US' => 'The actions files/upload, files/save and files/notify take the field page, a path of this site, as the page the mail to the group links; anything else is the page members land on.',
 				'de_DE' => 'Die Aktionen files/upload, files/save und files/notify nehmen das Feld page, einen Pfad dieser Website, als Seite der Mail an die Gruppe; alles andere ist die Seite, auf der Mitglieder landen.',
@@ -137,10 +141,6 @@ return [
 			'/nino/admin/restore' => [
 				'en_US' => 'A restore keeps the index of the backup and shows a file whose bytes are not on the server as removed from it, as well as what the live index has removed since.',
 				'de_DE' => 'Eine Wiederherstellung behält den Index der Sicherung und zeigt eine Datei, deren Bytes nicht auf dem Server sind, als entfernt, ebenso was der aktuelle Index seither entfernt hat.',
-			],
-			'/nino/http/output' => [
-				'en_US' => 'The mail to the owner about a member\'s upload goes after the answer; where the kernel cannot let the client go before, it is sent as the request ends.',
-				'de_DE' => 'Die Mail an den Inhaber über den Upload eines Mitglieds geht nach der Antwort hinaus; wo der Kernel den Client nicht vorher entlassen kann, wird sie mit dem Ende der Anfrage gesendet.',
 			],
 			'For other features: \Nino\Modules\Files, read' => [
 				'en_US' => 'Read: folders, files, file, path, allowed, url, version, grouped and disposition.',
