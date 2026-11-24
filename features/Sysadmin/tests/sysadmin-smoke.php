@@ -629,12 +629,14 @@ $findings = static function() use ( &$appData ): array {
 };
 check( 'a site with room, no cap reached and no refused manifest has none of them', array_diff_key( $findings(), array_flip( array_filter( array_keys( $findings() ), static fn( string $key ): bool => str_starts_with( $key, 'dashboard:' ) ) ) ) === [] );
 
-// The backup that failed: the kernel's own refusal - a memory limit it cannot work under - and the note it leaves,
-// which missed() answers and which a page request reads as well as the workbench does
+// The backup that failed: the kernel's own refusal - the room of the disk or the memory limit it cannot work under, whichever
+// the kernel that runs asks for first: both are set - and the note it leaves, which missed() answers and which a page request
+// reads as well as the workbench does
 $appData['./nino/backups/memory'] = 1048576;
+$appData['./nino/backups/disk'] = 1;
 $appData['./nino/backups/today'] = date( 'Y-m-d', $base );
 \Nino\Modules\Backups::maybeRun( $appData );
-unset( $appData['./nino/backups/memory'] );
+unset( $appData['./nino/backups/memory'], $appData['./nino/backups/disk'] );
 $kept = array_values( array_filter( ninoWarnings(), static fn( string $warning ): bool => str_starts_with( $warning, 'Backup failed: ' ) ) );
 $noted = \Nino\Modules\Backups::missed( $appData );
 $failed = \Nino\Modules\Sysadmin\Report::backup( $appData, $base + 120 );
