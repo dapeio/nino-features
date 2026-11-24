@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Dateien für Mitglieder", "en_US": "Files for members" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz, die Dateien der Gruppe und das Formular zum Hochladen, für die Seite eines Mitgliederbereichs.", "en_US": "A headline, a sentence, the files of the group and the upload form, for the page of a members' area." },
+	"category": "content",
+	"rank": 97,
+	"images": {}
+}

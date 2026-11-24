@@ -1,0 +1,46 @@
+/*	files - the standard part: the browser of the files of a member's group (folders, rows, the links that open and save a file) and the form that uploads into the folder of the group, with the lists the script fills (the files chosen, the progress of each)	*/
+:root {
+	--files-browser-space: var(--page-space-2);
+	--files-browser-radius: var(--page-radius);
+	--files-upload-space: var(--page-space-2);
+	--files-upload-radius: var(--page-radius);
+}
+.files-browser, .files-upload { box-sizing: border-box; margin: 0 0 var(--page-space-2); border: var(--page-line) solid var(--brand-line); background: var(--brand-ground); color: var(--brand-ink); text-align: start; }
+.files-browser { padding: var(--files-browser-space); border-radius: var(--files-browser-radius); }
+.files-upload { padding: var(--files-upload-space); border-radius: var(--files-upload-radius); }
+.files-browser-folder + .files-browser-folder { margin-top: var(--files-browser-space); }
+.files-browser-title { margin: 0 0 var(--page-space-1); font-size: var(--page-text-2); }
+.files-browser-count { font-size: var(--page-text-1); font-weight: var(--page-weight-text); color: var(--brand-ink-quiet); }
+.files-browser-list { margin: 0; padding: 0; list-style: none; }
+.files-browser-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--page-space-1) var(--page-space-2); padding: var(--page-space-1) 0; border-top: var(--page-line) solid var(--brand-line); }
+.files-browser-link { overflow-wrap: anywhere; color: var(--brand-accent); }
+.files-browser-size, .files-browser-date { font-size: var(--page-text-1); white-space: nowrap; }
+.files-browser-size { grid-column: 2; grid-row: 1; }
+.files-browser-download { grid-column: 2; grid-row: 2; display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 var(--page-space-2); color: var(--brand-accent); }
+@media (min-width: 640px) {
+	.files-browser-row { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+	.files-browser-size, .files-browser-date, .files-browser-download { grid-column: auto; grid-row: auto; }
+}
+.files-browser-empty, .files-browser-none { margin: 0; padding: var(--page-space-1) 0; }
+.files-browser-link:focus-visible, .files-browser-download:focus-visible, .files-upload-input:focus-visible, .files-upload-button:focus-visible, .files-upload-remove:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+.files-upload-label { display: block; margin-bottom: var(--page-space-1); font-weight: var(--page-weight-title); }
+.files-upload-input { display: block; max-width: 100%; min-height: 2.75rem; margin-bottom: var(--page-space-1); font: inherit; color: inherit; }
+.files-upload-hint, .files-upload-state { margin: 0 0 var(--page-space-1); }
+.files-upload-hint { font-size: var(--page-text-1); color: var(--brand-ink-quiet); overflow-wrap: anywhere; }
+.files-upload-state { padding: var(--page-space-1) var(--page-space-2); border-inline-start: 4px solid var(--brand-accent); background: var(--brand-ground-alt); font-weight: var(--page-weight-title); }
+.files-upload-button { box-sizing: border-box; min-height: 2.75rem; margin: 0; padding: .6em 1.25em; border: var(--page-line) solid var(--brand-accent); border-radius: var(--files-upload-radius); background: var(--brand-accent); color: var(--brand-on-accent); font: inherit; font-family: var(--brand-font-button); line-height: 1.2; cursor: pointer; }
+.files-upload-button:hover { background: transparent; color: var(--brand-accent); }
+.files-upload-button:disabled { opacity: .6; cursor: default; }
+.files-upload-list, .files-upload-chosen { margin: var(--page-space-2) 0 0; padding: 0; list-style: none; }
+.files-upload-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--page-space-1) var(--page-space-2); padding: var(--page-space-1) 0; border-top: var(--page-line) solid var(--brand-line); }
+.files-upload-item[data-state="failed"] .files-upload-status { grid-column: 1 / -1; font-weight: var(--page-weight-title); }
+.files-upload-name { overflow-wrap: anywhere; }
+.files-upload-bar { grid-column: 1 / -1; width: 100%; accent-color: var(--brand-accent); }
+.files-upload-chosen-hint { margin: var(--page-space-1) 0; font-size: var(--page-text-1); color: var(--brand-ink-quiet); }
+.files-upload-pick { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--page-space-1) var(--page-space-2); padding: var(--page-space-1) 0; border-top: var(--page-line) solid var(--brand-line); }
+.files-upload-size { font-size: var(--page-text-1); white-space: nowrap; }
+.files-upload-remove { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; margin: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.files-upload-remove:hover { background: var(--brand-ground-alt); }
+.files-upload-icon { position: relative; display: block; width: 1.25rem; height: 1.25rem; }
+.files-upload-icon::before, .files-upload-icon::after { content: ""; position: absolute; top: 50%; left: 10%; width: 80%; height: 2px; margin-top: -1px; border-radius: 1px; background: currentcolor; transform: rotate(45deg); }
+.files-upload-icon::after { transform: rotate(-45deg); }

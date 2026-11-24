@@ -1,0 +1,46 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	admin.css	The panel of the Files feature, beyond the design system: a name that is long breaks where it has to, the limits stand over the table,
+ *						and the rows of the upload - the name, its size or its word, the button that takes it out of the list and the progress under them.
+ *						Scoped to the two levels of the pane and to the root of the dialog's content, the steps are the workbench's.
+ */
+
+@layer nino.tool {
+
+/* A name has no room to spare at 390 px: it breaks anywhere, and the cell it stands in may be as narrow as the table makes it */
+#files-list .files-admin-name,
+#files-folder .files-admin-name {
+	min-width: 0;
+}
+#files-list .files-admin-name > *,
+#files-folder .files-admin-file {
+	overflow-wrap: anywhere;
+	text-align: start;
+}
+
+.files-admin-upload .files-admin-queue {
+	margin: var(--nino-admin-space-5) 0;
+	padding: 0;
+	list-style: none;
+}
+.files-admin-upload .files-admin-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: var(--nino-admin-space-1) var(--nino-admin-space-5);
+	padding: var(--nino-admin-space-3) 0;
+}
+.files-admin-upload .files-admin-file {
+	overflow-wrap: anywhere;
+}
+.files-admin-upload .files-admin-row progress {
+	grid-column: 1 / -1;
+	width: 100%;
+}
+.files-admin-upload .files-admin-row[data-state="failed"] small {
+	font-weight: var(--nino-admin-weight-strong);
+}
+
+}
