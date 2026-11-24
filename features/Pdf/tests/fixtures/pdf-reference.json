@@ -1,0 +1,58 @@
+{
+	"fixture-A": {
+		"sha256": "fb3a2b745d01c09c1f18ef36c021c617dd2709296748b8c2109399acae5d10de",
+		"bytes": 4065
+	},
+	"fixture-B": {
+		"sha256": "fd66fd859c0ae5dc0a3f9d5e74ebf05bf957f94189d29544da2c72bc0c419daf",
+		"bytes": 3154
+	},
+	"fixture-C": {
+		"sha256": "48ae334e0281ed5c12d6f13ccb55f68baa50a183579ebf90b0a45c2bb26bda78",
+		"bytes": 2962
+	},
+	"seals-owner": {
+		"sha256": "a3260456a93e12a97d1e29ddbc5da09d1b520fc5154db863c76df8adab033241",
+		"bytes": 1681
+	},
+	"seals-given": {
+		"sha256": "12787a56f15c0988d699f5680f3881cdfb4510ec4a850b01e4777e6ceb9c7f0c",
+		"bytes": 2624
+	},
+	"seals-progressive": {
+		"sha256": "492583b3c886a242bcd8fdfbec1bf28dc228158cd1e49521444805379c3e82e5",
+		"bytes": 2484
+	},
+	"table-pages": {
+		"sha256": "05efcc13bc95e24ea2cc241dbdc0061a2187d1a61f8c20d9be0a36af362beb3d",
+		"bytes": 2599
+	},
+	"geometry": {
+		"sha256": "bc152b91a15043fc97428b87a4d6276376b8614a4410ed09170291c369f3446f",
+		"bytes": 1735
+	},
+	"long": {
+		"sha256": "0d22291ef649732ca90ee66fa889419c010f208852326a157928927171a58d6b",
+		"bytes": 3409
+	},
+	"preview": {
+		"sha256": "74e93193c28b37ac4eb32ddf6b637c8c0db46bdc299ddd945c80b051e94b45ab",
+		"bytes": 1439
+	},
+	"preview-empty": {
+		"sha256": "5b562ee935fb9980b3748542121b1432a3039785e089ce4cff9409bce9b1990f",
+		"bytes": 1932
+	},
+	"design-seals": {
+		"sha256": "253f2fdd0fc79f3b202f81f7160a6f5c7608a16aaf52d45949bb9681adb95751",
+		"bytes": 1627
+	},
+	"design-geometry": {
+		"sha256": "5236a1e2dea922b0e08dcc3fc4b9ea64cee386102192fd8a8cc868ff7e849dce",
+		"bytes": 1562
+	},
+	"font-fixture": {
+		"sha256": "3ff410504c668a4851dd9f05db4c7125a8c5ed8d259aea1b4535732951c54a73",
+		"bytes": 4979
+	}
+}

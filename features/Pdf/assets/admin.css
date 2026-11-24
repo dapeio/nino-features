@@ -1,0 +1,71 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino features
+ *	admin.css	The panel of the Pdf feature, beyond the design system: the picture of the logo and of the signature, the name of a row of a directory, and
+ *						the frame the preview of a PDF shows in. Scoped to the three screens that hold them, the steps are the
+ *						workbench's.
+ */
+
+@layer nino.tool {
+
+#pdf-pictures fieldset {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	justify-items: start;
+	min-width: 0;
+}
+
+#pdf-pictures .pdf-picture-image {
+	display: block;
+	max-width: 100%;
+	max-height: 8rem;
+	width: auto;
+	height: auto;
+	object-fit: contain;
+	border: 1px solid var(--editor-border);
+}
+
+#pdf-layout .pdf-preview,
+#pdf-templates-edit .pdf-preview {
+	display: grid;
+	gap: var(--nino-admin-space-3);
+	justify-items: start;
+	margin-top: var(--nino-admin-space-5);
+}
+
+#pdf-layout .pdf-preview-frame,
+#pdf-templates-edit .pdf-preview-frame {
+	width: 100%;
+	height: 70vh;
+	min-height: 24rem;
+	border: 1px solid var(--editor-border);
+}
+
+#pdf-templates-edit .pdf-block {
+	display: grid;
+	gap: var(--nino-admin-space-4);
+}
+
+#pdf-templates-edit .pdf-block .nino-admin-move {
+	justify-self: end;
+}
+
+/* Over 40 rem the name of a row is cut by an ellipsis and the sign that the row opens stands behind it, in the line of the name: the cell of the kernel is a block, which sends the sign under the name */
+@media (min-width: 40rem) {
+
+#pdf-blocks-list td[data-card="primary"] .nino-admin-table-clamp,
+#pdf-templates-list td[data-card="primary"] .nino-admin-table-clamp {
+	display: inline-block;
+	vertical-align: middle;
+}
+
+}
+
+/* What the script hides with the attribute stays hidden: a display of the shell is an author's declaration, which beats the browser's [hidden] */
+#pdf-layout [hidden],
+#pdf-templates-edit [hidden] {
+	display: none;
+}
+
+}
