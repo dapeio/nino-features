@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Termine als Karten", "en_US": "Events as cards" },
+	"description": { "de_DE": "Eine Überschrift und darunter die nächsten Termine als Karten, mit dem Link zum Kalender-Feed.", "en_US": "A headline and below it the next dates as cards, with the link to the calendar feed." },
+	"category": "content",
+	"rank": 85,
+	"images": {}
+}

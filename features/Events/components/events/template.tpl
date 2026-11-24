@@ -1,0 +1,1 @@
+<p class="events-empty">[[state]]</p>

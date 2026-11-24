@@ -1,0 +1,17 @@
+/*	events - the standard part: the chip of a date on the alt ground of the page, the two links drawn as links of it, and the line a list writes for nothing to list	*/
+:root {
+	--event-when-space: var(--page-space-1);
+	--event-when-radius: var(--page-radius);
+}
+.event-when { display: inline-block; align-self: flex-start; box-sizing: border-box; padding: calc( var(--event-when-space) / 2 ) var(--event-when-space); border: var(--page-line) solid var(--brand-ink-quiet); border-radius: var(--event-when-radius); background: var(--brand-ground-alt); color: var(--brand-ink); font-size: var(--page-text-2); font-variant-numeric: tabular-nums; line-height: 1.4; }
+/*	A date that is over is set back by the quiet ink, and one that takes place today by its weight: the words say the same, so nothing is told by the tone alone	*/
+.event-when--today { font-weight: 600; }
+.event-when--past { color: var(--brand-ink-quiet); }
+
+.event-ics, .event-feed { display: inline-flex; align-items: center; align-self: flex-start; min-height: 2.75rem; color: var(--brand-accent); font-size: var(--page-text-2); text-decoration: underline; }
+.event-ics:focus-visible, .event-feed:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+@media ( hover: hover ) {
+	.event-ics:hover, .event-feed:hover { text-decoration: none; }
+}
+
+.events-empty { margin: 0; color: var(--brand-ink-quiet); font-size: var(--page-text-2); }

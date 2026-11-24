@@ -1,0 +1,1 @@
+<a class="[[class]]" href="[[href]]" type="text/calendar">[[/feature/events/ics/label]]</a>

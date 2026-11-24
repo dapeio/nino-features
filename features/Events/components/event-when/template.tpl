@@ -1,0 +1,1 @@
+<time class="[[class]][[state]]" datetime="[[iso]]">[[text]]</time>
