@@ -874,8 +874,6 @@
 				return;
 			}
 
-			const proceed = function() { S.view = null; follow( { focus : false } ) };
-
 			if( Nino.admin.forms.ready === false ) {
 				Nino.admin.forms.init();
 				return;
@@ -883,13 +881,19 @@
 
 			const leaving = S.view !== null && targetOf( at.panel === 'forms' ? at.parts : [] ).was !== S.view.was;
 
+			// The router runs this once it is allowed to: a move inside the form that is open (to another tab) asks nothing and keeps the form with what was typed in it, and only a
+			// move that leaves the form - after the question - gives it up
+			const proceed = function() {
+
+				if( leaving === true )
+					S.view = null;
+
+				follow( { focus : false } );
+			};
+
 			Nino.admin.router.leave( [ 'forms' ], leaving, proceed, function() {
 				Nino.admin.router.set( 'forms', addressOf() );
 			} );
-
-			// A move inside the form that is open (its tab): nothing to ask
-			if( leaving === false )
-				follow( { focus : false } );
 		},
 	} );
 

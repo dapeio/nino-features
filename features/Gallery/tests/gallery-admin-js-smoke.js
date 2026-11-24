@@ -7,6 +7,7 @@
  *											B. what the panel writes into the address is read back by the router as the same screen and the same parts
  *											C. an address the panel does not know - an album that is not there, a word it has not, a key written as a word - is the albums
  *											D. saving the name and the sizes of an album says "Saved." once
+ *											E. an address that moves inside the album that is open keeps what was typed and asks nothing; one that leaves the album asks first
  *
  *											The helpers - check(), done(), findAll(), fire(), element(), documentOf(), load() and shellRouter() - are those of tests/harness.js
  *											of the checkout, three levels up or the one NINO_ROOT names. gallery-smoke.php runs this where node is on the path.
@@ -49,6 +50,8 @@ function world( hash ) {
 	const view = element('div');
 	const requests = [];
 	const toasts = [];
+	const asked = [];
+	const hold = { on : false };
 	const state = { hash : hash ?? '#gallery' };
 
 	list.id = 'gallery-list';
@@ -70,14 +73,26 @@ function world( hash ) {
 		isActive : function() { return true },
 		go : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
 		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+		// The real one: it asks the registry only for a move that leaves the album, and runs what it is given in every other case
+		leave : function() { return codec.router.leave.apply( codec.router, arguments ) },
 	} );
+
+	// What the shell is asked before an album is left: kept for the test, and let through unless it holds the answer back
+	const dirty = {
+		register : function() {},
+		isDirty : function() { return false },
+		refresh : function() {},
+		guard : function( names, proceed, cancel ) { asked.push( { names : names, proceed : proceed, cancel : cancel } ); if( hold.on !== true ) proceed() },
+	};
+
+	codec.box.Nino.admin.dirty = dirty;
 
 	const Nino = {
 		dir : '/site',
 		events : { bindCallback : function() {} },
 		content : { getText : function( key ) { return words[key] ?? workbench[key] ?? '' } },
 		http : { sendRequest : function( uri, method, callback, data ) { requests.push( { action : data.action, callback : callback } ) } },
-		admin : { router : router, dirty : { register : function() {}, isDirty : function() { return false }, refresh : function() {}, guard : function( names, proceed ) { proceed() } }, workLocale : { current : 'en_US', native : 'en_US' } },
+		admin : { router : router, dirty : dirty, workLocale : { current : 'en_US', native : 'en_US' } },
 	};
 
 	const sandbox = { console : console, document : doc, Nino : Nino, URL : URL, encodeURIComponent : encodeURIComponent, CSS : { escape : function( value ) { return String( value ) } } };
@@ -91,12 +106,14 @@ function world( hash ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, list : list, view : view, state : state, codec : codec, panel : Nino.admin.gallery, requests : requests, toasts : toasts,
-		// The shell shows the panel at an address, and the server answers the list
+		Nino : Nino, list : list, view : view, state : state, codec : codec, panel : Nino.admin.gallery, requests : requests, toasts : toasts, asked : asked, hold : hold,
+		// The shell shows the panel at an address, and the server answers the list where the panel asks for it - a move inside the album that is open asks for nothing
 		at : function( where ) {
 			state.hash = where;
 			w.panel.showCurrent();
-			requests.shift().callback( { status : 200, responseJSON : JSON.parse( JSON.stringify( LIST ) ) } );
+
+			if( requests.length > 0 )
+				requests.shift().callback( { status : 200, responseJSON : JSON.parse( JSON.stringify( LIST ) ) } );
 		},
 	};
 
@@ -168,6 +185,35 @@ const open = function( w ) { return findAll( w.view, function( node ) { return S
 	answer( w, { albums : JSON.parse( JSON.stringify( LIST.albums ) ) } );
 
 	check( 'D. a saved album says so once: the bar of the form says it, and the panel adds nothing', w.requests.length === 0 && w.toasts.length === 1 && w.toasts[0] === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
+}
+
+// --- E. the address moves --------------------------------------------------------------------------------------------------------------
+
+{
+	const w = world();
+
+	w.at('#gallery/gallery/summer/@settings');
+
+	const name = findAll( w.view, function( node ) { return node.tagName === 'INPUT' && node.dataset.key === 'name' } )[0];
+
+	name.value = 'A draft';
+	w.requests.length = 0;
+	w.state.hash = '#gallery/gallery/summer';
+	w.panel.showCurrent();
+
+	check( 'E. an address that names the pictures of the album that is open shows them and asks nothing, and the form is not drawn again: the name that was typed is in it, and the list is not read from the server again',
+		open( w ) === 'Pictures' && w.asked.length === 0 && w.requests.length === 0 && findAll( w.view, function( node ) { return node.tagName === 'INPUT' && node.dataset.key === 'name' } )[0] === name && name.value === 'A draft' );
+
+	w.hold.on = true;
+	w.state.hash = '#gallery';
+	w.panel.showCurrent();
+
+	check( 'E. an address that leaves the album asks the shell first, and until it answers the album stays as it is, with the draft', w.asked.length === 1 && JSON.stringify( w.asked[0].names ) === '["gallery"]' && hidden( w.view ) === false && name.value === 'A draft' && w.requests.length === 0 );
+
+	w.asked[0].proceed();
+	answer( w, JSON.parse( JSON.stringify( LIST ) ) );
+
+	check( 'E. and where the answer lets it go the albums are shown', hidden( w.list ) === false && w.state.hash === '#gallery' );
 }
 
 done();

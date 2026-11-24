@@ -125,6 +125,8 @@ function panel( options ) {
 		isActive : function() { return true },
 		go : function( name, parts ) { router.hash = codec.check( name, parts ) },
 		set : function( name, parts ) { router.hash = codec.check( name, parts ) },
+		// The real one: it asks the registry only for a move that leaves the type that is open, and runs what it is given in every other case
+		leave : function() { return codec.router.leave.apply( codec.router, arguments ) },
 	} );
 	const followers = [];
 
@@ -133,6 +135,8 @@ function panel( options ) {
 		workLocale : { current : 'en_US', native : 'de_DE', follow : function( name, handler ) { followers.push( { name : name, handler : handler } ) } },
 		dirty : options.dirty || { register : function() {}, isDirty : function() { return false }, guard : function( names, proceed ) { proceed() } },
 	};
+
+	codec.box.Nino.admin.dirty = Nino.admin.dirty;
 
 	load( '_admin/assets/Nino.admin.js', context );
 	vm.runInContext( source, context, { filename : 'admin.js' } );
@@ -171,9 +175,9 @@ function editing( options ) {
 
 /** The shell's registry of unsaved input in miniature: what it was told, and what it was asked before it let an exit through */
 function registry() {
-	const stand = { entries : {}, asked : [], answer : 'proceed' };
+	const stand = { entries : {}, asked : [], held : [], answer : 'proceed' };
 	stand.register = function( name, entry ) { stand.entries[name] = entry };
-	stand.guard = function( names, proceed ) { stand.asked.push( names ); if( stand.answer === 'proceed' ) proceed() };
+	stand.guard = function( names, proceed ) { stand.asked.push( names ); stand.held.push( proceed ); if( stand.answer === 'proceed' ) proceed() };
 	stand.isDirty = function( names ) { return names.some( function( name ) { return stand.entries[name] !== undefined && stand.entries[name].isDirty() === true } ) };
 	return stand;
 }
@@ -287,6 +291,33 @@ check( 'a field ticked is unsaved input, and a field let go again is none', shel
 guarded.tick( guarded.boxes()[3], true );
 fire( withClass( guarded.type, 'nino-admin-back-link' )[0], 'click' );
 check( 'the way back asks the registry first, and the view is left where it answers to proceed', shell.asked.length === 1 && guarded.router.hash === '#search/search/@types' );
+
+
+// An address that moves: inside the type that is open it asks nothing and keeps what was ticked, away from it the shell is asked first
+{
+	const moving = registry();
+	const page = editing( { dirty : moving } );
+
+	page.tick( page.boxes()[3], true );
+
+	const box = page.boxes()[3];
+	const asked = page.asked('search/list').length;
+
+	page.router.hash = '#search/search/@types/products';
+	page.panel.showCurrent();
+
+	check( 'an address that names the type that is open asks nothing and keeps the fields as they are: the box that was ticked is the same and ticked', moving.asked.length === 0 && page.boxes()[3] === box && box.checked === true && page.hidden( page.type ) === false );
+
+	moving.answer = 'hold';
+	page.router.hash = '#search/search/@probe';
+	page.panel.showCurrent();
+
+	check( 'an address that leaves the type asks the registry first, and until it answers the fields stay as they are, ticked', moving.asked.length === 1 && JSON.stringify( moving.asked[0] ) === '["search"]' && page.hidden( page.type ) === false && box.checked === true );
+
+	moving.held[0]();
+
+	check( 'and where the answer lets it go the strip shows the tab the address names', page.hidden( page.type ) === true && page.hidden( page.list ) === false && page.router.hash === '#search/search/@probe' && page.asked('search/list').length > asked );
+}
 
 
 // --- The probe: the working language of the workbench -----------------------------------------------------------------------

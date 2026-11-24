@@ -1439,13 +1439,19 @@
 
 			const leaving = S.view !== null && keyAt( at.parts, 0 ) !== S.view.key;
 
-			Nino.admin.router.leave( [ 'menu' ], leaving, function() { S.view = null; follow( { focus : false } ) }, function() {
+			// The router runs this once it is allowed to: a move inside the menu that is open (to an entry and back) asks nothing and keeps the working copy, and only a move that
+			// leaves the menu - after the question - gives it up
+			const proceed = function() {
+
+				if( leaving === true )
+					S.view = null;
+
+				follow( { focus : false } );
+			};
+
+			Nino.admin.router.leave( [ 'menu' ], leaving, proceed, function() {
 				Nino.admin.router.set( 'menu', addressOfView() );
 			} );
-
-			// A move inside the menu that is open (to an entry and back): nothing to ask
-			if( leaving === false )
-				follow( { focus : false } );
 		},
 	} );
 

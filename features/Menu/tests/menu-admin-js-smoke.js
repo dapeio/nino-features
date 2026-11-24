@@ -7,6 +7,7 @@
  *											B. what the panel writes into the address is read back by the router as the same screen and the same parts
  *											C. an address the panel does not know - a menu that is not there, a word - is the table
  *											D. saving a menu says "Saved." once
+ *											E. an address that moves inside the menu that is open keeps the working copy and asks nothing; one that leaves the menu asks first
  *
  *											The helpers - check(), done(), findAll(), fire(), element(), documentOf(), load() and shellRouter() - are those of tests/harness.js
  *											of the checkout, three levels up or the one NINO_ROOT names. menu-smoke.php runs this where node is on the path.
@@ -24,7 +25,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
-const { check, done, fills, load, element, findAll, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
+const { check, done, fills, load, element, findAll, fire, documentOf, shellRouter } = require( path.join( root, 'tests/harness.js' ) );
 
 const featureDir = path.join( __dirname, '..' );
 const relative = path.relative( root, path.join( featureDir, 'assets/admin.js' ) );
@@ -44,6 +45,8 @@ function world( hash ) {
 	const requests = [];
 	const toasts = [];
 	const registered = {};
+	const asked = [];
+	const hold = { on : false };
 	const state = { hash : hash ?? '#menu' };
 
 	[ 'menu-list', 'menu-form', 'menu-entry' ].forEach( function( id ) {
@@ -66,15 +69,26 @@ function world( hash ) {
 		isActive : function() { return true },
 		go : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
 		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
-		leave : function( names, leaving, proceed ) { proceed() },
+		// The real one: it asks the registry only for a move that leaves the menu, and runs what it is given in every other case
+		leave : function() { return codec.router.leave.apply( codec.router, arguments ) },
 	} );
+
+	// What the shell is asked before a menu is left: kept for the test, and let through unless it holds the answer back
+	const dirty = {
+		register : function( name, entry ) { registered[name] = entry },
+		isDirty : function() { return false },
+		refresh : function() {},
+		guard : function( names, proceed, cancel ) { asked.push( { names : names, proceed : proceed, cancel : cancel } ); if( hold.on !== true ) proceed() },
+	};
+
+	codec.box.Nino.admin.dirty = dirty;
 
 	const Nino = {
 		dir : '/site',
 		events : { bindCallback : function() {} },
 		content : { getText : function( key ) { return words[key] ?? workbench[key] ?? '' } },
 		http : { sendRequest : function( uri, method, callback, data ) { requests.push( { action : data.action, payload : JSON.parse( data.data ), callback : callback } ) } },
-		admin : { router : router, dirty : { register : function( name, entry ) { registered[name] = entry }, isDirty : function() { return false }, refresh : function() {}, guard : function( names, proceed ) { proceed() } }, workLocale : { current : 'en_US', native : 'en_US' } },
+		admin : { router : router, dirty : dirty, workLocale : { current : 'en_US', native : 'en_US' } },
 	};
 
 	const sandbox = { console : console, document : doc, Nino : Nino, URL : URL, encodeURIComponent : encodeURIComponent, CSS : { escape : function( value ) { return String( value ) } } };
@@ -88,7 +102,7 @@ function world( hash ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, page : page, state : state, codec : codec, panel : Nino.admin.menu, requests : requests, toasts : toasts, registered : registered,
+		Nino : Nino, page : page, state : state, codec : codec, panel : Nino.admin.menu, requests : requests, toasts : toasts, registered : registered, asked : asked, hold : hold,
 		// The shell shows the panel at an address; the server answers the list, and then the menu the address names
 		at : function( where ) {
 			state.hash = where;
@@ -177,6 +191,40 @@ const shown = function( w, id ) { return findAll( w.page, function( node ) { ret
 	w.settle();
 
 	check( 'D. a saved menu says so once: the bar of the view says it, and the panel adds nothing', ends.join() === 'true' && w.toasts.length === 1 && w.toasts[0] === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
+}
+
+// --- E. the address moves --------------------------------------------------------------------------------------------------------------
+
+{
+	const w = world();
+
+	w.at('#menu/menu/footer/about');
+
+	const draft = findAll( w.page, function( node ) { return node.tagName === 'INPUT' && node.dataset.key === 'name' } )[0];
+
+	check( 'E. an entry is open, and its name is a field of the form', draft !== undefined );
+
+	draft.value = 'A draft';
+	fire( draft, 'input' );
+
+	const typed = w.registered.menu.isDirty();
+
+	w.requests.length = 0;
+	w.state.hash = '#menu/menu/footer';
+	w.panel.showCurrent();
+
+	check( 'E. an address that names the menu of the entry that is open shows the menu and asks nothing, and the working copy is not read from the server again: what was typed is still unsaved',
+		typed === true && w.asked.length === 0 && w.requests.length === 0 && shown( w, 'menu-form' ) === true && w.registered.menu.isDirty() === true );
+
+	w.hold.on = true;
+	w.state.hash = '#menu';
+	w.panel.showCurrent();
+
+	check( 'E. an address that leaves the menu asks the shell first, and until it answers the menu stays as it is, with the draft', w.asked.length === 1 && JSON.stringify( w.asked[0].names ) === '["menu"]' && shown( w, 'menu-form' ) === true && w.registered.menu.isDirty() === true );
+
+	w.asked[0].proceed();
+
+	check( 'E. and where the answer lets it go the table is shown', shown( w, 'menu-list' ) === true && w.state.hash === '#menu' );
 }
 
 done();

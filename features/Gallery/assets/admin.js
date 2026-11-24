@@ -706,6 +706,35 @@
 			Nino.adminUi.showLevel( 'gallery-list', options );
 			Nino.admin.router.set( 'gallery', [] );
 		},
+
+		/**
+		 *	The address moved: a move inside the album that is open - to its other part - turns the part and leaves the form as it is, with what
+		 *	was typed in it; a move that leaves the album asks first where the form holds input nobody has saved
+		 *
+		 *	@return		void
+		 */
+		showCurrent : function() {
+
+			const router = Nino.admin.router;
+			const at = router.current();
+			const parts = at.panel === 'gallery' ? at.parts : [];
+
+			if( Nino.admin.gallery.ready === false ) {
+				Nino.admin.gallery.init();
+				return;
+			}
+
+			if( at.panel === 'gallery' && S.open !== '' && parts[0] === S.open && V.form !== null && V.form.isConnected === true ) {
+				S.tab = router.isWord( parts, 1, 'settings' ) === true ? 'settings' : 'images';
+				V.tabs.select( S.tab );
+				router.set( 'gallery', partsOf( S.open, S.tab ) );
+				return;
+			}
+
+			router.leave( [ 'gallery' ], at.panel === 'gallery' && S.open !== '', function() { Nino.admin.gallery.init() }, function() {
+				router.set( 'gallery', S.open === '' ? [] : partsOf( S.open, S.tab ) );
+			} );
+		},
 	} );
 
 	// The pictures are named in the working language: they are drawn again when it moves. The settings of the album are no text of a language, and what is typed in them stays

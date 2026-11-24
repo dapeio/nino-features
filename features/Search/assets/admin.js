@@ -650,6 +650,14 @@
 		list.appendChild( probe );
 	};
 
+	// The type the parts of an address name: the row of the types, or nothing for a tab of the strip and for a type that is not there
+	const typeAt = function( parts ) {
+
+		const router = Nino.admin.router;
+
+		return router.isWord( parts, 0, 'types' ) === true && parts[1] !== undefined && router.wordOf( parts, 1 ) === '' ? S.types.find( function( found ) { return slugOf( found.type ) === parts[1] } ) : undefined;
+	};
+
 	Nino.admin.search = Nino.adminUi.panel( {
 		uri		: 'search',
 		mount	: 'search-list',
@@ -693,7 +701,7 @@
 			const at = Nino.admin.router.current();
 			const parts = at.panel === 'search' ? at.parts : [];
 			const router = Nino.admin.router;
-			const row = router.isWord( parts, 0, 'types' ) === true && parts[1] !== undefined && router.wordOf( parts, 1 ) === '' ? S.types.find( function( found ) { return slugOf( found.type ) === parts[1] } ) : undefined;
+			const row = typeAt( parts );
 
 			if( row !== undefined ) {
 
@@ -716,6 +724,29 @@
 			Nino.admin.router.set( 'search', partsOf( S.tab ) );
 		},
 
+		/**
+		 *	The address moved: a move that leaves the type that is open - for another type, or for a tab of the strip - asks first where its fields hold
+		 *	input nobody has saved; the same type again asks nothing and keeps what was ticked
+		 *
+		 *	@return		void
+		 */
+		showCurrent : function() {
+
+			const router = Nino.admin.router;
+			const at = router.current();
+			const row = at.panel === 'search' ? typeAt( at.parts ) : undefined;
+
+			if( Nino.admin.search.ready === false ) {
+				Nino.admin.search.init();
+				return;
+			}
+
+			const leaving = at.panel === 'search' && S.editing !== null && ( row === undefined || row.type !== S.editing.type );
+
+			router.leave( [ 'search' ], leaving, function() { Nino.admin.search.init() }, function() {
+				router.set( 'search', S.editing === null ? partsOf( S.tab ) : partsOf( 'types', slugOf( S.editing.type ) ) );
+			} );
+		},
 	} );
 
 	// A view that follows the working language: what the probe found was found in the one that is gone

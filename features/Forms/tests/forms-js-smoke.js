@@ -7,6 +7,7 @@
  *											C. an order and a removal are the draft's, and what is saved is the draft in that order, with the words of each language
  *											D. unsaved input: the form is dirty as soon as a control or a row changed, and not before
  *											E. a refusal of the server is said at the row and at the control it is about, on the tab that has it
+ *											F. an address that moves inside the form that is open keeps what was typed and asks nothing; one that leaves the form asks first
  *
  *											The helpers - check(), done(), findAll(), fire(), element(), documentOf() and load() - are those of tests/harness.js of the
  *											checkout, three levels up or the one NINO_ROOT names. forms-smoke.php runs this where node is on the path.
@@ -71,12 +72,15 @@ function world( extra ) {
 	doc.createElement = function( tag ) { return element( tag ) };
 
 	const entries = {};
+	const asked = [];
+	const hold = { on : false };
 	const dirty = {
 		entries : entries,
 		register : function( name, entry ) { entries[name] = entry },
 		isDirty : function( names ) { return ( names ?? Object.keys( entries ) ).some( function( name ) { return entries[name] !== undefined && entries[name].isDirty() === true } ) },
 		refresh : function() {},
-		guard : function( names, proceed ) { proceed() },
+		// What the shell is asked before a form is left: kept for the test, and let through unless it holds the answer back
+		guard : function( names, proceed, cancel ) { asked.push( { names : names, proceed : proceed, cancel : cancel } ); if( hold.on !== true ) proceed() },
 	};
 
 	// The router of the workbench itself, over the panes this panel has: what the panel writes is read back by it
@@ -86,7 +90,11 @@ function world( extra ) {
 		isActive : function() { return true },
 		go : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
 		set : function( panel, parts ) { state.hash = codec.check( panel, parts ) },
+		// The real one: it asks the registry only for a move that leaves the form, and runs what it is given in every other case
+		leave : function() { return codec.router.leave.apply( codec.router, arguments ) },
 	} );
+
+	codec.box.Nino.admin.dirty = dirty;
 
 	const Nino = {
 		dir : '/site',
@@ -107,7 +115,7 @@ function world( extra ) {
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, list : list, form : form, requests : requests, toasts : toasts, state : state, dirty : dirty, panel : Nino.admin.forms,
+		Nino : Nino, list : list, form : form, requests : requests, toasts : toasts, state : state, dirty : dirty, asked : asked, hold : hold, panel : Nino.admin.forms,
 		answer : function( status, body ) {
 			const request = requests.shift();
 			request.callback( { status : status, responseJSON : body } );
@@ -309,6 +317,30 @@ const opened = function() {
 
 	check( 'E. a refusal is said at the row of the field and at the control of the form it names, and the screen goes to the tab that has the first of them',
 		text( w.form ).indexOf( words['/_admin/forms/problem/options'] ) !== -1 && text( w.form ).indexOf( words['/_admin/forms/problem/to'] ) !== -1 && w.toasts.length === 0 );
+}
+
+// --- F. the address moves --------------------------------------------------------------------------------------------------------------
+
+{
+	const w = opened();
+	const nameInput = function() { return findAll( w.form, function( node ) { return node.tagName === 'INPUT' && node.dataset.key === 'name' } )[0] };
+	const input = nameInput();
+
+	input.value = 'A draft';
+	w.go( [ 'contact', w.codec.word('delivery') ] );
+
+	check( 'F. an address that names another tab of the form that is open shows that tab and asks nothing: the form is the one that was there, with the name that was typed in it',
+		w.state.hash === '#forms/forms/contact/@delivery' && w.asked.length === 0 && nameInput() === input && input.value === 'A draft' && w.dirty.entries.forms.isDirty() === true );
+
+	w.hold.on = true;
+	w.go( [] );
+
+	check( 'F. an address that leaves the form asks the shell first, and until it answers the form stays as it is, with the draft',
+		w.asked.length === 1 && JSON.stringify( w.asked[0].names ) === '["forms"]' && nameInput() === input && input.value === 'A draft' );
+
+	w.asked[0].proceed();
+
+	check( 'F. and where the answer lets it go the move is made: the address is the directory\'s, which has a row for the form', w.state.hash === '#forms' && findAll( w.list, function( node ) { return node.tagName === 'TR' && node.dataset.row === 'contact' } ).length === 1 );
 }
 
 done();
