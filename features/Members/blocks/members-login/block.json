@@ -1,0 +1,7 @@
+{
+	"name": { "de_DE": "Anmeldung für Mitglieder", "en_US": "Sign-in for members" },
+	"description": { "de_DE": "Eine Überschrift, ein Satz und das Anmeldeformular, für die Seite eines Mitgliederbereichs.", "en_US": "A headline, a sentence and the sign-in form, for the page of a members' area." },
+	"category": "content",
+	"rank": 96,
+	"images": {}
+}

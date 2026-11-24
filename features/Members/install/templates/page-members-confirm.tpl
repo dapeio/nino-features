@@ -1,0 +1,12 @@
+<!-- nino:template-name Members confirm -->
+[template /templates/html-header]
+[section-wrap id="intro"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title /template/page-members-confirm/intro/title tag="h1"]
+			[text /template/page-members-confirm/intro/text]
+			[members-confirm]
+		[/section-col]
+	[/section-row]
+[/section-wrap]
+[template /templates/html-footer]

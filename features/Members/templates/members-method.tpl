@@ -1,0 +1,1 @@
+<!doctype html><html lang="[[lang]]"><meta charset="utf-8"><title>405</title><p><a href="[[home]]">[[home]]</a></p>

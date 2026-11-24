@@ -1,0 +1,1 @@
+<form class="[[class]]" method="post" action="[[action]]"><input type="hidden" name="_csrf" value="[[csrf]]"><button class="members-logout-button" type="submit">[[/feature/members/logout/label]]</button></form>

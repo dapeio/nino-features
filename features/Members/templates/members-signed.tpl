@@ -1,0 +1,1 @@
+<div class="[[class]]"><span class="members-login-signed">[[/feature/members/signed/label]]</span> <strong class="members-login-name">[[name]]</strong>[[logout]]</div>

@@ -1,0 +1,1 @@
+<label class="members-login-remember"><input class="members-login-check" type="checkbox" name="remember" value="1"><span>[[/feature/members/code/remember]]</span></label>

@@ -1,0 +1,12 @@
+<!-- nino:template-name Members login -->
+[template /templates/html-header]
+[section-wrap id="intro"]
+	[section-row width="narrow"]
+		[section-col]
+			[section-title /template/page-members-login/intro/title tag="h1"]
+			[text /template/page-members-login/intro/lead]
+			[members-login]
+		[/section-col]
+	[/section-row]
+[/section-wrap]
+[template /templates/html-footer]
