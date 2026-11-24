@@ -56,10 +56,11 @@ namespace Nino\Modules {
 	 *										everybody else is the same 404. It is shown in the browser, and the browser is told
 	 *										to treat it as nothing but a document: nosniff and a sandbox policy.
 	 *
-	 *										What a member's post sets off - the member's mail and the owner's - is left for after
-	 *										the answer (\Nino\Http::afterResponse()), as Members does it with its codes: the page
-	 *										does not wait for a transport. Where the kernel cannot let the client go before, the
-	 *										work is done as the request ends.
+	 *										What a member's post sets off - the member's mail and the owner's - is queued in the
+	 *										outbox of the kernel (\Nino\Mail::queue()), as Members does it with its codes: the page
+	 *										does not wait for a transport, and a mail that was queued is not lost where the server
+	 *										drops the work after the answer. The mails the owner asks for in the panel are sent in
+	 *										the request, since the panel says whether they went.
 	 *
 	 *										The data is Sign\Store's: /data/sign/requests.php and a directory for each request.
 	 *										Two components put the page's form and a member's list on any page,
@@ -97,7 +98,6 @@ namespace Nino\Modules {
 		private const string FORMS = './sign/forms';
 
 		// What a request leaves to be done after the answer
-		private const string OUTBOX = './sign/outbox';
 
 		// What a page can say besides nothing, and the states of a request that is over
 		private const array STATES = [ 'signed', 'declined', 'cancelled', 'expired', 'invalid', 'consent', 'empty', 'long', 'limit', 'changed', 'write', 'again' ];
@@ -127,30 +127,11 @@ namespace Nino\Modules {
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/POST://.sign', [ self::class, 'callbackPost' ] );
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/GET://.sign/pdf', [ self::class, 'callbackPdf' ] );
 
-			// What the kernel cannot do after the answer is done as the request ends
-			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
-
 			// An account that is deleted takes with it every request that is not signed; a signed one is the owner's record and stays
 			\Nino\Callbacks::registerCallback( $appData, '/members/removed', [ self::class, 'callbackRemoved' ] );
 
 			// A restore of the daily backup brings the index of a day, which may name requests whose files are not there
 			\Nino\Callbacks::registerCallback( $appData, '/nino/admin/restore', [ self::class, 'callbackRestore' ] );
-		}
-
-		/**
-		 *	'/nino/http/output': the answer is about to go out. What a post left to do after it (see _later()) is given to the kernel for after
-		 *	the answer, and where the kernel cannot let the client go before - it says so after this callback, and drops the work - it is done as the
-		 *	request ends, so that no mail is lost
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		&$request			(reference) Current server request
-		 *
-		 *	@return 	void
-		 */
-		public static function callbackOutput( array &$appData, array &$request ): void {
-
-			if( ( $appData[self::OUTBOX] ?? [] ) !== [] )
-				register_shutdown_function( static function() use ( &$appData ): void { self::_flush( $appData ); } );
 		}
 
 		/**
@@ -817,7 +798,7 @@ namespace Nino\Modules {
 			}
 
 			\Nino\Callbacks::doCallbacks( $appData, '/sign/declined', $declined );
-			self::_later( $appData, static function() use ( &$appData, $declined ): void { self::_mailOwner( $appData, $declined, 'declined' ); } );
+			self::_mailOwner( $appData, $declined, 'declined' );
 			self::_redirect( $appData, $request, $return, $view['id'], 'declined' );
 		}
 
@@ -940,7 +921,7 @@ namespace Nino\Modules {
 			// The document was not the one that was shown: the request is over and written so, the owner is told
 			if( is_array( $signed ) === true && $why === 'changed' ) {
 
-				self::_later( $appData, static function() use ( &$appData, $signed ): void { self::_mailOwner( $appData, $signed, 'changed' ); } );
+				self::_mailOwner( $appData, $signed, 'changed' );
 				self::_page( $appData, $request, self::_view( $appData, self::_resolve( $appData, self::_posted( 't' ), self::_posted( 'r' ) ) ), $return, '', 409 );
 				return;
 			}
@@ -955,7 +936,7 @@ namespace Nino\Modules {
 			}
 
 			\Nino\Callbacks::doCallbacks( $appData, '/sign/signed', $signed );
-			self::_later( $appData, static function() use ( &$appData, $signed ): void { self::_mailSigned( $appData, $signed ); } );
+			self::_mailSigned( $appData, $signed );
 			self::_redirect( $appData, $request, $return, $id, 'signed' );
 		}
 
@@ -1233,49 +1214,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	A step left for after the answer: the mails a post set off. The kernel runs the work once the client is let go
-		 *	(\Nino\Http::afterResponse()); where it cannot - it says so after '/nino/http/output', see callbackOutput() - the work is done as
-		 *	the request ends
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		callable	$work					The work
-		 *
-		 *	@return 	void
-		 */
-		private static function _later( array &$appData, callable $work ): void {
-
-			$appData[self::OUTBOX][] = $work;
-
-			\Nino\Http::afterResponse( $appData, static function() use ( &$appData ): void { self::_flush( $appData ); } );
-		}
-
-		/**
-		 *	Do what a request left for after the answer, once each. A mail that cannot be sent is not the end of the ones behind it, and after the
-		 *	answer nobody is left to be told: it is a warning, with the class of the failure and never its message, which can hold an address
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		private static function _flush( array &$appData ): void {
-
-			while( is_array( $appData[self::OUTBOX] ?? null ) === true && $appData[self::OUTBOX] !== [] ) {
-
-				$job = array_shift( $appData[self::OUTBOX] );
-
-				try {
-					$job();
-				}
-				catch( \Nino\Failure $failure ) {
-					throw $failure;
-				}
-				catch( \Throwable $error ) {
-					trigger_error( 'Sign: a mail after the answer failed - '. get_class( $error ), E_USER_WARNING );
-				}
-			}
-		}
-
-		/**
 		 *	The key of the counter of a visitor: the address as the kernel counts a client (an IPv6 address as its /64)
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -1370,7 +1308,7 @@ namespace Nino\Modules {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$signed				The request, as get() has it
 		 *
-		 *	@return 	bool										Whether every mail was delivered - true where there was none to send
+		 *	@return 	bool										Whether every mail was queued - true where there was none to send
 		 */
 		private static function _mailSigned( array &$appData, array $signed ): bool {
 
@@ -1386,7 +1324,7 @@ namespace Nino\Modules {
 					'[[link]]'			=> $link,
 				], [], $member['id'] );
 
-				$mails[] = [ 'to' => $member['email'], 'subject' => $mail['subject'], 'body' => $mail['body'], 'replyTo' => self::_contact( $appData ) ];
+				$mails[] = [ 'to' => $member['email'], 'subject' => $mail['subject'], 'body' => $mail['body'], 'replyTo' => self::_contact( $appData ), 'kind' => \Nino\Mail::CLIENT, 'key' => 'sign/'. $signed['id']. '-member' ];
 			}
 			else
 				trigger_error( 'Sign: no mail was sent to the member, the account is gone or the site has no address', E_USER_WARNING );
@@ -1396,7 +1334,7 @@ namespace Nino\Modules {
 			if( $owner !== null )
 				$mails[] = $owner;
 
-			return self::_send( $appData, $mails, $signed['id'] );
+			return self::_queue( $appData, $mails, $signed['id'] );
 		}
 
 		/**
@@ -1406,13 +1344,13 @@ namespace Nino\Modules {
 		 *	@param		array 		$request			As get() has it
 		 *	@param		string		$outcome			signed, declined or changed
 		 *
-		 *	@return 	bool										Whether a mail was delivered - true where none was to be sent
+		 *	@return 	bool										Whether the mail was queued - true where none was to be sent
 		 */
 		private static function _mailOwner( array &$appData, array $request, string $outcome ): bool {
 
 			$owner = self::_ownerMail( $appData, $request, $outcome );
 
-			return $owner === null || self::_send( $appData, [ $owner ], $request['id'] );
+			return $owner === null || self::_queue( $appData, [ $owner ], $request['id'] );
 		}
 
 		/**
@@ -1446,27 +1384,31 @@ namespace Nino\Modules {
 				'[[link]]'			=> $link,
 			], [ 'title' => '/feature/sign/title/'. $outcome, 'outcome' => '/feature/sign/outcome/'. $outcome ] );
 
-			return [ 'to' => $to, 'subject' => $mail['subject'], 'body' => $mail['body'], 'replyTo' => '' ];
+			// The system's: a notice to the owner is charged to the cap of the whole site when it goes out and not to the member who set it off, whose one try an hour is the mail that confirms the signing
+			return [ 'to' => $to, 'subject' => $mail['subject'], 'body' => $mail['body'], 'replyTo' => '', 'kind' => \Nino\Mail::SYSTEM, 'key' => 'sign/'. $request['id']. '-owner-'. $outcome ];
 		}
 
 		/**
-		 *	Send mails in one call of the kernel's mail cap, which counts a call and not a mail; what is not delivered is a warning that names the request
-		 *	by its id and never an address
+		 *	Queue mails in the outbox of the kernel, each under the key of its request and its kind: the post that sets them off comes twice - a double click, a retry of the
+		 *	browser - and its mail is then the mail that was queued, never a second. What is refused is a warning that names the request by its id and never an address, and says why
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$mails				to, subject, body and replyTo each
+		 *	@param		array 		$mails				to, subject, body, replyTo, kind and key each
 		 *	@param		string		$id
 		 *
-		 *	@return 	bool										Whether every mail was delivered - true where there was none
+		 *	@return 	bool										Whether every mail was taken - true where there was none
 		 */
-		private static function _send( array &$appData, array $mails, string $id ): bool {
+		private static function _queue( array &$appData, array $mails, string $id ): bool {
 
-			if( $mails === [] || \Nino\Mail::sendAll( $appData, $mails ) === true )
-				return true;
+			$all = true;
 
-			trigger_error( 'Sign: the mails about the request '. $id. ( \Nino\Mail::rateLimited( $appData ) === true ? ' were refused by the cap of mails an hour' : ' were not all delivered' ), E_USER_WARNING );
+			foreach( $mails as $mail )
+				if( \Nino\Mail::queue( $appData, [ 'to' => $mail['to'], 'subject' => $mail['subject'], 'body' => $mail['body'], 'replyTo' => $mail['replyTo'] ], $mail['kind'], $mail['key'] ) === '' ) {
+					trigger_error( 'Sign: a mail about the request '. $id. ' was not queued - '. \Nino\Mail::queueRefused( $appData ), E_USER_WARNING );
+					$all = false;
+				}
 
-			return false;
+			return $all;
 		}
 
 		/**

@@ -87,11 +87,9 @@ if( in_array( $argv[1] ?? '', [ 'sign-worker', 'removed-worker' ], true ) === tr
 	$request = ninoVisit( $worker, '/.sign', 'POST' );
 	\Nino\Modules\Sign::callbackPost( $worker, $request );
 
-	// A server that cannot let the client go before the work: a length somebody else set. The kernel hands nothing back, and the mails go as the process ends
-	if( ( $argv[7] ?? '' ) === 'drop' ) {
+	// A server that cannot let the client go before the work: a length somebody else set. The kernel hands nothing back, and the mails wait in the outbox
+	if( ( $argv[7] ?? '' ) === 'drop' )
 		$request['/nino/http/response']['header']['Content-Length'] = '0';
-		\Nino\Callbacks::doCallbacks( $worker, '/nino/http/output', $request );
-	}
 
 	foreach( \Nino\Http::prepareAfter( $worker, $request ) as $work )
 		$work();
@@ -245,9 +243,18 @@ function signServe( array &$appData, string $uri, string $method = 'GET', array 
 	$request = ninoVisit( $appData, $uri, $method, $server );
 	\Nino\Http::response( $appData, $request );
 
-	// What \Nino\Http::output() does once the answer is finished: it asks which work may run after it, and runs that once the client is let go
+	// What \Nino\Http::output() does once the answer is finished: it asks which work may run after it, and runs that once the client is let go. The outbox
+	// delivers the mails it holds in an order of its own: what this request sent is put in the order of the addresses, so that the member's mail and the owner's are told apart
+	global $mails;
+
+	$sentBefore = count( $mails );
+
 	foreach( \Nino\Http::prepareAfter( $appData, $request ) as $work )
 		$work();
+
+	$sentNow = array_slice( $mails, $sentBefore );
+	usort( $sentNow, static fn( array $a, array $b ): int => strcmp( (string) $a['to'], (string) $b['to'] ) );
+	array_splice( $mails, $sentBefore, count( $sentNow ), $sentNow );
 
 	$_POST = [];
 
@@ -280,6 +287,26 @@ function signFresh( array &$appData ): void {
 
 	foreach( [ 'sign-tries', 'members-tries', 'ratelimit' ] as $counter )
 		\Nino\Filesystem::putFileContent( $appData, '/data/'. $counter. '.php', [] );
+
+	foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE, '/data/mail-keys.php', \Nino\MailQueue::FAILED, '/data/sysmail-system.php', '/data/sysmail-test.php' ] as $file )
+		@unlink( \Nino\Filesystem::path( $appData, $file ) );
+
+	unset( $appData['./nino/filesystem/cache'] );
+}
+
+/**
+ *	The mails that wait in the outbox of the kernel, as the file holds them: read from the disk, never from the cache of this process, since the children write it
+ *
+ *	@param		array 		&$appData
+ *
+ *	@return 	array										id => the mail
+ */
+function signOutbox( array &$appData ): array {
+
+	clearstatcache();
+	$state = \Nino\MailQueue::decode( (string) @file_get_contents( \Nino\Filesystem::path( $appData, \Nino\MailQueue::WAITING ) ) );
+
+	return is_array( $state ) === true ? array_column( (array) ( $state['waiting'] ?? [] ), null, 'id' ) : [];
 }
 
 /**
@@ -502,7 +529,7 @@ check( 'it says all six sections of its manual in both languages, with the backu
 			if( is_array( $line ) === false || trim( (string) ( $line['en_US'] ?? '' ) ) === '' || trim( (string) ( $line['de_DE'] ?? '' ) ) === '' )
 				return false;
 	return isset( $manifest['manual']['install']['elements/privacy.php'], $manifest['manual']['install']['templates/page-sign.tpl'], $manifest['manual']['panel']['Backup'] ) === true && count( $manifest['manual']['shortcodes'] ) >= 3
-		&& count( $manifest['manual']['routes'] ) === 4 && isset( $manifest['manual']['callbacks']['/members/removed'], $manifest['manual']['callbacks']['/sign/signed'], $manifest['manual']['callbacks']['/sign/declined'] );
+		&& count( $manifest['manual']['routes'] ) === 6 && isset( $manifest['manual']['callbacks']['/members/removed'], $manifest['manual']['callbacks']['/sign/signed'], $manifest['manual']['callbacks']['/sign/declined'] );
 } )() );
 
 // The catalogue's preview reads every manifest through the kernel, and is a script of the catalogue: it is there when this test
@@ -1240,7 +1267,8 @@ check( '...the first page draws two pictures - the owner\'s and the member\'s - 
 check( 'the callback /sign/signed is told once, with the request as get() has it - the id, the status, the record - and no hash of the token', count( $told ) === 1 && $told[0][0] === '/sign/signed' && $told[0][1] === \Nino\Modules\Sign::get( $appData, $id )
 	&& $told[0][1]['status'] === 'signed' && array_key_exists( 'token', $told[0][1] ) === false );
 $sentMails = array_slice( $mails, $mailsBefore );
-check( 'two mails go out for the signing, in one call: the member gets the link to the signed document on the site - by the id - in the language of the page, the owner the title, who signed and a link to the panel in the native one',
+usort( $sentMails, static fn( array $a, array $b ): int => strcmp( (string) $a['to'], (string) $b['to'] ) );
+check( 'two mails go out for the signing, each queued - the outbox sends them in an order of its own, told apart here by the address: the member gets the link to the signed document on the site - by the id - in the language of the page, the owner the title, who signed and a link to the panel in the native one',
 	count( $sentMails ) === 2 && $sentMails[0]['to'] === 'ada@example.org' && $sentMails[0]['subject'] === 'Dein unterschriebenes Dokument' && str_contains( $sentMails[0]['body'], 'href="https://example.org/club/.sign?r='. $id. '"' ) === true
 	&& str_contains( $sentMails[0]['body'], 'Service &amp; contract 2026' ) === true && $sentMails[1]['to'] === 'owner@example.org' && $sentMails[1]['subject'] === 'Ein Mitglied hat ein Dokument unterschrieben'
 	&& str_contains( $sentMails[1]['body'], '<strong>Ada Lovelace</strong> hat unterschrieben' ) === true && str_contains( $sentMails[1]['body'], 'href="https://example.org/club/_admin#sign"' ) === true
@@ -1336,6 +1364,8 @@ signServe( $appData, '/.sign?t='. $wordedBobToken );
 $mailsBefore = count( $mails );
 signServe( $appData, '/.sign', 'POST', [ 't' => $wordedBobToken, 'action' => 'sign', 'consent' => '1', 'name' => 'Bob' ] );
 $confirmMails = array_slice( $mails, $mailsBefore );
+// The outbox delivers the mails in the order it likes: the member's and the owner's are told apart by their addresses
+usort( $confirmMails, static fn( array $a, array $b ): int => strcmp( (string) $a['to'], (string) $b['to'] ) );
 unset( $appData['./nino/callbacks']['/members/language'] );
 check( 'the mail that confirms a signing is written in the language of the account where a module names one - the owner\'s mail is not', count( $confirmMails ) === 2 && $confirmMails[0]['to'] === $bob['email']
 	&& $confirmMails[0]['subject'] === (string) \Nino\Html::getFills( $appData, 'en_US' )['[[/feature/sign/mail/signed-subject]]'] && $confirmMails[0]['subject'] !== (string) \Nino\Html::getFills( $appData, 'de_DE' )['[[/feature/sign/mail/signed-subject]]']
@@ -1408,6 +1438,7 @@ signServe( $appData, '/.sign', 'POST', [ 't' => $textyToken, 'action' => 'sign',
 $textySigned = (string) file_get_contents( (string) \Nino\Modules\Sign::path( $appData, $texty['id'], 'signed' ) );
 $textyRecord = signIndex( $appData )[$texty['id']]['record'] ?? [ 'agent' => '' ];
 $textyMail = array_slice( $mails, $textyMails );
+usort( $textyMail, static fn( array $a, array $b ): int => strcmp( (string) $a['to'], (string) $b['to'] ) );
 check( 'what a person typed is text: a name, a title and a browser with markup, a fill and a shortcode in them stand on the record page as they were typed - not run, not made bold - and in the mails; the browser is cut to 255 characters and loses its control characters',
 	str_contains( $eveName, '[[/project/company/general/name]]' ) === true && mb_strlen( $textyRecord['agent'] ) === 255 && str_contains( $textyRecord['agent'], "\x07" ) === false
 	&& ( signNoPdftotext( 'pin 2' ) || ( str_contains( preg_replace( '/\s+/', ' ', signText( $textySigned, '-f 2 -l 2' ) ), $eveName. ' (eve@example.org)' ) === true
@@ -1615,23 +1646,31 @@ foreach( [ 'the owner is not told when the setting says so' => 'off', 'no contac
 		\Nino\Features::saveSettings( $appData, 'sign', [ 'notifyOwner' => 'false' ] );
 	else if( $how === 'nocontact' )
 		\Nino\Html::addFills( $appData, [ '[[/project/company/contact/email]]' => '' ], '*' );
-	else
-		$delivery = false;
+	else {
+		// The outbox does not take the member's mail: the visitor has spent the try an hour that the cap of mails of the kernel gives
+		$capBefore = $appData['/nino/mail/cap'] ?? null;
+		$appData['/nino/mail/cap'] = 1;
+		\Nino\Feature::count( $appData, 'ratelimit', '127.0.0.1', 1, 3600 );
+	}
 
 	[ $status, , ] = $answer( signServe( $appData, '/.sign', 'POST', [ 't' => $eachToken, 'action' => 'sign', 'consent' => '1', 'name' => 'Ada Lovelace' ] ) );
 	$mailing[$label] = [ $status, $stateOf( $each['id'] ), array_column( array_slice( $mails, $mailsBefore ), 'to' ), ninoWarnings() ];
 
 	\Nino\Features::saveSettings( $appData, 'sign', [ 'notifyOwner' => 'true' ] );
 	\Nino\Html::addFills( $appData, [ '[[/project/company/contact/email]]' => 'owner@example.org' ], '*' );
-	$delivery = true;
+
+	if( $how === 'undelivered' )
+		$capBefore === null ? ( $appData['/nino/mail/cap'] = \Nino\AppData::DEFAULTS['/nino/mail/cap'] ) : ( $appData['/nino/mail/cap'] = $capBefore );
+
 	$mailing[$label][] = $each['id'];
 }
 check( 'with the setting notifyOwner off only the member is mailed', $mailing['the owner is not told when the setting says so'][0] === 303 && $mailing['the owner is not told when the setting says so'][1] === 'signed' && $mailing['the owner is not told when the setting says so'][2] === [ 'ada@example.org' ]
 	&& $mailing['the owner is not told when the setting says so'][3] === [] );
 check( '...with no contact address only the member is, and a warning says why without naming an address', $mailing['no contact address'][1] === 'signed' && $mailing['no contact address'][2] === [ 'ada@example.org' ] && count( $mailing['no contact address'][3] ) === 1
 	&& str_contains( $mailing['no contact address'][3][0], 'no contact address' ) === true && str_contains( $mailing['no contact address'][3][0], '@' ) === false );
-check( '...a mail that is not delivered is a warning that names the request by its id and no address - and the signing stands', $mailing['a mail that is not delivered'][1] === 'signed' && $mailing['a mail that is not delivered'][0] === 303 && count( $mailing['a mail that is not delivered'][3] ) === 1
-	&& array_filter( $mailing['a mail that is not delivered'][3], static fn( string $warning ): bool => str_contains( $warning, $GLOBALS['mailing']['a mail that is not delivered'][4] ) === false || str_contains( $warning, '@' ) === true ) === [] );
+check( '...a mail that the outbox does not take is a warning that names the request by its id, says why and names no address - and the signing stands, and the owner is told all the same: the member\'s try an hour is spent, the owner\'s notice is the system\'s', $mailing['a mail that is not delivered'][1] === 'signed' && $mailing['a mail that is not delivered'][0] === 303 && count( $mailing['a mail that is not delivered'][3] ) === 1
+	&& array_filter( $mailing['a mail that is not delivered'][3], static fn( string $warning ): bool => str_contains( $warning, $GLOBALS['mailing']['a mail that is not delivered'][4] ) === false || str_contains( $warning, '@' ) === true || str_contains( $warning, 'ratelimited' ) === false ) === []
+	&& $mailing['a mail that is not delivered'][2] === [ 'owner@example.org' ] );
 
 // A write that cannot be made at the signing is the state write (500): the request waits, and no file of the signing is left
 [ $unwritable, $unwritableToken ] = $ask( 'two-fields', [], $ada, [ 'title' => 'Unwritable' ] );
@@ -2104,6 +2143,20 @@ echo "The restore of a backup, and deactivation\n";
 [ $keptA, ] = $ask( 'two-fields', [], $ada, [ 'title' => 'In the backup' ] );
 [ $keptB, ] = $ask( 'two-fields', [], $ada, [ 'title' => 'On the disk' ] );
 [ $lostC, ] = $ask( 'two-fields', [], $ada, [ 'title' => 'Nowhere' ] );
+
+// The ids of two of the three are only digits - a key of an array is then a number: the restore and the pin on it are run on the ids that trip a strict comparison of keys, whatever the random ids were
+foreach( [ 'keptA' => '100000000011', 'keptB' => '100000000012' ] as $name => $digits ) {
+	$oldId = ${$name}['id'];
+	rename( \Nino\Filesystem::path( $appData, '/data/sign/'. $oldId ), \Nino\Filesystem::path( $appData, '/data/sign/'. $digits ) );
+	\Nino\Filesystem::mutate( $appData, '/data/sign/requests.php', static function( mixed $state ) use ( $oldId, $digits ): array {
+		$state = (array) $state;
+		$entry = $state[$oldId];
+		unset( $state[$oldId] );
+		$state[$digits] = $entry;
+		return $state;
+	}, [] );
+	${$name}['id'] = $digits;
+}
 $staging = ninoSandboxDir( $appData ). '/staging';
 $dataDir = \Nino\Filesystem::path( $appData, '/data' );
 mkdir( $staging. '/data/sign/'. $keptA['id'], 0755, true );
@@ -2117,7 +2170,7 @@ $restoreArgs = [ 'dataDir' => $dataDir, 'staging' => $staging ];
 \Nino\Callbacks::doCallbacks( $appData, '/nino/admin/restore', $restoreArgs );
 $restoredIndex = include $staging. '/data/sign/requests.php';
 check( 'a restore keeps the requests of the staged index whose shown.pdf is in the backup or on the disk, and drops those whose is nowhere; the live index is not touched, the callback is the one init() registered',
-	array_keys( $restoredIndex ) === [ $keptA['id'], $keptB['id'] ] && $restoredIndex[ $keptA['id'] ] === $stagedIndex[ $keptA['id'] ] && file_get_contents( $dataDir. '/sign/requests.php' ) === $liveIndexBytes );
+	array_map( 'strval', array_keys( $restoredIndex ) ) === [ $keptA['id'], $keptB['id'] ] && $restoredIndex[ $keptA['id'] ] === $stagedIndex[ $keptA['id'] ] && file_get_contents( $dataDir. '/sign/requests.php' ) === $liveIndexBytes );
 
 unlink( $staging. '/data/sign/requests.php' );
 $noIndexArgs = [ 'dataDir' => $dataDir, 'staging' => $staging ];
@@ -2214,7 +2267,7 @@ check( '...the index has one end - signed or declined, as the winner posted - an
 	&& ( $end['status'] === 'signed' ) === ( \Nino\Modules\Sign::path( $appData, $race['id'], 'signed' ) !== null ) && ( $end['status'] === 'signed' ) === ( \Nino\Modules\Sign\Store::path( $appData, $race['id'], 'signature' ) !== null )
 	&& ( $end['status'] !== 'signed' || hash_file( 'sha256', (string) \Nino\Modules\Sign::path( $appData, $race['id'], 'signed' ) ) === $end['hashSigned'] ) );
 check( '...the callback of the feature was told once - and what the end sets off went out once: the member and the owner for a signing, the owner for a decline - after the answer', count( $told ) === 1 && $told[0] === ( $end['status'] === 'signed' ? '/sign/signed' : '/sign/declined' )
-	&& count( $mailed ) === ( $end['status'] === 'signed' ? 2 : 1 ) );
+	&& count( $mailed ) + count( signOutbox( $appData ) ) === ( $end['status'] === 'signed' ? 2 : 1 ) && count( array_unique( array_merge( array_map( static fn( string $line ): string => (string) ( json_decode( $line, true )['to'] ?? '' ), $mailed ), array_column( array_values( signOutbox( $appData ) ), 'to' ) ) ) ) === ( $end['status'] === 'signed' ? 2 : 1 ) );
 
 // A request that is over stays over: signed, declined, cancelled - each refuses a second end, and nothing of its files or hashes moves
 $over = [];
@@ -2529,19 +2582,87 @@ check( 'the record page of a signing says what was typed as it was typed - read 
 	$spellPdf !== '' && signPages( $spellPdf ) === 2 && str_contains( $spellPlain, $spelled ) === true && str_contains( $spellPlain, '[[ip]] [[time]] [[agent]] [[name]]' ) === true && str_contains( $spellPlain, 'Agent [[time]] [[ip]]' ) === true
 	&& substr_count( $spellPlain, '127.0.0.1' ) === 1 && preg_match_all( '/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC/', $spellPlain ) === 1 );
 
-// What a post sets off goes out after the answer: nothing is sent while the answer is made, and everything once it is out - and where the kernel cannot let the client go, as the process ends
+// What a post sets off is queued while the answer is made and sent once it is out - and where the kernel drops the work after the answer, it waits in the outbox for the next request
 [ $afterRequest, $afterToken ] = $ask( 'two-fields', [], $ada, [ 'title' => 'After' ] );
 $mailsBefore = count( $mails );
 $_POST = [ 't' => $afterToken, 'action' => 'sign', 'consent' => '1', 'name' => 'Ada', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
 $afterVisit = ninoVisit( $appData, '/.sign', 'POST' );
 \Nino\Http::response( $appData, $afterVisit );
 $whileAnswering = count( $mails ) - $mailsBefore;
+$queuedByThen = array_values( signOutbox( $appData ) );
 $work = \Nino\Http::prepareAfter( $appData, $afterVisit );
 foreach( $work as $each )
 	$each();
 $_POST = [];
-check( 'the mails of a signing are not sent while the answer is made: none by the time the answer is finished, and the kernel is asked for work after it - which sends the two once, to the member and to the owner', $whileAnswering === 0 && count( $work ) >= 1 && count( $mails ) - $mailsBefore === 2
-	&& array_column( array_slice( $mails, $mailsBefore ), 'to' ) === [ 'ada@example.org', 'owner@example.org' ] );
+$sentTo = array_column( array_slice( $mails, $mailsBefore ), 'to' );
+sort( $sentTo );
+$queuedTo = array_column( $queuedByThen, 'to' );
+sort( $queuedTo );
+check( 'the mails of a signing are queued while the answer is made and not sent: the member\'s - of the kind client, under the key of its request - and the owner\'s - of the kind system - are in the outbox by the time the answer is finished, and the kernel is asked for work after it', $whileAnswering === 0 && $queuedTo === [ 'ada@example.org', 'owner@example.org' ]
+	&& count( array_filter( $queuedByThen, static fn( array $mail ): bool => $mail['kind'] === ( $mail['to'] === 'owner@example.org' ? 'system' : 'client' ) && $mail['key'] !== '' ) ) === 2 && count( $work ) >= 1 );
+check( '...which sends the two once, to the member and to the owner', count( $mails ) - $mailsBefore === 2 && $sentTo === [ 'ada@example.org', 'owner@example.org' ] && signOutbox( $appData ) === [] );
+
+// The same post twice - a double click, a retry of the browser - is the same mail: the key of a request and a kind names it, and the second queueing is the first mail
+$signedAgain = \Nino\Modules\Sign::get( $appData, $afterRequest['id'] );
+signFresh( $appData );
+$queueTwice = new \ReflectionMethod( \Nino\Modules\Sign::class, '_mailSigned' );
+$firstCall = [ &$appData, $signedAgain ];
+$queueTwice->invokeArgs( null, $firstCall );
+$onceQueued = array_keys( signOutbox( $appData ) );
+ninoWarnings();
+$secondCall = [ &$appData, $signedAgain ];
+$queueTwice->invokeArgs( null, $secondCall );
+check( 'the mails a signing sets off are queued under the key of the request and of their kind: queued a second time they are the mails that wait, nothing is added, and no warning says a mail was refused', count( $onceQueued ) === 2 && array_keys( signOutbox( $appData ) ) === $onceQueued && ninoWarnings() === [] );
+
+// The owner's notices are told apart by what happened: the key of a request and an outcome. One request of one id can come to two ends only by force - declined, then (the index put back by hand) signed - and each end has its mail
+[ $twoEnds, ] = $ask( 'two-fields', [], $ada, [ 'title' => 'Two ends' ] );
+signFresh( $appData );
+$ownerMail = new \ReflectionMethod( \Nino\Modules\Sign::class, '_mailOwner' );
+ninoWarnings();
+$twoEndsEntry = \Nino\Modules\Sign::get( $appData, $twoEnds['id'] );
+$asDeclined = [ &$appData, $twoEndsEntry, 'declined' ];
+$ownerMail->invokeArgs( null, $asDeclined );
+$asSigned = [ &$appData, $twoEndsEntry, 'signed' ];
+$ownerMail->invokeArgs( null, $asSigned );
+$asChanged = [ &$appData, $twoEndsEntry, 'changed' ];
+$ownerMail->invokeArgs( null, $asChanged );
+$ownerKeys = [];
+foreach( signOutbox( $appData ) as $queuedMail )
+	$ownerKeys[] = $queuedMail['to']. ' '. $queuedMail['kind'];
+$keyFile = (string) @file_get_contents( \Nino\Filesystem::path( $appData, '/data/mail-keys.php' ) );
+check( 'a decline, a signing and a change of one request are three mails of the owner, each under a key of its own - the key names the outcome - and a mail with the key of another outcome is never taken for it: all three wait, of the kind system, and no warning says one was refused',
+	count( signOutbox( $appData ) ) === 3 && $ownerKeys === array_fill( 0, 3, 'owner@example.org system' ) && ninoWarnings() === [] && count( array_unique( array_column( signOutbox( $appData ), 'subject' ) ) ) === 3 );
+ninoWarnings();
+
+// What the outbox holds is what nobody has to be let in by: the mails that carry the link to sign - the request, the reminder, asked for in the panel or from code - are sent in the request, never queued, and the mails that are queued carry no link that signs
+signFresh( $appData );
+$mailsBefore = count( $mails );
+[ $linked, $linkedToken ] = $ask( 'two-fields', [], $ada, [ 'title' => 'Linked' ] );
+$reminded = \Nino\Modules\Sign::remind( $appData, $linked['id'] );
+$viaPanel = $call( 'sign/remind', [ 'id' => $linked['id'], 'notify' => true ] );
+[ $panelAsked ] = [ $call( 'sign/request', [ 'account' => $ada['id'], 'template' => 'two-fields', 'title' => 'Asked in the panel', 'notify' => true ] ) ];
+$linkMails = array_slice( $mails, $mailsBefore );
+check( 'the request, the reminder and the panel\'s Remind and Ask send the link in the request and put nothing in the outbox: the mails are sent at once, each with the link of the token',
+	$reminded === true && $viaPanel[0] === 200 && $panelAsked[0] === 200 && signOutbox( $appData ) === [] && count( $linkMails ) === 4 && count( array_filter( $linkMails, static fn( array $mail ): bool => preg_match( '~\.sign\?t=[A-Za-z0-9_-]{43}~', (string) $mail['body'] ) === 1 ) ) === 4 );
+// A reminder makes a new link: the third mail is the panel's reminder of the request, and holds the token that is good
+preg_match( '~\\.sign\\?t=([A-Za-z0-9_-]{43})~', (string) $linkMails[2]['body'], $lastLink );
+$linkedToken = $lastLink[1] ?? '';
+signServe( $appData, '/.sign?t='. $linkedToken );
+signServe( $appData, '/.sign', 'POST', [ 't' => $linkedToken, 'action' => 'sign', 'consent' => '1', 'name' => 'Ada' ] );
+check( '...and what the signing queues - the confirmation and the notice - holds no link that lets anybody in: no token, no address with t= in it', count( array_filter( signOutbox( $appData ), static fn( array $mail ): bool => preg_match( '~[?&]t=|\.sign\?t~', (string) $mail['body'] ) === 1 || str_contains( (string) $mail['body'], $GLOBALS['linkedToken'] ) === true ) ) === 0 && count( signOutbox( $appData ) ) + count( array_slice( $mails, $mailsBefore + 4 ) ) === 2 );
+signFresh( $appData );
+
+// A decline tells the owner: one mail, of the kind system, which the answer does not wait for
+[ $declineMade, $declineToken ] = $ask( 'two-fields', [], $ada, [ 'title' => 'Decline queued' ] );
+$mailsBefore = count( $mails );
+signFresh( $appData );
+$_POST = [ 't' => $declineToken, 'action' => 'decline', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+$declineVisit = ninoVisit( $appData, '/.sign', 'POST' );
+\Nino\Http::response( $appData, $declineVisit );
+$_POST = [];
+$declineQueued = array_values( signOutbox( $appData ) );
+check( 'a decline queues one mail, to the owner, of the kind system, and sends nothing while the answer is made', count( $declineQueued ) === 1 && $declineQueued[0]['to'] === 'owner@example.org' && $declineQueued[0]['kind'] === 'system' && $declineQueued[0]['key'] !== '' && count( $mails ) === $mailsBefore );
+signFresh( $appData );
 [ $dropRequest, $dropToken ] = $ask( 'two-fields', [], $ada, [ 'title' => 'Dropped' ] );
 @unlink( $sandbox. '/drop-go' );
 @unlink( $sandbox. '/drop-go.mails' );
@@ -2551,7 +2672,14 @@ $droppedSaid = stream_get_contents( $pipes[1] );
 stream_get_contents( $pipes[2] );
 proc_close( $process );
 $droppedMails = is_file( $sandbox. '/drop-go.mails' ) === true ? array_filter( explode( "\n", trim( (string) file_get_contents( $sandbox. '/drop-go.mails' ) ) ) ) : [];
-check( '...where the kernel cannot let the client go before - a length somebody else set - it hands nothing back, and the mails go out as the process ends: both, once', ( json_decode( (string) $droppedSaid, true )['status'] ?? 0 ) === 303 && count( $droppedMails ) === 2 );
+$waitingTo = array_column( array_values( signOutbox( $appData ) ), 'to' );
+sort( $waitingTo );
+check( '...where the kernel cannot let the client go before - a length somebody else set - it hands nothing back: the mails are not sent and not lost, both wait in the outbox, finished, for the member and for the owner', ( json_decode( (string) $droppedSaid, true )['status'] ?? 0 ) === 303 && $droppedMails === [] && $waitingTo === [ 'ada@example.org', 'owner@example.org' ] );
+$mailsBefore = count( $mails );
+$delivered = \Nino\Mail::deliverQueued( $appData );
+$deliveredTo = array_column( array_slice( $mails, $mailsBefore ), 'to' );
+sort( $deliveredTo );
+check( '...and the next request that delivers them sends each once, and the outbox is empty', $delivered['delivered'] === 2 && $deliveredTo === [ 'ada@example.org', 'owner@example.org' ] && signOutbox( $appData ) === [] );
 
 
 // --- A set of the source: the data a project of Nino 1 holds, read, kept and written back ------------------------------------------

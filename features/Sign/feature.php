@@ -62,6 +62,14 @@ return [
 				'en_US' => 'A PDF of a request, shown in the browser with nosniff and a sandbox policy, to a visitor with the token, the member it is of and the owner; all others get the same 404.',
 				'de_DE' => 'Ein PDF einer Anfrage, im Browser mit nosniff und Sandbox-Richtlinie angezeigt, für Besucher mit dem Token, das Mitglied und den Betreiber; alle anderen bekommen dieselbe 404.',
 			],
+			'POST /.sign: the notice to the owner' => [
+				'en_US' => 'A notice to the owner counts to the site\'s cap of 12 mails an hour; what is over waits in the outbox for up to two days, and a full outbox refuses it with a warning in the log.',
+				'de_DE' => 'Eine Meldung an den Betreiber zählt auf die Grenze der Website von 12 Mails je Stunde; was darüber liegt, wartet bis zu zwei Tage im Postausgang, ein voller lehnt sie ab und warnt im Log.',
+			],
+			'POST /.sign: the confirmation to the member' => [
+				'en_US' => 'The confirmation to the member counts to the visitor\'s cap of mails an hour (5 by default, /nino/mail/cap) with that visitor\'s other mails; a refused one is a warning, and the signing stands.',
+				'de_DE' => 'Die Bestätigung an das Mitglied zählt auf die Mail-Grenze des Besuchers je Stunde (Standard 5, /nino/mail/cap) mit seinen anderen Mails; abgelehnt gibt sie eine Warnung im Log, die Unterschrift gilt.',
+			],
 		],
 		'panel' => [
 			'Signatures' => [
@@ -93,10 +101,6 @@ return [
 			'/members/removed' => [
 				'en_US' => 'Heard: of a deleted account every request that is not signed is deleted with its files; a signed one stays untouched, as the owner\'s record, until the owner deletes it in the panel.',
 				'de_DE' => 'Gehört: Von einem gelöschten Konto wird jede Anfrage, die nicht unterschrieben ist, samt Dateien gelöscht; eine unterschriebene bleibt unberührt als Beleg des Betreibers, bis er sie im Panel löscht.',
-			],
-			'/nino/http/output' => [
-				'en_US' => 'The mails a signing or a decline sets off go out after the answer, or as the request ends where the server cannot let the client go before.',
-				'de_DE' => 'Die Mails, die eine Unterschrift oder Ablehnung auslöst, gehen nach der Antwort hinaus, sonst mit dem Ende der Anfrage, wo der Server den Client nicht vorher freigeben kann.',
 			],
 			'/nino/admin/restore' => [
 				'en_US' => 'A restore drops the requests of the index whose shown.pdf is neither in the backup nor on the disk, so that nobody is offered a document that is not there.',
