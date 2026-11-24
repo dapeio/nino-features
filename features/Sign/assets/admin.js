@@ -794,7 +794,7 @@
 		mount.appendChild( el( 'p', 'nino-admin-hint', Nino.adminUi.format( w('hint/days'), String( S.days ) ) ) );
 		mount.appendChild( form );
 
-		if( typeof Nino.admin.dirty === 'object' ) {
+		if( typeof Nino.admin.dirty === 'object' )
 			Nino.admin.dirty.register( 'sign', { isDirty : formDirty, save : askSubmit, discard : function() {
 				if( S.form !== null ) {
 					S.form.account.value = '';
@@ -804,7 +804,6 @@
 					S.form.inputs.forEach( function( each ) { each.control.value = '' } );
 				}
 			} } );
-		}
 
 		Nino.adminUi.showLevel( 'sign-form', { focus : opener === undefined ? false : S.form.account } );
 	};

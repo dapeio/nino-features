@@ -284,6 +284,17 @@ function world( list, hash, locale ) {
 
 	// --- C. the view that asks -------------------------------------------------------------------------------------------------------
 
+	// A shell that has no registry of unsaved input: the view is drawn all the same
+	{
+		const w = world();
+
+		delete w.h.Nino.admin.dirty;
+		w.open();
+		click( named( w.mount, W('label/new') )[0] );
+		w.answer( 200, clone( OPTIONS ) );
+		check( 'C. the view that asks is drawn where the shell has no registry of unsaved input', tag( w.form, 'form' ).length === 1 && w.h.hash() === '#sign/sign/@new' );
+	}
+
 	{
 		const w = world();
 
