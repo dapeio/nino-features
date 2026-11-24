@@ -140,7 +140,6 @@
 				C.saved = C.css;
 				C.view.bar.line.idle('');
 				paint();
-				Nino.adminUi.say( Nino.content.getText('/_admin/common/msg/saved') );
 				done( true );
 				return;
 			}

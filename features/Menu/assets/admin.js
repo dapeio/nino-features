@@ -1276,10 +1276,8 @@
 						const line = ( S.view.entry === null ? S.view.bar : S.view.entry.bar ).line;
 						const again = heldSelector === '' ? null : ( S.view.entry === null ? S.view.form : S.view.entry.form ).querySelector( heldSelector );
 
-						if( sent === true ) {
+						if( sent === true )
 							line.saved();
-							Nino.adminUi.say( t('/_admin/common/msg/saved') );
-						}
 						else
 							line.error( 400, { code : 'menu_picture' }, '/_admin/menu/error/upload' );
 

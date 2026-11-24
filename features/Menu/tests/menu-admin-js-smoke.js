@@ -6,6 +6,7 @@
  *											A. a menu and an entry are keys, whatever they are called: new, settings, @new - the panel has no word, and none of them is one
  *											B. what the panel writes into the address is read back by the router as the same screen and the same parts
  *											C. an address the panel does not know - a menu that is not there, a word - is the table
+ *											D. saving a menu says "Saved." once
  *
  *											The helpers - check(), done(), findAll(), fire(), element(), documentOf(), load() and shellRouter() - are those of tests/harness.js
  *											of the checkout, three levels up or the one NINO_ROOT names. menu-smoke.php runs this where node is on the path.
@@ -41,6 +42,8 @@ function world( hash ) {
 
 	const page = element('div');
 	const requests = [];
+	const toasts = [];
+	const registered = {};
 	const state = { hash : hash ?? '#menu' };
 
 	[ 'menu-list', 'menu-form', 'menu-entry' ].forEach( function( id ) {
@@ -71,7 +74,7 @@ function world( hash ) {
 		events : { bindCallback : function() {} },
 		content : { getText : function( key ) { return words[key] ?? workbench[key] ?? '' } },
 		http : { sendRequest : function( uri, method, callback, data ) { requests.push( { action : data.action, payload : JSON.parse( data.data ), callback : callback } ) } },
-		admin : { router : router, dirty : { register : function() {}, isDirty : function() { return false }, refresh : function() {}, guard : function( names, proceed ) { proceed() } }, workLocale : { current : 'en_US', native : 'en_US' } },
+		admin : { router : router, dirty : { register : function( name, entry ) { registered[name] = entry }, isDirty : function() { return false }, refresh : function() {}, guard : function( names, proceed ) { proceed() } }, workLocale : { current : 'en_US', native : 'en_US' } },
 	};
 
 	const sandbox = { console : console, document : doc, Nino : Nino, URL : URL, encodeURIComponent : encodeURIComponent, CSS : { escape : function( value ) { return String( value ) } } };
@@ -81,10 +84,11 @@ function world( hash ) {
 	const context = vm.createContext( sandbox );
 
 	load( '_admin/assets/Nino.admin.js', context );
+	Nino.adminUi.say = function( text ) { toasts.push( text ) };
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, page : page, state : state, codec : codec, panel : Nino.admin.menu, requests : requests,
+		Nino : Nino, page : page, state : state, codec : codec, panel : Nino.admin.menu, requests : requests, toasts : toasts, registered : registered,
 		// The shell shows the panel at an address; the server answers the list, and then the menu the address names
 		at : function( where ) {
 			state.hash = where;
@@ -94,6 +98,15 @@ function world( hash ) {
 			while( requests.length > 0 ) {
 				const asked = requests.shift();
 				asked.callback( { status : 200, responseJSON : LOAD( asked.payload.key ) } );
+			}
+		},
+		// The server answers what is asked until nothing is: a save, the menu as it is held now, and the list that follows
+		settle : function() {
+
+			while( requests.length > 0 ) {
+				const asked = requests.shift();
+				const body = asked.action === 'menu/save' ? {} : ( asked.action === 'menu/load' ? LOAD( asked.payload.key ) : JSON.parse( JSON.stringify( LIST ) ) );
+				asked.callback( { status : 200, responseJSON : body } );
 			}
 		},
 	};
@@ -148,6 +161,22 @@ const shown = function( w, id ) { return findAll( w.page, function( node ) { ret
 		w.at( hash );
 		check( 'C. '+ hash+ ' names no menu - a word is none of the panel\'s: the table stands, written #menu', shown( w, 'menu-list' ) === true && w.state.hash === '#menu' );
 	} );
+}
+
+// --- D. saving ----------------------------------------------------------------------------------------------------------------------
+
+{
+	const w = world();
+	const ends = [];
+
+	w.at('#menu/menu/footer');
+	w.registered.menu.save( function( ok ) { ends.push( ok ) } );
+
+	check( 'D. the menu is sent as menu/save, and nothing is said before the server has answered', w.requests.length === 1 && w.requests[0].action === 'menu/save' && w.toasts.length === 0 );
+
+	w.settle();
+
+	check( 'D. a saved menu says so once: the bar of the view says it, and the panel adds nothing', ends.join() === 'true' && w.toasts.length === 1 && w.toasts[0] === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
 }
 
 done();

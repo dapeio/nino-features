@@ -264,6 +264,20 @@ const saved = function( stale ) {
 };
 check( 'the word that the index is to be rebuilt is said after a save where the index is out of date, and not where it is current', saved( true ) === true && saved( false ) === false );
 
+// A save has one toast: "Saved." where the save did nothing more to the index, and else the one sentence that says what it did - the bar adds nothing to it
+const toasts = function( stale, build ) {
+	const page = editing( { types : [ typeRow( { stale : stale } ) ] } );
+	page.tick( page.boxes()[3], true );
+	if( build === true )
+		fire( page.button( withClass( page.type, 'nino-admin-actionbar' )[0], WORDS['/_admin/search/label/saveandbuild'] ), 'click' );
+	else
+		fire( withTag( page.type, 'FORM' )[0], 'submit', { type : 'submit', preventDefault : function() {} } );
+	return page.said;
+};
+check( 'a save says "Saved." once, a save that is out of date says the one sentence of that, and a build says the one sentence of the build - never two toasts',
+	toasts( false, false ).join('|') === WORDS['/_admin/common/msg/saved'] && WORDS['/_admin/common/msg/saved'] !== '' && toasts( true, false ).join('|') === WORDS['/_admin/search/msg/rebuild']
+	&& toasts( false, true ).length === 1 && toasts( false, true )[0] !== WORDS['/_admin/common/msg/saved'] );
+
 // The shell is told what is unsaved, and asks before the way back loses it
 const shell = registry();
 const guarded = editing( { dirty : shell } );

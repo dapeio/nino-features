@@ -26,7 +26,6 @@
 
 			saved = input.value = response.name;
 			bar.line.saved();
-			Nino.adminUi.say( t('/_admin/common/msg/saved') );
 			if( typeof Nino.admin.dirty === 'object' )
 				Nino.admin.dirty.refresh();
 			done( true );

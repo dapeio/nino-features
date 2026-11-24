@@ -6,6 +6,7 @@
  *											A. an album is a key and its settings are a word: the key settings is an album, @settings the part of any album
  *											B. what the panel writes into the address is read back by the router as the same screen and the same parts
  *											C. an address the panel does not know - an album that is not there, a word it has not, a key written as a word - is the albums
+ *											D. saving the name and the sizes of an album says "Saved." once
  *
  *											The helpers - check(), done(), findAll(), fire(), element(), documentOf(), load() and shellRouter() - are those of tests/harness.js
  *											of the checkout, three levels up or the one NINO_ROOT names. gallery-smoke.php runs this where node is on the path.
@@ -47,6 +48,7 @@ function world( hash ) {
 	const list = element('div');
 	const view = element('div');
 	const requests = [];
+	const toasts = [];
 	const state = { hash : hash ?? '#gallery' };
 
 	list.id = 'gallery-list';
@@ -85,10 +87,11 @@ function world( hash ) {
 	const context = vm.createContext( sandbox );
 
 	load( '_admin/assets/Nino.admin.js', context );
+	Nino.adminUi.say = function( text ) { toasts.push( text ) };
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, list : list, view : view, state : state, codec : codec, panel : Nino.admin.gallery,
+		Nino : Nino, list : list, view : view, state : state, codec : codec, panel : Nino.admin.gallery, requests : requests, toasts : toasts,
 		// The shell shows the panel at an address, and the server answers the list
 		at : function( where ) {
 			state.hash = where;
@@ -100,6 +103,8 @@ function world( hash ) {
 	return w;
 }
 
+// The server's answer to the oldest request that is waiting
+const answer = function( w, body ) { w.requests.shift().callback( { status : 200, responseJSON : body } ) };
 const hidden = function( node ) { return node.classList.contains('admin-hidden') };
 // The key of the album on screen, and the part of it that is open: the tab that is active
 const title = function( root ) { return findAll( root, function( node ) { return node.className === 'nino-admin-contextbar-code' } ).map( function( node ) { return node.textContent } ).join() };
@@ -146,6 +151,23 @@ const open = function( w ) { return findAll( w.view, function( node ) { return S
 
 	w.at('#gallery/gallery/summer/@zzz');
 	check( 'C. a word of the part that the panel has not is the pictures of the album', w.state.hash === '#gallery/gallery/summer' );
+}
+
+// --- D. saving ----------------------------------------------------------------------------------------------------------------------
+
+{
+	const w = world();
+
+	w.at('#gallery/gallery/summer/@settings');
+	findAll( w.view, function( node ) { return node.tagName === 'FORM' } )[0].listeners.submit[0]( { preventDefault : function() {} } );
+
+	const sent = w.requests[0];
+
+	check( 'D. the form of an album is sent as album-save, and nothing is said before the server has answered', sent !== undefined && sent.action === 'gallery/album-save' && w.toasts.length === 0 );
+
+	answer( w, { albums : JSON.parse( JSON.stringify( LIST.albums ) ) } );
+
+	check( 'D. a saved album says so once: the bar of the form says it, and the panel adds nothing', w.requests.length === 0 && w.toasts.length === 1 && w.toasts[0] === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
 }
 
 done();

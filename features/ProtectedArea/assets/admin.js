@@ -82,11 +82,11 @@
 			const back = held !== '' ? document.getElementById( held ) : null;
 			( back !== null ? back : document.getElementById('protected-save') ).focus();
 
-			// The badge says saved and the toast says so; a new password says what else it did
-			bar.line.saved();
-
+			// The badge says saved and one toast says so: "Saved.", or - where a new password was set - the sentence that says that and what else it did
 			if( pw !== '' )
 				Nino.adminUi.say( t('/_admin/protected/msg/pwsaved') );
+			else
+				bar.line.saved();
 
 			done( true );
 		} );

@@ -1937,4 +1937,26 @@ const buttonsOf = function( row ) { return findAll( row, function( el ) { return
 	check( 'the choices of the three widths stand one under the other, the device in front of each, where their box is narrower than 40rem - and the box is the container that is asked', narrow === true && /\.builder-lightbox \.builder-widths-set \{\s*container-type: inline-size;/.test( sheet ) );
 }
 
+// --- M. saving -----------------------------------------------------------------------------------------------------------------------
+
+{
+	// A save of a page says "Saved." once: the bar says it, and the panel adds nothing
+	const w = opened();
+	const hero = buttonsOf( rowOf( w, 'hero' ) ).find( function( button ) { return button.dataset.key === 'down' } );
+
+	fire( hero, 'click' );
+	w.requests.length = 0;
+	w.said.length = 0;
+	fire( findAll( w.view, function( el ) { return el.id === 'builder-bar-save' } )[0], 'click' );
+
+	const sent = w.requests.filter( function( request ) { return request.action === 'builder/save' } );
+
+	check( 'M. the draft is sent as builder/save when the bar of the page is pressed, and nothing is said before the server has answered', sent.length === 1 && w.said.length === 0 );
+
+	w.reply( 200, pageAnswer() );
+	w.serve();
+
+	check( 'M. a saved page says so once: the bar of the page says it, and the panel adds nothing', w.said.length === 1 && w.said[0] === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
+}
+
 done();

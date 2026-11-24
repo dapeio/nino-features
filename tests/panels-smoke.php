@@ -528,7 +528,8 @@ function panelsProblems( string $repo, string $root, array $released ): array {
 				if( preg_match( '/\b'. preg_quote( $variable, '/' ). '\.noValidate\s*=\s*true\b/', $plain ) !== 1 )
 					$found['forms'][] = $label. ' '. $variable;
 
-			$says = $says === true || preg_match( '/\bNino\.adminUi\.say\(/', $plain ) === 1;
+			// The toast of a success is said by Nino.adminUi.say(), or by the line of the bar of the form, whose saved() says it
+			$says = $says === true || preg_match( '/\bNino\.adminUi\.say\(|\bline\.saved\(\)/', $plain ) === 1;
 
 			[ $keys, $prefixes ] = panelsKeys( $source );
 			$named = $named === true || $keys !== [] || $prefixes !== [];
@@ -613,7 +614,7 @@ check( 'the detector finds a bare call, one on the window and on its alias, in t
 echo "\nHow a panel saves\n";
 
 check( 'every form a panel makes has noValidate'. $what( $found['forms'] ), $found['forms'] === [] );
-check( 'every panel that changes something says its success with Nino.adminUi.say(), and no panel released as reading does'. $what( $found['saying'] ), $found['saying'] === [] );
+check( 'every panel that changes something says its success with Nino.adminUi.say() or the saved() of its bar, and no panel released as reading does'. $what( $found['saying'] ), $found['saying'] === [] );
 check( 'no bar of a panel has more than one primary button ('. $found['counted']. ' bars read)'. $what( $found['bars'] ), $found['bars'] === [] && $found['counted'] > 10 );
 
 echo "\nThe words of a panel\n";

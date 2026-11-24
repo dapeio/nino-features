@@ -363,11 +363,11 @@
 			const stay = function( word ) {
 
 				row.opened = JSON.stringify( row.order );
-				bar.line.saved();
+				bar.line.idle();
 				finish( true );
 
 				// The state of the type changed with it: the list is asked again, the view stays where it is
-				// A choice that is saved and not built is said where the index is out of date after it: it holds what both the old and the new choice share until it is made again
+				// A save has one toast: the sentence that says what it did to the index - built, removed, or out of date after it, which holds what both the old and the new choice share until it is made again - and where there is none, "Saved."
 				Nino.admin.search.reload( function() {
 
 					const now = S.types.find( function( found ) { return found.type === row.type } );
@@ -376,6 +376,8 @@
 						Nino.adminUi.say( word );
 					else if( build === false && now !== undefined && stateOf( now ).key === 'stale' )
 						Nino.adminUi.say( t('/_admin/search/msg/rebuild') );
+					else
+						bar.line.saved();
 				} );
 			};
 
@@ -713,6 +715,7 @@
 			Nino.adminUi.showLevel( 'search-list', { focus : false } );
 			Nino.admin.router.set( 'search', partsOf( S.tab ) );
 		},
+
 	} );
 
 	// A view that follows the working language: what the probe found was found in the one that is gone

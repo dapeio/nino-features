@@ -65,6 +65,7 @@ function world( options ) {
 	const mount = element('div');
 	const requests = [];
 	const dialogs = [];
+	const toasts = [];
 	const state = { hash : '' };
 
 	page.id = 'page';
@@ -140,10 +141,11 @@ function world( options ) {
 	const context = vm.createContext( sandbox );
 
 	load( '_admin/assets/Nino.admin.js', context );
+	Nino.adminUi.say = function( text ) { toasts.push( text ) };
 	load( viewsScript, context );
 
 	const w = {
-		entries : entries, Nino : Nino, doc : doc, app : app, list : list, mount : mount, requests : requests, dialogs : dialogs, state : state,
+		entries : entries, Nino : Nino, doc : doc, app : app, list : list, mount : mount, requests : requests, dialogs : dialogs, toasts : toasts, state : state,
 		tab : Nino.admin['themes-css'],
 		sent : [],
 
@@ -333,6 +335,7 @@ const answerPreview = function( w, faults ) { return w.answer( 200, { token : '0
 
 	w.answer( 200, { saved : true, stamp : 'b'.repeat( 64 ), bytes : 18 } );
 	check( 'D. a save that went through leaves nothing unsaved and Save off', w.entries['themes-css'].isDirty() === false && saveButton( w ).disabled === true );
+	check( 'D. a saved text says so once: the bar of the tab says it, and the tab adds nothing', w.toasts.length === 1 && w.toasts[0] === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
 
 	type( w, 'c { color: green; }' );
 	fire( saveButton( w ), 'click' );

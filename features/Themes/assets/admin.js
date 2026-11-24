@@ -3403,7 +3403,6 @@
 				Nino.admin.router.go( 'themes', at );
 				open( key, function() {
 					show( at, { focus : false } );
-					S.view.line.saved();
 					land( null, S.view.title );
 					done( true );
 				} );
@@ -3412,7 +3411,6 @@
 
 			open( key, function() {
 				show( here().parts, { focus : false } );
-				S.view.line.saved();
 				land( null, S.view.title );
 				done( true );
 			} );

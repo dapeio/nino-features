@@ -482,10 +482,16 @@ function world( options ) {
 	const context = vm.createContext( sandbox );
 
 	load( '_admin/assets/Nino.admin.js', context );
+
+	// What the panel and its bar say as a toast, in the order they say it
+	const toasts = [];
+	const say = Nino.adminUi.say;
+
+	Nino.adminUi.say = function( text, options ) { toasts.push( text ); return say.call( Nino.adminUi, text, options ) };
 	load( relative, context );
 
 	const w = {
-		Nino : Nino, context : context, ui : Nino.adminUi, doc : doc, app : app, list : list, theme : theme, requests : requests, timers : timers, dialogs : dialogs, asked : asked, state : state, router : router, codec : codec, dirty : dirty, dirtyAnswers : dirtyAnswers,
+		toasts : toasts, Nino : Nino, context : context, ui : Nino.adminUi, doc : doc, app : app, list : list, theme : theme, requests : requests, timers : timers, dialogs : dialogs, asked : asked, state : state, router : router, codec : codec, dirty : dirty, dirtyAnswers : dirtyAnswers,
 		panel : Nino.admin.themes,
 		posted : posted,
 		exportOffer : null,
@@ -1386,7 +1392,8 @@ function previewDialog( w, preview ) {
 
 	w.serve();
 
-	check( 'G. what was saved is what the screen is: the state is Saved and active and the line says it was saved', w.state_() === APPLIED && w.byClass( w.theme, 'nino-admin-status' )[0].dataset.state === 'saved' );
+	check( 'G. what was saved is what the screen is: the state is Saved and active', w.state_() === APPLIED );
+	check( 'G. a saved theme says so once: the bar says it, and the panel adds nothing', w.toasts.join('|') === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
 }
 
 {

@@ -628,6 +628,26 @@ const sheetOf = function( hash, extra ) {
 }
 
 {
+	// A save of a block says "Saved." once: the bar of the sheet says it, and the panel adds nothing
+	const choice = { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'dark' ], optionLabels : null, responsive : false };
+	const w = sheetOf( '#themelab/themelab/karten', { schemas : Object.assign( {}, pageAnswer().schemas, { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : choice } } ) } ) } );
+	const sheet = w.builder.editor.state();
+
+	w.builder.model.setAttr( 'root', 'ground', 'dark' );
+	w.requests.length = 0;
+	w.said.length = 0;
+	fire( sheet.view.bar.save, 'click' );
+
+	const sent = request( w, 'themelab/save' );
+
+	check( 'C. the draft of a block is sent as themelab/save when the bar is pressed, and nothing is said before the server has answered', sent !== undefined && w.said.length === 0 );
+
+	answerOf( sent, 200, SHEET() );
+
+	check( 'C. a saved block says so once: the bar of the sheet says it, and the panel adds nothing', w.said.length === 1 && w.said[0] === workbench['/_admin/common/msg/saved'] && workbench['/_admin/common/msg/saved'] !== '' );
+}
+
+{
 	const choice = { type : 'choice', label : 'Ground', hint : '', default : 'base', options : [ 'base', 'dark' ], optionLabels : null, responsive : false };
 	const w = sheetOf( '#themelab/themelab/@theme-blocks/karten', { editable : false, schemas : Object.assign( {}, pageAnswer().schemas, { 'section-wrap' : schema( 'Section', 'panel-top', 'none', { side : 'page', attributes : { id : { type : 'id', label : 'Id', hint : '', default : '' }, ground : choice } } ) } ) } );
 	const sheet = w.builder.editor.state();

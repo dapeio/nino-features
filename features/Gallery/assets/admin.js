@@ -591,7 +591,6 @@
 
 				V.saved = V.read();
 				V.bar.line.saved();
-				Nino.adminUi.say( t('/_admin/common/msg/saved') );
 
 				if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty !== null )
 					Nino.admin.dirty.refresh();

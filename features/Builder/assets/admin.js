@@ -4821,7 +4821,6 @@
 
 				release();
 				take( response );
-				S.view.bar.line.saved();
 
 				// A text that is new and was written in one language is the text of the others as well, until it is written there: the bar says so, once
 				if( Array.isArray( response.filled ) === true && response.filled.length > 0 )

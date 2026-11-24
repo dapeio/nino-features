@@ -95,8 +95,12 @@ check( 'the save sends the lines of the field and the password, and nothing else
 page.activeElement = control('protected-pw2');
 save.callback( 200, state( { paths : [ '/intern', '/members', '/club' ] } ) );
 check( 'after the save the keyboard keeps its place: the field that had the focus has it in the form that is drawn again', control('protected-pw2').focused === true );
-check( 'the form is drawn again from the answer: the new lines, both password fields empty, and a toast that says what a new password did',
-	control('protected-paths').value === '/intern\n/members\n/club' && control('protected-pw').value === '' && control('protected-pw2').value === '' && toasts.includes( words['/_admin/protected/msg/pwsaved'] ) );
+check( 'the form is drawn again from the answer: the new lines, both password fields empty, and ONE toast that says what a new password did - the bar does not say "Saved." besides it',
+	control('protected-paths').value === '/intern\n/members\n/club' && control('protected-pw').value === '' && control('protected-pw2').value === '' && toasts.join('|') === words['/_admin/protected/msg/pwsaved'] );
+
+submit();
+last('protected/save').callback( 200, state( { paths : [ '/intern', '/members', '/club' ] } ) );
+check( 'a save with no new password says "Saved." once: the bar says it, and the panel adds nothing', toasts.length === 2 && toasts[1] === words['/_admin/common/msg/saved'] && words['/_admin/common/msg/saved'] !== '' );
 
 type( 'protected-paths', 'intern' );
 submit();

@@ -68,9 +68,9 @@ check( 'a name that is too long is refused at its field', ( ninoCall( $appData, 
 $script = (string) file_get_contents( $dir. '/assets/admin.js' );
 check( 'the rail entry has a sign of its own: an svg that draws, no script in it', preg_match( '/^<svg [^>]*>(<path d="[^"]+"\/>)+<\/svg>$/', \Nino\Modules\Hello\Admin::icon() ) === 1 );
 check( 'the panel script takes its bar, button and field from the workbench', preg_match( '/createElement\(\s*.button|window\.confirm|\balert\(|nino-admin-btn-|type\s*[:=]\s*.file/', $script ) === 0 && str_contains( $script, 'Nino.adminUi.actionBar( {' ) === true );
-check( 'the form is the shape of the guide: novalidate, a fieldset with its fieldgrid, one main button, the answer as a toast, unsaved input reported', str_contains( $script, 'noValidate = true' ) === true
+check( 'the form is the shape of the guide: novalidate, a fieldset with its fieldgrid, one main button, unsaved input reported', str_contains( $script, 'noValidate = true' ) === true
 	&& str_contains( $script, "'fieldset'" ) === true && str_contains( $script, 'nino-admin-fieldgrid' ) === true && substr_count( $script, 'primary :' ) === 1
-	&& str_contains( $script, 'Nino.adminUi.say(' ) === true && str_contains( $script, 'dirty' ) === true );
+	&& str_contains( $script, 'dirty' ) === true );
 $words = [ 'de_DE' => include $dir. '/text/de_DE.php', 'en_US' => include $dir. '/text/en_US.php' ];
 check( 'both languages of the panel have the same keys', array_keys( $words['de_DE'] ) === array_keys( $words['en_US'] ) );
 // A word the script reads is a fill of the panel or of the workbench's common list: never one the panel forgot
@@ -91,5 +91,16 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir, 
 	if( str_contains( (string) $file, '/tests/' ) === false && preg_match( '/Feature::shortcode|Modules\\\\Components|\bnino-(?!admin-fieldgrid)[a-z]|--(?:space|color|radius|fontsize)-|Nino\.ui\./', (string) file_get_contents( (string) $file ) ) === 1 )
 		$oldWorld[] = (string) $file;
 check( 'no file of the feature names the vocabulary of Nino 1', $oldWorld === [] );
+
+// The script of the panel runs over a stand-in of the workbench (hello-js-smoke.js)
+$node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+if( $node === '' || function_exists( 'exec' ) === false )
+	echo "  --  - node is not available here: hello-js-smoke.js was NOT run\n";
+else {
+	$output = [];
+	$exit = 1;
+	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/hello-js-smoke.js' ). ' 2>&1', $output, $exit );
+	check( 'hello-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
+}
 
 ninoDone( $appData );
