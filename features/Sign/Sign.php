@@ -130,6 +130,9 @@ namespace Nino\Modules {
 			// An account that is deleted takes with it every request that is not signed; a signed one is the owner's record and stays
 			\Nino\Callbacks::registerCallback( $appData, '/members/removed', [ self::class, 'callbackRemoved' ] );
 
+			// What the PDF feature asks before a template is deleted: the requests that still wait for a signature name their template
+			\Nino\Callbacks::registerCallback( $appData, '/pdf/template/uses', [ self::class, 'callbackUses' ] );
+
 			// A restore of the daily backup brings the index of a day, which may name requests whose files are not there
 			\Nino\Callbacks::registerCallback( $appData, '/nino/admin/restore', [ self::class, 'callbackRestore' ] );
 		}
@@ -390,6 +393,23 @@ namespace Nino\Modules {
 		public static function remove( array &$appData, string $id ): bool {
 
 			return \Nino\Modules\Sign\Store::remove( $appData, $id ) === 'ok';
+		}
+
+		/**
+		 *	The hook /pdf/template/uses of the PDF feature: the requests that are still open - requested or viewed, and not expired - are the
+		 *	uses of their template, counted for the package 'sign'. A request that is signed, declined, cancelled, changed or expired is
+		 *	none, so the template can be deleted again when the requests are over
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$asked				(reference) The list the PDF feature fills: uses => template key => package => count
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackUses( array &$appData, array &$asked ): void {
+
+			foreach( \Nino\Modules\Sign\Store::all( $appData ) as $request )
+				if( in_array( $request['status'], [ 'requested', 'viewed' ], true ) === true && preg_match( \Nino\Modules\Pdf::SLUG, $request['template'] ) === 1 )
+					$asked['uses'][ $request['template'] ]['sign'] = ( $asked['uses'][ $request['template'] ]['sign'] ?? 0 ) + 1;
 		}
 
 		/**

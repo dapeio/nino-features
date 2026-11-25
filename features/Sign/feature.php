@@ -98,6 +98,10 @@ return [
 				'en_US' => 'Fired when a member declined, with the same request as the argument.',
 				'de_DE' => 'Wird ausgelöst, wenn ein Mitglied abgelehnt hat, mit derselben Anfrage als Argument.',
 			],
+			'/pdf/template/uses' => [
+				'en_US' => 'Heard: every request that still waits for a signature counts as a use of its template, so that a template with an open request is not deleted.',
+				'de_DE' => 'Gehört: Jede Anfrage, die noch auf eine Unterschrift wartet, zählt als Nutzung ihrer Vorlage, damit eine Vorlage mit offener Anfrage nicht gelöscht wird.',
+			],
 			'/members/removed' => [
 				'en_US' => 'Heard: of a deleted account every request that is not signed is deleted with its files; a signed one stays untouched, as the owner\'s record, until the owner deletes it in the panel.',
 				'de_DE' => 'Gehört: Von einem gelöschten Konto wird jede Anfrage, die nicht unterschrieben ist, samt Dateien gelöscht; eine unterschriebene bleibt unberührt als Beleg des Betreibers, bis er sie im Panel löscht.',

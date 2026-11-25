@@ -2136,6 +2136,45 @@ foreach( [ 'en_US', 'de_DE' ] as $locale )
 	check( "...the sentence of sign_ratelimit in $locale is not empty and names the hour", preg_match( '/Stunde|hour/', trim( \Nino\Admin\Admin::textFills( $appData, '/features/Sign/text', $locale )['[[/_admin/error/sign_ratelimit]]'] ?? '' ) ) === 1 );
 echo "\n";
 
+// --- A template with an open request: /pdf/template/uses -----------------------------------------------------------------------
+
+echo "\nA template with an open request - /pdf/template/uses\n";
+
+$usesTemplate = static fn( string $key ): array => \Nino\Modules\Pdf\Store::saveTemplate( $GLOBALS['appData'], [ 'key' => $key, 'isNew' => true, 'name' => 'Uses '. $key, 'tag' => 'privacy', 'blocks' => [ [ 'type' => 'html', 'html' => '<p>Sign here.</p>' ], $GLOBALS['field']( 'first', 'member', 20 ) ] ] );
+$usesOf = static fn( string $key ): array => \Nino\Modules\Pdf::uses( $GLOBALS['appData'] )['uses'][$key] ?? [];
+$prober = \Nino\Modules\Members::add( $appData, 'prober@example.org', 'Prober', 'club' );
+$usesTemplate( 'uses-probe' );
+check( 'a template that no request names is not counted by Sign, and can be deleted: the callback of the PDF feature is heard and says nothing for it', $usesOf( 'uses-probe' ) === [] && \Nino\Modules\Pdf::uses( $appData )['failed'] === [] && \Nino\Modules\Pdf::uses( $appData )['unknown'] === []
+	&& \Nino\Modules\Pdf\Store::deleteTemplate( $appData, 'uses-probe' ) === [ 'ok' => true ] );
+
+$usesTemplate( 'uses-probe' );
+[ $openOne, $openToken ] = $ask( 'uses-probe', [], $prober, [ 'title' => 'Open one' ] );
+$refused = \Nino\Modules\Pdf\Store::deleteTemplate( $appData, 'uses-probe' );
+check( 'a template with a request that waits for a signature is a use for the package sign: counted once, and not deletable - 409 pdf_template_used, sign (1) in the params - the file stays', $usesOf( 'uses-probe' ) === [ 'sign' => 1 ]
+	&& ( $refused['fail'][0] ?? 0 ) === 409 && ( $refused['fail'][2] ?? '' ) === 'pdf_template_used' && ( $refused['fail'][3] ?? [] ) === [ 'sign (1)' ] && \Nino\Modules\Pdf::template( $appData, 'uses-probe' ) !== null );
+
+signServe( $appData, '/.sign?t='. $openToken );
+[ $openTwo, $openTwoToken ] = $ask( 'uses-probe', [], $prober, [ 'title' => 'Open two' ] );
+check( '...a request that was opened is still waiting and counts, and a second request makes two', $stateOf( (string) ( $openOne['id'] ?? '' ) ) === 'viewed' && $usesOf( 'uses-probe' ) === [ 'sign' => 2 ] );
+
+signServe( $appData, '/.sign', 'POST', [ 't' => $openToken, 'action' => 'sign', 'consent' => '1', 'name' => 'Prober' ] );
+check( '...a request that is signed is over and counts no more: one is left', $stateOf( (string) ( $openOne['id'] ?? '' ) ) === 'signed' && $usesOf( 'uses-probe' ) === [ 'sign' => 1 ] );
+
+signServe( $appData, '/.sign', 'POST', [ 't' => $openTwoToken, 'action' => 'decline' ] );
+check( '...nor one that is declined: nothing is left, and the template is deleted', $stateOf( (string) ( $openTwo['id'] ?? '' ) ) === 'declined' && $usesOf( 'uses-probe' ) === [] && \Nino\Modules\Pdf\Store::deleteTemplate( $appData, 'uses-probe' ) === [ 'ok' => true ] );
+
+$usesTemplate( 'uses-probe' );
+[ $withdrawn ] = $ask( 'uses-probe', [], $prober, [ 'title' => 'Withdrawn' ] );
+[ $lapsed ] = $ask( 'uses-probe', [], $prober, [ 'title' => 'Lapsed' ] );
+\Nino\Modules\Sign::cancel( $appData, (string) ( $withdrawn['id'] ?? '' ) );
+\Nino\Filesystem::mutate( $appData, '/data/sign/requests.php', static function( mixed $state ) use ( $lapsed ): array {
+	$state[ (string) ( $lapsed['id'] ?? '' ) ]['expires'] = time() - 60;
+	return $state;
+}, [] );
+check( 'a request that was cancelled and one that ran out count no more: the template has no use and is deleted', $stateOf( (string) ( $withdrawn['id'] ?? '' ) ) === 'cancelled' && ( \Nino\Modules\Sign::get( $appData, (string) ( $lapsed['id'] ?? '' ) )['status'] ?? '' ) === 'expired' && $usesOf( 'uses-probe' ) === []
+	&& \Nino\Modules\Pdf\Store::deleteTemplate( $appData, 'uses-probe' ) === [ 'ok' => true ] );
+check( 'the callback has a line in the manual, in both languages', isset( \Nino\Features::manifest( dirname( __DIR__ ) )['manual']['callbacks']['/pdf/template/uses']['en_US'], \Nino\Features::manifest( dirname( __DIR__ ) )['manual']['callbacks']['/pdf/template/uses']['de_DE'] ) );
+
 // --- The restore of a backup, and deactivation ----------------------------------------------------------------------------------
 
 echo "The restore of a backup, and deactivation\n";
