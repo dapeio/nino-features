@@ -1,0 +1,1 @@
+<tr><td style="padding:0; font-family:'Arial Black', Arial, Helvetica, sans-serif; font-size:15px; line-height:16px; font-weight:bold; letter-spacing:2.2px; color:[[brand-ink]]; text-decoration:none;">[[domain]]</td></tr>

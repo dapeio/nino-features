@@ -1,0 +1,1 @@
+window.secret = 1;
