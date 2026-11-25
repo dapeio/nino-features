@@ -172,7 +172,7 @@
 	// --- the screen --------------------------------------------------------------------------------------------------------------------
 
 	// What the panel keeps: the rows as the server gave them, the groups in use, the directory and the record over it, and whether the dialog of a new member is open
-	const S = { rows : [], groups : [], mount : null, room : null, directory : null, record : null, shape : '', adding : false, loading : false };
+	const S = { rows : [], groups : [], mount : null, room : null, note : null, directory : null, record : null, shape : '', adding : false, loading : false };
 
 	const find = function( key ) {
 		return S.rows.find( function( row ) { return row.key === key } ) ?? null;
@@ -662,12 +662,16 @@
 
 		S.mount.innerHTML = '';
 
+		const note = el( 'div' );
 		const directory = el( 'div' );
 		const bar = el( 'div' );
 
+		S.note = note;
 		S.room = directory;
+		note.id = 'members-note';
 		directory.id = 'members-directory';
 		bar.id = 'members-bar';
+		S.mount.appendChild( note );
 		S.mount.appendChild( directory );
 		S.mount.appendChild( bar );
 
@@ -677,6 +681,26 @@
 		bar.appendChild( Nino.adminUi.actionBar( { list : true, secondary : [ out ], primary : make } ).el );
 
 		return directory;
+	};
+
+	// What the server says of the sign-in form: where it cannot let the client go before the work after the answer, a request for an address that has an account is told from
+	// one that has none by the time its answer takes, and the form hides nothing. A notice at the top, for as long as that is so
+	const drawNote = function( response ) {
+
+		S.note.innerHTML = '';
+
+		// Where the promise holds: always said - as a notice where the server does not let the client go first, as a quiet line with the two limits where it does
+		if( response.hides === false )
+			S.note.appendChild( Nino.adminUi.notice( w('note/server') ) ).id = 'members-note-server';
+		else
+			S.note.appendChild( Nino.adminUi.hint( w('note/server-ok') ) ).id = 'members-note-server';
+
+		if( response.braked === true )
+			S.note.appendChild( Nino.adminUi.notice( w('note/braked') ) ).id = 'members-note-braked';
+
+		// The mail cap of the kernel acts before the setting where it is the lower: said with its number
+		if( typeof response.cap === 'number' && response.cap > 0 )
+			S.note.appendChild( Nino.adminUi.notice( Nino.adminUi.format( w('note/cap'), String( response.cap ) ) ) ).id = 'members-note-cap';
 	};
 
 	// The directory as it stands, drawn again - a group that comes or goes is another select - with what the person had chosen
@@ -731,6 +755,7 @@
 
 			S.rows = ( Array.isArray( response.rows ) === true ? response.rows : [] ).map( data.rowOf );
 			S.groups = Array.isArray( response.groups ) === true ? response.groups : [];
+			drawNote( response );
 			redraw();
 			follow();
 

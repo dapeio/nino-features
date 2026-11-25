@@ -198,6 +198,26 @@ const titleOf = function( dialog ) { return byClass( dialog, 'nino-admin-dialog-
 		bare.open();
 		check( 'A. a project without a group has no group select - a lone option is no choice - and the state select stays', tag( bare.mount, 'select' ).filter( function( s ) { return s.id.indexOf('members-') === 0 } ).length === 1 && tag( bare.mount, 'select' )[0].id === 'members-state' );
 
+		// Where the server does not let the client go before the work after the answer the sign-in form hides nothing, and the panel says so over the table - for as long as that is so
+		const hides = world( Object.assign( clone( LIST ), { hides : true } ) );
+		const shows = world( Object.assign( clone( LIST ), { hides : false } ) );
+
+		hides.open();
+		shows.open();
+		check( 'A. where the server hides the accounts - the form lets the client go first - a quiet line says so with the two limits that stay; where it does not, one notice stands over the table, in the words of the panel, and the table is drawn as it was',
+			byClass( hides.mount, 'nino-admin-notice' ).length === 0 && hides.mount.querySelector( '#members-note-server' ) !== null && hides.mount.querySelector( '#members-note-server' ).textContent === W('note/server-ok') && byClass( shows.mount, 'nino-admin-notice' ).length === 1 && shows.mount.querySelector( '#members-note-server' ) !== null
+			&& byClass( shows.mount, 'nino-admin-notice' )[0].textContent === W('note/server') && shows.rows().length === 3 && hides.rows().length === 3 );
+
+		// The brake of the site and the cap of the kernel are each a notice of their own, with the number of the cap in its words, and none where they are off
+		const braked = world( Object.assign( clone( LIST ), { hides : true, braked : true, cap : 5 } ) );
+		const calm = world( Object.assign( clone( LIST ), { hides : true, braked : false, cap : 0 } ) );
+
+		braked.open();
+		calm.open();
+		check( 'A. a brake that holds says so over the table, and a cap of the kernel below the setting is named with its number; with neither, nothing is said',
+			braked.mount.querySelector( '#members-note-braked' ) !== null && braked.mount.querySelector( '#members-note-braked' ).textContent === W('note/braked') && braked.mount.querySelector( '#members-note-cap' ) !== null
+			&& braked.mount.querySelector( '#members-note-cap' ).textContent.indexOf('5') !== -1 && byClass( braked.mount, 'nino-admin-notice' ).length === 2 && byClass( calm.mount, 'nino-admin-notice' ).length === 0 );
+
 		const empty = world( { rows : [], groups : [] } );
 
 		empty.open();

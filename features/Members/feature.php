@@ -51,8 +51,20 @@ return [
 		],
 		'routes' => [
 			'POST /.members/login' => [
-				'en_US' => 'Asks for a code: it counts the visitor and the address, mails six digits to an active member and answers every address alike with a redirect.',
-				'de_DE' => 'Fordert einen Code an: Sie zählt den Besucher und die Adresse, schickt einem aktiven Mitglied sechs Ziffern und antwortet jeder Adresse gleich mit einer Umleitung.',
+				'en_US' => 'Asks for a code: it counts the sender and the address, looks at the outbox, queues the mail for every address alike - to nobody where there is no account - and answers all of them with one redirect.',
+				'de_DE' => 'Fordert einen Code an: Sie zählt Absender und Adresse, prüft den Postausgang, reiht die Mail für jede Adresse gleich ein – an niemanden ohne Konto – und antwortet allen mit einer Umleitung.',
+			],
+			'POST /.members/login, the server' => [
+				'en_US' => 'The form hides which addresses have an account only where the server lets the client go before the work after the answer (php-fpm, LiteSpeed) and has a free worker; the panel says where.',
+				'de_DE' => 'Das Formular verbirgt die Konten nur, wo der Server den Client vor der Arbeit nach der Antwort entlässt (php-fpm, LiteSpeed) und einen freien Worker hat; das Panel sagt, wo.',
+			],
+			'POST /.members/login, the outbox' => [
+				'en_US' => 'The mail of a code waits in the outbox, readable, until it is delivered - up to two days where the transport fails -, and a mail delivered late carries a code that has run out.',
+				'de_DE' => 'Die Mail eines Codes liegt lesbar im Postausgang, bis sie zugestellt ist – bis zu zwei Tage, wo der Transport ausfällt –, und eine spät zugestellte Mail trägt einen abgelaufenen Code.',
+			],
+			'POST /.members/login, what stays open' => [
+				'en_US' => 'A failing mail transport shows in the time before the answer even where the server lets go first, and where it does not the time of the answer and the next request tell an address with an account.',
+				'de_DE' => 'Ein ausfallender Mail-Transport zeigt sich in der Zeit vor der Antwort auch dort, wo der Server zuerst entlässt, und sonst verraten Antwortzeit und nächste Anfrage eine Adresse mit Konto.',
 			],
 			'POST /.members/code' => [
 				'en_US' => 'Takes the code: a right one signs the member in and leads on, a wrong one counts as a try, and the fifth ends the request.',
@@ -76,6 +88,14 @@ return [
 				'en_US' => 'The accounts as a table with search, group and state; each opens in a record with name, group, state, a sign-in link, a sign-out everywhere and the deletion; chosen rows are deleted together.',
 				'de_DE' => 'Die Konten als Tabelle mit Suche, Gruppe und Zustand; jedes öffnet sich in einem Eintrag mit Name, Gruppe, Zustand, Anmelde-Link, Abmelden überall und Löschen; gewählte Zeilen löscht man gemeinsam.',
 			],
+			'Notice about the server' => [
+				'en_US' => 'A notice over the table where the server does not let the client go before the work after the answer: there the sign-in form cannot hide which addresses have an account.',
+				'de_DE' => 'Ein Hinweis über der Tabelle, wo der Server den Client nicht vor der Arbeit nach der Antwort entlässt: Dort kann das Anmeldeformular nicht verbergen, welche Adressen ein Konto haben.',
+			],
+			'Notice about the brakes' => [
+				'en_US' => 'Over the table: where the promise of the sign-in form holds and where it ends, that no sign-in mail is queued while mails wait, and a setting above the mail cap.',
+				'de_DE' => 'Über der Tabelle: wo das Versprechen des Anmeldeformulars gilt und wo es endet, dass keine Anmelde-Mail eingereiht wird, solange Mails warten, und eine Einstellung über der Mail-Grenze.',
+			],
 			'Sign everybody out' => [
 				'en_US' => 'A button under the table signs every member out at once, the devices that stay signed in among them.',
 				'de_DE' => 'Ein Knopf unter der Tabelle meldet alle Mitglieder auf einmal ab, die Geräte, die angemeldet bleiben, eingeschlossen.',
@@ -89,10 +109,6 @@ return [
 			'/nino/http/response + Protected area' => [
 				'en_US' => 'Where Protected area shuts the same path both gates must be passed, and a visitor who passed neither sees the form of the module that stands last in /nino/modules.',
 				'de_DE' => 'Wo Geschützter Bereich denselben Pfad schließt, müssen beide Tore passiert werden, und wer keines passiert hat, sieht das Formular des Moduls, das in /nino/modules zuletzt steht.',
-			],
-			'/nino/http/output' => [
-				'en_US' => 'Mails of a code request go out after the answer, or as the request ends where that cannot be; there the answer\'s time shows an account, and on a one-worker server the next request waits for the mail.',
-				'de_DE' => 'Die Mails einer Code-Anforderung gehen nach der Antwort hinaus, sonst mit dem Ende der Anfrage; dort verrät die Antwortzeit ein Konto, und bei nur einem Worker wartet die nächste Anfrage auf die Mail.',
 			],
 			'/seo/exclude' => [
 				'en_US' => 'Tells the SEO feature, where it is installed, to keep the protected paths out of the sitemap and out of llms.txt.',
@@ -222,11 +238,11 @@ return [
 			'type'		=> 'int',
 			'label'		=> [ 'en_US' => 'Requests', 'de_DE' => 'Anforderungen' ],
 			'hint'		=> [
-				'en_US' => 'Codes one visitor may ask for per hour before the form refuses for the rest of that hour - for a sign-in and for a new sign-in address alike. Beside it, one address gets at most 3 codes per hour, whoever asks.',
-				'de_DE' => 'Codes, die ein Besucher pro Stunde anfordern darf, bevor das Formular für den Rest der Stunde verweigert – zum Anmelden ebenso wie für eine neue Anmeldeadresse. Daneben bekommt eine Adresse höchstens 3 Codes pro Stunde, wer auch fragt.',
+				'en_US' => 'Codes one visitor may ask for per hour before the form refuses for the rest of that hour - for a sign-in and for a new sign-in address alike; at most 10. The mail cap of the kernel per visitor (/nino/mail/cap, 5 by default) acts first where it is lower, and these mails share it with the mails of the other features. Beside it, one address gets at most 3 codes per hour, whoever asks, and no sign-in mail is queued while 30 mails wait in the outbox.',
+				'de_DE' => 'Codes, die ein Besucher pro Stunde anfordern darf, bevor das Formular für den Rest der Stunde verweigert – zum Anmelden ebenso wie für eine neue Anmeldeadresse; höchstens 10. Die Mail-Grenze des Kernels je Besucher (/nino/mail/cap, standardmäßig 5) greift zuerst, wo sie niedriger ist, und diese Mails teilen sie mit den Mails der anderen Features. Daneben bekommt eine Adresse höchstens 3 Codes pro Stunde, wer auch fragt, und keine Anmelde-Mail wird eingereiht, solange 30 Mails im Postausgang warten.',
 			],
 			'min'			=> 1,
-			'max'			=> 50,
+			'max'			=> 10,
 			'unit'		=> 'per-hour',
 			'default'	=> 5,
 		],

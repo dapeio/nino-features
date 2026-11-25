@@ -111,7 +111,8 @@ namespace Nino\Modules\Members {
 		}
 
 		/**
-		 *	What the screen draws: every account as a row, sorted by name, and the groups in use
+		 *	What the screen draws: every account as a row, sorted by name, the groups in use, whether the sign-in form hides the addresses that have an account, and what the brakes of the sign-in stand at (braked, cap)
+		 *	(\Nino\Http::releasesResponse(): only where the server lets the client go before the work after the answer does it)
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -126,7 +127,8 @@ namespace Nino\Modules\Members {
 			// Every row has the key that names the account in the address of the panel: its id, the one part of it
 			$rows = array_map( static fn( array $account ): array => [ 'key' => $account['id'] ] + $account, \Nino\Modules\Members::accounts( $appData ) );
 
-			\Nino\Http::ok( $request, [ 'rows' => $rows, 'groups' => \Nino\Modules\Members::groups( $appData ) ] );
+			// Whether the sign-in form hides which addresses have an account: where the server does not let the client go before the work after the answer, it does not
+			\Nino\Http::ok( $request, [ 'rows' => $rows, 'groups' => \Nino\Modules\Members::groups( $appData ), 'hides' => \Nino\Http::releasesResponse( $appData ) ] + \Nino\Modules\Members::standing( $appData ) );
 		}
 
 		/**

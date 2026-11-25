@@ -17,9 +17,11 @@ namespace Nino\Modules {
 	 *											account is an email address, a name and a group, kept in
 	 *											/data/members.php. A member signs in with a code: POST
 	 *											/.members/login keeps the address and a random nonce in the
-	 *											session of the browser that asked, mails six digits to an
-	 *											address that belongs to an active account (and answers every
-	 *											address alike), and the form then asks for the code, which
+	 *											session of the browser that asked, makes six digits for the
+	 *											address and puts their mail in the outbox of the kernel - to the
+	 *											address where it belongs to an active account, to nobody where it
+	 *											does not (\Nino\Mail::VOID) - and answers every address alike,
+	 *											and the form then asks for the code, which
 	 *											POST /.members/code takes. The code is kept only as
 	 *											sha256( nonce | code ) in /data/members-tokens.php, so it is
 	 *											worth nothing outside the session that asked for it, and it is
@@ -133,8 +135,6 @@ namespace Nino\Modules {
 		private const string STATE = './members/state';
 		private const string FORMS = './members/forms';
 
-		// What a request of a visitor still has to do once the answer is out: the work of mails, in the order it was asked
-		private const string OUTBOX = './members/outbox';
 		private const string CONFIRM = './members/confirm';
 
 		// The counter of the login requests, \Nino\Feature::count() under this
@@ -147,6 +147,15 @@ namespace Nino\Modules {
 		private const int WINDOW = 3600;
 		private const int ADDRESS_LIMIT = 3;
 		private const int DEFAULT_ATTEMPTS = 5;
+
+		// The share of the places of the outbox that the requests for a code may hold at once: half of them, thirty of MailQueue::MAX_CLIENT. What a visitor's mail of any other feature
+		// needs stays free (see _braked())
+		private const int SITE_DIVISOR = 2;
+
+		// The most live records of codes the file of the codes holds, the ones of accounts and the ones of addresses with no account together: a write that would leave more drops the oldest
+		// records of addresses with no account - a record of an account is never dropped (see _keep())
+		private const int CODE_MAX = 200;
+
 		private const int NAME_LENGTH = 120;
 		private const int CODE_TRIES = 5;
 		private const string TIME = 'Y-m-d\TH:i:s\Z';
@@ -220,25 +229,7 @@ namespace Nino\Modules {
 			// they were, and the epoch of the backup ends every session that was
 			// signed in since, which is right
 
-			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
-
 			self::_keepOutOfCache( $appData, array_map( static fn( string $prefix ): string => $prefix. '/*', self::prefixes( $appData ) ) );
-		}
-
-		/**
-		 *	'/nino/http/output': the answer is about to go out. What a request of a visitor left to do after it (see _later()) is given to the kernel for after the
-		 *	answer, and where the kernel cannot let the client go before - it says so after this callback, and drops the work - it is done as the request ends, so that no
-		 *	mail is lost: on such a server the time of the answer still tells an address that has an account from one that has not
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		&$request			(reference) Current server request
-		 *
-		 *	@return 	void
-		 */
-		public static function callbackOutput( array &$appData, array &$request ): void {
-
-			if( ( $appData[self::OUTBOX] ?? [] ) !== [] )
-				register_shutdown_function( static function() use ( &$appData ): void { self::_flush( $appData ); } );
 		}
 
 		/**
@@ -546,11 +537,14 @@ namespace Nino\Modules {
 		 *	address, a random nonce, no tries yet and the time it is good until, the
 		 *	setting linkMinutes - and the code under sha256( nonce | code ), so that it is
 		 *	worth nothing outside that session. It is the same for an address that is
-		 *	free and for one another account has: the request is kept either way, and only
-		 *	a free address is mailed - nothing tells the member whose address it is, and
-		 *	the time the request took is all there is to see. The visitor is counted
-		 *	(the setting attempts, per hour) and so is the new address (3 per hour), as the
-		 *	request for a login code counts them. An older request of the session is replaced
+		 *	free and for one another account has: the request is kept either way, the code
+		 *	is made, kept and put in the outbox of the kernel either way (see _issueCode()),
+		 *	and only a free address is mailed, the other is sent the mail to nobody
+		 *	(\Nino\Mail::VOID) - nothing in the answer tells the member whose address it is.
+		 *	The visitor is counted (the setting attempts, per hour) and so is the new address
+		 *	(3 per hour), as the request for a login code counts them. A request for the address
+		 *	the session asked for a code for already, which is live, keeps its nonce and its
+		 *	tries; an older request for another address is replaced
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$account			The member who is signed in, as current() has it
@@ -569,22 +563,24 @@ namespace Nino\Modules {
 			if( $email === $record['email'] )
 				return 'same';
 
-			$attempts = (int) \Nino\Features::setting( $appData, self::FEATURE_KEY, 'attempts', self::DEFAULT_ATTEMPTS );
+			$attempts = self::_attempts( $appData );
 
 			if( \Nino\Feature::count( $appData, self::COUNTER, self::_visitor( $appData ), $attempts, self::WINDOW ) === false
 				|| \Nino\Feature::count( $appData, self::COUNTER, 'address|'. $email, self::ADDRESS_LIMIT, self::WINDOW ) === false )
 				return 'limit';
 
-			$nonce = bin2hex( random_bytes( 16 ) );
+			// The code of this session that is out for this address stays good: a second request - a double click, a form sent again - has the mail of the first, which the
+			// outbox does not send twice (see _issueCode()), and the code of that mail must still be one
+			$held = self::_changePending( $appData );
+			$reuse = $held !== null && $held['account'] === (string) $account['id'] && $held['email'] === $email;
+			$nonce = $reuse === true ? $held['nonce'] : bin2hex( random_bytes( 16 ) );
 			$until = time() + self::_minutes( $appData ) * 60;
 
-			\Nino\Runtime::setSessionValue( $appData, self::SESSION_CHANGE, [ 'account' => (string) $account['id'], 'email' => $email, 'nonce' => $nonce, 'tries' => 0, 'until' => $until ] );
+			\Nino\Runtime::setSessionValue( $appData, self::SESSION_CHANGE, [ 'account' => (string) $account['id'], 'email' => $email, 'nonce' => $nonce, 'tries' => $reuse === true ? $held['tries'] : 0, 'until' => $until ] );
 
-			// The record of the code and the mail go out after the answer, and for an address another account has the same step is a step that does nothing:
-			// the time the request takes says nothing of whose address it is (see _later())
-			$id = (string) $account['id'];
-
-			self::_later( $appData, self::_byEmail( $appData, $email ) === null ? static function() use ( &$appData, $id, $email, $nonce, $until ): void { self::_sendChange( $appData, $id, $email, $nonce, $until ); } : null );
+			// The same work for an address that is free and for one another account has: the record of the code, the mail of the same template, the outbox. The one difference is
+			// where the mail goes, and that is decided by the kind of it
+			self::_issueCode( $appData, 'change', (string) $account['id'], self::_byEmail( $appData, $email ) === null, $email, $nonce, $until, '' );
 
 			return 'sent';
 		}
@@ -1059,21 +1055,18 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	POST /.members/login: ask for a code. The visitor is counted (the setting
-		 *	attempts, per hour) and so is the address (3 per hour), by the kernel's
+		 *	POST /.members/login: ask for a code. The sender is counted (the setting attempts, ten at most, per hour), so is the address (3 per hour) and, inside _issueCode(), the outbox as it stands (see _braked()), by the kernel's
 		 *	counter and before anything else, whoever the address belongs to; over
 		 *	either the answer is a redirect with ?members=limit and nothing else
 		 *	happens. Otherwise, for an address that is one, the session keeps the
 		 *	request - the address, a random nonce, no tries yet and the time the code
-		 *	is good until - whoever the address belongs to, and an address that belongs
-		 *	to an active account is mailed six digits, kept as the sha256 of the nonce
-		 *	and the code: the code is worth nothing outside this session. Any other
-		 *	address is mailed nothing - and the answer is the same redirect to the page
-		 *	the form was on, ?members=sent, for all of them, with the time the request
-		 *	took the one difference: nothing may tell whether an address is a member's.
-		 *	A text that is no address ends the request that was out, and leaves the form
-		 *	to say that there is none. A mail that could not be sent is a warning for
-		 *	the log and the same answer. A post the csrf guard refused - a session that
+		 *	is good until - whoever the address belongs to, and the same work is done for
+		 *	every address (see _issueCode()): a code of six digits, kept as the sha256 of the
+		 *	nonce and the code - worth nothing outside this session -, its mail put in the outbox
+		 *	of the kernel, to the address for an active account and to nobody for any other. The answer
+		 *	is the same redirect to the page the form was on, ?members=sent, for all of them, and
+		 *	never depends on what the outbox answered. A text that is no address ends the request that
+		 *	was out, and leaves the form to say that there is none. A post the csrf guard refused - a session that
 		 *	ran out under a form that stayed open - is answered with a redirect to the
 		 *	same page and ?members=expired, in place of the 403 and the empty body the
 		 *	guard leaves, and is not counted
@@ -1095,7 +1088,7 @@ namespace Nino\Modules {
 			}
 
 			$email = self::_email( self::_posted( 'email' ) );
-			$attempts = (int) \Nino\Features::setting( $appData, self::FEATURE_KEY, 'attempts', self::DEFAULT_ATTEMPTS );
+			$attempts = self::_attempts( $appData );
 
 			// The visitor first, then - for a text that is an address - the address,
 			// each in the lock of its own write: a check made first and a try
@@ -1112,35 +1105,34 @@ namespace Nino\Modules {
 				\Nino\Runtime::unsetSessionValue( $appData, self::SESSION_PENDING );
 			else {
 
-				// An address that is a member's and one that is not are kept alike: the
-				// form asks for a code for both
-				$nonce = bin2hex( random_bytes( 16 ) );
+				// An address that is a member's and one that is not are kept alike: the form asks for a code for both. A code of this session for this address that is live stays
+				// good - the second request has the mail of the first (see _issueCode()), and a new nonce would end the code that mail carries - and keeps its tries
+				$held = self::_pending( $appData );
+				$reuse = $held !== null && $held['email'] === $email;
+				$nonce = $reuse === true ? $held['nonce'] : bin2hex( random_bytes( 16 ) );
 				$until = time() + self::_minutes( $appData ) * 60;
 
-				\Nino\Runtime::setSessionValue( $appData, self::SESSION_PENDING, [ 'email' => $email, 'nonce' => $nonce, 'tries' => 0, 'until' => $until ] );
+				\Nino\Runtime::setSessionValue( $appData, self::SESSION_PENDING, [ 'email' => $email, 'nonce' => $nonce, 'tries' => $reuse === true ? $held['tries'] : 0, 'until' => $until ] );
 
 				$account = self::_byEmail( $appData, $email );
-				$job = null;
+				$account = $account !== null && $account['active'] === true ? $account : null;
 
-				if( $account !== null && $account['active'] === true ) {
+				$target = \Nino\Runtime::getSessionValue( $appData, self::SESSION_TARGET );
+				$target = is_string( $target ) === true && self::_isPath( $target ) === true ? $target : '';
+				$posted = self::_posted( 'return' );
 
-					$target = \Nino\Runtime::getSessionValue( $appData, self::SESSION_TARGET );
-					$target = is_string( $target ) === true && self::_isPath( $target ) === true ? $target : '';
-					$posted = self::_posted( 'return' );
+				// The page the gate kept goes with a code that is asked for from that page - or from the page of a link that did not lead in, which keeps its target on purpose - and with no other
+				if( substr( $posted, 0, strcspn( $posted, '?#' ) ) !== substr( $target, 0, strcspn( $target, '?#' ) ) && str_starts_with( $posted, '/.members/' ) === false )
+					$target = '';
 
-					// The page the gate kept goes with a code that is asked for from that page - or from the page of a link that did not lead in, which keeps its target on purpose - and with no other
-					if( substr( $posted, 0, strcspn( $posted, '?#' ) ) !== substr( $target, 0, strcspn( $target, '?#' ) ) && str_starts_with( $posted, '/.members/' ) === false )
-						$target = '';
+				$target = self::_anchored( $target, $posted );
 
-					$target = self::_anchored( $target, $posted );
+				// The page the gate kept travels with the code, and the session has used it up: for every address alike
+				\Nino\Runtime::unsetSessionValue( $appData, self::SESSION_TARGET );
 
-					// The page the gate kept travels with the code, which is made and mailed once the answer is out: the session is used up here, since it is closed by then
-					$job = static function() use ( &$appData, $account, $nonce, $until, $target ): void { self::_sendCode( $appData, $account, $nonce, $until, $target ); };
-					\Nino\Runtime::unsetSessionValue( $appData, self::SESSION_TARGET );
-				}
-
-				// The same step for an address that is a member's and for one that is not, so that the answer is sent in the same way and after the same wait
-				self::_later( $appData, $job );
+				// The same work for an address that has an account and one that has none - a code, its record, the mail of the same template and the outbox -, and the answer below is
+				// the same for both whatever the outbox says. A switched-off account is none
+				self::_issueCode( $appData, 'code', $account === null ? bin2hex( random_bytes( 6 ) ) : $account['id'], $account !== null, $email, $nonce, $until, $target );
 			}
 
 			self::_redirect( $appData, $request, $return, 'sent' );
@@ -1722,7 +1714,8 @@ namespace Nino\Modules {
 			if( self::_forget( $appData, $id ) === false )
 				trigger_error( 'Members: the links of an account could not be deleted after its address was changed', E_USER_WARNING );
 
-			if( self::_mail( $appData, $from, $id, 'changed', '', $by === 'owner' ) === false )
+			// The owner's write is answered by the panel, in the language of the site, and its notice is sent here; the member's own confirmation is answered before the notice goes, which waits in the outbox
+			if( ( $by === 'owner' ? self::_mail( $appData, $from, $id, 'changed', '', true ) : self::_notice( $appData, $from, $id ) ) === false )
 				trigger_error( 'Members: the old address of an account could not be told that it was changed', E_USER_WARNING );
 
 			$told = [ 'account' => [ 'id' => $id ] + self::_plain( $found ), 'old' => $from, 'by' => $by ];
@@ -2076,16 +2069,46 @@ namespace Nino\Modules {
 		 *	@param		int				$expires			The time it is good until
 		 *	@param		string		$target				The path the member asked for, '' for none
 		 *	@param		string		$email				For the code of a change: the new address, which the record keeps; '' for any other
+		 *	@param		string		$retire				The hash of the earlier code of the session, which goes in this write; '' for none
 		 *
 		 *	@return 	bool											Whether it was written
+		 *
+		 *	The file of the codes is written ONCE, whatever the record is for, and what a write leaves in it does not tell an address with an account from one with none:
+		 *	1. The earlier code of the session ($retire) is taken out first, in the same write that adds the new record - one write whether there is one to take or not, so that
+		 *	   how long a record of an earlier request lived (a record of nobody is thinned away, a record of an account is not) shows in no write.
+		 *	2. The records of codes that are left are counted ALL, the ones of accounts and the ones of nobody, and as many of the records of nobody are dropped, the oldest first,
+		 *	   as it takes to leave CODE_MAX - 1 of them; the new record, of a member or of nobody, makes it CODE_MAX. A file that holds its most is as large after a request for an
+		 *	   account as after one for nobody, whatever the earlier request of the session was.
+		 *	3. A record of an account is never dropped - the sign-in of a member who asked is never undone by what strangers ask. Where there are more live records of accounts than
+		 *	   CODE_MAX - 1 (each of them is a request of a visitor who named a real address in the last fifteen minutes, and an address takes three an hour) every record of nobody
+		 *	   goes with each write, the records of accounts stay, and the file holds one record more with every request, whoever it is for, until the first of them runs out: it is
+		 *	   not bounded by CODE_MAX then, and a request that retires the record of an account leaves the file one record smaller than one that retires none. That is the one
+		 *	   state in which the size of the file tells the two apart, and it takes live codes for more than CODE_MAX - 1 real accounts at once to bring it about
 		 */
-		private static function _keep( array &$appData, string $hash, string $id, string $kind, int $expires, string $target, string $email = '' ): bool {
+		private static function _keep( array &$appData, string $hash, string $id, string $kind, int $expires, string $target, string $email = '', string $retire = '' ): bool {
 
 			$now = time();
 
-			return \Nino\Filesystem::mutate( $appData, self::TOKENS, static function( mixed $state ) use ( $hash, $id, $kind, $expires, $target, $email, $now ): array {
+			// The accounts are read for both kinds of record, to know which records are nobody's
+			$accounts = $kind === 'code' ? self::_accountsOf( \Nino\Filesystem::getFileContent( $appData, self::ACCOUNTS, [] ) ) : [];
+
+			return \Nino\Filesystem::mutate( $appData, self::TOKENS, static function( mixed $state ) use ( $hash, $id, $kind, $expires, $target, $email, $retire, $now, $accounts ): array {
 
 				$tokens = self::_liveTokens( $state, $now );
+
+				if( $retire !== '' && ( $tokens[$retire]['kind'] ?? '' ) === $kind )
+					unset( $tokens[$retire] );
+
+				if( $kind === 'code' ) {
+
+					$codes = array_filter( $tokens, static fn( array $entry ): bool => $entry['kind'] === 'code' );
+					$nobodys = array_filter( $codes, static fn( array $entry ): bool => isset( $accounts[ $entry['account'] ] ) === false );
+					uasort( $nobodys, static fn( array $a, array $b ): int => $a['expires'] <=> $b['expires'] );
+
+					foreach( array_slice( array_keys( $nobodys ), 0, max( 0, count( $codes ) - ( self::CODE_MAX - 1 ) ) ) as $old )
+						unset( $tokens[$old] );
+				}
+
 				$tokens[$hash] = [ 'account' => $id, 'kind' => $kind, 'expires' => $expires, 'target' => $target ] + ( $kind === 'change' ? [ 'email' => $email ] : [] );
 
 				return $tokens;
@@ -2123,65 +2146,137 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Make a code for an account, keep it under the hash of the session's nonce
-		 *	and the code - nothing else of it is stored - and mail it. Six digits, filled
-		 *	up with zeros, from random_int(). Nothing is mailed where the record could
-		 *	not be written, and a mail that no transport takes is false
+		 *	Make a code, keep it under the hash of the session's nonce and the code - nothing else of it is stored - and put its mail in the outbox of the kernel
+		 *	(\Nino\Mail::queue()), which sends it after the answer or with a later request, whatever becomes of this one. Six digits, filled up with zeros, from random_int(),
+		 *	for every address alike: a request for an address that has an account and one for an address that has none do the same work, the mail of the same template - in
+		 *	the language of the request for both, since a callback of '/members/language' knows accounts and would tell them apart - to the address as it was typed, a record of
+		 *	the code, and the same call of the outbox under a key. The only difference is the kind of the mail: \Nino\Mail::CLIENT where the code goes to somebody,
+		 *	\Nino\Mail::VOID - a mail to nobody, which the outbox takes the whole way and lets go without a transport - where it does not. The record of a code that goes to nobody
+		 *	names an id that no account has - twelve random hex digits, as long as an id is, so that the file is as large as the one of a member's code - and what the record is
+		 *	spent for is 'gone', as it is for an account that was deleted since.
+		 *
+		 *	The key is made of the session, the address, the nonce of the request and the time slot of the kernel's memory for keys (MailQueue::KEY_MEMORY): within a slot a
+		 *	second request is the mail of the first - the outbox answers 'conflict' for a mail that waits or went out lately, for both kinds alike - and in the next slot it is
+		 *	a mail of its own, for both kinds alike, since the kernel has forgotten the key of a mail to nobody by then and a mail that waits for its transport would still hold
+		 *	it. Under one nonce there is only ever ONE live code: the record of an earlier code of this session is taken back in the very write that keeps the new one - one write of the file for every
+		 *	address, whether the record of the earlier code is still there or not (see _keep()) -, and the new one is taken back when the outbox takes no mail for it, so that a second code
+		 *	never doubles the chance of a guess. A request the outbox refuses leaves the session with no live code, the earlier one included: it asks again.
+		 *
+		 *	A second request of the session in the slot of a request that was queued makes nothing and asks the outbox for nothing, for every address (the slot and the nonce are kept in the
+		 *	session): a double click across the end of a slot is the one case that queues twice, the same for both kinds, and the code of the first mail is then no code (one is live). Before
+		 *	anything is done the outbox is looked at (see _braked()): where it holds the share, nothing is kept and nothing is queued, for every address alike. What the outbox answers changes nothing the visitor can see: 'conflict', 'full', 'ratelimited', 'unwritable' and the rest end the same. The log says why, in a
+		 *	line that names no address and at most once an hour for each reason - except for 'conflict', which a double click of the visitor causes and is routine
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$account			As account() has it
+		 *	@param		string		$kind					'code' (to sign in) or 'change' (a code to the new address of an account)
+		 *	@param		string		$holder				The account the record of the code names: the member's, or a random id where nobody is
+		 *	@param		bool			$real					Whether the code goes to somebody: the address has an account (or, for a change, is free)
+		 *	@param		string		$email				The address as it was typed, in lower case
 		 *	@param		string		$nonce				32 hex characters of the request the session holds
 		 *	@param		int				$until				The time the code is good until
 		 *	@param		string		$target				The path the member asked for, '' for none - where the sign-in leads
 		 *
-		 *	@return 	bool											Whether the mail was delivered - false, with a warning that names no address, where the code could not be stored or the mail was not taken
+		 *	@return 	void
 		 */
-		private static function _sendCode( array &$appData, array $account, string $nonce, int $until, string $target ): bool {
+		private static function _issueCode( array &$appData, string $kind, string $holder, bool $real, string $email, string $nonce, int $until, string $target ): void {
+
+			// A second request in the slot of a request that was queued is the mail of that one, for every address: nothing is made and the outbox is not asked
+			$slot = [ $nonce, intdiv( \Nino\MailQueue::now( $appData ), \Nino\MailQueue::KEY_MEMORY ) ];
+
+			if( \Nino\Runtime::getSessionValue( $appData, './members/slot-'. $kind ) === $slot )
+				return;
+
+			if( self::_braked( $appData ) === true )
+				return;
 
 			$code = sprintf( '%06d', random_int( 0, 999999 ) );
+			$hash = hash( 'sha256', $nonce. '|'. $code );
 
-			if( self::_keep( $appData, hash( 'sha256', $nonce. '|'. $code ), $account['id'], 'code', $until, $target ) === false ) {
+			// The earlier code of this session goes in the write that keeps the new one: a new request is a new code, and only one is live. One write for every address, whether there
+			// is an earlier code or not and whether its record is still in the file or was thinned away
+			$held = './members/held-'. $kind;
+			$before = \Nino\Runtime::getSessionValue( $appData, $held );
+
+			if( self::_keep( $appData, $hash, $holder, $kind, $until, $target, $kind === 'change' ? $email : '', is_string( $before ) === true ? $before : '' ) === false ) {
 				trigger_error( 'Members: a code could not be stored', E_USER_WARNING );
-				return false;
+				return;
 			}
 
-			if( self::_mail( $appData, $account['email'], $account['id'], 'code', $code, false ) === false ) {
-				trigger_error( 'Members: a code could not be mailed', E_USER_WARNING );
-				return false;
+			// The code of the language of the request: the same for every address, whoever the hook of the language would name for an account
+			[ $subject, $body, $replyTo ] = self::_compose( $appData, '', $kind, $code, false, '' );
+
+			$queued = \Nino\Mail::queue( $appData, [ 'to' => $email, 'subject' => $subject, 'body' => $body, 'replyTo' => $replyTo ], $real === true ? \Nino\Mail::CLIENT : \Nino\Mail::VOID,
+				'members/'. $kind. '-'. hash( 'sha256', \Nino\Csrf::getToken( $appData ). '|'. $email. '|'. $nonce. '|'. intdiv( \Nino\MailQueue::now( $appData ), \Nino\MailQueue::KEY_MEMORY ) ) );
+
+			if( $queued !== '' ) {
+				\Nino\Runtime::setSessionValue( $appData, $held, $hash );
+				\Nino\Runtime::setSessionValue( $appData, './members/slot-'. $kind, $slot );
+
+				return;
 			}
+
+			// A code that no mail carries is good for nobody: it goes, for every address alike
+			self::_spendHash( $appData, $hash );
+
+			$why = \Nino\Mail::queueRefused( $appData );
+
+			if( $why !== 'conflict' && \Nino\Feature::count( $appData, self::COUNTER, 'said-'. $why, 1, self::WINDOW ) === true )
+				trigger_error( 'Members: no mail queued ('. $why. ')', E_USER_WARNING );
+		}
+
+		/**
+		 *	Whether the requests for a code hold their share of the outbox: as many mails wait in it as half of the places for visitors. It goes by what waits and not by how
+		 *	many requests came, so that nothing is held back while the mails are delivered - they wait only a moment - and where the delivery stalls (the server drops the work after the answer,
+		 *	the transport is down) the requests hold at most that share and the mails of the other features keep their places. The same read for every request that gets as far as a code,
+		 *	before any address is looked at, and a mail to nobody waits like a mail of a member until it is let go, so both kinds see the same state and decide the same - no oracle. Where the brake
+		 *	holds nothing is kept and nothing is queued, but the steps that change nothing are taken all the same (the lock and the read of the file of the codes, a read of the outbox, the mail
+		 *	made from the template), so that the time before the answer says as little as can be said without a wait; one line without an address says it once an hour. The file of the
+		 *	codes is bounded apart from this: CODE_MAX live records in all, of which only the ones for addresses with no account are ever dropped, and for the accounts the cap of three requests an hour for an address (see _keep())
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool
+		 */
+		private static function _braked( array &$appData ): bool {
+
+			if( \Nino\Mail::queued( $appData )['waiting'] < self::siteShare() )
+				return false;
+
+			// The steps of a request that is let through, taken with nothing changed: the accounts are read, the file of the codes is read and written back as it is
+			self::_accountsOf( \Nino\Filesystem::getFileContent( $appData, self::ACCOUNTS, [] ) );
+			\Nino\Filesystem::mutate( $appData, self::TOKENS, static fn( mixed $state ): array => is_array( $state ) === true ? $state : [], [] );
+			\Nino\MailQueue::peek( $appData, \Nino\Mail::CLIENT, '' );
+			self::_compose( $appData, '', 'code', '000000', false, '' );
+
+			if( \Nino\Feature::count( $appData, self::COUNTER, 'said-braked', 1, self::WINDOW ) === true )
+				trigger_error( 'Members: requests for a code are held back, mails wait in the outbox', E_USER_WARNING );
 
 			return true;
 		}
 
 		/**
-		 *	Make the code of a change of address, keep it under the hash of the session's nonce
-		 *	and the code, with the account and the new address, and mail it to the new
-		 *	address: six digits, in the words of the request's language. Nothing is mailed
-		 *	where the record could not be written
+		 *	How many mails of codes may wait in the outbox at once: the share of the places of the outbox that are for visitors
+		 *
+		 *	@return 	int
+		 */
+		public static function siteShare(): int {
+
+			return intdiv( \Nino\MailQueue::MAX_CLIENT, self::SITE_DIVISOR );
+		}
+
+		/**
+		 *	What the panel tells about the sign-in: whether the share of the site is used up for this hour, and the cap of mails of the kernel for a visitor where the setting for requests
+		 *	is above it (that cap acts first, and is shared with the other features)
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$id						The account
-		 *	@param		string		$email				The new address, lower case
-		 *	@param		string		$nonce				32 hex characters of the request the session holds
-		 *	@param		int				$until				The time the code is good until
 		 *
-		 *	@return 	bool											Whether the mail was delivered - false, with a warning that names no address, where the code could not be stored or the mail was not taken
+		 *	@return 	array										braked (bool), cap (the kernel's cap where it is lower than the requests the setting allows, 0 for no such case)
 		 */
-		private static function _sendChange( array &$appData, string $id, string $email, string $nonce, int $until ): bool {
+		public static function standing( array &$appData ): array {
 
-			$code = sprintf( '%06d', random_int( 0, 999999 ) );
+			$cap = (int) ( $appData['/nino/mail/cap'] ?? \Nino\AppData::DEFAULTS['/nino/mail/cap'] );
 
-			if( self::_keep( $appData, hash( 'sha256', $nonce. '|'. $code ), $id, 'change', $until, '', $email ) === false ) {
-				trigger_error( 'Members: a code for a change of address could not be stored', E_USER_WARNING );
-				return false;
-			}
-
-			if( self::_mail( $appData, $email, $id, 'change', $code, false ) === false ) {
-				trigger_error( 'Members: a code for a change of address could not be mailed', E_USER_WARNING );
-				return false;
-			}
-
-			return true;
+			return [ 'braked' => \Nino\Mail::queued( $appData )['waiting'] >= self::siteShare(), 'cap' => $cap > 0 && self::_attempts( $appData ) > $cap ? $cap : 0 ];
 		}
 
 		/**
@@ -2351,24 +2446,69 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Mail a link or a code, or the notice of a change. The template is rendered first - its words are the
-		 *	keys of the unit - and the link or the code, the validity, the day and the contact address of the
+		 *	Send a link or the notice of a change in the request, before the answer: the mails the owner asks for in the panel, which says whether they went, and the ones that
+		 *	carry a link - a link signs in, so it is never kept in the outbox, a file that waits - are sent here. What is made of is in _compose()
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$to
+		 *	@param		string		$id						The account the mail is for: its language, where mailLocale() knows one, is the one the mail is written in
+		 *	@param		string		$kind					'login', 'invite', 'send' or 'changed'
+		 *	@param		string		$token				The token of a link - nothing for a notice
+		 *	@param		bool			$native				Write in the site's native language
+		 *	@param		string		$message			The message of the owner, for the mail of a link whose template has the slot [[message]] ('invite' and 'send')
+		 *
+		 *	@return 	bool										Whether the mail was delivered
+		 */
+		private static function _mail( array &$appData, string $to, string $id, string $kind, string $token, bool $native, string $message = '' ): bool {
+
+			[ $subject, $body, $replyTo ] = self::_compose( $appData, $id, $kind, $token, $native, $message );
+
+			return \Nino\Mail::send( $appData, $to, $subject, $body, $replyTo );
+		}
+
+		/**
+		 *	The notice to the old address of an account that its address was changed, by the member's own confirmation, put in the outbox of the kernel: the answer to the member
+		 *	does not wait for a transport, and a notice the transport does not take is tried again. It names neither the new address nor a code, so what waits in the outbox is
+		 *	no secret. What the outbox refuses is a warning for the log that names no address
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$to						The old address
+		 *	@param		string		$id						The account
+		 *
+		 *	@return 	bool										Whether the outbox took the mail
+		 */
+		private static function _notice( array &$appData, string $to, string $id ): bool {
+
+			[ $subject, $body, $replyTo ] = self::_compose( $appData, $id, 'changed', '', false, '' );
+
+			if( \Nino\Mail::queue( $appData, [ 'to' => $to, 'subject' => $subject, 'body' => $body, 'replyTo' => $replyTo ], \Nino\Mail::CLIENT ) !== '' )
+				return true;
+
+			trigger_error( 'Members: no mail queued ('. \Nino\Mail::queueRefused( $appData ). ')', E_USER_WARNING );
+
+			return false;
+		}
+
+		/**
+		 *	The mail of a kind, finished: its subject and its body from the templates of the unit, in the language it is written in, and the address the reply goes to. The template is
+		 *	rendered first - its words are the keys of the unit - and the link or the code, the validity, the day and the contact address of the
 		 *	project are put in afterwards, in the result, so that nothing in them is ever read as a fill or
 		 *	a shortcode (the order \Nino\Form::render() keeps). A code is set as two
 		 *	groups of three digits. The reply goes to the project's contact address
 		 *	where it has one
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$to
-		 *	@param		string		$id						The account the mail is for: its language, where mailLocale() knows one, is the one the mail is written in
+		 *	@param		string		$id						The account the mail is for: its language, where mailLocale() knows one, is the one the mail is written in - '' for none, and then the hook is not asked: the mails of a code ('code', 'change')
+		 *															are written in the language of the request for every address alike, since the hook knows accounts and would tell an address that has one from one that has none; the mails that tell nothing of that
+		 *															(the links and the notice, which go to the account the owner or the signed-in member named) are written in the language of the account
 		 *	@param		string		$kind					'login', 'invite', 'send', 'code', 'change' (a code, to the new address) or 'changed' (the notice to the old address that it was changed, which names neither the new one nor a code)
 		 *	@param		string		$token				The token of a link, the six digits of a code - nothing for a notice
 		 *	@param		bool			$native				Write in the site's native language
 		 *	@param		string		$message			The message of the owner, for the mail of a link whose template has the slot [[message]] ('invite' and 'send'); it is put in the place of the slot when everything else is in, so that nothing of it is read again
 		 *
-		 *	@return 	bool										Whether the mail was delivered
+		 *	@return 	array										[ subject, body, replyTo ]
 		 */
-		private static function _mail( array &$appData, string $to, string $id, string $kind, string $token, bool $native, string $message = '' ): bool {
+		private static function _compose( array &$appData, string $id, string $kind, string $token, bool $native, string $message ): array {
 
 			$url = in_array( $kind, self::LINKS, true ) === true ? \Nino\Html::absoluteUrl( $appData, '/.members/login?t='. rawurlencode( $token ) ) : '';
 			$code = in_array( $kind, [ 'code', 'change' ], true ) === true ? substr( $token, 0, 3 ). ' '. substr( $token, 3 ) : '';
@@ -2379,7 +2519,7 @@ namespace Nino\Modules {
 			$text = bin2hex( random_bytes( 8 ) );
 
 			// The language of the account, where one is known, wins over the site's native one and over the request's
-			$written = self::mailLocale( $appData, $id );
+			$written = $id === '' ? '' : self::mailLocale( $appData, $id );
 			$written = $written !== '' ? $written : ( $native === true ? \Nino\Locales::getNativeLocale( $appData ) : '' );
 
 			if( $written !== '' )
@@ -2409,7 +2549,7 @@ namespace Nino\Modules {
 			$paragraph = $message === '' ? '' : trim( str_replace( $text, nl2br( \Nino\Components::escape( $message ), false ), $paragraph ) ). "\n\t";
 			$body = str_replace( $slot, $paragraph, $body );
 
-			return \Nino\Mail::send( $appData, $to, $subject, $body, $replyTo );
+			return [ $subject, $body, $replyTo ];
 		}
 
 		/**
@@ -2926,48 +3066,17 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Leave work for after the answer: the code of a request of a visitor is made and mailed there, so that the time the answer takes does not tell
-		 *	whether an address has an account (a mail costs what a transport costs, and an address that is none costs nothing). The kernel runs the work once the client is let
-		 *	go (\Nino\Http::afterResponse()); where it cannot - it says so after '/nino/http/output', see callbackOutput() - the work is done as the request ends. Every
-		 *	request leaves a step, one that does nothing where there is nothing to send, since the answer of a request that has work to do differs in its headers from one
-		 *	that has none (the length the kernel tells)
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		callable|null	$work			The work; null for a step that does nothing
-		 *
-		 *	@return 	void
-		 */
-		private static function _later( array &$appData, ?callable $work ): void {
-
-			$appData[self::OUTBOX][] = $work ?? static function(): void {};
-
-			\Nino\Http::afterResponse( $appData, static function() use ( &$appData ): void { self::_flush( $appData ); } );
-		}
-
-		/**
-		 *	Do what a request left for after the answer, once each
+		 *	How many requests for a code one sender may make in an hour: the setting attempts, which the manifest holds to ten at most - a sixth of the sixty places of the outbox that
+		 *	a visitor may hold. The count is the same for an address that has an account and one that has none - it is made before anything is known of the address, and the sender is the
+		 *	one the kernel counts a client by (see _visitor()). The mail cap of the kernel per visitor, '/nino/mail/cap', acts first where it is lower
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	void
+		 *	@return 	int
 		 */
-		private static function _flush( array &$appData ): void {
+		private static function _attempts( array &$appData ): int {
 
-			while( is_array( $appData[self::OUTBOX] ?? null ) === true && $appData[self::OUTBOX] !== [] ) {
-
-				$job = array_shift( $appData[self::OUTBOX] );
-
-				// One mail that cannot be sent is not the end of the ones behind it, and after the answer nobody is left to be told: it is a warning, with the class of the failure and never its message, which can hold an address
-				try {
-					$job();
-				}
-				catch( \Nino\Failure $failure ) {
-					throw $failure;
-				}
-				catch( \Throwable $error ) {
-					trigger_error( 'Members: a mail after the answer failed - '. get_class( $error ), E_USER_WARNING );
-				}
-			}
+			return (int) \Nino\Features::setting( $appData, self::FEATURE_KEY, 'attempts', self::DEFAULT_ATTEMPTS );
 		}
 
 		/**

@@ -86,6 +86,12 @@ return [
 	'[[/_admin/members/msg/signedout-one]]'		=> 'The member is signed out.',
 	'[[/_admin/members/missing]]'				=> 'This member does not exist any more.',
 
+	// The notice over the table where the server cannot let the client go before the work after the answer (Admin::apiList())
+	'[[/_admin/members/note/server]]'			=> 'Where the server lets the client go before the work after the answer (php-fpm, LiteSpeed) the sign-in form shows no difference between an address with an account and one without. This server does not, so the time of the answer tells them apart. Even where it does, a busy server can make the next request wait, and a failing mail transport is not covered.',
+	'[[/_admin/members/note/braked]]'			=> 'Sign-ins are held back: mails are waiting in the outbox, so no new sign-in mail is queued until they are delivered.',
+	'[[/_admin/members/note/server-ok]]'		=> 'The sign-in form hides which addresses have an account while the server lets the client go before the work, as this one does. Two limits stay: a busy server can make the next request wait, and a failing mail transport shows.',
+	'[[/_admin/members/note/cap]]'				=> 'The setting Requests allows more than the mail cap of the kernel per visitor, %s an hour (/nino/mail/cap), which acts first and which the mails of the other features share.',
+
 	// What the panel says of a request the server gave no word for
 	'[[/_admin/members/error/load]]'			=> 'The members could not be loaded.',
 	'[[/_admin/members/error/add]]'				=> 'The member could not be created.',

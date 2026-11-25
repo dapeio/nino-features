@@ -10,7 +10,8 @@ declare(strict_types=1);
  *										in and spends it, the gate in front of the protected paths - at every address a route gives them and in every
  *										spelling of it, and with nothing of the route in its answer -, the sign-out and the epoch that signs everybody
  *										out, the change of an address, the devices that stay signed in, the callbacks other features build on - the new
- *										'/members/removed' among them -, the data the source wrote read and written back byte for byte, and - where
+ *										'/members/removed' among them -, the mail to nobody (a request for an address with no account does what one with an account does, and
+ *										what the outbox answers changes nothing a visitor sees), the data the source wrote read and written back byte for byte, and - where
  *										node is on the path - the panel script's own test. One pin for each behaviour, over the structure and never the
  *										words. It travels with the feature and runs against the checkout three levels up, or the one NINO_ROOT names.
  *
@@ -24,7 +25,7 @@ require $root. '/tests/harness.php';
 
 /*	Worker mode: this same file re-entered as a process of its own, pointed at a sandbox somebody else built. A request that is over before the process ends is only seen
 	from a second process, and so is a write that comes between two others: flock() is per open file description, so one process proves nothing about it	*/
-if( in_array( $argv[1] ?? '', [ 'drop-worker', 'both-worker', 'hold-worker', 'link-worker', 'nobody-worker' ], true ) === true ) {
+if( in_array( $argv[1] ?? '', [ 'drop-worker', 'both-worker', 'hold-worker', 'link-worker', 'nobody-worker', 'burst-worker' ], true ) === true ) {
 
 	$worker = [ './nino/uid' => $argv[2] ];
 	\Nino\AppData::prepare( $worker );
@@ -38,8 +39,8 @@ if( in_array( $argv[1] ?? '', [ 'drop-worker', 'both-worker', 'hold-worker', 'li
 	\Nino\Html::addFills( $worker, [ '[[/nino/dir]]' => '', '[[/project/website/general/url]]' => 'example.org/club' ], '*' );
 
 	// The server cannot let the client go before the work: a length somebody else set. The answer is finished, the kernel is asked what it will run after it - and the
-	// process ends, as the request does. The mail has to be out by then. 'both-worker' is the server that can: the kernel hands the work back, it is run, and the process
-	// ends as the request does - the shutdown finds nothing left. The addresses ask one after another (a comma between them); the transport throws for $argv[6], and what
+	// process ends, as the request does: the work is dropped, and the mail is in the outbox of the kernel, which a later request delivers. 'both-worker' is the server that
+	// can: the kernel hands the work back, it is run, and the process ends as the request does. The addresses ask one after another (a comma between them); what
 	// is reported as a warning is written to $argv[7]
 	if( $argv[1] === 'drop-worker' || $argv[1] === 'both-worker' ) {
 
@@ -48,10 +49,6 @@ if( in_array( $argv[1] ?? '', [ 'drop-worker', 'both-worker', 'hold-worker', 'li
 			return true;
 		} );
 		\Nino\Callbacks::registerCallback( $worker, \Nino\Mail::TRANSPORT, static function( array &$worker, array &$mail ) use ( $argv ): void {
-
-			if( ( $mail['to'] ?? '' ) === $argv[6] )
-				throw new \RuntimeException( 'the transport of '. $argv[6]. ' is down' );
-
 			file_put_contents( $argv[4], json_encode( [ 'to' => $mail['to'] ?? '' ] ). "\n", FILE_APPEND );
 			$mail['sent'] = true;
 		} );
@@ -75,6 +72,17 @@ if( in_array( $argv[1] ?? '', [ 'drop-worker', 'both-worker', 'hold-worker', 'li
 			$work();
 
 		echo count( $after );
+		exit( 0 );
+	}
+
+	// A visitor of its own - an address of its own, a session of its own - who asks for a code for the address in $argv[4] and leaves the mail in the outbox: what a burst of
+	// requests for one address does to the files, said by the answer it got
+	if( $argv[1] === 'burst-worker' ) {
+
+		$_POST = [ 'email' => $argv[4], 'return' => '/join' ];
+		$request = ninoVisit( $worker, '/.members/login', 'POST' );
+		\Nino\Modules\Members::callbackLoginRequest( $worker, $request );
+		echo (string) ( $request['/nino/http/response']['header']['Location'] ?? '' );
 		exit( 0 );
 	}
 
@@ -221,7 +229,9 @@ function membersFile( array &$appData, string $name ): array {
 
 /**
  *	A new window for every cap: the visitor's and the address's counter of the
- *	feature and the mail cap of the kernel, which counts the same client
+ *	feature and the mail cap of the kernel, which counts the same client - and for the keys of the outbox, which a request of the same session for the same
+ *	address would meet ten minutes after its mail went out, and for its states, a record of which each delivered mail adds, so that the file a request writes is as
+ *	large as the one before it plus a record, whoever it was for
  *
  *	@param		array 		&$appData
  *
@@ -231,6 +241,25 @@ function membersFresh( array &$appData ): void {
 
 	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
 	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', [] );
+	@unlink( \Nino\Filesystem::path( $appData, \Nino\MailQueue::KEYS ) );
+	@unlink( \Nino\Filesystem::path( $appData, '/data/mail-states.php' ) );
+	// ...and the slot the session remembers a queued request in: a new window is a new slot
+	\Nino\Runtime::unsetSessionValue( $appData, './members/slot-code' );
+	\Nino\Runtime::unsetSessionValue( $appData, './members/slot-change' );
+	clearstatcache();
+}
+
+/**
+ *	The account an id of a record belongs to
+ *
+ *	@param		array 		&$appData
+ *	@param		string		$id
+ *
+ *	@return 	array|null								null for an id nobody has
+ */
+function membersAccountOf( array &$appData, string $id ): ?array {
+
+	return \Nino\Modules\Members::account( $appData, $id );
 }
 
 /**
@@ -466,14 +495,14 @@ check( 'the settings are the six of the plan, each with its default and its boun
 	&& $manifest['settings']['paths']['type'] === 'lines' && $manifest['settings']['start']['default'] === '/'
 	&& [ $manifest['settings']['linkMinutes']['default'], $manifest['settings']['linkMinutes']['min'], $manifest['settings']['linkMinutes']['max'] ] === [ 15, 5, 1440 ]
 	&& [ $manifest['settings']['inviteDays']['default'], $manifest['settings']['inviteDays']['min'], $manifest['settings']['inviteDays']['max'] ] === [ 7, 1, 30 ]
-	&& [ $manifest['settings']['attempts']['default'], $manifest['settings']['attempts']['min'], $manifest['settings']['attempts']['max'] ] === [ 5, 1, 50 ]
+	&& [ $manifest['settings']['attempts']['default'], $manifest['settings']['attempts']['min'], $manifest['settings']['attempts']['max'] ] === [ 5, 1, 10 ]
 	&& [ $manifest['settings']['rememberDays']['default'], $manifest['settings']['rememberDays']['min'], $manifest['settings']['rememberDays']['max'] ] === [ 90, 1, 365 ] );
 check( 'its manual says all six sections in both languages, and its section of the privacy policy as a starting point', is_array( $manifest ) && array_keys( $manifest['manual'] ) === [ 'shortcodes', 'markup', 'routes', 'panel', 'callbacks', 'install' ] && (function() use ( $manifest ): bool {
 	foreach( \Nino\Features::MANUAL_SECTIONS as $section )
 		foreach( (array) ( $manifest['manual'][$section] ?? [] ) as $line )
 			if( is_array( $line ) === false || trim( (string) ( $line['en_US'] ?? '' ) ) === '' || trim( (string) ( $line['de_DE'] ?? '' ) ) === '' )
 				return false;
-	return isset( $manifest['manual']['install']['elements/privacy.php'] ) === true && count( $manifest['manual']['shortcodes'] ) >= 4 && count( $manifest['manual']['routes'] ) === 5
+	return isset( $manifest['manual']['install']['elements/privacy.php'] ) === true && count( $manifest['manual']['shortcodes'] ) >= 4 && count( $manifest['manual']['routes'] ) === 8
 		&& array_diff( [ '/members/login', '/members/logout', '/members/start', '/members/login-form', '/members/open', '/members/changed', '/members/removed', '/members/language' ], array_keys( $manifest['manual']['callbacks'] ) ) === [];
 } )() );
 
@@ -840,7 +869,7 @@ check( '...and an account without the permission with 403, writing nothing', arr
 membersFresh( $appData );
 
 [ $status, $body ] = ninoCall( $appData, $panel, [], 'members/list' );
-check( 'the list of a project without a member is empty, and so are the groups', $status === 200 && $body === [ 'rows' => [], 'groups' => [] ] );
+check( 'the list of a project without a member is empty, and so are the groups', $status === 200 && $body === [ 'rows' => [], 'groups' => [], 'hides' => \Nino\Http::releasesResponse( $appData ), 'braked' => false, 'cap' => 0 ] );
 
 [ $status, $body ] = ninoCall( $appData, $panel, [ 'email' => ' Ada@Example.ORG ', 'name' => ' Ada Lovelace ', 'group' => 'Premium Members', 'invite' => false ], 'members/add' );
 $stored = membersFile( $appData, 'accounts' )['accounts'] ?? [];
@@ -1227,7 +1256,8 @@ $entry = $tokens[ hash( 'sha256', ( $pending['nonce'] ?? '' ). '|'. $digits ) ] 
 
 check( 'a request for an address nobody has and one for a member\'s answer the same: a redirect (303), back to the page the form was on with ?members=sent, stored by no one',
 	membersAnswer( $unknown ) === [ 303, '/join?members=sent', 'no-store', '' ] && membersAnswer( $known ) === membersAnswer( $unknown ) );
-check( '...and only the member\'s leaves a mail and a record of a code: nothing for the address nobody has', $mailsUnknown === 0 && $tokensUnknown === [] && count( $mails ) === 1 && count( $tokens ) === 1 );
+check( '...and only the member\'s code is mailed: a record of a code is made for both - the one for the address nobody has names no account, and goes when the session asks for another: only one code is live in a session - and no transport is asked for the address nobody has', $mailsUnknown === 0
+	&& count( $tokensUnknown ) === 1 && count( $mails ) === 1 && count( $tokens ) === 1 && array_values( array_column( $tokens, 'account' ) )[0] === $ada['id'] && membersAccountOf( $appData, array_values( $tokensUnknown )[0]['account'] ) === null );
 check( '...but the session keeps a request for both - the address as the form made it, a nonce of 32 hex characters, no try used, the time of the setting\'s minutes - and the second replaces the first',
 	array_keys( $pendingUnknown ) === [ 'email', 'nonce', 'tries', 'until' ] && $pendingUnknown['email'] === 'nobody@example.org' && array_keys( $pending ) === [ 'email', 'nonce', 'tries', 'until' ] && $pending['email'] === 'ada@example.org'
 	&& preg_match( '/^[0-9a-f]{32}$/D', $pending['nonce'] ) === 1 && preg_match( '/^[0-9a-f]{32}$/D', $pendingUnknown['nonce'] ) === 1 && $pending['nonce'] !== $pendingUnknown['nonce'] && $pending['tries'] === 0
@@ -1239,7 +1269,8 @@ check( '...the mail is to the address of the account and holds six digits, set a
 check( '...the subject is the one of the code mail, rendered', trim( (string) $mails[0]['subject'] ) !== '' && str_contains( (string) $mails[0]['subject'], '[[' ) === false && str_contains( (string) $mails[0]['body'], '[[' ) === false );
 
 $off1 = membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'off@example.org', 'return' => '/join' ] );
-check( 'a member who is switched off is answered like the others - and gets nothing, and the session keeps the request all the same', membersAnswer( $off1 ) === membersAnswer( $unknown ) && count( $mails ) === 1 && count( membersFile( $appData, 'tokens' ) ) === 1
+check( 'a member who is switched off is answered like the others - and gets nothing but the mail to nobody, a record of a code that names no account, and the session keeps the request all the same', membersAnswer( $off1 ) === membersAnswer( $unknown ) && count( $mails ) === 1
+	&& count( membersFile( $appData, 'tokens' ) ) === 1 && membersAccountOf( $appData, array_values( array_column( membersFile( $appData, 'tokens' ), 'account' ) )[0] ) === null
 	&& ( membersPending( $appData )['email'] ?? '' ) === 'off@example.org' );
 
 // What a post can hold that is no address, and no string: the same answer, no warning, nothing sent
@@ -1334,6 +1365,10 @@ $tokensBefore = membersFile( $appData, 'tokens' );
 $limits = [];
 
 for( $try = 1; $try <= 6; $try++ ) {
+
+	if( $try === 6 )
+		$tokensBefore = membersFile( $appData, 'tokens' );
+
 	$limits[$try] = membersAnswer( membersServe( $appData, '/.members/login', 'POST', [ 'email' => $try === 6 ? 'ada@example.org' : 'nobody'. $try. '@example.org', 'return' => '/join' ] ) )[1];
 }
 
@@ -1353,13 +1388,14 @@ for( $try = 1; $try <= 3; $try++ )
 check( '...the number is the setting\'s', $twice === [ 1 => '/join?members=sent', 2 => '/join?members=sent', 3 => '/join?members=limit' ] );
 
 // The cap of the address: three an hour, whoever asks
-\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 50 ] );
+\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] );
 membersFresh( $appData );
 $mails = [];
 $asked = [];
 
 foreach( [ '10.0.0.1', '10.0.0.2', '10.0.0.3', '10.0.0.4' ] as $address ) {
 	$_SERVER['REMOTE_ADDR'] = $address;
+	membersVisitor();
 	$asked[] = membersAnswer( membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'ada@example.org', 'return' => '/join' ] ) )[1];
 }
 
@@ -1382,6 +1418,14 @@ membersServe( $appData, '/club/news' );
 $refused = membersAnswer( membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'ada@example.org', 'return' => '/join' ] ) );
 $delivery = true;
 $warned = ninoWarnings();
+$tried = count( $mails );
+$waiting = \Nino\Mail::queued( $appData )['waiting'];
+
+// The mail waits for its next attempt and is sent then, as the code it was made with
+$appData['./nino/mail/now'] = time() + 120;
+\Nino\Mail::deliverQueued( $appData );
+unset( $appData['./nino/mail/now'] );
+$retried = [ count( $mails ) - $tried, \Nino\Mail::queued( $appData )['waiting'], preg_match( '/^[0-9]{3} [0-9]{3}$/D', membersCodeOf( $mails[count( $mails ) - 1] ?? [] ) ) ];
 \Nino\Html::removeFill( $appData, '/project/website/general/url', '*' );
 \Nino\Html::removeFill( $appData, '/project/website/general/url', 'de_DE' );
 $appData['./nino/html/fills']['*']['[[/project/website/general/url]]'] = '';
@@ -1394,8 +1438,8 @@ membersFresh( $appData );
 $linkNoAddress = \Nino\Modules\Members::link( $appData, $ada, 'login' );
 $warnedLink = ninoWarnings();
 \Nino\Html::addFills( $appData, [ '[[/project/website/general/url]]' => 'example.org/club' ], '*' );
-check( 'a mail that no transport takes is swallowed into the same answer, with a warning for the log that names no address', $refused === [ 303, '/join?members=sent', 'no-store', '' ] && count( $warned ) >= 1
-	&& array_filter( $warned, static fn( string $warning ): bool => str_contains( $warning, 'ada@example.org' ) === true ) === [] );
+check( 'a mail that no transport takes is the same answer, no warning - the outbox of the kernel keeps it for its next attempt, and the attempt sends the code', $refused === [ 303, '/join?members=sent', 'no-store', '' ] && $warned === [] && $tried === 1 && $waiting === 1
+	&& $retried === [ 1, 0, 1 ] );
 check( '...a site that has no address mails the code all the same, with no warning - and has no address to build a link on: nothing is sent for one, a warning', $noAddress === [ 303, '/join?members=sent', 'no-store', '' ] && count( $mails ) === 1 && preg_match( '/^[0-9]{3} [0-9]{3}$/D', $codeNoAddress ) === 1
 	&& $warnedNoAddress === [] && $linkNoAddress === false && count( $warnedLink ) === 1 );
 
@@ -1751,13 +1795,13 @@ foreach( [ 'a target on another host' => [ 'target' => '//evil.example/x' ], 'a 
 	membersVisitor();
 	$token = membersLink( $appData, $ada );
 	$stored = membersFile( $appData, 'tokens' );
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tokens.php', [ hash( 'sha256', $token ) => $change + $stored[ hash( 'sha256', $token ) ] ] );
+	\Nino\Filesystem::putFileContent( $appData, '/data/members-tokens.php', [ hash( 'sha256', $token ) => $change + ( $stored[ hash( 'sha256', $token ) ] ?? [] ) ] );
 	$locations[$kind] = membersConfirm( $appData, $token )[1];
 }
 membersVisitor();
 $token = membersLink( $appData, $ada );
 $stored = membersFile( $appData, 'tokens' );
-\Nino\Filesystem::putFileContent( $appData, '/data/members-tokens.php', [ hash( 'sha256', $token ) => [ 'kind' => 'reset' ] + $stored[ hash( 'sha256', $token ) ] ] );
+\Nino\Filesystem::putFileContent( $appData, '/data/members-tokens.php', [ hash( 'sha256', $token ) => [ 'kind' => 'reset' ] + ( $stored[ hash( 'sha256', $token ) ] ?? [] ) ] );
 $resetAsked = membersAnswer( membersServe( $appData, '/.members/login?t='. $token ) );
 $reset = membersConfirm( $appData, $token );
 
@@ -2210,7 +2254,7 @@ membersVisitor();
 membersSignIn( $appData, $dora );
 $doraSession = \Nino\Runtime::getSessionValue( $appData, './members/account' );
 check( 'an account without an epoch signs in as it did - its session holds the account and the epoch of everybody and nothing else - and the session is good when another account has changed its address',
-	array_keys( $doraSession ) === [ 'id', 'epoch' ] && ( \Nino\Modules\Members::current( $appData )['id'] ?? '' ) === $dora['id'] && array_key_exists( 'epoch', membersFile( $appData, 'accounts' )['accounts'][ $dora['id'] ] ) === false );
+	array_keys( (array) $doraSession ) === [ 'id', 'epoch' ] && ( \Nino\Modules\Members::current( $appData )['id'] ?? '' ) === $dora['id'] && array_key_exists( 'epoch', membersFile( $appData, 'accounts' )['accounts'][ $dora['id'] ] ) === false );
 
 // A notice no transport takes is a warning, and the write that cannot delete the links does not write
 $delivery = false;
@@ -2284,7 +2328,7 @@ $gus = \Nino\Modules\Members::add( $appData, 'gus@example.org', 'Gus', '' );
 $hal = \Nino\Modules\Members::add( $appData, 'hal@example.org', 'Hal', '' );
 $me = static fn(): array => (array) \Nino\Modules\Members::current( $GLOBALS['appData'] );
 $ask = static fn( string $email ): string => membersAfter( $GLOBALS['appData'], \Nino\Modules\Members::askChange( $GLOBALS['appData'], $GLOBALS['me'](), $email ) );
-$confirm = static fn( string $code ): string => \Nino\Modules\Members::confirmChange( $GLOBALS['appData'], $GLOBALS['me'](), $code );
+$confirm = static fn( string $code ): string => membersAfter( $GLOBALS['appData'], \Nino\Modules\Members::confirmChange( $GLOBALS['appData'], $GLOBALS['me'](), $code ) );
 $request = static fn(): ?array => is_array( \Nino\Runtime::getSessionValue( $GLOBALS['appData'], './members/change' ) ) === true ? \Nino\Runtime::getSessionValue( $GLOBALS['appData'], './members/change' ) : null;
 $digitsOfLast = static fn(): string => str_replace( ' ', '', membersCodeOf( end( $GLOBALS['mails'] ) ?: [] ) );
 $mailsTo = static fn( string $email ): array => array_values( array_filter( $GLOBALS['mails'], static fn( array $mail ): bool => $mail['to'] === $email ) );
@@ -2494,8 +2538,8 @@ $freeWrongs = [];
 for( $try = 1; $try <= 5; $try++ )
 	$freeWrongs[] = $confirm( $wrong( $freeDigits ) );
 
-check( 'an address another account has is sent, as a free one is: the request is kept - with that address, lower case - and no mail goes out and no record of a code is made, hal is not troubled', $haveAnswer === 'sent' && $freeAnswer === 'sent' && ( $haveRequest['email'] ?? '' ) === 'hal@example.org'
-	&& $haveMails === 0 && $haveRecords === $recordsBefore && $mailsTo( 'hal@example.org' ) === [] && count( $mails ) === 1 && $changeRecords() === $recordsBefore + 1 );
+check( 'an address another account has is sent, as a free one is: the request is kept - with that address, lower case -, a record of the code is made, and only the mail goes nowhere: no transport is asked for it, hal is not troubled', $haveAnswer === 'sent' && $freeAnswer === 'sent' && ( $haveRequest['email'] ?? '' ) === 'hal@example.org'
+	&& $haveMails === 0 && $haveRecords === $recordsBefore + 1 && $mailsTo( 'hal@example.org' ) === [] && count( $mails ) === 1 && $changeRecords() === $recordsBefore + 1 );
 check( '...and what follows is the same for both: four wrong, then gone, whatever the code - the address is never given away', $haveWrongs === [ 'wrong', 'wrong', 'wrong', 'wrong', 'gone' ] && $freeWrongs === $haveWrongs && \Nino\Modules\Members::account( $appData, $hal['id'] )['email'] === 'hal@example.org' );
 
 // A code to sign in is no code for a change, and the other way round
@@ -2553,7 +2597,11 @@ $hostile = $ask( '"a[b"@example.org' );
 $kept = $request()['email'] ?? '';
 $unsent = ninoWarnings();
 $delivery = true;
-check( 'an address with a bracket in it, a valid one, is kept as it is; a mail no transport takes is a warning that names no address - and the answer is sent all the same', $hostile === 'sent' && $kept === '"a[b"@example.org' && count( $unsent ) >= 1 && str_contains( implode( ' ', $unsent ), 'example.org' ) === false && str_contains( implode( ' ', $unsent ), 'a[b' ) === false );
+$held = \Nino\Mail::queued( $appData )['waiting'];
+$appData['./nino/mail/now'] = time() + 120;
+\Nino\Mail::deliverQueued( $appData );
+unset( $appData['./nino/mail/now'] );
+check( 'an address with a bracket in it, a valid one, is kept as it is; a mail no transport takes waits in the outbox for its next attempt, with no warning that names an address - and the answer is sent all the same', $hostile === 'sent' && $kept === '"a[b"@example.org' && $held === 1 && \Nino\Mail::queued( $appData )['waiting'] === 0 && str_contains( implode( ' ', $unsent ), 'example.org' ) === false && str_contains( implode( ' ', $unsent ), 'a[b' ) === false );
 
 echo "\n";
 
@@ -3093,6 +3141,7 @@ echo "\n";
 membersFixRoundChecks( $appData );
 membersRememberFixChecks( $appData );
 membersRemoveGroupsChecks( $appData );
+membersVoidChecks( $appData );
 
 echo "\n";
 ninoDone( $appData );
@@ -3276,7 +3325,7 @@ function membersRememberFixChecks( array &$appData ): void {
 	membersFresh( $appData );
 	$count = count( $mails );
 	\Nino\Modules\Members::link( $appData, $dev, 'send', $target, true );
-	$token = membersTokenOf( $mails[$count] );
+	$token = membersTokenOf( $mails[$count] ?? [] );
 	$file = membersFile( $appData, 'tokens' );
 	$file[ hash( 'sha256', $token ) ]['expires'] = time() - 60;
 	\Nino\Filesystem::putFileContent( $appData, '/data/members-tokens.php', $file );
@@ -3417,17 +3466,17 @@ function membersLanguageChecks( array &$appData, callable $panel ): void {
 	membersAskCode( $appData, 'lang@example.org' );
 	$codeSession = (string) ( $mails[count( $mails ) - 1]['subject'] ?? '' );
 	$appData['./nino/locales/current'] = 'de_DE';
-	check( 'the code is written in the language of the account too, though the visitor looked at the page in the other; an account with no language gets the language of the request, as it did', $codeEnglish === \Nino\Html::getFills( $appData, 'en_US' )['[[/feature/members/mail/code-subject]]'] && $codeNone === \Nino\Html::getFills( $appData, 'de_DE' )['[[/feature/members/mail/code-subject]]']
-		&& $codeSession === $codeEnglish && $codeNone !== $codeEnglish && $appData['./nino/locales/current'] === 'de_DE' );
+	check( 'the code is written in the language of the REQUEST, whatever a callback of /members/language names for the account - the hook knows accounts and would tell them apart -, so the mail of an address with no account is the same mail', $codeEnglish === \Nino\Html::getFills( $appData, 'de_DE' )['[[/feature/members/mail/code-subject]]']
+		&& $codeNone === $codeEnglish && $codeSession === \Nino\Html::getFills( $appData, 'en_US' )['[[/feature/members/mail/code-subject]]'] && $codeSession !== $codeEnglish && $appData['./nino/locales/current'] === 'de_DE' );
 
-	// The code to the new address of an account that asks to change it is written in the language of the account
+	// The code to the new address of an account that asks to change it is written in the language of the request as well
 	$named = 'en_US';
 	membersFresh( $appData );
 	membersSignIn( $appData, $account );
 	$mails = [];
 	$appData['./nino/locales/current'] = 'de_DE';
 	$changeAsked = membersAfter( $appData, \Nino\Modules\Members::askChange( $appData, \Nino\Modules\Members::current( $appData ) ?? $account, 'lang.next@example.org' ) );
-	check( '...and so is the code to the new address that an account asks for', $changeAsked === 'sent' && ( $mails[0]['to'] ?? '' ) === 'lang.next@example.org' && ( $mails[0]['subject'] ?? '' ) === \Nino\Html::getFills( $appData, 'en_US' )['[[/feature/members/mail/change-subject]]'] );
+	check( '...and so is the code to the new address that an account asks for', $changeAsked === 'sent' && ( $mails[0]['to'] ?? '' ) === 'lang.next@example.org' && ( $mails[0]['subject'] ?? '' ) === \Nino\Html::getFills( $appData, 'de_DE' )['[[/feature/members/mail/change-subject]]'] );
 	membersVisitor();
 
 	// The notice to the old address of an account whose address was changed is written in the language of the account
@@ -4149,7 +4198,8 @@ function membersWorkerChecks( array &$appData ): void {
 		return $ended === true ? trim( $out ) : 'timeout';
 	};
 
-	// The kernel drops the work after the answer where a length was told by somebody else: the mail goes out as the process ends
+	// The kernel drops the work after the answer where a length was told by somebody else: the mail is in the outbox, and the process that ends did not lose it - the
+	// delivery of a later request, or the command of the outbox, sends it, once
 	$mine = $members::add( $appData, 'dropped@example.org', 'Dropped', 'p' );
 	$mailFile = $sandbox. '/dropped-mails.jsonl';
 	@unlink( $mailFile );
@@ -4158,21 +4208,15 @@ function membersWorkerChecks( array &$appData ): void {
 	@unlink( $warnFile );
 	$said = $finish( $run( [ 'drop-worker', $sandbox, '203.0.113.77', $mailFile, 'dropped@example.org', '', $warnFile ] ) );
 	$sent = is_file( $mailFile ) === true ? array_filter( explode( "\n", trim( (string) file_get_contents( $mailFile ) ) ) ) : [];
-	check( 'where the kernel cannot let the client go before the work (it drops it: it runs nothing after the answer) the mail of a code is not lost: it goes out as the request ends, once', is_array( $mine ) === true && $said === '0'
-		&& count( $sent ) === 1 && ( json_decode( (string) ( $sent[0] ?? '' ), true )['to'] ?? '' ) === 'dropped@example.org' );
-
-	// A transport that throws at the first of two mails ends neither the answer nor the second mail, where the work runs as the process ends - and what is said of it is the class of the failure
-	foreach( [ 'boom@example.org', 'second@example.org' ] as $address )
-		$members::add( $appData, $address, 'Two', 'p' );
-
-	@unlink( $mailFile );
-	@unlink( $warnFile );
-	membersFresh( $appData );
-	$said = $finish( $run( [ 'drop-worker', $sandbox, '203.0.113.82', $mailFile, 'boom@example.org,second@example.org', 'boom@example.org', $warnFile ] ) );
-	$sent = is_file( $mailFile ) === true ? array_map( static fn( string $line ): string => (string) ( json_decode( $line, true )['to'] ?? '' ), array_filter( explode( "\n", trim( (string) file_get_contents( $mailFile ) ) ) ) ) : [];
-	$warned = is_file( $warnFile ) === true ? (string) file_get_contents( $warnFile ) : '';
-	check( 'a transport that throws at the first of two mails, where the work runs as the process ends: the answer is the one it is otherwise (nothing but the count of the work the kernel handed back, 0), the second mail arrives', $said === '0' && array_values( $sent ) === [ 'second@example.org' ] );
-	check( '...and what is told of the failure is a warning with the class of it and neither its message nor an address', substr_count( $warned, 'RuntimeException' ) === 1 && str_contains( $warned, 'boom' ) === false && str_contains( $warned, 'is down' ) === false && str_contains( $warned, '@' ) === false );
+	unset( $appData['./nino/filesystem/cache'] );
+	clearstatcache();
+	$kept = \Nino\Mail::queued( $appData )['waiting'];
+	global $mails;
+	$mails = [];
+	$delivered = \Nino\Mail::deliverQueued( $appData );
+	$again = \Nino\Mail::deliverQueued( $appData );
+	check( 'where the kernel cannot let the client go before the work (it drops it: it runs nothing after the answer) the mail of a code is not lost: the process sent none, the outbox holds it, and the next delivery sends it, once',
+		is_array( $mine ) === true && $said === '0' && $sent === [] && $kept === 1 && $delivered['delivered'] === 1 && $again['delivered'] === 0 && count( $mails ) === 1 && $mails[0]['to'] === 'dropped@example.org' && membersCodeOf( $mails[0] ) !== '' );
 
 	// A write that fails, with the work done before it: the account is not deleted and nobody is told it is. The process may read, take the locks and not write the data:
 	// root gives up its rights for it, any other user has the file and the directory of the accounts made read-only for it
@@ -4275,4 +4319,897 @@ function membersEndChecks( array &$appData ): void {
 	membersFresh( $appData );
 	check( '...and a sign-in made now is a sign-in: the account is the same, and signs in', membersSignIn( $appData, $ended )[0] === 303 && ( $members::current( $appData )['id'] ?? '' ) === $ended['id'] );
 	membersVisitor();
+}
+
+/**
+ *	The mail to nobody: a request for an address that has no account does, to the file, the answer and the log, what a request for one that has an account does, and what the
+ *	outbox answers changes nothing a visitor can see. Pairs of two requests - an address with an account, an address with none - are compared in what the disk was asked, in the
+ *	whole answer, in the log and in what was kept; the refusals of the outbox - conflict, full, ratelimited, unwritable - are each made for both
+ *
+ *	@param		array 		&$appData
+ *
+ *	@return 	void
+ */
+function membersVoidChecks( array &$appData ): void {
+
+	global $mails, $delivery;
+
+	echo "\nModules\\Members - the mail to nobody: an address with no account is answered as one that has\n";
+
+	require_once dirname( __DIR__, 3 ). '/tests/fixtures/faultfs.php';
+
+	$members = \Nino\Modules\Members::class;
+	$GLOBALS['members'] = $members;
+	$sandbox = ninoSandboxDir( $appData );
+	$delivery = true;
+	$original = $appData['/nino/mail/cap'] ?? null;
+	\Nino\Features::saveSettings( $appData, 'members', [ 'paths' => [], 'start' => '/', 'attempts' => 5 ] );
+	$appData['./nino/members/state'] = null;
+
+	// The accounts: names of one length, so that a pair of requests writes files of one size - an address that has an account, one that has none, one that is switched off, one
+	// whose account was deleted
+	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php' ] as $file )
+		\Nino\Filesystem::putFileContent( $appData, $file, [] );
+
+	$ada = $members::add( $appData, 'ada@example.org', 'Ada', 'staff' );
+	$members::add( $appData, 'bare@example.org', 'Bare', '' );
+	$off = $members::add( $appData, 'off@example.org', 'Off', '' );
+	$del = $members::add( $appData, 'del@example.org', 'Del', '' );
+	$members::change( $appData, $off['id'], [ 'active' => false ] );
+	$members::remove( $appData, $del['id'] );
+
+	$outbox = static fn(): array => array_values( (array) ( \Nino\MailQueue::decode( (string) @file_get_contents( \Nino\Filesystem::path( $GLOBALS['appData'], \Nino\MailQueue::WAITING ) ) )['waiting'] ?? [] ) );
+	$everything = static function() use ( $sandbox ): string {
+
+		$all = '';
+
+		foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $sandbox. '/private', \FilesystemIterator::SKIP_DOTS ) ) as $file )
+			if( $file->isFile() === true )
+				$all .= (string) file_get_contents( $file->getPathname() ). "\n";
+
+		return $all;
+	};
+
+	// A new world for one pair member: no outbox, no key, no cap, no code, nobody asked, a session that is none, and nothing said of the last
+	$reset = static function() use ( &$appData, $members ): void {
+
+		global $mails;
+
+		foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE, \Nino\MailQueue::FAILED, '/data/mail-status.php', '/data/members-tokens.php' ] as $name )
+			@unlink( \Nino\Filesystem::path( $appData, $name ) );
+
+		unset( $appData['./nino/filesystem/cache'] );
+		clearstatcache();
+		$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+		$appData['/nino/mail/cap'] = 0;
+		membersVisitor();
+		membersFresh( $appData );
+		$mails = [];
+		ninoWarnings();
+	};
+
+	// What a request leaves, said so that two can be compared: what the disk was asked, the whole answer, the log, the mail that went to a transport, what the outbox and the
+	// file of the codes hold now
+	$normal = static fn( array $log ): array => array_map( static fn( array $line ): string => preg_replace( '/[0-9a-f]{12}\.tmp/', 'X.tmp', str_replace( $GLOBALS['sandbox'], '<sandbox>', implode( ' ', array_map( 'strval', $line ) ) ) ), $log );
+	$GLOBALS['sandbox'] = $sandbox;
+	$ask = static function( string $email, array $fail = [], ?callable $prepare = null, bool $fresh = true ) use ( &$appData, $reset, $normal, $outbox ): array {
+
+		global $mails;
+
+		if( $fresh === true )
+			$reset();
+
+		if( $prepare !== null )
+			$prepare();
+
+		FaultFs::on( $fail );
+		$request = membersServe( $appData, '/.members/login', 'POST', [ 'email' => $email, 'return' => '/join' ] );
+		$log = $normal( FaultFs::$log );
+		FaultFs::off();
+		$response = $request['/nino/http/response'];
+		$tokens = membersFile( $appData, 'tokens' );
+
+		return [ 'log' => $log, 'answer' => [ $response['statusCode'], $response['header'], $response['body'] ], 'warnings' => ninoWarnings(), 'sent' => count( $mails ), 'mails' => $mails, 'tokens' => count( $tokens ),
+			'waiting' => count( $outbox() ), 'pending' => membersPending( $appData ), 'counts' => \Nino\Mail::queued( $appData ) ];
+	};
+	// The first request of a kind loads classes and makes folders, and its record is another: the pairs are of the requests after it
+	$ask( 'ada@example.org' );
+	$ask( 'zed@example.org' );
+
+	// --- the pair: an address with an account, an address with none ---
+
+	$known = $ask( 'ada@example.org' );
+	$none = $ask( 'zed@example.org' );
+	check( 'a request for an address that has an account and one for an address that has none ask the disk the same: the same files read, locked and written in the same order, with the same bytes - the code made, kept and queued for both',
+		$known['log'] !== [] && $known['log'] === $none['log'] && $known['tokens'] === 1 && $none['tokens'] === 1 && $known['waiting'] === 0 && $none['waiting'] === 0 );
+	check( '...and answer the same, whole: the status, every header with its value - the length and the closed connection of a response that has work after it among them - and the body', $known['answer'][0] === 303 && $known['answer'] === $none['answer']
+		&& isset( $known['answer'][1]['Content-Length'] ) === true && ( $known['answer'][1]['Connection'] ?? '' ) === 'close' );
+	check( '...and say the same to the log - nothing - and to the session: a request of the same shape, the time of the setting\'s minutes, no try', $known['warnings'] === [] && $none['warnings'] === []
+		&& array_keys( (array) $known['pending'] ) === array_keys( (array) $none['pending'] ) && ( $known['pending']['tries'] ?? -1 ) === 0 && ( $none['pending']['tries'] ?? -1 ) === 0 );
+	check( '...and only the one with an account is handed to a transport: one mail, to the address that was typed, six digits - the other is let go by the outbox, which counts it as delivered, and no failure', $known['sent'] === 1 && $known['mails'][0]['to'] === 'ada@example.org'
+		&& $none['sent'] === 0 && $none['counts']['waiting'] === 0 && $none['counts']['failed'] === 0 && $known['counts'] === $none['counts'] );
+
+	// The mail as the outbox holds it before it is delivered: the same template, the same sizes - the address is hyphens as long as it
+	$held = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+		$reset();
+		$_POST = [ 'email' => $address, 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+		$request = ninoVisit( $appData, '/.members/login', 'POST' );
+		\Nino\Http::response( $appData, $request );
+		$_POST = [];
+		$held[$address] = [ 'mail' => $outbox()[0] ?? [], 'token' => array_values( membersFile( $appData, 'tokens' ) )[0] ?? [] ];
+	}
+
+	[ $a, $z ] = [ $held['ada@example.org']['mail'], $held['zed@example.org']['mail'] ];
+	$digits = static fn( string $text ): string => (string) preg_replace( '/\b[0-9]{3} [0-9]{3}\b/', 'DDD DDD', $text );
+	check( 'the mail that waits in the outbox is as large for the address with no account as for the one with: the same subject, the same body but for the code, the address as hyphens of its length - and the code is six digits in both',
+		$a !== [] && $z !== [] && $a['to'] === 'ada@example.org' && $z['to'] === str_repeat( '-', 15 ) && $a['subject'] === $z['subject'] && $digits( (string) $a['body'] ) === $digits( (string) $z['body'] ) && strlen( (string) $a['body'] ) === strlen( (string) $z['body'] )
+		&& preg_match( '/\b[0-9]{3} [0-9]{3}\b/', (string) $z['body'] ) === 1 && $a['kind'] === \Nino\Mail::CLIENT && $z['kind'] === \Nino\Mail::CLIENT && strlen( json_encode( $a ) ) === strlen( json_encode( $z ) ) );
+	check( '...and the record of the code is as long for both: of the kind code, the time of the request, no page - and the account it names is an id of twelve hex digits that nobody has where nobody has the address',
+		array_keys( $held['zed@example.org']['token'] ) === array_keys( $held['ada@example.org']['token'] ) && $held['ada@example.org']['token']['account'] === $ada['id'] && preg_match( '/^[0-9a-f]{12}$/D', $held['zed@example.org']['token']['account'] ) === 1
+		&& $held['zed@example.org']['token']['account'] !== $ada['id'] && $members::account( $appData, $held['zed@example.org']['token']['account'] ) === null && $held['zed@example.org']['token']['kind'] === 'code' );
+
+	// What was typed is what is queued, and nothing of an address with no account is kept anywhere
+	$reset();
+	$typed = $ask( ' ADA@Example.ORG ', [], null, false );
+	check( 'the address that was typed is the address of the mail, as the form makes it - trimmed, in lower case - for a member', $typed['sent'] === 1 && $typed['mails'][0]['to'] === 'ada@example.org' );
+	$reset();
+	$ask( 'zed@example.org', [], null, false );
+	$disk = $everything();
+	check( 'the address of a request that has no account is kept nowhere: not in the outbox, the codes, the counter, the log of the outbox or any other file of the project', str_contains( $disk, 'zed@' ) === false && str_contains( $disk, 'zed%40' ) === false && str_contains( $disk, 'zed\\u0040' ) === false );
+
+	// The page the gate kept for the sign-in travels with the code and is used up, for an address that has an account and for one that has none
+	\Nino\Features::saveSettings( $appData, 'members', [ 'paths' => [ '/club' ] ] );
+	$kept = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+		$reset();
+		membersServe( $appData, '/club/news' );
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/club/news' ] );
+		$kept[$address] = [ \Nino\Runtime::getSessionValue( $appData, './members/target' ), array_values( membersFile( $appData, 'tokens' ) )[0]['target'] ?? null ];
+	}
+
+	\Nino\Features::saveSettings( $appData, 'members', [ 'paths' => [] ] );
+	check( 'the page the gate kept goes into the record of the code and out of the session, for an address with an account and for one with none alike', $kept['ada@example.org'] === [ null, '/club/news' ] && $kept['zed@example.org'] === $kept['ada@example.org'] );
+
+	// --- a switched-off account, an account that is gone ---
+
+	$states = [ 'switched off' => $ask( 'off@example.org' ), 'deleted' => $ask( 'del@example.org' ), 'none' => $none ];
+	check( 'an account that is switched off and one that was deleted are answered, filed and logged as an address nobody has: the same operations on the disk, the same answer, no transport', $states['switched off']['log'] === $none['log'] && $states['deleted']['log'] === $none['log']
+		&& $states['switched off']['answer'] === $none['answer'] && $states['deleted']['answer'] === $none['answer'] && $states['switched off']['sent'] === 0 && $states['deleted']['sent'] === 0 && $states['switched off']['warnings'] === [] );
+
+	// --- the outbox says no: conflict, full, ratelimited, unwritable - the same for both, and the visitor is told nothing of it ---
+
+	$refusals = [
+		'braked'			=> [ [], static function() use ( &$appData ): void {
+			$appData['/nino/mail/cap'] = 0;
+
+			for( $i = 0; $i < $GLOBALS['members']::siteShare(); $i++ )
+				\Nino\Mail::queue( $appData, [ 'to' => sprintf( 'seed%02d@example.com', $i ), 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT );
+		}, 'braked' ],
+		'ratelimited'	=> [ [], static function() use ( &$appData ): void {
+			$appData['/nino/mail/cap'] = 1;
+			\Nino\Feature::count( $appData, 'ratelimit', \Nino\Http::getClientIp( $appData ), 1, 3600 );
+		}, 'ratelimited' ],
+		'unwritable'	=> [ [ 'read' => static fn( string $path ): bool => str_ends_with( $path, 'mail-secret.php' ) ], static function() use ( &$appData ): void {
+			\Nino\Mail::queue( $appData, [ 'to' => 'seed@example.com', 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT );
+		}, 'unwritable' ],
+	];
+
+	foreach( $refusals as $name => [ $fail, $prepare, $why ] ) {
+
+		// The warm-up of the pair, then the pair
+		$ask( 'ada@example.org', $fail, $prepare );
+		$ask( 'zed@example.org', $fail, $prepare );
+		$yes = $ask( 'ada@example.org', $fail, $prepare );
+		$no = $ask( 'zed@example.org', $fail, $prepare );
+		$told = $yes['warnings'];
+		check( 'the outbox refuses a mail as '. $name. ': the request for an address with an account and for one with none do the same to the disk, answer the same, whole, log the same - the reason, and no address -, and keep the same: no mail, no code',
+			$yes['log'] === $no['log'] && $yes['answer'] === $no['answer'] && $yes['answer'][0] === 303 && str_ends_with( (string) $yes['answer'][1]['Location'], '?members=sent' ) && $yes['warnings'] === $no['warnings']
+			&& $told === [ $why === 'braked' ? 'Members: requests for a code are held back, mails wait in the outbox' : 'Members: no mail queued ('. $why. ')' ] && array_filter( array_merge( $yes['mails'], $no['mails'] ), static fn( array $mail ): bool => str_starts_with( $mail['to'], 'seed' ) === false ) === [] && $yes['sent'] === $no['sent'] && ( $yes['pending']['tries'] ?? -1 ) === 0 && ( $no['pending']['tries'] ?? -1 ) === 0 && $yes['tokens'] === $no['tokens'] && $yes['tokens'] === 0 && $yes['waiting'] === $no['waiting'] );
+	}
+
+	// The braked request takes the steps that change nothing, the ones a request that is let through takes before the outbox is asked, for an address with an account and for one with none alike:
+	// the file of the codes is read and written back byte for byte, the outbox is read after that and the template of the mail is read - before the answer. (The accounts are read as well, but the
+	// request has read them to look the address up: a read from memory, which no operation on the disk shows)
+	$steps = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+
+		$reset();
+		$refusals['braked'][1]();
+		\Nino\Filesystem::putFileContent( $appData, $members::TOKENS, [ hash( 'sha256', 'live' ) => [ 'account' => 'aaaaaaaaaaaa', 'kind' => 'code', 'expires' => time() + 500, 'target' => '' ] ] );
+		$contentBefore = (string) file_get_contents( \Nino\Filesystem::path( $appData, $members::TOKENS ) );
+		$_POST = [ 'email' => $address, 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+		$request = ninoVisit( $appData, '/.members/login', 'POST' );
+		FaultFs::on();
+		\Nino\Http::response( $appData, $request );
+		$log = $normal( FaultFs::$log );
+		FaultFs::off();
+		$_POST = [];
+		$rename = array_keys( array_filter( $log, static fn( string $line ): bool => preg_match( '~^rename \S+members-tokens\.php\.X\.tmp \S+members-tokens\.php$~', $line ) === 1 ) );
+		$writes = array_values( array_filter( $log, static fn( string $line ): bool => preg_match( '~^write \S+members-tokens\.php\.X\.tmp \d+$~', $line ) === 1 ) );
+		$after = array_slice( $log, ( $rename[0] ?? count( $log ) ) + 1 );
+		$steps[$address] = [ count( $rename ), $writes, count( array_filter( $after, static fn( string $line ): bool => str_contains( $line, 'private/data/mail-queue.php rb' ) === true ) ), count( array_filter( $after, static fn( string $line ): bool => str_contains( $line, 'mail-code.tpl rb' ) === true ) ),
+			(string) file_get_contents( \Nino\Filesystem::path( $appData, $members::TOKENS ) ) === $contentBefore, (string) ( $request['/nino/http/response']['header']['Location'] ?? '' ) ];
+
+		foreach( \Nino\Http::prepareAfter( $appData, $request ) as $work )
+			$work();
+
+		$steps[$address]['sizeBefore'] = strlen( $contentBefore );
+	}
+
+	check( 'a braked request takes the steps that change nothing, for an address with an account and for one with none: before the answer it writes the file of the codes once, back, with the bytes it has and nothing added, then reads the outbox and then the template of the mail - and keeps no code',
+		$steps['ada@example.org'] === $steps['zed@example.org'] && $steps['zed@example.org'][0] === 1 && array_sum( array_map( static fn( string $line ): int => (int) substr( $line, strrpos( $line, ' ' ) + 1 ), $steps['zed@example.org'][1] ) ) === $steps['zed@example.org']['sizeBefore']
+		&& $steps['zed@example.org'][2] >= 1 && $steps['zed@example.org'][3] === 1 && $steps['zed@example.org'][4] === true && str_ends_with( $steps['zed@example.org'][5], '?members=sent' ) );
+
+	// The same reason is said once an hour: a second request that is refused for it says nothing more, for both
+	$quiet = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+		$ask( $address, [], $refusals['ratelimited'][1] );
+		$quiet[] = $ask( $address, [], null, false )['warnings'];
+	}
+
+	check( 'a reason the outbox gave is said once in the hour and not again, for an address with an account and one with none alike', $quiet === [ [], [] ] );
+
+	// A mail the outbox refused is no code: the record of it is taken back. The mails that were queued are as they were
+	$delivery = true;
+	$appData['/nino/mail/cap'] = 0;
+
+	// --- the second request of a session: the key is of the session and the address, the answer is the same, the first code stays good ---
+
+	$twice = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+
+		$reset();
+		$_POST = [];
+		$first = membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+		$firstPending = membersPending( $appData );
+		$firstTokens = membersFile( $appData, 'tokens' );
+		$firstMails = $mails;
+		// The same session, a minute later: the outbox keeps the key of the mail that went out
+		$second = membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+		$secondPending = membersPending( $appData );
+		$twice[$address] = [ 'answers' => [ membersAnswer( $first ), membersAnswer( $second ) ], 'pending' => [ $firstPending['nonce'] === $secondPending['nonce'], $secondPending['tries'], $secondPending['until'] >= $firstPending['until'] ],
+			'tokens' => [ count( $firstTokens ), count( membersFile( $appData, 'tokens' ) ) ], 'mails' => [ count( $firstMails ), count( $mails ) ], 'warnings' => ninoWarnings(), 'code' => membersCodeOf( $mails[0] ?? [] ), 'nonce' => $firstPending['nonce'] ];
+		// Another address from the same session is a mail of its own, for both
+		$other = membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'bare@example.org', 'return' => '/join' ] );
+		$twice[$address]['other'] = [ membersAnswer( $other )[1], count( membersFile( $appData, 'tokens' ) ) ];
+		$twice[$address]['otherMails'] = array_column( $mails, 'to' );
+	}
+
+	check( 'a second request of the session for the same address is a second request of the same session for the same mail, the same for both: it answers as the first, queues no other mail, keeps no other code - the code of it is taken back -, says nothing to the log',
+		$twice['ada@example.org']['answers'][0] === $twice['ada@example.org']['answers'][1] && $twice['zed@example.org']['answers'][0] === $twice['zed@example.org']['answers'][1] && $twice['ada@example.org']['answers'] === $twice['zed@example.org']['answers']
+		&& $twice['ada@example.org']['tokens'] === [ 1, 1 ] && $twice['zed@example.org']['tokens'] === [ 1, 1 ] && $twice['ada@example.org']['mails'] === [ 1, 1 ] && $twice['zed@example.org']['mails'] === [ 0, 0 ]
+		&& $twice['ada@example.org']['warnings'] === [] && $twice['zed@example.org']['warnings'] === [] );
+	check( '...and the request of the session stays the one it was - the same nonce, the tries it had, a time that is no earlier - so that the code that was mailed signs in, and an address with none is a request whose every code is gone', $twice['ada@example.org']['pending'] === [ true, 0, true ] && $twice['zed@example.org']['pending'] === [ true, 0, true ] );
+	check( '...whereas the next address of that session is a mail of its own, in both: a new code is kept - the only live one of the session - and the answer is the same', $twice['ada@example.org']['other'] === $twice['zed@example.org']['other'] && $twice['ada@example.org']['other'][1] === 1 );
+
+	check( '...and a second request of the session for ANOTHER address is a mail of its own in both - the rule of the guide: the key holds the address - whatever the first address was: the member of that address is mailed',
+		$twice['ada@example.org']['otherMails'] === [ 'ada@example.org', 'bare@example.org' ] && $twice['zed@example.org']['otherMails'] === [ 'bare@example.org' ] );
+
+	// The code that was mailed first still signs in after the second request
+	$reset();
+	membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'ada@example.org', 'return' => '/join' ] );
+	$digits = str_replace( ' ', '', membersCodeOf( $mails[0] ?? [] ) );
+	membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'ada@example.org', 'return' => '/join' ] );
+	$signed = membersAnswer( membersServe( $appData, '/.members/code', 'POST', [ 'code' => $digits, 'return' => '/join' ] ) );
+	check( 'the code of the first mail signs in after a second request for the same address: it was not replaced', $signed[0] === 303 && ( $members::current( $appData )['id'] ?? '' ) === $ada['id'] );
+	membersVisitor();
+
+	// A request that ended - five wrong tries - is asked for again: a mail of its own, in both
+	foreach( [ 'ada@example.org' => 1, 'zed@example.org' => 0 ] as $address => $expected ) {
+		$reset();
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+
+		for( $try = 0; $try < 5; $try++ )
+			membersServe( $appData, '/.members/code', 'POST', [ 'code' => '000000', 'return' => '/join' ] );
+
+		$ended = membersPending( $appData );
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+		$renewed = [ $ended === null, count( $mails ), ( membersPending( $appData )['tries'] ?? -1 ) ];
+		$results[$address] = $renewed;
+	}
+
+	check( 'a request that ended - five wrong tries - and is asked for again is a mail of its own and a request of its own, the same for an address with an account and one with none', $results['ada@example.org'] === [ true, 2, 0 ] && $results['zed@example.org'] === [ true, 0, 0 ] );
+
+	// --- hostile addresses: a pair of one length each, the disk and the answer the same ---
+
+	$hostile = [ "o'brien@example.org" => "o'brian@example.org", '"a\\"b"@example.org' => '"a\\"c"@example.org', '"a\\\\b"@example.org' => '"a\\\\c"@example.org', '"a@b"@example.org' => '"a@c"@example.org', str_repeat( 'x', 64 ). '@'. str_repeat( 'd', 60 ). '.org' => str_repeat( 'y', 64 ). '@'. str_repeat( 'd', 60 ). '.org' ];
+	$pairs = [];
+
+	foreach( $hostile as $has => $hasNot ) {
+
+		$account = $members::add( $appData, $has, 'Hostile', '' );
+
+		if( is_array( $account ) === false ) {
+			$pairs[$has] = 'not an address: '. (string) $account;
+			continue;
+		}
+
+		$ask( $has );
+		$ask( $hasNot );
+		$yes = $ask( $has );
+		$no = $ask( $hasNot );
+		$pairs[$has] = [ $yes['log'] === $no['log'] && $yes['log'] !== [], $yes['answer'] === $no['answer'], $yes['warnings'] === $no['warnings'], $yes['sent'], $no['sent'], $yes['tokens'], $no['tokens'], ( $yes['mails'][0]['to'] ?? '' ) === mb_strtolower( $has ) ];
+	}
+
+	check( 'an address with a quote, a quoted name with a quote, a backslash or an at sign in it, or the longest a name and a host may be is answered, filed and logged for an account and for none alike - the outbox writes the file as large as the one of the mail, the address as typed in the mail that is sent',
+		array_values( array_unique( array_map( 'json_encode', $pairs ) ) ) === [ json_encode( [ true, true, true, 1, 0, 1, 1, true ] ) ] );
+
+	// A text that is no address - one with a letter beyond ASCII, a list, one with a null byte - is the same answer for both and makes nothing: no code, no mail
+	$reset();
+	$nothing = [];
+
+	foreach( [ "b\u{00fc}ro@example.org", 'ada@example.org, off@example.org', "ada@example.org\x00b", str_repeat( 'a', 300 ). '@example.org' ] as $text ) {
+		$request = membersServe( $appData, '/.members/login', 'POST', [ 'email' => $text, 'return' => '/join' ] );
+		$nothing[] = membersAnswer( $request );
+	}
+
+	check( 'a text that is no address - an umlaut, a list, a null byte, one too long - is the redirect that says sent, with no code, no mail, no outbox and no log', count( array_unique( array_map( 'json_encode', $nothing ) ) ) === 1 && $nothing[0][1] === '/join?members=sent' && membersFile( $appData, 'tokens' ) === []
+		&& $mails === [] && $outbox() === [] && ninoWarnings() === [] );
+
+	// --- the cap of the sender, before the outbox: for both, and it holds the places of the outbox ---
+
+	$limitKnown = [];
+	$limitNone = [];
+
+	foreach( [ 'ada@example.org' => &$limitKnown, 'zed@example.org' => &$limitNone ] as $address => &$into ) {
+		$reset();
+
+		for( $i = 0; $i < 5; $i++ )
+			membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+	}
+
+	unset( $into );
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+		$reset();
+		\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 1 ] );
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'bare@example.org', 'return' => '/join' ] );
+		$tokensBefore = count( membersFile( $appData, 'tokens' ) );
+		\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', [] );
+		FaultFs::on();
+		$refused = membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+		$log[$address] = [ $normal( FaultFs::$log ), membersAnswer( $refused ), count( membersFile( $appData, 'tokens' ) ) === $tokensBefore ];
+		FaultFs::off();
+	}
+
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+	$refusedLog = array_filter( $log['ada@example.org'][0], static fn( string $line ): bool => str_contains( $line, 'mail-queue' ) === true || str_contains( $line, 'mail-secret' ) === true );
+	check( 'a request over the cap of its sender - the setting says one - is the same for both and never reaches the outbox: the same operations on the disk, none of them on a file of the outbox, the answer that says limit, no code kept',
+		$log['ada@example.org'] === $log['zed@example.org'] && $log['ada@example.org'][1][1] === '/join?members=limit' && $log['ada@example.org'][2] === true && $refusedLog === [] );
+
+	// Many addresses nobody has, from one sender: the places of the outbox are not filled - however much the setting allows
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] );
+	$reset();
+	$_SERVER['REMOTE_ADDR'] = '198.51.100.7';
+	$answers = [];
+
+	for( $i = 0; $i < 30; $i++ ) {
+		$_POST = [ 'email' => 'nobody'. $i. '@example.org', 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+		$request = ninoVisit( $appData, '/.members/login', 'POST', [ 'REMOTE_ADDR' => '198.51.100.7' ] );
+		\Nino\Http::response( $appData, $request );
+		$answers[] = (string) ( $request['/nino/http/response']['header']['Location'] ?? '' );
+	}
+
+	$_POST = [];
+	$held = count( $outbox() );
+	$_SERVER['REMOTE_ADDR'] = '198.51.100.8';
+	$real = \Nino\Mail::queue( $appData, [ 'to' => 'real@example.com', 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT );
+	$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+	check( 'thirty requests for addresses nobody has from one sender - the setting allows ten an hour - put no more than ten mails to nobody in the outbox, a sixth of its sixty places, and the rest are the answer that says limit; the real mail of another sender is taken',
+		$held === 10 && count( array_filter( $answers, static fn( string $to ): bool => $to === '/join?members=limit' ) ) === 20 && $held < \Nino\MailQueue::MAX_CLIENT / 5 && preg_match( '/^[0-9a-f]{16}$/', $real ) === 1 );
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+	$reset();
+
+	// --- twenty processes at once for one address: the cap of the address holds - three -, the files stay whole, and what the burst leaves is the same for both ---
+
+	$burst = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+
+		$reset();
+		\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+		$procs = [];
+
+		for( $n = 1; $n <= 20; $n++ ) {
+			$procs[] = proc_open( [ PHP_BINARY, __FILE__, 'burst-worker', $sandbox, '203.0.113.'. ( 100 + $n ), $address ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes );
+			$pipesOf[$n] = $pipes;
+		}
+
+		$said = [];
+
+		foreach( $procs as $n => $process ) {
+			$said[] = trim( (string) stream_get_contents( $pipesOf[$n + 1][1] ) );
+			stream_get_contents( $pipesOf[$n + 1][2] );
+			proc_close( $process );
+		}
+
+		unset( $appData['./nino/filesystem/cache'] );
+		clearstatcache();
+		$counts = array_count_values( $said );
+		ksort( $counts );
+		$delivered = \Nino\Mail::deliverQueued( $appData, 100 );
+		$burst[$address] = [ $counts, $delivered['delivered'], $delivered['void'], $delivered['failed'] + $delivered['retry'], count( membersFile( $appData, 'tokens' ) ), count( $mails ) ];
+	}
+
+	check( 'twenty processes asking at once for one address: three are told sent and seventeen limit - the cap of the address, whoever asks - the files stay whole, three codes are kept, and three mails are delivered: to the address with an account, to nobody for the one with none',
+		$burst['ada@example.org'] === [ [ '/join?members=limit' => 17, '/join?members=sent' => 3 ], 3, 0, 0, 3, 3 ] && $burst['zed@example.org'] === [ [ '/join?members=limit' => 17, '/join?members=sent' => 3 ], 0, 3, 0, 3, 0 ] );
+
+	// --- the mails of the owner: in the request, never in the outbox ---
+
+	$reset();
+	$appData['/nino/mail/cap'] = 0;
+	$count = count( $mails );
+	$sent = $members::link( $appData, $ada, 'login' );
+	$invite = $members::link( $appData, $ada, 'invite', '', true, true, 'Welcome' );
+	$owned = $members::change( $appData, $ada['id'], [ 'email' => 'ada.new@example.org' ] );
+	$members::change( $appData, $ada['id'], [ 'email' => 'ada@example.org' ] );
+	check( 'the mails of the owner - a link to sign in, an invitation, the notice of a change the owner made - are sent in the request, and none of them waits in the outbox, which holds no link: the transport had all of them when the call returned, and no key or mail is kept',
+		$sent === true && $invite === true && is_array( $owned ) === true && count( $mails ) - $count === 4 && $outbox() === [] && is_file( \Nino\Filesystem::path( $appData, \Nino\MailQueue::KEYS ) ) === false );
+
+	// --- the notice to the old address, after the member's own confirmation: in the outbox, until it is delivered ---
+
+	$reset();
+	membersSignIn( $appData, $ada );
+	$mails = [];
+	membersFresh( $appData );
+	$members::askChange( $appData, (array) $members::current( $appData ), 'ada.moved@example.org' );
+	membersAfter( $appData, '' );
+	$code = str_replace( ' ', '', membersCodeOf( end( $mails ) ?: [] ) );
+	$mails = [];
+	$answer = $members::confirmChange( $appData, (array) $members::current( $appData ), $code );
+	$waiting = $outbox();
+	$went = count( $mails );
+	membersAfter( $appData, '' );
+	check( 'the notice to the old address, after the member\'s own confirmation, waits in the outbox of the kernel until it is delivered: queued when the call returns, no code and no new address in it, sent to the old address after the answer',
+		$answer === 'ok' && $went === 0 && count( $waiting ) === 1 && $waiting[0]['to'] === 'ada@example.org' && str_contains( (string) $waiting[0]['body'], 'ada.moved' ) === false && count( $mails ) === 1 && $mails[0]['to'] === 'ada@example.org' && $outbox() === [] );
+	$members::change( $appData, $ada['id'], [ 'email' => 'ada@example.org' ] );
+	$mails = [];
+
+	// --- the code of a change of address: for an address that is free and one that another account has, the same ---
+
+	$reset();
+	$members::add( $appData, 'tak@example.org', 'Tak', '' );
+	$pairChange = [];
+
+	foreach( [ 'fre@example.org', 'tak@example.org' ] as $address ) {
+
+		foreach( [ 0, 1 ] as $round ) {
+			$reset();
+			membersSignIn( $appData, $ada );
+			$mails = [];
+			membersFresh( $appData );
+			$tokensBefore = count( membersFile( $appData, 'tokens' ) );
+			FaultFs::on();
+			$result = membersAfter( $appData, $members::askChange( $appData, (array) $members::current( $appData ), $address ) );
+			$log = $normal( FaultFs::$log );
+			FaultFs::off();
+			$pairChange[$address] = [ $result, $log, count( membersFile( $appData, 'tokens' ) ) - $tokensBefore, count( $mails ), ninoWarnings() ];
+		}
+	}
+
+	check( 'the code of a change of address is made, kept and queued for an address that is free and for one that another account has alike: the same answer, the same operations on the disk, the same record - and only the free address is handed to a transport',
+		$pairChange['fre@example.org'][0] === 'sent' && $pairChange['fre@example.org'][0] === $pairChange['tak@example.org'][0] && $pairChange['fre@example.org'][1] === $pairChange['tak@example.org'][1] && $pairChange['fre@example.org'][1] !== []
+		&& $pairChange['fre@example.org'][2] === 1 && $pairChange['tak@example.org'][2] === 1 && $pairChange['fre@example.org'][3] === 1 && $pairChange['tak@example.org'][3] === 0 && $pairChange['fre@example.org'][4] === [] && $pairChange['tak@example.org'][4] === [] );
+
+	// --- a second request for the same new address, in the session that asked: the code of the first mail still changes the address ---
+
+	$reset();
+	membersSignIn( $appData, $ada );
+	$mails = [];
+	membersFresh( $appData );
+	$members::askChange( $appData, (array) $members::current( $appData ), 'ada.twice@example.org' );
+	membersAfter( $appData, '' );
+	$firstCode = str_replace( ' ', '', membersCodeOf( end( $mails ) ?: [] ) );
+	$members::askChange( $appData, (array) $members::current( $appData ), 'ada.twice@example.org' );
+	membersAfter( $appData, '' );
+	$twiceAsked = [ count( $mails ), $members::confirmChange( $appData, (array) $members::current( $appData ), $firstCode ), ( $members::account( $appData, $ada['id'] )['email'] ?? '' ) ];
+	check( 'a second request for the same new address in the session queues no other mail and keeps the first request - its code still changes the address', $twiceAsked === [ 1, 'ok', 'ada.twice@example.org' ] );
+	$members::change( $appData, $ada['id'], [ 'email' => 'ada@example.org' ] );
+	$mails = [];
+
+
+	// --- tries: a second request does not give the five tries back, and a sender is the /64 of its address ---
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+		$reset();
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+		membersServe( $appData, '/.members/code', 'POST', [ 'code' => '000000', 'return' => '/join' ] );
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+		$triesKept[$address] = membersPending( $appData )['tries'] ?? -1;
+	}
+
+	check( 'a second request for the same address does not give the tries back: one wrong code was tried, and the request that stands still has used one - for an address with an account and for one with none', $triesKept === [ 'ada@example.org' => 1, 'zed@example.org' => 1 ] );
+
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 1 ] );
+	$reset();
+	$bucket = [];
+
+	foreach( [ '2001:db8:1:1::1', '2001:db8:1:1::2', '2001:db8:1:1:ffff:ffff:ffff:ffff', '2001:db8:1:2::1' ] as $ip ) {
+		$_SERVER['REMOTE_ADDR'] = $ip;
+		membersVisitor();
+		$bucket[] = membersAnswer( membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'nobody'. count( $bucket ). '@example.org', 'return' => '/join' ] ) )[1];
+	}
+
+	$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+	check( 'a sender is counted as the kernel counts a client: the addresses of one /64 are one sender - the second and the last of them are told limit - and another /64 is another', $bucket === [ '/join?members=sent', '/join?members=limit', '/join?members=limit', '/join?members=sent' ] );
+
+	// --- the language: a callback of /members/language that names another language for accounts does not touch the mail of a code ---
+
+	$asked = [];
+	\Nino\Callbacks::registerCallback( $appData, '/members/language', static function( array &$appData, array &$ask ) use ( &$asked ): void {
+		$asked[] = $ask['account'];
+		$ask['locale'] = 'de_DE';
+	} );
+	$appData['./nino/locales/current'] = 'en_US';
+	$languages = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+		$reset();
+		$_POST = [ 'email' => $address, 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+		$request = ninoVisit( $appData, '/.members/login', 'POST' );
+		\Nino\Http::response( $appData, $request );
+		$_POST = [];
+		$languages[$address] = $outbox()[0] ?? [];
+	}
+
+	\Nino\Callbacks::removeCallbacks( $appData, '/members/language' );
+	$appData['./nino/locales/current'] = 'de_DE';
+	check( 'a module that names another language for accounts changes nothing in the mail of a code: the hook is not asked, and the mail in the outbox is the same bytes for an address with an account and one with none, in the language of the request',
+		$asked === [] && $languages['ada@example.org'] !== [] && $languages['zed@example.org'] !== [] && $languages['ada@example.org']['subject'] === $languages['zed@example.org']['subject']
+		&& $languages['ada@example.org']['subject'] === \Nino\Html::getFills( $appData, 'en_US' )['[[/feature/members/mail/code-subject]]'] && strlen( (string) $languages['ada@example.org']['body'] ) === strlen( (string) $languages['zed@example.org']['body'] )
+		&& strlen( json_encode( $languages['ada@example.org'] ) ) === strlen( json_encode( $languages['zed@example.org'] ) ) );
+
+	// --- the key has a time slot: a mail that waits for its transport and one that went out are the same in the next slot, and only one code is live ---
+
+	$serve = static function( string $address ) use ( &$appData, $normal ): array {
+
+		global $mails;
+
+		$_POST = [ 'email' => $address, 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+		$request = ninoVisit( $appData, '/.members/login', 'POST' );
+		$count = count( $mails );
+		FaultFs::on();
+		\Nino\Http::response( $appData, $request );
+		$ops = array_map( static fn( string $line ): string => (string) preg_replace( '/^(write \S+) \d+$/', '$1', $line ), $normal( FaultFs::$log ) );
+		FaultFs::off();
+		$_POST = [];
+
+		foreach( \Nino\Http::prepareAfter( $appData, $request ) as $work )
+			$work();
+
+		return [ 'ops' => $ops, 'answer' => $request['/nino/http/response']['header']['Location'] ?? '', 'tokens' => count( membersFile( $appData, 'tokens' ) ), 'sent' => count( array_filter( array_slice( $mails, $count ), static fn( array $mail ): bool => $mail['to'] === $address ) ), 'warnings' => ninoWarnings() ];
+	};
+	$slots = [];
+	// The operations as a count of each: the order in which the outbox meets a mail that waits and one that went out is its own, the work is the same
+	$counted = static function( array $ops ): array {
+		$counts = array_count_values( $ops );
+		ksort( $counts );
+
+		return $counts;
+	};
+
+	// Three states of the site: a quiet one - no mail waits, no key is kept -, one that has kept the keys of two hundred mails that went out, and one with a mail of another feature that waits
+	foreach( [ 'quiet', 'keys', 'seed' ] as $state )
+		foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+
+			$reset();
+			$delivery = true;
+			$appData['./nino/mail/now'] = 1900000000;
+
+			if( $state === 'keys' ) {
+
+				for( $i = 0; $i < \Nino\MailQueue::MAX_KEYS; $i++ )
+					\Nino\Mail::queue( $appData, [ 'to' => 'k'. $i. '@example.com', 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT, 'other/k'. $i );
+
+				\Nino\Mail::deliverQueued( $appData, 300 );
+			}
+
+			$delivery = false;
+
+			// The outbox holds a mail of another feature that waits for its transport in both runs, so that the file is there for both
+			if( $state === 'seed' )
+				\Nino\Mail::queue( $appData, [ 'to' => 'seed@example.com', 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT, 'other/seed' );
+
+			$mails = [];
+			$phases = [ 'first' => $serve( $address ) ];
+			$first = membersCodeOf( $mails[0] ?? [] );
+			$appData['./nino/mail/now'] = 1900000000 + 30;
+			$phases['within'] = $serve( $address );
+			$appData['./nino/mail/now'] = 1900000000 + \Nino\MailQueue::KEY_MEMORY + 1;
+			$phases['later'] = $serve( $address );
+			$second = membersCodeOf( end( $mails ) ?: [] );
+			$delivery = true;
+			unset( $appData['./nino/mail/now'] );
+			$phases['codes'] = [ str_replace( ' ', '', $first ), str_replace( ' ', '', $second ) ];
+			$phases['pending'] = membersPending( $appData );
+			$slots[$state][$address] = $phases;
+		}
+
+	$withinEqual = true;
+
+	foreach( [ 'quiet', 'keys', 'seed' ] as $state )
+		$withinEqual = $withinEqual === true && $slots[$state]['ada@example.org']['within']['ops'] === $slots[$state]['zed@example.org']['within']['ops'] && $slots[$state]['ada@example.org']['within']['ops'] !== []
+			&& $slots[$state]['ada@example.org']['within']['answer'] === $slots[$state]['zed@example.org']['within']['answer'] && $slots[$state]['ada@example.org']['within']['warnings'] === [] && $slots[$state]['zed@example.org']['within']['warnings'] === [];
+
+	check( 'a second request of the session in the slot of the first - with a transport that fails, on a quiet site, one that has kept two hundred keys and one with a mail of another feature that waits - makes nothing and asks the outbox for nothing in either: the same operations on the disk, to the byte, the same answer, nothing said', $withinEqual === true );
+
+	$sa = $slots['seed']['ada@example.org'];
+	$sz = $slots['seed']['zed@example.org'];
+	check( 'a request in the next slot, once the clock is past the memory of the kernel for keys, is a mail of its own in both: the same work before the answer, counted by kind of operation, on a site where the outbox file is there for both, and the same answer',
+		$counted( $sa['later']['ops'] ) === $counted( $sz['later']['ops'] ) && $counted( $sa['first']['ops'] ) === $counted( $sz['first']['ops'] ) && $sa['later']['ops'] !== $sa['within']['ops'] && $sa['later']['answer'] === $sz['later']['answer'] && $sa['later']['warnings'] === [] && $sz['later']['warnings'] === [] );
+	check( '...a mail of its own: the member is handed the second mail in the next slot - and the first, which waited, is tried again with it - and nobody is handed one for the address with no account; and one code is live under the nonce, in both: the record of the first code goes with the new one',
+		[ $sa['first']['sent'], $sa['within']['sent'], $sa['later']['sent'] ] === [ 1, 0, 2 ] && [ $sz['first']['sent'], $sz['within']['sent'], $sz['later']['sent'] ] === [ 0, 0, 0 ]
+		&& $sa['first']['tokens'] === 1 && $sa['within']['tokens'] === 1 && $sa['later']['tokens'] === 1 && $sz['first']['tokens'] === 1 && $sz['within']['tokens'] === 1 && $sz['later']['tokens'] === 1
+		&& $sa['codes'][0] !== $sa['codes'][1] && ( $sa['pending']['nonce'] ?? '' ) !== '' );
+	$reset();
+	$delivery = true;
+	membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'ada@example.org', 'return' => '/join' ] );
+	$oldCode = str_replace( ' ', '', membersCodeOf( $mails[0] ?? [] ) );
+	$appData['./nino/mail/now'] = time() + \Nino\MailQueue::KEY_MEMORY + 5;
+	membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'ada@example.org', 'return' => '/join' ] );
+	unset( $appData['./nino/mail/now'] );
+	$newCode = str_replace( ' ', '', membersCodeOf( end( $mails ) ?: [] ) );
+	$oldTried = membersAnswer( membersServe( $appData, '/.members/code', 'POST', [ 'code' => $oldCode, 'return' => '/join' ] ) )[1];
+	$newTried = membersAnswer( membersServe( $appData, '/.members/code', 'POST', [ 'code' => $newCode, 'return' => '/join' ] ) )[1];
+	check( 'the code of the earlier mail of a session is no code once a new mail is queued for it: the old one is wrong, the new one signs in', count( $mails ) === 2 && $oldCode !== $newCode && $oldTried === '/join?members=wrong' && $newTried !== '/join?members=wrong' && ( $members::current( $appData )['id'] ?? '' ) === $ada['id'] );
+	membersVisitor();
+
+	// --- the share of the site: seventy senders, one unknown address each - the outbox is filled by Members up to its share, the rest is held back alike, nothing is kept for it ---
+
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] );
+	$flood = [];
+
+	foreach( [ 'zed', 'ada' ] as $who ) {
+
+		$reset();
+		$answers = [];
+
+		for( $i = 0; $i < 70; $i++ ) {
+			$_SERVER['REMOTE_ADDR'] = '198.51.100.'. ( 1 + $i );
+			membersVisitor();
+			$_POST = [ 'email' => $who === 'ada' ? 'ada@example.org' : sprintf( 'z%02d@example.org', $i ), 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+			$request = ninoVisit( $appData, '/.members/login', 'POST', [ 'REMOTE_ADDR' => $_SERVER['REMOTE_ADDR'] ] );
+			\Nino\Http::response( $appData, $request );
+			$answers[] = (string) ( $request['/nino/http/response']['header']['Location'] ?? '' );
+		}
+
+		$_POST = [];
+		$placed = count( $outbox() );
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.200';
+		$other = \Nino\Mail::queue( $appData, [ 'to' => 'other@example.com', 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT );
+		$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+		$flood[$who] = [ count( array_unique( $answers ) ), $placed, count( membersFile( $appData, 'tokens' ) ), preg_match( '/^[0-9a-f]{16}$/', $other ), ninoWarnings(), $members::standing( $appData )['braked'] ];
+	}
+
+	$share = $members::siteShare();
+	check( 'seventy senders - each one request, below its own cap - fill the outbox only up to the share of the site, half of its places: '. $share. ' mails, the same answer for all seventy, '. $share. ' records of codes and no more, one line in the log that names no address, a place left for the mail of another feature, and the panel is told that sign-ins are held back',
+		$share === \Nino\MailQueue::MAX_CLIENT / 2 && $flood['zed'][0] === 1 && $flood['zed'][1] === $share && $flood['zed'][2] === $share && $flood['zed'][3] === 1 && count( $flood['zed'][4] ) === 1 && str_contains( $flood['zed'][4][0], 'held back' ) === true && $flood['zed'][5] === true );
+	check( '...the same for seventy requests for one address with an account from seventy senders: the address cap, whoever asks, holds three and the rest are limit, and nothing more is kept for it than for an address with none', $flood['ada'][0] === 2 && $flood['ada'][1] === 3 && $flood['ada'][2] === 3 );
+
+	// --- the brake goes by what waits, not by how many came: with the delivery working it never holds ---
+
+	$people = [];
+
+	for( $i = 0; $i < 90; $i++ )
+		$people[$i] = $members::add( $appData, sprintf( 'm%02d@example.org', $i ), 'M', '' );
+
+	$sendFrom = static function( int $n, string $email ) use ( &$appData ): string {
+
+		global $mails;
+
+		$_SERVER['REMOTE_ADDR'] = '192.0.2.'. ( 1 + $n % 250 );
+		membersVisitor();
+
+		return membersAnswer( membersServe( $appData, '/.members/login', 'POST', [ 'email' => $email, 'return' => '/join' ] ) )[1];
+	};
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] );
+	$reset();
+	$delivery = true;
+
+	// Seven senders, six requests each, for addresses nobody has; then ten members, each from an address of their own
+	for( $sender = 0; $sender < 7; $sender++ )
+		for( $k = 0; $k < 6; $k++ ) {
+			$_SERVER['REMOTE_ADDR'] = '198.51.100.'. ( 100 + $sender );
+			membersVisitor();
+			membersServe( $appData, '/.members/login', 'POST', [ 'email' => sprintf( 'u%d%d@example.org', $sender, $k ), 'return' => '/join' ] );
+		}
+
+	$mails = [];
+
+	for( $n = 0; $n < 10; $n++ )
+		$sendFrom( 10 + $n, sprintf( 'm%02d@example.org', $n ) );
+
+	$first = [ count( $mails ), \Nino\Mail::queued( $appData )['waiting'], $members::standing( $appData )['braked'] ];
+
+	// Seventy attackers, each with an address nobody has, and twenty members between them
+	$reset();
+	$delivery = true;
+	$told = 0;
+
+	$member = 0;
+
+	for( $n = 0; $n < 90; $n++ )
+		$sendFrom( 20 + $n, $n % 9 === 4 || $n % 9 === 7 ? sprintf( 'm%02d@example.org', $member++ ) : sprintf( 'a%02d@example.org', $n ) );
+
+	$members20 = count( array_unique( array_filter( array_column( $mails, 'to' ), static fn( string $to ): bool => str_starts_with( $to, 'm' ) ) ) );
+	check( 'while the mails are delivered nothing is held back: seven senders with six requests each for addresses nobody has, and then ten members, are ten mails out and nothing waiting; and seventy attackers with twenty members between them, all twenty mailed',
+		$first === [ 10, 0, false ] && $members20 === 20 && \Nino\Mail::queued( $appData )['waiting'] === 0 );
+	$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+	// The delivery stalls - the transport is down: the members' mails wait, and the requests hold at most half of the places; another feature is still given its places
+	$reset();
+	$delivery = false;
+	$mails = [];
+
+	for( $n = 0; $n < 45; $n++ )
+		$sendFrom( 40 + $n, sprintf( 'm%02d@example.org', $n ) );
+
+	$waiting = \Nino\Mail::queued( $appData )['waiting'];
+	$_SERVER['REMOTE_ADDR'] = '203.0.113.201';
+	$placed = 0;
+
+	for( $n = 0; $n < $members::siteShare(); $n++ )
+		$placed += preg_match( '/^[0-9a-f]{16}$/', \Nino\Mail::queue( $appData, [ 'to' => 'x'. $n. '@example.com', 'subject' => 's', 'body' => 'b', 'replyTo' => '' ], \Nino\Mail::CLIENT ) );
+
+	$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+	$delivery = true;
+	check( 'where the delivery stalls the requests for a code hold the half of the places, and no more: forty-five members asked, thirty of the mails wait, and the other half of the places is given to another feature - thirty mails of its own - in full',
+		$waiting === $members::siteShare() && $placed === $members::siteShare() && $members::standing( $appData )['braked'] === true );
+	$reset();
+
+	// The file of the codes: the records of addresses with no account are at most GHOST_MAX, the oldest go first, a record of an account is never one of them, and a write is as large for an address with an account as for one with none
+	$reset();
+	$delivery = true;
+	$_SERVER['REMOTE_ADDR'] = '192.0.2.250';
+	membersVisitor();
+	membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'ada@example.org', 'return' => '/join' ] );
+	$adaRecord = array_keys( membersFile( $appData, 'tokens' ) )[0] ?? '';
+
+	for( $n = 0; $n < 230; $n++ ) {
+		$_SERVER['REMOTE_ADDR'] = '10.'. intdiv( $n, 250 ). '.'. intdiv( $n, 25 ). '.'. ( 1 + $n % 25 );
+		membersVisitor();
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => sprintf( 'g%03d@example.org', $n ), 'return' => '/join' ] );
+	}
+
+	$all = membersFile( $appData, 'tokens' );
+	$ghosts = array_filter( $all, static fn( array $entry ): bool => \Nino\Modules\Members::account( $GLOBALS['appData'], $entry['account'] ) === null );
+	check( 'the file of the codes holds at most 200 live records, those of accounts and those of addresses with no account together, however many ask - and the record of an account stays where it was written',
+		count( $ghosts ) === 199 && isset( $all[$adaRecord] ) === true && count( $all ) === 200 );
+
+	// The oldest go first, by the time they run out, whatever the order in the file: the file is seeded with records of addresses with no account that are out of order and one record of an account that is the oldest of all
+	$reset();
+	$at = time();
+	$seed = [ hash( 'sha256', 'adas' ) => [ 'account' => $ada['id'], 'kind' => 'code', 'expires' => $at + 100, 'target' => '' ] ];
+
+	foreach( range( 0, 204 ) as $i )
+		$seed[ hash( 'sha256', 'ghost'. $i ) ] = [ 'account' => sprintf( '%012x', $i ), 'kind' => 'code', 'expires' => $at + 200 + ( $i * 37 ) % 205, 'target' => '' ];
+
+	\Nino\Filesystem::putFileContent( $appData, $members::TOKENS, $seed );
+	$_SERVER['REMOTE_ADDR'] = '192.0.2.251';
+	membersVisitor();
+	membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'zed@example.org', 'return' => '/join' ] );
+	$left = membersFile( $appData, 'tokens' );
+	$youngest = array_slice( array_keys( $seed ), 1 );
+	usort( $youngest, static fn( string $a, string $b ): int => $seed[$a]['expires'] <=> $seed[$b]['expires'] );
+	$expected = array_slice( $youngest, 7 );
+	$survivors = array_values( array_filter( array_keys( $left ), static fn( string $hash ): bool => isset( $seed[$hash] ) === true && $hash !== hash( 'sha256', 'adas' ) ) );
+	sort( $expected );
+	sort( $survivors );
+	check( 'where the file holds more than it may, the records of addresses with no account that run out first go, seven of 205 here - never the youngest, whatever the order in the file - the record of an account that is the oldest of all stays, and the new record makes 200',
+		count( $left ) === 200 && isset( $left[ hash( 'sha256', 'adas' ) ] ) === true && $survivors === $expected && count( $survivors ) === 198 );
+
+	$saturated = (string) file_get_contents( \Nino\Filesystem::path( $appData, $members::TOKENS ) );
+	$pair = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
+		file_put_contents( \Nino\Filesystem::path( $appData, $members::TOKENS ), $saturated );
+		unset( $appData['./nino/filesystem/cache'] );
+		clearstatcache();
+		@unlink( \Nino\Filesystem::path( $appData, \Nino\MailQueue::KEYS ) );
+		membersFresh( $appData );
+		$_SERVER['REMOTE_ADDR'] = '172.16.0.9';
+		membersVisitor();
+		FaultFs::on();
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+		$pair[$address] = [ $normal( FaultFs::$log ), filesize( \Nino\Filesystem::path( $appData, $members::TOKENS ) ) ];
+		FaultFs::off();
+	}
+
+	$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+	check( 'with the file of the codes at its most, a request for an address with an account and one for an address with none write the same: the same operations with the same bytes and a file of the same size after it',
+		$pair['ada@example.org'][0] === $pair['zed@example.org'][0] && $pair['ada@example.org'][0] !== [] && $pair['ada@example.org'][1] === $pair['zed@example.org'][1] );
+
+	// What a session that asked for a code and then fills the file of the codes learns from its next request: the session asks for a code for X; two hundred requests for addresses nobody has
+	// from forty senders thin the file; the same session asks for another address, Y. The code of X goes in the write that keeps the one of Y - for X with an account, whose record is still
+	// in the file, and for X with none, whose record was thinned away alike: the same writes of the file of the codes before the answer, with the same bytes
+	$probe = [];
+
+	foreach( [ 'ada@example.org', 'zed@example.org' ] as $first ) {
+		$reset();
+		$delivery = true;
+		\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] );
+		$_SERVER['REMOTE_ADDR'] = '172.16.0.1';
+		membersVisitor();
+		membersServe( $appData, '/.members/login', 'POST', [ 'email' => $first, 'return' => '/join' ] );
+		$session = $_SESSION;
+		$held = (string) \Nino\Runtime::getSessionValue( $appData, './members/held-code' );
+
+		for( $n = 0; $n < 200; $n++ ) {
+			$_SERVER['REMOTE_ADDR'] = '10.1.'. intdiv( $n, 5 ). '.1';
+			membersVisitor();
+			membersServe( $appData, '/.members/login', 'POST', [ 'email' => sprintf( 'f%03d@example.org', $n ), 'return' => '/join' ] );
+		}
+
+		$stillThere = isset( membersFile( $appData, 'tokens' )[$held] );
+		$_SESSION = $session;
+		membersFresh( $appData );
+		$_SERVER['REMOTE_ADDR'] = '172.16.0.1';
+		$_POST = [ 'email' => 'yvonne@example.org', 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+		$request = ninoVisit( $appData, '/.members/login', 'POST' );
+		FaultFs::on();
+		\Nino\Http::response( $appData, $request );
+		$log = $normal( FaultFs::$log );
+		FaultFs::off();
+		$_POST = [];
+
+		foreach( \Nino\Http::prepareAfter( $appData, $request ) as $work )
+			$work();
+
+		$probe[$first] = [ 'files' => count( array_filter( $log, static fn( string $line ): bool => preg_match( '~^rename \S+members-tokens\.php\.X\.tmp \S+members-tokens\.php$~', $line ) === 1 ) ), 'writes' => array_values( array_filter( $log, static fn( string $line ): bool => preg_match( '~^write \S+members-tokens\.php\.X\.tmp \d+$~', $line ) === 1 ) ), 'log' => $log, 'there' => $stillThere,
+			'size' => filesize( \Nino\Filesystem::path( $appData, $members::TOKENS ) ), 'earlier' => isset( membersFile( $appData, 'tokens' )[$held] ) ];
+	}
+
+	$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+	check( 'a session that asked for a code for an address, then for two hundred addresses nobody has from forty senders, then for another address: the file of the codes is written once before the answer, with the same bytes and the same operations, whether the first address has an account - its record is still in the file - or has none - its record was thinned away; and the earlier code is gone in both',
+		$probe['ada@example.org']['there'] === true && $probe['zed@example.org']['there'] === false && $probe['ada@example.org']['files'] === 1 && $probe['zed@example.org']['files'] === 1 && $probe['ada@example.org']['writes'] !== [] && $probe['ada@example.org']['writes'] === $probe['zed@example.org']['writes']
+		&& $probe['ada@example.org']['log'] === $probe['zed@example.org']['log'] && $probe['ada@example.org']['size'] === $probe['zed@example.org']['size'] && $probe['ada@example.org']['earlier'] === false && $probe['zed@example.org']['earlier'] === false );
+	$reset();
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+
+	// The most live records the share allows: the share for the hour a code is good for and the hour before - a code that is good for the setting's fifteen minutes - and the records that have run out go with the next write
+	$reset();
+	\Nino\Filesystem::putFileContent( $appData, $members::TOKENS, [ hash( 'sha256', 'old' ) => [ 'account' => $ada['id'], 'kind' => 'code', 'expires' => time() - 5, 'target' => '' ], hash( 'sha256', 'live' ) => [ 'account' => $ada['id'], 'kind' => 'code', 'expires' => time() + 500, 'target' => '' ] ] );
+	membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'zed@example.org', 'return' => '/join' ] );
+	$kept = membersFile( $appData, 'tokens' );
+	check( 'a record of a code that has run out goes with the next write, a live one stays: the file of the codes holds at most the share of the site for each hour a code is good - sixty for the fifteen minutes of the setting, at most thirty for each of the hour and the hour before',
+		isset( $kept[ hash( 'sha256', 'old' ) ] ) === false && isset( $kept[ hash( 'sha256', 'live' ) ] ) === true && count( $kept ) === 2 && $share * 2 === 60 );
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+
+	// What the panel is told: the brake of the site, and the cap of the kernel where the setting for requests is above it
+	$reset();
+	$appData['/nino/mail/cap'] = 5;
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] );
+	$high = $members::standing( $appData );
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+	$equal = $members::standing( $appData );
+	$appData['/nino/mail/cap'] = 0;
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] );
+	$none = $members::standing( $appData );
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+	check( 'the panel is told the cap of the kernel where the setting for requests is above it - and nothing where it is not or where the kernel has no cap; and that the brake of the site is not on', $high === [ 'braked' => false, 'cap' => 5 ] && $equal === [ 'braked' => false, 'cap' => 0 ] && $none === [ 'braked' => false, 'cap' => 0 ] );
+
+	// --- the setting the cap of the sender reads, and the panel's word about the server ---
+
+	check( 'the number of requests of a sender is the setting\'s, which is ten at most - a value above it is refused and leaves what was', ( new \ReflectionMethod( $members, '_attempts' ) )->invoke( null, $appData ) === 5 && \Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 50 ] ) !== []
+		&& ( new \ReflectionMethod( $members, '_attempts' ) )->invoke( null, $appData ) === 5 && \Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] ) === [] && ( new \ReflectionMethod( $members, '_attempts' ) )->invoke( null, $appData ) === 10 );
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+
+	if( $original === null )
+		unset( $appData['/nino/mail/cap'] );
+	else
+		$appData['/nino/mail/cap'] = $original;
+
+	$reset();
+	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php', '/data/members-tries.php' ] as $file )
+		@unlink( \Nino\Filesystem::path( $appData, $file ) );
+
+	unset( $appData['./nino/filesystem/cache'] );
 }

@@ -86,6 +86,12 @@ return [
 	'[[/_admin/members/msg/signedout-one]]'		=> 'Das Mitglied ist abgemeldet.',
 	'[[/_admin/members/missing]]'				=> 'Dieses Mitglied gibt es nicht (mehr).',
 
+	// Der Hinweis über der Tabelle, wo der Server den Client nicht vor der Arbeit nach der Antwort entlässt (Admin::apiList())
+	'[[/_admin/members/note/server]]'			=> 'Wo der Server den Client vor der Arbeit nach der Antwort entlässt (php-fpm, LiteSpeed), zeigt das Anmeldeformular keinen Unterschied zwischen einer Adresse mit und einer ohne Konto. Dieser Server tut es nicht, die Zeit der Antwort verrät sie also. Auch wo er es tut, kann ein ausgelasteter Server die nächste Anfrage warten lassen, und ein ausfallender Mail-Transport ist nicht gedeckt.',
+	'[[/_admin/members/note/braked]]'			=> 'Anmeldungen sind gebremst: Mails warten im Postausgang, deshalb wird keine neue Anmelde-Mail eingereiht, bis sie zugestellt sind.',
+	'[[/_admin/members/note/server-ok]]'		=> 'Das Anmeldeformular verbirgt, welche Adressen ein Konto haben, solange der Server den Client vor der Arbeit entlässt, wie dieser es tut. Zwei Grenzen bleiben: Ein ausgelasteter Server kann die nächste Anfrage warten lassen, und ein ausfallender Mail-Transport zeigt sich.',
+	'[[/_admin/members/note/cap]]'				=> 'Die Einstellung Anforderungen erlaubt mehr als die Mail-Grenze des Kernels je Besucher, %s in der Stunde (/nino/mail/cap); sie greift zuerst, und die Mails der anderen Features teilen sie.',
+
 	// Was das Panel zu einer Anfrage sagt, zu der der Server kein Wort gab
 	'[[/_admin/members/error/load]]'			=> 'Die Mitglieder konnten nicht geladen werden.',
 	'[[/_admin/members/error/add]]'				=> 'Das Mitglied konnte nicht angelegt werden.',
