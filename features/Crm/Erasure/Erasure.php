@@ -78,7 +78,9 @@ namespace Nino\Modules\Crm {
 			$key = $spec['key'] ?? null;
 			$others = array_diff_key( (array) ( $appData[self::REGISTER] ?? [] ), is_string( $key ) === true ? [ $key => true ] : [] );
 			$reasons = array_filter( array_column( $others, 'reason' ), static fn( mixed $reason ): bool => $reason !== null );
-			$callable = static fn( mixed $one, array $full ): bool => $one === null || Register::owned( $appData, $full['package'], $one );
+			// What each of them is called with: rows ( &$appData, $gone, $who ), shared ( &$appData, $id, $projects ), gather ( &$appData, $who ), finish ( &$appData, $steps, &$mine ): the references are the positions that hold a variable
+			// A function takes $appData as a reference, an arrow function takes a copy of it, and what the register keeps of a class that could not be loaded would be kept in the copy
+			$callable = static function( int $arguments, array $reference = [ 0 ] ) use ( &$appData ): \Closure { return static function( mixed $one, array $full ) use ( &$appData, $arguments, $reference ): bool { return $one === null || Register::owned( $appData, $full['package'], $one, $arguments, $reference ); }; };
 
 			return Register::add( $appData, self::REGISTER, 'deletion of a client', [ $spec ], [
 				'id' => 'key',
@@ -87,11 +89,11 @@ namespace Nino\Modules\Crm {
 				'rules' => [
 					'package' => Register::packageRule( $appData ),
 					'before' => static fn( mixed $before ): bool => $before === null || in_array( $before, self::COUNTS, true ),
-					'count' => static fn( mixed $count, array $full ): bool => Register::owned( $appData, $full['package'], $count ),
-					'rows' => $callable,
-					'shared' => $callable,
-					'gather' => $callable,
-					'finish' => $callable,
+					'count' => static function( mixed $count, array $full ) use ( &$appData ): bool { return Register::owned( $appData, $full['package'], $count, 2, [ 0 ] ); },
+					'rows' => $callable( 3 ),
+					'shared' => $callable( 3 ),
+					'gather' => $callable( 2 ),
+					'finish' => $callable( 3, [ 0, 2 ] ),
 					'rows_before' => static fn( mixed $step ): bool => $step === null || in_array( $step, self::STEPS, true ),
 					'reason' => static fn( mixed $reason ): bool => $reason === null || ( is_string( $reason ) === true && preg_match( '/^[a-z]{1,20}$/D', $reason ) === 1 && in_array( $reason, array_merge( self::RESERVED, $reasons ), true ) === false ),
 					'answer' => static fn( mixed $answer ): bool => $answer === null || ( is_array( $answer ) === true && array_is_list( $answer ) === true && count( $answer ) === 3 && is_int( $answer[0] ) === true && $answer[0] >= 400 && $answer[0] <= 499
@@ -195,7 +197,7 @@ namespace Nino\Modules\Crm {
 			$entered = array_map( 'strval', array_keys( self::entered( $appData ) ) );
 			$off = array_values( array_diff( array_map( 'strval', array_keys( $journal['steps'] ) ), $entered ) );
 
-			return $off !== [] && array_filter( $off, fn( string $key ): bool => self::removed( $appData, $journal, $key ) === false ) === [];
+			return $off !== [] && array_filter( $off, static function( string $key ) use ( &$appData, $journal ): bool { return self::removed( $appData, $journal, $key ) === false; } ) === [];
 		}
 
 		/**
@@ -328,7 +330,7 @@ namespace Nino\Modules\Crm {
 				$off = array_values( array_diff( array_map( 'strval', array_keys( $journal['steps'] ) ), array_map( 'strval', array_keys( self::entered( $appData ) ) ) ) );
 
 				// The owner may give up the step of a package that is gone - and only that, by name: the keys named in $skip, never "all"; the owner of a step is the one the journal kept when the step was begun
-				$skipped = array_values( array_filter( $off, static fn( string $key ): bool => in_array( $key, array_map( 'strval', $skip ), true ) === true && self::removed( $appData, $journal, $key ) === true ) );
+				$skipped = array_values( array_filter( $off, static function( string $key ) use ( &$appData, $journal, $skip ): bool { return in_array( $key, array_map( 'strval', $skip ), true ) === true && self::removed( $appData, $journal, $key ) === true; } ) );
 				$left = array_values( array_diff( $off, $skipped ) );
 
 				if( $left !== [] )
@@ -386,7 +388,7 @@ namespace Nino\Modules\Crm {
 
 			$entered = array_map( 'strval', array_keys( self::entered( $appData ) ) );
 
-			return array_values( array_filter( array_map( 'strval', array_keys( $journal['steps'] ) ), static fn( string $key ): bool => in_array( $key, $entered, true ) === false && self::removed( $appData, $journal, $key ) === true ) );
+			return array_values( array_filter( array_map( 'strval', array_keys( $journal['steps'] ) ), static function( string $key ) use ( &$appData, $journal, $entered ): bool { return in_array( $key, $entered, true ) === false && self::removed( $appData, $journal, $key ) === true; } ) );
 		}
 
 		/**

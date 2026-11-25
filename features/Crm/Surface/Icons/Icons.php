@@ -41,6 +41,10 @@ namespace Nino\Modules\Crm\Surface {
 		private const string GD = './crm/icons/gd';
 		private const string REGISTER = './crm/icons/apps';
 
+		// The apps whose letters a method did not say in this request (a warning is raised once for each), and the letters that are drawn then: the letters of the app of the core
+		private const string UNSAID = './crm/icons/unsaid';
+		private const string FALLBACK = 'CRM';
+
 		// What the theme has not said: the colours the kernel's own theme.css starts from
 		private const array DEFAULTS = [ 'brand' => '#147bb7', 'ground' => '#ffffff', 'ink' => '#0b0e10' ];
 
@@ -65,7 +69,7 @@ namespace Nino\Modules\Crm\Surface {
 
 		/**
 		 *	Add an app: its icon is drawn and answered like those of the core. The description: package (the key of the feature that enters it, see Register::package()), key (lower case letters, at most 20), prefix (the start of its files in data/crm-icon/: lower case letters and a hyphen, or
-		 *	'' for one app), slot (an image slot /icon/<name>), route (the start of its routes, a page below /crm that is none of the core's: Devices::isRoute()), letters (a text of at most three characters - a text is always the letters, whatever else its name is - or [ class, method ] of a public static method ( array &$appData ): string of a class of the package, see Register::owned(), that says
+		 *	'' for one app), slot (an image slot /icon/<name>), route (the start of its routes, a page below /crm that is none of the core's: Devices::isRoute()), letters (a text of one to three characters, none a control character - a text is always the letters, whatever else its name is - or [ class, method ] of a public static method ( array &$appData ): string of a class of the package, see Register::owned(), that says
 		 *	them) or shape (a polygon of at least three points [ x, y ] in a square of 512 units), and keep (the prefixes of other files in data/crm-icon/ that are none of an app's and are not touched when an icon
 		 *	replaces its old files; none by default). The same description again is as good as the first time. A key of the core, a key, a prefix, a slot or a route another app has, and a description that is none are refused
 		 *
@@ -79,8 +83,9 @@ namespace Nino\Modules\Crm\Surface {
 			$apps = self::apps( $appData );
 			$spec += [ 'letters' => '', 'shape' => null, 'keep' => [] ];
 			$key = $spec['key'] ?? null;
+			\Nino\Modules\Crm\Register::forget( $appData );
 
-			if( is_string( $key ) === true && isset( $apps[$key] ) === true && isset( self::CORE[$key] ) === false && $apps[$key] == [ 'key' => $key, 'package' => $spec['package'] ?? null, 'prefix' => $spec['prefix'] ?? null, 'slot' => $spec['slot'] ?? null, 'route' => $spec['route'] ?? null, 'letters' => $spec['letters'], 'shape' => $spec['shape'], 'keep' => is_array( $spec['keep'] ) === true ? array_values( $spec['keep'] ) : null ] )
+			if( is_string( $key ) === true && isset( $apps[$key] ) === true && isset( self::CORE[$key] ) === false && $apps[$key] === [ 'key' => $key, 'package' => $spec['package'] ?? null, 'prefix' => $spec['prefix'] ?? null, 'slot' => $spec['slot'] ?? null, 'route' => $spec['route'] ?? null, 'letters' => $spec['letters'], 'shape' => $spec['shape'], 'keep' => is_array( $spec['keep'] ) === true ? array_values( $spec['keep'] ) : null ] )
 				return true;
 
 			$shape = $spec['shape'];
@@ -93,13 +98,13 @@ namespace Nino\Modules\Crm\Surface {
 				is_string( $spec['slot'] ?? null ) === false || preg_match( '~^/icon/[a-z0-9-]{1,30}$~D', $spec['slot'] ) !== 1 || in_array( $spec['slot'], array_column( $apps, 'slot' ), true ) === true => 'slot',
 				is_string( $spec['route'] ?? null ) === false || Devices::isRoute( $spec['route'] ) === false || preg_match( '~^(?:/[a-z0-9-]{1,30}){1,3}$~D', $spec['route'] ) !== 1 || in_array( $spec['route'], array_column( $apps, 'route' ), true ) === true => 'route',
 				$shape !== null && ( is_array( $shape ) === false || count( $shape ) < 3 || array_filter( $shape, static fn( mixed $point ): bool => is_array( $point ) === false || count( $point ) !== 2 || is_int( $point[0] ?? null ) === false || is_int( $point[1] ?? null ) === false ) !== [] ) => 'shape',
-				$shape === null && ( is_string( $letters ) === true ? mb_strlen( $letters, 'UTF-8' ) < 1 || mb_strlen( $letters, 'UTF-8' ) > 3 : \Nino\Modules\Crm\Register::owned( $appData, $spec['package'] ?? null, $letters ) === false ) => 'letters',
+				( $shape === null || $letters !== '' ) && ( is_string( $letters ) === true ? self::sayable( $letters ) === false : \Nino\Modules\Crm\Register::owned( $appData, $spec['package'] ?? null, $letters, 1, [ 0 ] ) === false ) => 'letters',
 				is_array( $spec['keep'] ) === false || array_filter( $spec['keep'], static fn( mixed $prefix ): bool => is_string( $prefix ) === false || preg_match( '/^[a-z]{1,20}-$/D', $prefix ) !== 1 ) !== [] => 'keep',
 				default => '',
 			};
 
 			if( $bad !== '' ) {
-				trigger_error( 'Crm: the app of an icon was refused ('. $bad. ')', E_USER_WARNING );
+				trigger_error( 'Crm: the app of an icon was refused ('. $bad. ')'. ( $bad === 'letters' ? \Nino\Modules\Crm\Register::cause( $appData ) : '' ), E_USER_WARNING );
 
 				return false;
 			}
@@ -146,8 +151,17 @@ namespace Nino\Modules\Crm\Surface {
 			$entered = self::apps( $appData )[$app];
 			$package = isset( $entered['package'] ) === true ? \Nino\Modules\Crm\Register::package( $appData, $entered['package'] ) : null;
 
-			if( $class !== null && ( $package === null || str_starts_with( ltrim( $class, '\\' ), $package['space']. '\\' ) === false && ltrim( $class, '\\' ) !== $package['space'] ) ) {
-				trigger_error( 'Crm: the routes of an icon were not added: the class is no class of the package of the app "'. $app. '"', E_USER_WARNING );
+			// ...in the namespace of its feature, as text first (nothing is loaded for a name that is not), and the class is written in the folder of the package
+			$file = false;
+			\Nino\Modules\Crm\Register::forget( $appData );
+
+			if( $class !== null && $package !== null && ( str_starts_with( ltrim( $class, '\\' ), $package['space']. '\\' ) === true || ltrim( $class, '\\' ) === $package['space'] ) ) {
+
+				$file = \Nino\Modules\Crm\Register::reflect( $appData, ltrim( $class, '\\' ) )?->getFileName() ?? false;
+			}
+
+			if( $class !== null && ( $file === false || \Nino\Modules\Crm\Register::within( $file, $package['folder'] ) === false ) ) {
+				trigger_error( 'Crm: the routes of an icon were not added: the class is no class of the package of the app "'. $app. '"'. \Nino\Modules\Crm\Register::cause( $appData ), E_USER_WARNING );
 
 				return false;
 			}
@@ -487,7 +501,20 @@ namespace Nino\Modules\Crm\Surface {
 		}
 
 		/**
-		 *	What an app draws on the surface of the brand: the letters of the app, or the name of its shape
+		 *	Whether a text is letters an icon can carry: one to three characters, none of them a control character (a null byte, a line break, the controls of the text encoding), and valid UTF-8
+		 *
+		 *	@param		mixed			$text
+		 *
+		 *	@return 	bool
+		 */
+		private static function sayable( mixed $text ): bool {
+
+			return is_string( $text ) === true && mb_check_encoding( $text, 'UTF-8' ) === true && mb_strlen( $text, 'UTF-8' ) >= 1 && mb_strlen( $text, 'UTF-8' ) <= 3 && preg_match( '/\p{Cc}/u', $text ) === 0;
+		}
+
+		/**
+		 *	What an app draws on the surface of the brand: the letters of the app, or the name of its shape. What a method of the package answers is drawn only where it is letters (sayable()); a method that throws, or answers anything else - a text that is too long,
+		 *	a list, an object - is no reason for a page to fail: the letters of the core are drawn and a warning says so (once for the app in a request)
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		string		$app					A key of an app
@@ -498,7 +525,28 @@ namespace Nino\Modules\Crm\Surface {
 
 			$spec = self::spec( $appData, $app );
 
-			return $spec['shape'] !== null ? $spec['key'] : ( is_array( $spec['letters'] ) === true ? (string) call_user_func_array( $spec['letters'], [ &$appData ] ) : (string) $spec['letters'] );
+			if( $spec['shape'] !== null )
+				return $spec['key'];
+
+			if( is_array( $spec['letters'] ) === false )
+				return (string) $spec['letters'];
+
+			try {
+				$said = call_user_func_array( $spec['letters'], [ &$appData ] );
+			}
+			catch( \Throwable $e ) {
+				$said = null;
+			}
+
+			if( self::sayable( $said ) === true )
+				return $said;
+
+			if( isset( $appData[self::UNSAID][$spec['key']] ) === false ) {
+				$appData[self::UNSAID][$spec['key']] = true;
+				trigger_error( 'Crm: the letters of the icon of the app "'. $spec['key']. '" are not letters: a method answered something else than one to three characters, or threw', E_USER_WARNING );
+			}
+
+			return self::FALLBACK;
 		}
 
 		/**

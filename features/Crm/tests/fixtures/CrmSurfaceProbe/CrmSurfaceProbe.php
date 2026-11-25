@@ -87,13 +87,16 @@ namespace Nino\Modules {
 
 		/**
 		 *	@param		array 		&$appData
-		 *	@param		string		$dir
+		 *	@param		string		$dir					Taken as a reference, which the place that asks allows: what is done to it is done to a copy
 		 *
 		 *	@return 	array
 		 */
-		public static function appValues( array &$appData, string $dir ): array {
+		public static function appValues( array &$appData, string &$dir ): array {
 
-			return [ 'manifest' => $dir. '/crm/probeapp/manifest.webmanifest', 'app-title' => 'Probe app', 'title' => 'Probe app' ] + \Nino\Modules\Crm\Surface\App::values( $appData, $dir, 'probeapp' );
+			$values = [ 'manifest' => $dir. '/crm/probeapp/manifest.webmanifest', 'app-title' => 'Probe app', 'title' => 'Probe app' ] + \Nino\Modules\Crm\Surface\App::values( $appData, $dir, 'probeapp' );
+			$dir = '/hijacked';
+
+			return $values;
 		}
 
 		/**

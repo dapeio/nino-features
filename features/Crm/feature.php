@@ -149,8 +149,12 @@ return [
 				'de_DE' => 'Die vier Worte der Testmail der Wortmarke, im Panel Texte, wo das Projekt sie pflegt.',
 			],
 			'/data/crm.sqlite' => [
-				'en_US' => 'The database, kept without a write-ahead log so that a backup copies all of it - the price is the readers, who can wait up to about 0.15 s for a write, with the log 0.015 s.',
-				'de_DE' => 'Die Datenbank, ohne Write-ahead-Log geführt, damit eine Sicherung alles kopiert - den Preis tragen die Leser, die bis zu etwa 0,15 s auf ein Schreiben warten können, mit Log 0,015 s.',
+				'en_US' => 'The database, of which a backup carries a whole copy that the core makes, kept without a write-ahead log - the price is the readers, who can wait up to about 0.15 s for a write, with the log 0.015 s.',
+				'de_DE' => 'Die Datenbank, von der eine Sicherung eine ganze Kopie trägt, die der Kern macht, ohne Write-ahead-Log geführt - Leser warten dafür bis zu etwa 0,15 s auf ein Schreiben, mit Log 0,015 s.',
+			],
+			'/data/crm.sqlite empty or cut off' => [
+				'en_US' => 'A file at this place that is empty, or cut to less than the 72 bytes of its header, is not the core\'s database: the backup packs it as it lies, without an error.',
+				'de_DE' => 'Eine Datei an dieser Stelle, die leer oder auf weniger als die 72 Bytes ihres Kopfes gekürzt ist, ist nicht die Datenbank des Kerns: Die Sicherung packt sie, wie sie liegt, ohne Fehler.',
 			],
 			'elements crm-projects, crm-phases' => [
 				'en_US' => 'The element types of the projects and of their phases, with the four phases of the work as elements in both languages; add-only, the project may change them.',
@@ -167,7 +171,7 @@ return [
 	'nino'				=> '^2.0',
 	'php'					=> [ 'ext' => [ 'pdo_sqlite' ] ],
 	'requires'		=> [],
-	// The one file of the database, which a backup carries: the journal is DELETE, so that there is no -wal or -shm beside it
+	// The one file of the database, which a backup carries as a copy the core makes (callbackBackup() of the core): the journal is DELETE, so that there is no -wal or -shm beside it
 	'data'				=> [ '/data/crm.sqlite' ],
 	'settings'		=> [],
 ];

@@ -37,30 +37,32 @@ namespace Nino\Modules\Crm\Surface {
 		 *	@param		array 		&$appData
 		 *	@param		string		$route				The address of the page below the directory of the project, as Devices::allow() takes it: /crm/<name>
 		 *	@param		string		$word					What the rail says, not escaped; a word of one or more characters
-		 *	@param		string		$key					Lower case letters, digits and hyphens, one to forty, and none of the core's (a warning says it); the data-page of the link
+		 *	@param		string		$key					Lower case letters, digits and hyphens, one to forty, and none of the core's; the data-page of the link
 		 *	@param		array 		$opts					package (required): the key of the package that adds the entry, see Register::package(); the route is the package's from here on
 		 *
-		 *	@return 	bool											Whether the entry is on the list now
+		 *	@return 	bool											Whether the entry is on the list now; false, with a warning, where it was refused
 		 */
 		public static function add( array &$appData, string $route, string $word, string $key, array $opts = [] ): bool {
 
-			if( array_diff_key( $opts, [ 'package' => 1 ] ) !== [] || \Nino\Modules\Crm\Register::package( $appData, $opts['package'] ?? null ) === null || Devices::isRoute( $route ) === false || trim( $word ) === '' || preg_match( '/^[a-z0-9-]{1,40}$/D', $key ) !== 1 )
-				return false;
+			$bad = match( true ) {
+				array_diff_key( $opts, [ 'package' => 1 ] ) !== [] => 'option',
+				\Nino\Modules\Crm\Register::package( $appData, $opts['package'] ?? null ) === null => 'package',
+				Devices::isRoute( $route ) === false => 'route',
+				trim( $word ) === '' => 'word',
+				preg_match( '/^[a-z0-9-]{1,40}$/D', $key ) !== 1 => 'key',
+				// The keys of the core are its own: an entry of a feature with one would be dropped by the script
+				isset( self::CORE[$key] ) === true => 'key of the core',
+				array_filter( (array) ( $appData[self::ENTRIES] ?? [] ), static fn( array $entry ): bool => $entry['route'] === $route || $entry['key'] === $key ) !== [] => 'entry taken',
+				// The route is the package's from here on (Devices::allow())
+				Devices::claim( $appData, $route, (string) $opts['package'] ) === false => 'route taken',
+				default => '',
+			};
 
-			// The keys of the core are its own: an entry of a feature with one would be dropped by the script
-			if( isset( self::CORE[$key] ) === true ) {
-				trigger_error( 'Crm: the menu entry "'. $key. '" was not added: the key belongs to an entry of the core', E_USER_WARNING );
+			if( $bad !== '' ) {
+				trigger_error( 'Crm: the menu entry was not added ('. $bad. ')', E_USER_WARNING );
 
 				return false;
 			}
-
-			foreach( (array) ( $appData[self::ENTRIES] ?? [] ) as $entry )
-				if( $entry['route'] === $route || $entry['key'] === $key )
-					return false;
-
-			// The route is the package's from here on (Devices::allow())
-			if( Devices::claim( $appData, $route, (string) $opts['package'] ) === false )
-				return false;
 
 			$appData[self::ENTRIES][] = [ 'route' => $route, 'word' => $word, 'key' => $key, 'package' => (string) $opts['package'] ];
 

@@ -15,9 +15,10 @@ namespace Nino\Modules\Crm {
 	 *				at all - is told by the header of the file (the application id the core writes into a file it makes, which no other file has) and is never opened for
 	 *				writing, never given a table and never removed; pdo() throws a \PDOException that says so, and inspect() says it as a state for the status.
 	 *
-	 *				The journal is DELETE and not WAL, so that the one file a backup copies is the whole of the database at any time - the copy of a database in WAL
-	 *				mode misses what is still in the log - and secure_delete zeroes what a deletion frees. Transactions are short: BEGIN IMMEDIATE, the writes, COMMIT.
-	 *				A failure is a \PDOException that the caller answers.
+	 *				The journal is DELETE and not WAL, so that there is no file of a log beside the file - a copy of a database in WAL mode misses what is still in the log -
+	 *				and secure_delete zeroes what a deletion frees. What a backup carries is not the file as it lies but a whole copy of it, which the core makes when the
+	 *				backup asks (backup(), with VACUUM INTO, called by Crm::callbackBackup()): the state of the file before a write that is open.
+	 *				Transactions are short: BEGIN IMMEDIATE, the writes, COMMIT. A failure is a \PDOException that the caller answers.
 	 *
 	 *				The core is the file; a package is a guest in it. A core whose schema cannot be made is no connection, but a package whose schema cannot be made or raised is that package alone: its entry
 	 *				is taken back with a warning that names it and the version, failed() lists it, the status shows it as a line in red, and the connection works for the core and the others. A package enters
@@ -175,6 +176,87 @@ namespace Nino\Modules\Crm {
 		}
 
 		/**
+		 *	A whole copy of the database for a backup, written with VACUUM INTO to the file the caller names. It is made through a connection of its own - the connection of the request
+		 *	is never used, so that nothing is made, raised or written to the file - and only for a file that is the core's by its header: a file that is not there, one that was made and
+		 *	has nothing in it, and one that is another database, a text or a directory are none to hand over (false), and are never opened. A file that cannot be read, that stays locked
+		 *	for longer than BUSY, or that is damaged is no copy: it throws, and nothing is left at the target. What is checked is the copy: PRAGMA integrity_check, the full one, since VACUUM INTO carries
+		 *	the trees of the indexes over as they are and a copy of a file whose index lacks a row, holds a row that is none or has two rows of a unique key has the same damage, and the application id of the core,
+		 *	which the copy has to carry; and the file, before the copy is looked at, with PRAGMA quick_check, which finds what the copy does not show - the count of the free pages in the header, say, which the copy
+		 *	has made new. A foreign key that no row answers to is not looked at - PRAGMA integrity_check does not look at foreign keys (PRAGMA foreign_key_check does) -, so that what integrity_check passes is handed over as it is, a row of a note whose client is gone, say, which only a writer with foreign_keys off can have made (the core writes with it on). The connection opens the file for writing, as every connection of the core does: where a process that wrote to the file was ended in the middle of a transaction and left its journal beside it
+		 *	(a hot journal), SQLite rolls the journal back before it reads - the one thing this call writes below data/, and the file is whole after it as it was before that transaction, which is the state the copy then has;
+		 *	opened for reading only, SQLite cannot do it and the call throws until the next writer does. Where a writer has begun a transaction and not ended it, and has written nothing to the file yet (a transaction
+		 *	keeps its changes in the cache of its connection until the cache is full or the transaction ends), the copy is the state before that transaction and the writer is not waited for; where it has written
+		 *	to the file - a large transaction, or one at its commit - the reader waits BUSY for it and then throws. The copy has the application id of the core, as VACUUM INTO carries it over, has no free pages, and has no file of a log beside it
+		 *
+		 *	@param		string		$file					The live file
+		 *	@param		string		$target				Where the copy is written: a file that does not exist
+		 *
+		 *	@return 	bool											true where a copy was written, false where there is nothing of the core to hand over
+		 *
+		 *	@throws		\PDOException							The file cannot be read or copied, or the copy is not whole
+		 */
+		public static function backup( string $file, string $target ): bool {
+
+			$kind = self::kind( $file );
+
+			if( $kind === 'unreadable' )
+				throw new \PDOException( 'the database of the CRM cannot be read' );
+
+			if( $kind !== 'ours' )
+				return false;
+
+			if( file_exists( $target ) === true || is_link( $target ) === true )
+				throw new \PDOException( 'the copy of the database of the CRM has a file in its way' );
+
+			$live = null;
+
+			try {
+
+				$live = new \PDO( 'sqlite:'. $file, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+				$live->exec( 'PRAGMA busy_timeout = '. self::BUSY );
+
+				$live->exec( 'VACUUM INTO '. $live->quote( $target ) );
+
+				// The copy does not show every damage of the file: the count of the free pages, say, is made new
+				if( $live->query( 'PRAGMA quick_check' )->fetchColumn() !== 'ok' )
+					throw new \PDOException( 'the database of the CRM is damaged' );
+
+				// The copy is what is handed over, and it is looked at whole
+				self::verifyCopy( $target );
+			}
+			catch( \PDOException $e ) {
+
+				$live = null;
+
+				foreach( [ '', '-journal', '-wal', '-shm' ] as $suffix )
+					if( is_file( $target. $suffix ) === true )
+						@unlink( $target. $suffix );
+
+				throw $e;
+			}
+
+			return true;
+		}
+
+		/**
+		 *	Look at a copy of the database that is to be handed over, whole: PRAGMA integrity_check, the full one - every index against its table, the unique keys, the pages - and the application id of the core in its header.
+		 *	The file is opened for reading only and nothing is written to it - a copy that VACUUM INTO made has the journal mode DELETE; a file with the header of the log mode would get its -wal and -shm beside it even so. A foreign key that no row answers to is not looked at: integrity_check does not look at foreign keys, and what it passes is handed over as it is
+		 *
+		 *	@param		string		$copy					The file of the copy
+		 *
+		 *	@return 	void
+		 *
+		 *	@throws		\PDOException							The copy cannot be opened, is damaged or is not the core's
+		 */
+		public static function verifyCopy( string $copy ): void {
+
+			$pdo = new \PDO( 'sqlite:'. $copy, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY ] );
+
+			if( $pdo->query( 'PRAGMA integrity_check' )->fetchAll( \PDO::FETCH_COLUMN ) !== [ 'ok' ] || (int) $pdo->query( 'PRAGMA application_id' )->fetchColumn() !== self::APPLICATION_ID )
+				throw new \PDOException( 'the copy of the database of the CRM is damaged' );
+		}
+
+		/**
 		 *	What was set on the connection of this request, in the order it was set: the pragmas of PRAGMAS, one entry for each. For a test and for the status: the connection says what it
 		 *	has, this says what the code asked of it
 		 *
@@ -276,7 +358,7 @@ namespace Nino\Modules\Crm {
 				'rules' => [
 					'version' => static fn( mixed $version ): bool => is_int( $version ) === true && $version >= 1 && $version <= 100000,
 					'tables' => static fn( mixed $tables, array $full, array $known ): bool => self::tablesAllowed( $tables, (string) $full['package'], $known ),
-					'file' => static fn( mixed $file, array $full ): bool => self::fileAllowed( $appData, $file, (string) $full['package'] ),
+					'file' => static function( mixed $file, array $full ) use ( &$appData ): bool { return self::fileAllowed( $appData, $file, (string) $full['package'] ); },
 				],
 			] );
 

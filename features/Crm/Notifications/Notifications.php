@@ -43,8 +43,8 @@ namespace Nino\Modules\Crm {
 				'fields' => [ 'package' => Register::REQUIRED, 'read' => Register::REQUIRED, 'write' => Register::REQUIRED, 'rank' => 500 ],
 				'rules' => [
 					'package' => Register::packageRule( $appData ),
-					'read' => static fn( mixed $read ): bool => Register::callable( $read ),
-					'write' => static fn( mixed $write ): bool => Register::callable( $write ),
+					'read' => static function( mixed $read ) use ( &$appData ): bool { return Register::callable( $appData, $read, 1, [ 0 ] ); },
+					'write' => static function( mixed $write ) use ( &$appData ): bool { return Register::callable( $appData, $write, 2, [ 0 ] ); },
 					'rank' => static fn( mixed $rank ): bool => is_int( $rank ),
 				],
 			] );

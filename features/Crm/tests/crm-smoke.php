@@ -358,9 +358,98 @@ function crmCrashed( string $section, \Throwable $error ): void {
 	check( 'the section "'. $section. '" ran to its end: it stopped with '. get_class( $error ), false );
 }
 
+/**
+ *	The archive a backup made, opened: its files by name below the project, its stamp, and a folder of the suite it was unpacked into (taken away with the sandbox of the project)
+ *
+ *	@param		array 		&$appData			A request of the project that was backed up
+ *	@param		string		$id						The id the backup answered
+ *	@param		string|null	$key					The key of the backups of the project, where the request has not read it
+ *
+ *	@return 	array											files (name => bytes), stamp, folder; files is null where the archive could not be opened
+ */
+function crmArchive( array &$appData, string $id, ?string $key = null ): array {
+
+	static $count = 0;
+
+	$plain = ninoUnsealed( (string) file_get_contents( \Nino\Modules\Backups::dir( $appData ). '/'. $id. '.php' ), (string) base64_decode( (string) ( $key ?? $appData['/nino/backup/key'] ), true ) );
+	$into = ninoSandboxDir( $appData ). '/read-'. ++$count;
+
+	mkdir( $into, 0755, true );
+	file_put_contents( $into. '.tar.gz', (string) $plain );
+
+	if( \Nino\Backup::unpack( $into. '.tar.gz', $into ) !== null )
+		return [ 'files' => null, 'stamp' => [], 'folder' => $into ];
+
+	$files = [];
+
+	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $into, \FilesystemIterator::SKIP_DOTS ), \RecursiveIteratorIterator::LEAVES_ONLY ) as $file )
+		$files[substr( $file->getPathname(), strlen( $into ) + 1 )] = (string) file_get_contents( $file->getPathname() );
+
+	ksort( $files );
+
+	return [ 'files' => $files, 'stamp' => (array) include $into. '/nino.php', 'folder' => $into ];
+}
+
+/**
+ *	What a backup of the project does, through the code of the kernel that makes it: a request of its own, so that nothing of an earlier connection is in it; the answer, the time it took, the archive
+ *	and what the request kept of the core
+ *
+ *	@param		string		$sandbox			The directory of the project
+ *
+ *	@return 	array											answer (an id, or what the kernel answers where the backup ends), seconds, key, archive (null where there is none), kept (the keys of the request below ./crm/db)
+ */
+function crmBackup( string $sandbox ): array {
+
+	$request = crmRequest( $sandbox );
+	ninoWarnings();
+
+	$began = microtime( true );
+	$answer = \Nino\Modules\Backups::now( $request );
+	$took = microtime( true ) - $began;
+
+	return [ 'answer' => $answer, 'seconds' => $took, 'archive' => is_string( $answer ) === true ? crmArchive( $request, $answer ) : null, 'key' => (string) ( $request['/nino/backup/key'] ?? '' ),
+		'kept' => array_values( array_filter( array_keys( $request ), static fn( string $key ): bool => in_array( $key, [ './crm/db/connections', './crm/db/ensured', './crm/db/pragmas' ], true ) === true ) ), 'warnings' => ninoWarnings() ];
+}
+
+/**
+ *	The names below a folder, without the dots and without the folder of the locks the kernel makes for the backup itself
+ *
+ *	@param		string		$folder
+ *
+ *	@return 	array											null where the folder is not there
+ */
+function crmNames( string $folder ): ?array {
+
+	return is_dir( $folder ) === true ? array_values( array_diff( (array) scandir( $folder ), [ '.', '..', '.locks' ] ) ) : null;
+}
+
 /*	Worker modes: this same file re-entered as a process of its own, pointed at a sandbox somebody else built. A race on an empty disk, numbers taken by several processes and a
 	process that is not the owner of the files are only seen from other processes: flock() is per open file description, and root may write what nobody may	*/
-if( in_array( $argv[1] ?? '', [ 'connect-worker', 'numbers-worker', 'nobody-worker' ], true ) === true ) {
+if( in_array( $argv[1] ?? '', [ 'connect-worker', 'numbers-worker', 'nobody-worker', 'unreadable-worker' ], true ) === true ) {
+
+	// The backup of a database the process may not read: a process that is nobody, and the file is the core's and another's - what the callback of the backup says of a file it cannot read
+	if( $argv[1] === 'unreadable-worker' ) {
+
+		if( function_exists( 'posix_setuid' ) === true && posix_getuid() === 0 ) {
+			posix_setgid( 65534 );
+			posix_setuid( 65534 );
+		}
+
+		$worker = crmRequest( (string) $argv[3], false );
+		$args = [ 'dataDir' => dirname( (string) $argv[4] ), 'staging' => (string) $argv[5] ];
+		$said = 'handed over';
+
+		try {
+			\Nino\Modules\Crm::callbackBackup( $worker, $args );
+			$said = is_file( (string) $argv[5]. '/crm.sqlite' ) === true ? 'handed over' : 'nothing';
+		}
+		catch( \PDOException ) {
+			$said = 'threw';
+		}
+
+		echo json_encode( [ 'uid' => posix_getuid(), 'said' => $said, 'kind' => \Nino\Modules\Crm\Db::kind( (string) $argv[4] ), 'staged' => crmNames( (string) $argv[5] ) ] );
+		exit( 0 );
+	}
 
 	$worker = crmRequest( (string) $argv[3], $argv[1] !== 'connect-worker' );
 
@@ -1507,7 +1596,7 @@ try {
 
 $reg = [ './nino/uid' => 'register' ];
 $shape = [ 'id' => 'name', 'idRule' => static fn( string $id ): bool => \Nino\Modules\Crm\Register::word( $id ), 'fields' => [ 'level' => \Nino\Modules\Crm\Register::REQUIRED, 'note' => 'none', 'call' => null ],
-	'rules' => [ 'level' => static fn( mixed $level ): bool => is_int( $level ) === true && $level > 0, 'call' => static fn( mixed $call ): bool => $call === null || \Nino\Modules\Crm\Register::callable( $call ) ],
+	'rules' => [ 'level' => static fn( mixed $level ): bool => is_int( $level ) === true && $level > 0, 'call' => static fn( mixed $call ): bool => $call === null || \Nino\Modules\Crm\Register::callable( $reg, $call ) ],
 	'refuse' => static fn( array $spec ): string => $spec['note'] === 'no' ? 'note' : '' ];
 check( 'a list is entered whole: the entries are in the register with their defaults put in and the order they were entered in', \Nino\Modules\Crm\Register::add( $reg, './test/entries', 'tests', [ [ 'name' => 'one', 'level' => 1 ], [ 'name' => 'two', 'level' => 2, 'note' => 'x' ] ], $shape ) === true
 	&& \Nino\Modules\Crm\Register::all( $reg, './test/entries' ) === [ 'one' => [ 'name' => 'one', 'level' => 1, 'note' => 'none', 'call' => null, 'seq' => 0 ], 'two' => [ 'name' => 'two', 'level' => 2, 'note' => 'x', 'call' => null, 'seq' => 1 ] ] && ninoWarnings() === [] );
@@ -1539,8 +1628,8 @@ check( 'a refusal in a list enters none of it: the good entry before the bad one
 check( 'two descriptions of one name in one list that differ are refused, and two that are the same are one entry', \Nino\Modules\Crm\Register::add( $reg, './test/entries', 'tests', [ [ 'name' => 'twin', 'level' => 1 ], [ 'name' => 'twin', 'level' => 2 ] ], $shape ) === false && ninoWarnings() !== []
 	&& \Nino\Modules\Crm\Register::add( $reg, './test/entries', 'tests', [ [ 'name' => 'twin', 'level' => 1 ], [ 'name' => 'twin', 'level' => 1 ] ], $shape ) === true && count( \Nino\Modules\Crm\Register::all( $reg, './test/entries' ) ) === 3 );
 check( 'a warning of a refusal names the register and the field and never a value of the description', ( static function() use ( &$reg, $shape ): bool { \Nino\Modules\Crm\Register::add( $reg, './test/entries', 'tests', [ [ 'name' => 'secret-name-9', 'level' => 'secret-level-9' ] ], $shape ); $message = ninoWarnings()[0] ?? ''; return str_contains( $message, 'level' ) === true && str_contains( $message, 'secret' ) === false && str_contains( $message, 'tests' ) === true; } )() === true );
-check( 'callable() takes [ class, method ] as two strings that php can call and nothing else; word() takes lower case words joined by one joiner, from a letter, no longer than the most', \Nino\Modules\Crm\Register::callable( [ '\\Nino\\Modules\\Crm\\Status', 'database' ] ) === true && \Nino\Modules\Crm\Register::callable( [ 'Nino\\Modules\\Crm\\Status', 'database' ] ) === true
-	&& \Nino\Modules\Crm\Register::callable( 'strlen' ) === false && \Nino\Modules\Crm\Register::callable( [ new \stdClass(), 'x' ] ) === false && \Nino\Modules\Crm\Register::callable( [ '\\Nino\\Modules\\Crm\\Status' ] ) === false && \Nino\Modules\Crm\Register::callable( [ 'a' => '\\Nino\\Modules\\Crm\\Status', 'b' => 'database' ] ) === false
+check( 'callable() takes [ class, method ] as two strings that php can call and nothing else; word() takes lower case words joined by one joiner, from a letter, no longer than the most', \Nino\Modules\Crm\Register::callable( $reg, [ '\\Nino\\Modules\\Crm\\Status', 'database' ] ) === true && \Nino\Modules\Crm\Register::callable( $reg, [ 'Nino\\Modules\\Crm\\Status', 'database' ] ) === true
+	&& \Nino\Modules\Crm\Register::callable( $reg, 'strlen' ) === false && \Nino\Modules\Crm\Register::callable( $reg, [ new \stdClass(), 'x' ] ) === false && \Nino\Modules\Crm\Register::callable( $reg, [ '\\Nino\\Modules\\Crm\\Status' ] ) === false && \Nino\Modules\Crm\Register::callable( $reg, [ 'a' => '\\Nino\\Modules\\Crm\\Status', 'b' => 'database' ] ) === false
 	&& \Nino\Modules\Crm\Register::word( 'a-b-c1' ) === true && \Nino\Modules\Crm\Register::word( 'a--b' ) === false && \Nino\Modules\Crm\Register::word( '1a' ) === false && \Nino\Modules\Crm\Register::word( 'a_b' ) === false && \Nino\Modules\Crm\Register::word( 'a_b', 40, '_' ) === true
 	&& \Nino\Modules\Crm\Register::word( str_repeat( 'a', 41 ) ) === false && \Nino\Modules\Crm\Register::word( "a\n" ) === false && \Nino\Modules\Crm\Register::word( null ) === false && \Nino\Modules\Crm\Register::word( 7 ) === false );
 check( 'no class of the feature keeps state in a static field: the registers, the connections and the answers of a request are in the app data', ( static function() use ( $dir ): bool {
@@ -2545,6 +2634,389 @@ check( 'the suite leaves no sandbox of its own behind but the one the harness re
 }
 catch( \Throwable $crash ) {
 	crmCrashed( 'upgrade()', $crash );
+}
+
+
+// --- The backup: the copy of the database the kernel packs ------------------------------------------------------------------
+
+echo "\nThe backup\n";
+
+try {
+
+[ $bk, $bkDir, $bkRequest ] = crmWorld( 'crm7-backup' );
+$bkFile = $bkDir. '/private/data/crm.sqlite';
+$bkData = dirname( $bkFile );
+$bkRows = static fn( string $file ): array => ( static function() use ( $file ): array {
+	$pdo = new \PDO( 'sqlite:'. $file );
+	$rows = [ (int) $pdo->query( 'PRAGMA application_id' )->fetchColumn(), (string) $pdo->query( 'PRAGMA integrity_check' )->fetchColumn(), $pdo->query( 'SELECT key, value FROM settings ORDER BY key' )->fetchAll( \PDO::FETCH_ASSOC ), $pdo->query( 'SELECT package, version FROM schema_versions ORDER BY package' )->fetchAll( \PDO::FETCH_ASSOC ) ];
+
+	return $rows;
+} )();
+$bkFill = static function( int $count ) use ( $bkDir ): void {
+
+	$request = crmRequest( $bkDir );
+	$pdo = \Nino\Modules\Crm\Db::pdo( $request );
+	$put = $pdo->prepare( 'INSERT OR REPLACE INTO settings ( key, value ) VALUES ( :key, :value )' );
+
+	for( $i = 0; $i < $count; $i++ )
+		$put->execute( [ 'key' => 'bk.'. sprintf( '%04d', $i ), 'value' => str_repeat( chr( 65 + $i % 26 ), 1500 ) ] );
+};
+
+// No database yet: the first days of the feature
+check( 'the project has no database yet', is_file( $bkFile ) === false );
+$dataBefore = crmNames( $bkData );
+$run = crmBackup( $bkDir );
+check( 'no database: the backup is made, hands over no copy and the archive has no database; nothing is made for it - no file, no folder below data/, nothing in the request - and no warning is raised',
+	is_string( $run['answer'] ) === true && is_array( $run['archive']['files'] ) === true && isset( $run['archive']['files']['data/crm.sqlite'] ) === false && ( $run['archive']['stamp']['copies'] ?? [] ) === [] && is_file( $bkFile ) === false && crmNames( $bkData ) === $dataBefore && $run['kept'] === [] && $run['warnings'] === [] );
+
+// A database that is the core's: a whole copy that is a state
+$bkFill( 60 );
+// Rows that were deleted leave free pages in the file; a copy made by VACUUM INTO has none
+$bkRequestOwn = crmRequest( $bkDir );
+\Nino\Modules\Crm\Db::exec( $bkRequestOwn, 'DELETE FROM settings WHERE key >= \'bk.0040\' AND key < \'bk.0060\'' );
+$bkRequestOwn = null;
+$bkFree = static fn( string $file ): int => (int) ( new \PDO( 'sqlite:'. $file ) )->query( 'PRAGMA freelist_count' )->fetchColumn();
+$live = crmFingerprint( $bkFile );
+$names = crmNames( $bkData );
+$expect = $bkRows( $bkFile );
+$run = crmBackup( $bkDir );
+$copy = $run['archive']['folder'] ?? '';
+check( 'a database: the backup is made through the kernel and its archive holds the copy where the live file stands, whole - the application id of the core, integrity_check ok, and the rows of the live file, the register of the schemas included - and the stamp names it as handed over',
+	is_string( $run['answer'] ) === true && ( $run['archive']['stamp']['copies'] ?? [] ) === [ 'data/crm.sqlite' ] && is_file( $copy. '/data/crm.sqlite' ) === true && $bkRows( $copy. '/data/crm.sqlite' ) === $expect && $expect[0] === \Nino\Modules\Crm\Db::APPLICATION_ID && $expect[1] === 'ok' && count( $expect[2] ) >= 40 );
+check( '...as a copy that VACUUM INTO makes and not the file as it lies: the free pages the live file has are not in it, and it is the smaller', $bkFree( $bkFile ) > 0 && $bkFree( $copy. '/data/crm.sqlite' ) === 0 && filesize( $copy. '/data/crm.sqlite' ) < filesize( $bkFile ) );
+check( '...with no file of a log beside the copy, none beside the live file, and the live file as it was: not a byte written, no file added below data/, no connection of the request opened',
+	array_filter( array_keys( $run['archive']['files'] ?? [] ), static fn( string $name ): bool => preg_match( '/crm\.sqlite-(journal|wal|shm)$/', $name ) === 1 ) === [] && glob( $bkFile. '-*' ) === [] && crmFingerprint( $bkFile ) === $live && crmNames( $bkData ) === $names && $run['kept'] === [] && $run['warnings'] === [] );
+$direct = $bkDir. '/staging-direct';
+mkdir( $direct, 0700 );
+$handed = [ 'dataDir' => $bkData, 'staging' => $direct ];
+$own = crmRequest( $bkDir );
+\Nino\Modules\Crm::callbackBackup( $own, $handed );
+check( 'the callback itself leaves exactly the copy in the folder it is given: no file of a log, no half-made file, nothing beside it - and it touches nothing of the request', crmNames( $direct ) === [ 'crm.sqlite' ] && $bkRows( $direct. '/crm.sqlite' ) === $expect && array_intersect( array_keys( $own ), [ './crm/db/connections', './crm/db/ensured' ] ) === [] );
+$again = false;
+
+try {
+	\Nino\Modules\Crm::callbackBackup( $own, $handed );
+}
+catch( \PDOException ) {
+	$again = true;
+}
+
+check( 'a copy that is in the way is not written over: the callback throws and leaves the one that is there', $again === true && crmNames( $direct ) === [ 'crm.sqlite' ] && $bkRows( $direct. '/crm.sqlite' ) === $expect );
+unlink( $direct. '/crm.sqlite' );
+rmdir( $direct );
+check( 'the callback is no state: neither the core nor the class of the database has a static field', ( new \ReflectionClass( \Nino\Modules\Crm::class ) )->getStaticProperties() === [] && ( new \ReflectionClass( \Nino\Modules\Crm\Db::class ) )->getStaticProperties() === [] );
+
+// A writer that has begun a transaction and not ended it: SQLite lets a reader see the file as it was before it, and the copy is that state
+$holder = new \PDO( 'sqlite:'. $bkFile );
+$holder->setAttribute( \PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION );
+$holder->exec( 'BEGIN IMMEDIATE' );
+$holder->exec( 'INSERT INTO settings ( key, value ) VALUES ( \'bk.held\', \'not yet\' )' );
+$live = array_slice( crmFingerprint( $bkFile ), 0, 3 );
+
+try {
+	$run = crmBackup( $bkDir );
+}
+finally {
+	$holder->exec( 'ROLLBACK' );
+}
+
+$copy = $run['archive']['folder'] ?? '';
+$held = is_file( $copy. '/data/crm.sqlite' ) === true ? $bkRows( $copy. '/data/crm.sqlite' ) : [];
+check( 'a writer that holds an open transaction while the backup runs: the backup is made at once, and its copy is the state before that transaction - whole, with the rows that were committed and not the one that was not',
+	is_string( $run['answer'] ) === true && $run['seconds'] < 3 && ( $held[1] ?? '' ) === 'ok' && ( $held[0] ?? 0 ) === \Nino\Modules\Crm\Db::APPLICATION_ID && $held[2] === $expect[2] && in_array( 'bk.held', array_column( $held[2], 'key' ), true ) === false && array_slice( crmFingerprint( $bkFile ), 0, 3 ) === $live );
+
+// A writer at its commit holds the file for readers: the copy cannot be made, and the backup ends with the core named, after the wait
+$holder->exec( 'BEGIN EXCLUSIVE' );
+$archives = glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [];
+$live = array_slice( crmFingerprint( $bkFile ), 0, 3 );
+
+try {
+	$run = crmBackup( $bkDir );
+}
+finally {
+	$holder->exec( 'ROLLBACK' );
+}
+
+check( 'a database that stays locked for longer than the wait is no copy: the backup ends with 500, the code backups_hook and the key of the core, after the five seconds the core waits for a lock and not much more, no archive is made, and the file is as it was',
+	is_array( $run['answer'] ) === true && $run['answer'][0] === 500 && ( $run['answer'][2] ?? '' ) === 'backups_hook' && ( $run['answer'][3] ?? [] ) === [ 'crm' ] && $run['seconds'] > 4.5 && $run['seconds'] < 15 && ( glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [] ) === $archives && array_slice( crmFingerprint( $bkFile ), 0, 3 ) === $live && glob( $bkFile. '-*' ) === [] );
+$run = crmBackup( $bkDir );
+check( '...and once the lock is gone the next backup is made, with the copy', is_string( $run['answer'] ) === true && ( $run['archive']['stamp']['copies'] ?? [] ) === [ 'data/crm.sqlite' ] && $bkRows( $run['archive']['folder']. '/data/crm.sqlite' ) === $expect );
+$holder = null;
+
+// A file that is not the core's - another database, a text, a file with nothing in it, a directory - is not handed over and not touched: the backup packs it as it lies, as it would without the callback
+[ $fb, $fbDir ] = crmWorld( 'crm7-backup-foreign' );
+$fbFile = $fbDir. '/private/data/crm.sqlite';
+is_dir( dirname( $fbFile ) ) === true || mkdir( dirname( $fbFile ), 0755, true );
+$fbCases = [
+	'another database' => static function( string $file ): void { $other = new \PDO( 'sqlite:'. $file ); $other->exec( 'CREATE TABLE clients ( id INTEGER PRIMARY KEY, name TEXT )' ); $other->exec( 'INSERT INTO clients ( name ) VALUES ( \'Old\' )' ); },
+	'a text' => static function( string $file ): void { file_put_contents( $file, "This is not a database\n". str_repeat( 'x', 200 ) ); },
+	'a file with nothing in it' => static function( string $file ): void { file_put_contents( $file, '' ); },
+	'a directory' => static function( string $file ): void { mkdir( $file ); file_put_contents( $file. '/inside.txt', 'in a directory' ); },
+];
+
+foreach( $fbCases as $label => $make ) {
+
+	$make( $fbFile );
+	$lies = is_dir( $fbFile ) === true ? [ 'inside.txt' => 'in a directory' ] : (string) file_get_contents( $fbFile );
+	$kept = array_slice( crmFingerprint( $fbFile ), 0, 3 );
+	$names = crmNames( dirname( $fbFile ) );
+	$run = crmBackup( $fbDir );
+	$packed = is_dir( $fbFile ) === true ? [ 'inside.txt' => (string) ( $run['archive']['files']['data/crm.sqlite/inside.txt'] ?? '' ) ] : ( $run['archive']['files']['data/crm.sqlite'] ?? null );
+
+	check( 'a file at the place of the database that is '. $label. ' is not the core\'s: the backup goes on without a copy, the archive has it as it lies, the file is not opened, written, made whole or taken away - and nothing is made beside it',
+		is_string( $run['answer'] ) === true && ( $run['archive']['stamp']['copies'] ?? [] ) === [] && $packed === $lies && ( is_dir( $fbFile ) === true || array_slice( crmFingerprint( $fbFile ), 0, 3 ) === $kept ) && crmNames( dirname( $fbFile ) ) === $names && glob( $fbFile. '-*' ) === [] && $run['kept'] === [] && $run['warnings'] === [] );
+
+	if( is_dir( $fbFile ) === true ) {
+		unlink( $fbFile. '/inside.txt' );
+		rmdir( $fbFile );
+	}
+	else
+		unlink( $fbFile );
+}
+
+// The database of the core is damaged: it is no state that can be handed over, and nothing falls back to the live file - the backup ends with the core named. The restore of a good backup is what is wanted then, and it is not kept from happening
+$good = crmBackup( $bkDir );
+$goodId = (string) $good['answer'];
+$goodKey = (string) $good['key'];
+
+// A damage of an index is one that the copy has as the file has: VACUUM INTO carries the trees of the indexes over as they are, and PRAGMA quick_check does not read an index against its table. The schema of the index is
+// changed under the file (writable_schema) so that the entries it holds are not the ones its table asks for: wrong ones, none for some rows, or a key twice in a unique index
+$bkIndex = static function( string $file, int $form ): void {
+
+	$pdo = new \PDO( 'sqlite:'. $file, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+	$pdo->exec( 'CREATE TABLE bk_index ( id INTEGER PRIMARY KEY, a TEXT, b TEXT )' );
+	$pdo->exec( 'WITH RECURSIVE n( i ) AS ( SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 60 ) INSERT INTO bk_index ( a, b ) SELECT \'a\'|| i, \'b\'|| ( i % 5 ) FROM n' );
+
+	if( $form === 1 )
+		$pdo->exec( 'CREATE INDEX bk_index_i ON bk_index ( a )' );
+	elseif( $form === 2 )
+		$pdo->exec( 'CREATE INDEX bk_index_i ON bk_index ( a ) WHERE id <= 30' );
+	else
+		$pdo->exec( 'CREATE INDEX bk_index_i ON bk_index ( b )' );
+
+	$pdo->exec( 'PRAGMA writable_schema = ON' );
+	$pdo->exec( 'UPDATE sqlite_schema SET sql = '. $pdo->quote( [ 1 => 'CREATE INDEX bk_index_i ON bk_index ( b )', 2 => 'CREATE INDEX bk_index_i ON bk_index ( a )', 3 => 'CREATE UNIQUE INDEX bk_index_i ON bk_index ( b )' ][$form] ). ' WHERE name = \'bk_index_i\'' );
+};
+
+foreach( [ 'an index has entries that are none of its table' => static function( string $file ) use ( $bkIndex ): void { $bkIndex( $file, 1 ); },
+	'an index has no entry for rows of its table' => static function( string $file ) use ( $bkIndex ): void { $bkIndex( $file, 2 ); },
+	'a unique index holds a key twice' => static function( string $file ) use ( $bkIndex ): void { $bkIndex( $file, 3 ); },
+	'pages of the file are overwritten' => static function( string $file ): void { $h = fopen( $file, 'r+b' ); fseek( $h, 4096 * 4 ); fwrite( $h, str_repeat( "\xAB", 4096 * 6 ) ); fclose( $h ); },
+	'the count of the free pages in its header is wrong (a damage a copy does not show)' => static function( string $file ): void { $h = fopen( $file, 'r+b' ); fseek( $h, 36 ); fwrite( $h, pack( 'N', 9999 ) ); fclose( $h ); },
+	'the file is cut off in the middle of its pages' => static function( string $file ): void { $h = fopen( $file, 'r+b' ); ftruncate( $h, 4096 * 7 + 100 ); fclose( $h ); } ] as $label => $damage ) {
+
+	copy( $good['archive']['folder']. '/data/crm.sqlite', $bkFile );
+	$damage( $bkFile );
+	$kept = array_slice( crmFingerprint( $bkFile ), 0, 3 );
+
+	// The pin of an index means nothing where the file shows its damage to the quick check the callback makes of the file: it is the copy that has to be looked at
+	if( str_contains( $label, 'index' ) === true ) {
+
+		$seen = new \PDO( 'sqlite:file:'. $bkFile. '?mode=ro' );
+		check( 'a database of the core where '. $label. ': the damage is none that PRAGMA quick_check finds, and PRAGMA integrity_check does', $seen->query( 'PRAGMA quick_check' )->fetchColumn() === 'ok' && $seen->query( 'PRAGMA integrity_check' )->fetchColumn() !== 'ok' );
+		$seen = null;
+		$kept = array_slice( crmFingerprint( $bkFile ), 0, 3 );
+	}
+
+	$archives = glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [];
+	$direct = $bkDir. '/staging-damaged';
+	mkdir( $direct, 0700 );
+	$handed = [ 'dataDir' => $bkData, 'staging' => $direct ];
+	$own = crmRequest( $bkDir );
+	$left = 'no throw';
+
+	try {
+		\Nino\Modules\Crm::callbackBackup( $own, $handed );
+	}
+	catch( \PDOException ) {
+		$left = crmNames( $direct ) === [] ? 'nothing' : 'something';
+	}
+
+	rmdir( $direct );
+	$run = crmBackup( $bkDir );
+
+	check( 'a database of the core where '. $label. ': the callback itself throws and leaves nothing in the folder of the copy', $left === 'nothing' );
+	check( 'a database of the core where '. $label. ': the backup ends with 500, the code backups_hook and the key of the core, no archive is made, the file is not touched and no file of a log is left beside it',
+		\Nino\Modules\Crm\Db::kind( $bkFile ) === 'ours' && is_array( $run['answer'] ) === true && $run['answer'][0] === 500 && ( $run['answer'][2] ?? '' ) === 'backups_hook' && ( $run['answer'][3] ?? [] ) === [ 'crm' ] && ( glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [] ) === $archives
+		&& array_slice( crmFingerprint( $bkFile ), 0, 3 ) === $kept && glob( $bkFile. '-*' ) === [] );
+}
+
+$notice = null;
+$damaged = (string) file_get_contents( $bkFile );
+$restored = \Nino\Modules\Backups\Admin::restore( $bkRequest, $goodId, $notice );
+check( 'a restore of the good backup over the damaged database goes through, with the files of the core in the snapshot as they lay - the callback that throws does not keep a restore from happening - and puts the copy back: whole, with the rows it had',
+	$restored === true && ( $notice['code'] ?? '' ) === 'backups_snapshot_raw' && ( $notice['params'] ?? [] ) === [ 'crm' ] && $bkRows( $bkFile ) === $expect && glob( $bkFile. '-*' ) === [] );
+$snapshots = array_values( array_filter( array_map( static fn( string $file ): string => basename( $file, '.php' ), glob( \Nino\Modules\Backups::dir( $bkRequest ). '/pre-restore-*.php' ) ?: [] ) ) );
+check( '...and the snapshot it took first holds the damaged file as it lay, byte for byte, with no copy of the core in it', count( $snapshots ) >= 1 && ( static function() use ( &$bkRequest, $snapshots, $damaged, $goodKey ): bool { $held = crmArchive( $bkRequest, end( $snapshots ), $goodKey ); return ( $held['files']['data/crm.sqlite'] ?? null ) === $damaged && ( $held['stamp']['copies'] ?? [] ) === []; } )() );
+
+// The copy is looked at before it is handed over, whole: a copy that is damaged in an index or has the application id of another is none
+$verify = $bkDir. '/verify.sqlite';
+copy( $bkFile, $verify );
+$seen = crmFingerprint( $verify );
+$verified = [];
+
+foreach( [ 'a copy that is whole' => null, 'a copy of another application id' => static function( \PDO $pdo ): void { $pdo->exec( 'PRAGMA application_id = 77' ); }, 'a copy with an index that lacks rows' => static function( \PDO $pdo ) use ( $bkIndex, $verify ): void { $bkIndex( $verify, 2 ); } ] as $what => $break ) {
+
+	copy( $bkFile, $verify );
+
+	if( $break !== null ) {
+		$pdo = new \PDO( 'sqlite:'. $verify, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+		$break( $pdo );
+		$pdo = null;
+	}
+
+	$seen = crmFingerprint( $verify );
+	$threw = false;
+
+	try {
+		\Nino\Modules\Crm\Db::verifyCopy( $verify );
+	}
+	catch( \PDOException ) {
+		$threw = true;
+	}
+
+	$verified[$what] = [ $threw, crmFingerprint( $verify ) === $seen ];
+}
+
+check( 'Db::verifyCopy() lets a whole copy pass and throws for a copy of another application id and for one whose index lacks rows, and writes nothing to the copy it looks at', $verified === [ 'a copy that is whole' => [ false, true ], 'a copy of another application id' => [ true, true ], 'a copy with an index that lacks rows' => [ true, true ] ] );
+unlink( $verify );
+
+// The look at a copy opens it for reading only: a journal that a writer that was ended left beside it stays where it is, and the file keeps its bytes and its time. A copy that is opened for writing is rolled back by SQLite
+// (made by taking the file and its journal while a transaction of more than the cache is open: the state of a writer that was ended in the middle of it)
+$hotLive = $bkDir. '/hot-live.sqlite';
+$hot = $bkDir. '/hot.sqlite';
+$pdo = new \PDO( 'sqlite:'. $hotLive, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+$pdo->exec( 'PRAGMA application_id = '. \Nino\Modules\Crm\Db::APPLICATION_ID );
+$pdo->exec( 'CREATE TABLE hot ( id INTEGER PRIMARY KEY, v TEXT )' );
+$pdo->beginTransaction();
+
+for( $row = 0; $row < 300; $row++ )
+	$pdo->exec( "INSERT INTO hot ( v ) VALUES ( '". str_repeat( 'x', 200 ). "' )" );
+
+$pdo->commit();
+$pdo->exec( 'PRAGMA cache_size = 2' );
+$pdo->beginTransaction();
+$pdo->exec( "UPDATE hot SET v = '". str_repeat( 'y', 200 ). "'" );
+$premise = is_file( $hotLive. '-journal' ) === true && filesize( $hotLive. '-journal' ) > 4096;
+copy( $hotLive, $hot );
+copy( $hotLive. '-journal', $hot. '-journal' );
+$pdo->rollBack();
+$pdo = null;
+unlink( $hotLive );
+touch( $hot, 1700000000 );
+$hotSeen = [ hash_file( 'sha256', $hot ), filemtime( $hot ), hash_file( 'sha256', $hot. '-journal' ), glob( $bkDir. '/hot.sqlite*' ) ];
+$hotThrew = false;
+
+try {
+	\Nino\Modules\Crm\Db::verifyCopy( $hot );
+}
+catch( \PDOException ) {
+	$hotThrew = true;
+}
+
+clearstatcache();
+check( 'Db::verifyCopy() opens the copy for reading only: the copy that a writer left a hot journal beside is not rolled back by it - it throws, and the file keeps its bytes and its time, the journal stays and no file is added', $premise === true && $hotThrew === true && [ hash_file( 'sha256', $hot ), filemtime( $hot ), hash_file( 'sha256', $hot. '-journal' ), glob( $bkDir. '/hot.sqlite*' ) ] === $hotSeen );
+array_map( 'unlink', glob( $bkDir. '/hot.sqlite*' ) ?: [] );
+
+// A callback that is not told where the data is and where the copy goes does nothing and says so
+$handedBad = [];
+
+foreach( [ 'no folder of the data' => [ 'staging' => $bkDir ], 'no folder of the copy' => [ 'dataDir' => $bkData ], 'a folder of the data that is no text' => [ 'dataDir' => 7, 'staging' => $bkDir ], 'an empty folder of the copy' => [ 'dataDir' => $bkData, 'staging' => '' ] ] as $what => $args ) {
+
+	$names = crmNames( $bkDir );
+	$own = crmRequest( $bkDir );
+	$told = 'no throw';
+
+	try {
+		\Nino\Modules\Crm::callbackBackup( $own, $args );
+	}
+	catch( \RuntimeException ) {
+		$told = 'threw';
+	}
+
+	$handedBad[$what] = $told === 'threw' && crmNames( $bkDir ) === $names;
+}
+
+check( 'the callback of the backup that is not told where the data is and where the copy goes throws and makes nothing', array_filter( $handedBad ) === $handedBad && count( $handedBad ) === 4 );
+
+// A writer that was ended in the middle of a transaction leaves its journal beside the file: the callback opens the file for writing, SQLite rolls the journal back before anything is read, and the copy is the state before that transaction
+$before = $bkRows( $bkFile );
+$crash = strtr( <<<'CODE'
+$p = new PDO( 'sqlite:FILE' );
+$p->exec( 'PRAGMA cache_size = 2' );
+$p->exec( 'BEGIN IMMEDIATE' );
+for( $i = 0; $i < 400; $i++ )
+	$p->exec( "INSERT INTO settings ( key, value ) VALUES ( 'crash.$i', '" . str_repeat( 'x', 1200 ) . "' )" );
+$p->exec( "UPDATE settings SET value = 'HALF' WHERE key < 'bk.0010'" );
+$p->exec( "UPDATE settings SET value = 'HALF' WHERE key >= 'bk.0030'" );
+function_exists( 'posix_kill' ) === true ? posix_kill( getmypid(), 9 ) : shell_exec( 'kill -9 ' . getmypid() );
+CODE, [ 'FILE' => $bkFile ] );
+exec( escapeshellarg( PHP_BINARY ). ' -r '. escapeshellarg( $crash ). ' 2>&1', $ended, $endedCode );
+clearstatcache();
+$lying = $bkDir. '/hot-alone.sqlite';
+copy( $bkFile, $lying );
+$alone = new \PDO( 'sqlite:'. $lying, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+
+try {
+	$aloneState = (string) $alone->query( 'PRAGMA integrity_check' )->fetchColumn() !== 'ok' || (int) $alone->query( 'SELECT count(*) FROM settings WHERE value = \'HALF\'' )->fetchColumn() > 0 ? 'torn' : 'whole';
+}
+catch( \PDOException ) {
+	$aloneState = 'torn';
+}
+
+$alone = null;
+unlink( $lying );
+check( 'the premise of the pin of the hot journal: a writer that was ended is a journal beside the file, and the file without its journal is no state of the database', $endedCode !== 0 && is_file( $bkFile. '-journal' ) === true && $aloneState === 'torn' );
+$run = crmBackup( $bkDir );
+$copy = $run['archive']['folder'] ?? '';
+$hot = is_file( $copy. '/data/crm.sqlite' ) === true ? $bkRows( $copy. '/data/crm.sqlite' ) : [];
+check( 'a journal that a writer left beside the file is rolled back by the callback, which opens the file for writing: the backup is made, its copy is the state before the transaction that was ended - whole, with no row of it - and the journal is gone',
+	is_string( $run['answer'] ) === true && $hot === $before && is_file( $bkFile. '-journal' ) === false && $bkRows( $bkFile ) === $before && ( $run['archive']['stamp']['copies'] ?? [] ) === [ 'data/crm.sqlite' ] );
+
+// A writer that has written to the file - a transaction larger than its cache - holds it for readers, and the callback waits for it as for a writer at its commit
+$holder = new \PDO( 'sqlite:'. $bkFile, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+$holder->exec( 'PRAGMA cache_size = 2' );
+$size = filesize( $bkFile );
+$holder->exec( 'BEGIN IMMEDIATE' );
+
+for( $i = 0; $i < 200; $i++ )
+	$holder->exec( 'INSERT INTO settings ( key, value ) VALUES ( \'spill.'. $i. '\', \''. str_repeat( 'y', 1500 ). '\' )' );
+
+clearstatcache( true, $bkFile );
+$spilled = filesize( $bkFile ) > $size;
+$archives = glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [];
+
+try {
+	$run = crmBackup( $bkDir );
+}
+finally {
+	$holder->exec( 'ROLLBACK' );
+	$holder = null;
+}
+
+check( 'a writer whose transaction has written to the file is waited for, not seen in the copy: the file has grown, the backup ends after the five seconds with 500, backups_hook and the key of the core, and no archive is made',
+	$spilled === true && is_array( $run['answer'] ) === true && $run['answer'][0] === 500 && ( $run['answer'][2] ?? '' ) === 'backups_hook' && ( $run['answer'][3] ?? [] ) === [ 'crm' ] && $run['seconds'] > 4.5 && $run['seconds'] < 15 && ( glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [] ) === $archives );
+$run = crmBackup( $bkDir );
+check( '...and once the writer has ended the next backup is made, with the copy of the file as the writer left it', is_string( $run['answer'] ) === true && $bkRows( $run['archive']['folder']. '/data/crm.sqlite' ) === $before );
+
+// A database the core may not read is not "nothing": the callback says it cannot, and does not hand over, make or touch anything
+$stage = $bkDir. '/staging-of-the-suite';
+mkdir( $stage, 0777 );
+chmod( $stage, 0777 );
+$mode = fileperms( $bkFile ) & 0777;
+chmod( $bkFile, 0000 );
+$unreadable = crmFinish( crmStart( 'unreadable-worker', $bkDir, $bkFile, $stage ) );
+chmod( $bkFile, $mode );
+$said = json_decode( $unreadable[1], true );
+check( 'a database that cannot be read: the callback of the backup throws and hands nothing over - it is not "no database" - and nothing is made in the folder of the copy; the file is the core\'s by its header all the same',
+	$unreadable[0] === 0 && is_array( $said ) === true && $said['said'] === 'threw' && $said['kind'] === 'unreadable' && $said['staged'] === [] && \Nino\Modules\Crm\Db::kind( $bkFile ) === 'ours' );
+rmdir( $stage );
+
+crmRemove( $bkDir );
+crmRemove( $fbDir );
+}
+catch( \Throwable $crash ) {
+	crmCrashed( 'The backup', $crash );
 }
 
 

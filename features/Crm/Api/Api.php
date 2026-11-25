@@ -149,7 +149,7 @@ namespace Nino\Modules\Crm {
 				'id' => 'action',
 				'idRule' => self::NAME,
 				'fields' => [ 'target' => Register::REQUIRED, 'package' => Register::REQUIRED, 'files' => false, 'needs' => '' ],
-				'rules' => [ 'target' => static fn( mixed $target ): bool => Register::callable( $target ) ],
+				'rules' => [ 'target' => static function( mixed $target ) use ( &$appData ): bool { return Register::callable( $appData, $target, 2, [ 0, 1 ] ); } ],
 				'refuse' => static function( array $spec ): string {
 
 					return $spec['package'] === self::CORE || explode( '/', (string) $spec['action'], 2 )[0] === $spec['package'] ? '' : 'name';

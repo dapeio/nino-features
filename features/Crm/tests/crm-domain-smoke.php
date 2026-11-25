@@ -1886,6 +1886,7 @@ try {
 
 $names = [];
 $statics = [];
+$arrows = [];
 $words = [ 'Members', 'Files', 'Pdf', 'Sign', 'Events', 'Review', 'Documents', 'Portal', 'Workshops', 'Dateien', 'Termine', 'Belege', 'Kunden', 'Projekte', 'Aufgaben' ];
 
 foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $source, \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
@@ -1909,6 +1910,34 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $sourc
 
 		if( in_array( $token[0], [ T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE ], true ) === true && preg_match( '~crm[-_](?:documents|portal|files|mediareview|dates|workshops)|crm_documents|\bclient_accounts\b|\bdismissals\b|\bdocuments\b|\bdocument_lines\b|portal~i', $token[1] ) === 1 )
 			$names[] = $relative. ': '. substr( $token[1], 0, 40 );
+
+		// An arrow function takes a copy of every variable it names: where it names $appData, what is kept in it is kept in the copy and lost. A function that takes it by reference is what the core writes there
+		if( $token[0] === T_FN ) {
+
+			$depth = 0;
+			$ternary = 0;
+			$inBody = false;
+
+			for( $to = $at + 1; $to < count( $tokens ); $to++ ) {
+
+				$text = is_array( $tokens[$to] ) === true ? $tokens[$to][1] : $tokens[$to];
+
+				if( $inBody === false ) {
+					$depth += $text === '(' ? 1 : ( $text === ')' ? -1 : 0 );
+					$inBody = $text === '=>' && $depth === 0;
+					continue;
+				}
+
+				$depth += in_array( $text, [ '(', '[', '{' ], true ) === true ? 1 : ( in_array( $text, [ ')', ']', '}' ], true ) === true ? -1 : 0 );
+				$ternary += $depth === 0 && $text === '?' ? 1 : 0;
+
+				if( $depth < 0 || ( $depth === 0 && ( $text === ',' || $text === ';' || ( $text === ':' && $ternary-- === 0 ) ) ) )
+					break;
+
+				if( $text === '$appData' )
+					$arrows[] = $relative. ':'. $token[2];
+			}
+		}
 
 		// A static field, in a class of the core
 		if( $token[0] === T_STATIC && is_array( $tokens[$at + 2] ?? null ) === true && ( $tokens[$at + 2][0] ?? 0 ) === T_VARIABLE )
@@ -1935,6 +1964,7 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $sourc
 
 check( 'no class, no action, no table, no code of an error of the core names a package: not by the namespace, not by a word of a string - the names a package has are entered by the package', $names === [] );
 check( 'the core keeps no state in a static field: whatever a request knows stands in the app data of the request', array_unique( $statics ) === [] );
+check( 'no arrow function of the core names the app data, which it would take as a copy, and so lose what the register keeps of a class that could not be loaded: where the app data is handed on, a function takes it by reference', array_unique( $arrows ) === [] );
 check( 'the one grip on the shell of the workbench is one class: only Values names the file of the shell, the classes of the Elements panel and the helpers of the workbench - the panel of the feature, which the workbench loads as a panel, uses exactly its ten calls of guardPerm, postData, postString and relative', ( static function() use ( $source ): bool {
 	$holders = [];
 	$panel = [];
@@ -2798,13 +2828,18 @@ $journal['folders']['x'] = 'CrmProbeTwo';
 \Nino\Features::remove( $project, 'crm-probe' );
 $r = domSignedIn( $where );
 $answer = domPost( $r, 'crm-clients/delete', [ 'number' => 'K-0001', 'confirm' => 'K-0001' ] );
-check( 'the steps of an open deletion that belong to two packages, one removed and the other on: the steps are not those of a removed package, nothing is offered to be given up, and the other step may not be given up either', ( $answer[1]['code'] ?? '' ) === 'crm_package_off' && ( $answer[1]['skippable'] ?? null ) === []
+check( 'the steps of an open deletion that belong to two packages, one removed and the other installed and not switched on: the steps are not those of a removed package, nothing is offered to be given up, and the other step may not be given up either', ( $answer[1]['code'] ?? '' ) === 'crm_package_off' && ( $answer[1]['skippable'] ?? null ) === []
 	&& ( static function() use ( &$r ): bool {
 
 		[ $status, $body ] = domPost( $r, 'crm-clients/delete', [ 'number' => 'K-0001', 'confirm' => 'K-0001', 'skip' => [ 'probeq' ] ] );
 
 		return $status === 409 && ( $body['code'] ?? '' ) === 'crm_package_off' && in_array( 'K-0001', \Nino\Modules\Crm\Erasure::pending( $r ), true ) === true;
 	} )() );
+\Nino\Features::activate( $project, 'crm-probe-two' );
+$r = domSignedIn( $where );
+$answer = domPost( $r, 'crm-clients/delete', [ 'number' => 'K-0001', 'confirm' => 'K-0001', 'skip' => [ 'probeq', 'x' ] ] );
+check( 'the steps of an open deletion that belong to two packages, one removed and the other switched on: the step of the one that is on is asked of it and not given up, nothing is offered to be given up, and the deletion stays open', $answer[0] === 409 && ( $answer[1]['code'] ?? '' ) === 'crm_package_off' && ( $answer[1]['skippable'] ?? null ) === []
+	&& in_array( 'K-0001', \Nino\Modules\Crm\Erasure::pending( $r ), true ) === true );
 domCopy( $source. '/tests/fixtures/CrmProbe', $features. '/CrmProbe' );
 
 [ $project, $where, $a ] = $begun( 'states-nodata' );
@@ -2824,6 +2859,7 @@ domCopy( $source. '/tests/fixtures/CrmProbe', $features. '/CrmProbe' );
 $r = domRequest( $where, [ './crm-probe/domain' => true ] );
 ninoWarnings();
 $own = [ \Nino\Modules\CrmProbeTwo::class, 'init' ];
+$clean = [ \Nino\Modules\CrmProbeTwo::class, 'clean' ];
 $foreign = [ \Nino\Modules\CrmProbe\Domain::class, 'count' ];
 $cases = [
 	'a count of another package' => [ 'erasure', [ 'package' => 'crm-probe-two', 'key' => 'twoa', 'count' => $foreign, 'reason' => 'twoa' ] ],
@@ -2892,7 +2928,7 @@ check( 'self, static and parent are refused before php is asked whether they can
 		$entered = null;
 		$called = null;
 		$errors = ninoErrors( static function() use ( &$r, $value, &$entered, &$called ): void {
-			$called = \Nino\Modules\Crm\Register::callable( is_string( $value ) === true ? explode( '::', $value ) : $value ) === false && \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $value ) === false;
+			$called = \Nino\Modules\Crm\Register::callable( $r, is_string( $value ) === true ? explode( '::', $value ) : $value ) === false && \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $value ) === false;
 			$entered = \Nino\Modules\Crm\Erasure::add( $r, [ 'package' => 'crm-probe-two', 'key' => 'twos', 'count' => $value, 'reason' => 'twos' ] );
 		} );
 
@@ -2921,7 +2957,7 @@ check( 'the method part of a callable is checked as the class part is: a plain n
 		$called = null;
 		$errors = ninoErrors( static function() use ( &$r, $value, &$entered, &$called ): void {
 			$array = is_string( $value ) === true ? explode( '::', $value, 2 ) : $value;
-			$called = \Nino\Modules\Crm\Register::callable( $array ) === false && \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $value ) === false;
+			$called = \Nino\Modules\Crm\Register::callable( $r, $array ) === false && \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $value ) === false;
 			$entered = \Nino\Modules\Crm\Erasure::add( $r, [ 'package' => 'crm-probe-two', 'key' => 'twov', 'count' => $value, 'reason' => 'twov' ] );
 		} );
 
@@ -2931,7 +2967,7 @@ check( 'the method part of a callable is checked as the class part is: a plain n
 
 	$entered = [];
 	$errors = ninoErrors( static function() use ( &$r, $class, &$entered ): void {
-		$entered = [ \Nino\Modules\Crm\Register::callable( [ $class, 'run' ] ), \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $class. '::run' ), \Nino\Modules\Crm\Erasure::add( $r, [ 'package' => 'crm-probe-two', 'key' => 'twow', 'count' => [ $class, 'run' ], 'reason' => 'twow' ] ) ];
+		$entered = [ \Nino\Modules\Crm\Register::callable( $r, [ $class, 'run' ] ), \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $class. '::run' ), \Nino\Modules\Crm\Erasure::add( $r, [ 'package' => 'crm-probe-two', 'key' => 'twow', 'count' => [ $class, 'run' ], 'reason' => 'twow' ] ) ];
 	} );
 	error_reporting( $reporting );
 	unlink( $features. '/CrmProbeTwo/Shapes.php' );
@@ -2968,7 +3004,7 @@ check( 'a method is the package\'s only where it is written in the folder of the
 	}
 
 	foreach( [ 'a method that is abstract' => [ $space. 'Half', 'part' ], 'a method of an interface' => [ $space. 'Face', 'shape' ] ] as $what => $value )
-		if( \Nino\Modules\Crm\Register::callable( $value ) !== false || \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $value ) !== false )
+		if( \Nino\Modules\Crm\Register::callable( $r, $value ) !== false || \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $value ) !== false )
 			$wrong[] = $what;
 
 	$errors = ninoErrors( static function() use ( &$r, $space, &$wrong ): void {
@@ -3010,13 +3046,735 @@ check( 'the class of another package is refused by its name, as text, before any
 
 	return $untouched === true && $reachable === true && array_filter( $refused ) === $refused && count( $refused ) === 5;
 } )() );
+check( 'the namespace of a class is read letter for letter: a folder that is spelled with other capitals than the folder of the package is no folder of the package - its file is not read and its code does not run, whatever disk it is on', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-case' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	// On a disk that does not tell capitals apart this is the folder of the package itself, and what is made here is taken away again
+	$made = is_dir( $features. '/CRMPROBETWO' ) === false;
+	mkdir( $features. '/CRMPROBETWO/Evil', 0755, true );
+	file_put_contents( $features. '/CRMPROBETWO/Evil/Evil.php', "<?php\nnamespace Nino\\Modules\\CRMPROBETWO;\n\$GLOBALS['domLoaded'] = true;\nclass Evil { public static function x( array &\$appData ): bool { return true; } }\n" );
+	$r = domRequest( $where );
+	ninoWarnings();
+	unset( $GLOBALS['domLoaded'] );
+	$class = 'Nino\\Modules\\CRMPROBETWO\\Evil';
+	$refused = [];
+
+	foreach( [ [ $class, 'x' ], $class. '::x', [ '\\'. $class, 'x' ] ] as $value )
+		$refused[] = \Nino\Modules\Crm\Register::owned( $r, 'crm-probe-two', $value ) === false && \Nino\Modules\Crm\Erasure::add( $r, [ 'package' => 'crm-probe-two', 'key' => 'twom', 'count' => $value, 'reason' => 'twom' ] ) === false;
+
+	$untouched = isset( $GLOBALS['domLoaded'] ) === false;
+	ninoWarnings();
+	// The file is one the autoloader loads for that name: the pin means nothing where the class cannot be reached at all
+	$reachable = class_exists( $class ) === true && ( $GLOBALS['domLoaded'] ?? false ) === true;
+	domRemove( $features. '/CRMPROBETWO/Evil' );
+
+	if( $made === true )
+		rmdir( $features. '/CRMPROBETWO' );
+
+	unset( $GLOBALS['domLoaded'] );
+
+	return $untouched === true && $reachable === true && array_filter( $refused ) === $refused && count( $refused ) === 3;
+} )() );
+check( 'the namespace of a package is a whole name and no beginning of one: a class of crm-probe-two is no class of crm-probe, whose name begins the same - its file is not read and its code does not run, and a class of the other way round is the same', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-prefix' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	mkdir( $features. '/CrmProbeTwo/Pre' );
+	file_put_contents( $features. '/CrmProbeTwo/Pre/Pre.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\n\$GLOBALS['domLoaded'] = true;\nclass Pre { public static function x( array &\$appData ): bool { return true; } }\n" );
+	$r = domRequest( $where );
+	ninoWarnings();
+	unset( $GLOBALS['domLoaded'] );
+	$refused = [];
+
+	foreach( [ [ 'Nino\\Modules\\CrmProbeTwo\\Pre', 'x' ], 'Nino\\Modules\\CrmProbeTwo\\Pre::x' ] as $value )
+		$refused[] = \Nino\Modules\Crm\Register::owned( $r, 'crm-probe', $value ) === false && \Nino\Modules\Crm\Erasure::add( $r, [ 'package' => 'crm-probe', 'key' => 'twon', 'count' => $value, 'reason' => 'twon' ] ) === false;
+
+	$untouched = isset( $GLOBALS['domLoaded'] ) === false;
+	ninoWarnings();
+	$reachable = class_exists( 'Nino\\Modules\\CrmProbeTwo\\Pre' ) === true && ( $GLOBALS['domLoaded'] ?? false ) === true;
+	domRemove( $features. '/CrmProbeTwo/Pre' );
+	unset( $GLOBALS['domLoaded'] );
+
+	return $untouched === true && $reachable === true && array_filter( $refused ) === $refused && count( $refused ) === 2;
+} )() );
+check( 'a class of the package whose file does not parse, or whose code throws when it is loaded, is no class: Register::owned() and every place that asks it - the deletion of a client, the test phase and the letters of an icon - answer false with the one warning of the place, and throw nothing', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-broken' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	mkdir( $features. '/CrmProbeTwo/Broken' );
+	file_put_contents( $features. '/CrmProbeTwo/Broken/Broken.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Broken { public static function x( array &\$appData ): bool { return true; \n" );
+	mkdir( $features. '/CrmProbeTwo/Thrower' );
+	file_put_contents( $features. '/CrmProbeTwo/Thrower/Thrower.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nthrow new \\RuntimeException( 'at the top' );\nif( true ) {\n\tclass Thrower { public static function x( array &\$appData ): bool { return true; } }\n}\n" );
+	$r = domRequest( $where );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+
+	foreach( [ 'a file that does not parse' => 'Nino\\Modules\\CrmProbeTwo\\Broken', 'a file that throws at its top' => 'Nino\\Modules\\CrmProbeTwo\\Thrower' ] as $what => $class ) {
+
+		$places = [
+			'owned' => static fn( array &$a ): bool => \Nino\Modules\Crm\Register::owned( $a, 'crm-probe-two', [ $class, 'x' ] ),
+			'callable' => static fn( array &$a ): bool => \Nino\Modules\Crm\Register::callable( $a, [ $class, 'x' ] ),
+			'Erasure::add' => static fn( array &$a ): bool => \Nino\Modules\Crm\Erasure::add( $a, [ 'package' => 'crm-probe-two', 'key' => 'twop', 'count' => [ $class, 'x' ], 'reason' => 'twop' ] ),
+			'Wipe::add' => static fn( array &$a ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'package' => 'crm-probe-two', 'key' => 'twop', 'rows' => [ $class, 'x' ] ] ),
+			'Icons::add' => static fn( array &$a ): bool => \Nino\Modules\Crm\Surface\Icons::add( $a, [ 'package' => 'crm-probe-two', 'key' => 'two', 'prefix' => 'two-', 'slot' => '/icon/two', 'route' => '/crm/two', 'letters' => [ $class, 'x' ] ] ),
+		];
+
+		foreach( $places as $place => $ask ) {
+
+			$copy = $r;
+			$answer = null;
+			$threw = null;
+			$errors = ninoErrors( static function() use ( $ask, &$copy, &$answer, &$threw ): void {
+
+				try {
+					$answer = $ask( $copy );
+				}
+				catch( \Throwable $e ) {
+					$threw = get_class( $e );
+				}
+			} );
+			$warnings = in_array( $place, [ 'owned', 'callable' ], true ) === true ? [] : [ E_USER_WARNING ];
+
+			if( $threw !== null || $answer !== false || array_column( $errors, 0 ) !== $warnings )
+				$wrong[] = $place. ': '. $what. ( $threw !== null ? ' threw '. $threw : '' );
+		}
+	}
+
+	// The pin means nothing where the file is not the one the autoloader loads for the name: each of them fails when it is loaded
+	foreach( [ 'Broken', 'Thrower' ] as $name ) {
+
+		try {
+			class_exists( 'Nino\\Modules\\CrmProbeTwo\\'. $name );
+			$wrong[] = $name. ' is no class that fails';
+		}
+		catch( \Throwable $e ) {
+		}
+	}
+
+	error_reporting( $reporting );
+	domRemove( $features. '/CrmProbeTwo/Broken' );
+	domRemove( $features. '/CrmProbeTwo/Thrower' );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'a method that needs more arguments than the place passes it is refused, where the place says how many it passes: the letters of an icon get the app data alone, a count of a deletion the app data and the client - and one that needs fewer is taken; a magic method is none whatever it answers', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-arguments' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	mkdir( $features. '/CrmProbeTwo/Arity' );
+	file_put_contents( $features. '/CrmProbeTwo/Arity/Arity.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Arity {\n\tpublic static function none(): string { return 'NO'; }\n\tpublic static function one( array &\$appData ): string { return 'ON'; }\n\tpublic static function optional( array &\$appData, string \$more = '' ): string { return 'OP'; }\n\tpublic static function two( array &\$appData, string \$more ): string { return 'TW'; }\n\tpublic static function three( array &\$appData, \$a, \$b ): int { return 1; }\n\tpublic static function __callStatic( string \$name, array \$arguments ): string { return 'MA'; }\n}\n" );
+	$r = domRequest( $where );
+	ninoWarnings();
+	$class = 'Nino\\Modules\\CrmProbeTwo\\Arity';
+	$icon = [ 'package' => 'crm-probe-two', 'key' => 'two', 'prefix' => 'two-', 'slot' => '/icon/two', 'route' => '/crm/two' ];
+	$wrong = [];
+
+	foreach( [ 'none' => true, 'one' => true, 'optional' => true, 'two' => false, 'three' => false, '__callStatic' => false, 'anything' => false ] as $method => $taken ) {
+
+		$copy = $r;
+		$icons = \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'letters' => [ $class, $method ] ] + $icon );
+
+		if( $icons !== $taken || count( ninoWarnings() ) !== ( $taken === true ? 0 : 1 ) )
+			$wrong[] = 'letters '. $method;
+
+		ninoWarnings();
+	}
+
+	foreach( [ 'one' => true, 'two' => true, 'three' => false, '__callStatic' => false ] as $method => $taken ) {
+
+		$copy = $r;
+
+		if( \Nino\Modules\Crm\Erasure::add( $copy, [ 'package' => 'crm-probe-two', 'key' => 'twoq', 'count' => [ $class, $method ], 'reason' => 'twoq' ] ) !== $taken )
+			$wrong[] = 'count '. $method;
+
+		ninoWarnings();
+	}
+
+	// The plain question asks nothing of the parameters, and the place that says how many it passes is asked for it
+	if( \Nino\Modules\Crm\Register::callable( $r, [ $class, 'three' ] ) !== true || \Nino\Modules\Crm\Register::callable( $r, [ $class, 'three' ], 2 ) !== false || \Nino\Modules\Crm\Register::callable( $r, [ $class, 'three' ], 3, [ 0 ] ) !== true || \Nino\Modules\Crm\Register::callable( $r, [ $class, '__callStatic' ] ) !== false )
+		$wrong[] = 'callable()';
+
+	domRemove( $features. '/CrmProbeTwo/Arity' );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'a class whose file throws after php has declared the class is no class at the first asking and at every asking after it in the request: owned(), callable(), and the places that ask them - the deletion of a client, the test phase, the letters of an icon and the routes of an icon - answer false, and each warning names the class and the kind of the throwable, and says nothing of its message and no path', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-late' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	$inside = \Nino\Features::dir(). '/CrmProbeTwo/Late/Late.php';
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+	$icon = [ 'package' => 'crm-probe-two', 'key' => 'twol', 'prefix' => 'twol-', 'slot' => '/icon/twol', 'route' => '/crm/twol', 'letters' => 'TL' ];
+	// place => [ what asks it with the name of a class, whether it says why it refused in a warning ]
+	$places = [
+		'owned' => [ static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Register::owned( $a, 'crm-probe-two', [ $class, 'x' ] ), false ],
+		'callable' => [ static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Register::callable( $a, [ $class, 'x' ] ), false ],
+		'Erasure::add' => [ static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Erasure::add( $a, [ 'package' => 'crm-probe-two', 'key' => 'twop', 'count' => [ $class, 'x' ], 'reason' => 'twop' ] ), true ],
+		'Wipe::add' => [ static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'package' => 'crm-probe-two', 'key' => 'twop', 'rows' => [ $class, 'x' ] ] ), true ],
+		'Icons::add' => [ static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Surface\Icons::add( $a, [ 'key' => 'twom', 'prefix' => 'twom-', 'slot' => '/icon/twom', 'route' => '/crm/twom', 'letters' => [ $class, 'x' ] ] + $icon ), true ],
+		'registerIcons' => [ static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Surface\Icons::registerIcons( $a, 'twol', $class ), true ],
+	];
+	$number = 0;
+
+	// Each place has a class of its own: php declares a class once, and the first asking of the place is the one that loads it
+	foreach( $places as $place => [ $ask, $warns ] ) {
+
+		$name = 'Late'. ++$number;
+		mkdir( $features. '/CrmProbeTwo/'. $name );
+		file_put_contents( $features. '/CrmProbeTwo/'. $name. '/'. $name. '.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nthrow new \\RuntimeException( 'late at the top, see ". $inside. " and /etc/crm-late-secret/key.pem' );\nclass $name { public static function x( array &\$appData ): bool { return true; } }\n" );
+		$class = 'Nino\\Modules\\CrmProbeTwo\\'. $name;
+		$copy = domRequest( $where );
+		\Nino\Modules\Crm\Surface\Icons::add( $copy, $icon );
+		ninoWarnings();
+
+		// The first asking loads the class and the file throws; the ones after it find what php kept
+		foreach( [ 'first', 'second', 'third' ] as $asking ) {
+
+			$answer = null;
+			$threw = null;
+			$errors = ninoErrors( static function() use ( $ask, &$copy, $class, &$answer, &$threw ): void {
+
+				try {
+					$answer = $ask( $copy, $class );
+				}
+				catch( \Throwable $e ) {
+					$threw = get_class( $e );
+				}
+			} );
+			$said = implode( ' ', array_column( $errors, 1 ) );
+
+			if( $threw !== null || $answer !== false || array_column( $errors, 0 ) !== ( $warns === true ? [ E_USER_WARNING ] : [] ) )
+				$wrong[] = $place. ' at the '. $asking. ' asking'. ( $threw !== null ? ' threw '. $threw : '' );
+			elseif( $warns === true && ( str_contains( $said, $class ) === false || str_contains( $said, 'RuntimeException' ) === false || str_contains( $said, 'late at the top' ) === true || str_contains( $said, '.php' ) === true
+				|| str_contains( $said, '/etc' ) === true || str_contains( $said, 'crm-late-secret' ) === true || str_contains( $said, dirname( \Nino\Features::dir() ) ) === true ) )
+				$wrong[] = $place. ' at the '. $asking. ' asking says '. $said;
+		}
+
+		// The premise: php has the class that its file declared before it threw, so that it would answer yes where the register had not kept what it saw
+		if( class_exists( $class, false ) === false || ( new \ReflectionMethod( $class, 'x' ) )->isPublic() === false )
+			$wrong[] = $place. ': php does not keep the class';
+
+		domRemove( $features. '/CrmProbeTwo/'. $name );
+	}
+
+	error_reporting( $reporting );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'a class that is broken is refused at every field of the deletion of a client that takes a callable - count, rows, shared, gather and finish - in the same request, at the first asking, the second and the third, and each warning names the field, the class and the kind of the throwable: the memory is the app data of the request at each of them, not a copy', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-late-fields' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+	$body = 'public static function x( array &$appData ): bool { return true; }';
+	mkdir( $features. '/CrmProbeTwo/Fine' );
+	file_put_contents( $features. '/CrmProbeTwo/Fine/Fine.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Fine { $body }\n" );
+	$fine = [ 'Nino\\Modules\\CrmProbeTwo\\Fine', 'x' ];
+	$number = 0;
+
+	foreach( [ 'count', 'rows', 'shared', 'gather', 'finish' ] as $field ) {
+
+		$name = 'Field'. ++$number;
+		mkdir( $features. '/CrmProbeTwo/'. $name );
+		file_put_contents( $features. '/CrmProbeTwo/'. $name. '/'. $name. '.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nthrow new \\RuntimeException( 'field $field' );\nclass $name { $body }\n" );
+		$class = 'Nino\\Modules\\CrmProbeTwo\\'. $name;
+		$copy = domRequest( $where );
+
+		// Everything of the description is good but the one field, so that a refusal is the refusal of that field
+		$good = [ 'package' => 'crm-probe-two', 'key' => 'twof', 'count' => $fine, 'reason' => 'twof' ] + ( $field === 'gather' ? [ 'finish' => $fine ] : [] );
+
+		if( \Nino\Modules\Crm\Erasure::add( $copy, [ $field => $fine ] + $good ) !== true )
+			$wrong[] = $field. ': the good description is not taken';
+
+		ninoWarnings();
+		$copy = domRequest( $where );
+
+		foreach( [ 'first', 'second', 'third' ] as $asking ) {
+
+			$answer = null;
+			$errors = ninoErrors( static function() use ( &$copy, $field, $class, $good, &$answer ): void {
+				$answer = \Nino\Modules\Crm\Erasure::add( $copy, [ $field => [ $class, 'x' ] ] + $good );
+			} );
+			$said = implode( ' ', array_column( $errors, 1 ) );
+
+			if( $answer !== false || array_column( $errors, 0 ) !== [ E_USER_WARNING ] || str_contains( $said, '('. $field. ')' ) === false || str_contains( $said, $class ) === false || str_contains( $said, 'RuntimeException' ) === false || str_contains( $said, 'field '. $field ) === true )
+				$wrong[] = $field. ' at the '. $asking. ' asking: '. json_encode( $answer ). ' '. $said;
+		}
+
+		// The premise: php keeps the class its file declared before it threw, so that a memory that is lost is answered with yes
+		if( class_exists( $class, false ) === false )
+			$wrong[] = $field. ': php does not keep the class';
+
+		if( array_keys( (array) ( $copy['./crm/register/broken'] ?? [] ) ) !== [ strtolower( $class ) ] )
+			$wrong[] = $field. ': the app data of the request does not keep the class';
+
+		domRemove( $features. '/CrmProbeTwo/'. $name );
+	}
+
+	domRemove( $features. '/CrmProbeTwo/Fine' );
+	error_reporting( $reporting );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'the warning of a class that could not be loaded says the name of the class and the kind of the throwable and nothing of what the throwable says: a message with a password and a path with a space in it, bytes that are no utf-8, and a class that has no name (anonymous) leave nothing of it in the warning, and the app data keeps no more', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-late-said' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+	$cases = [
+		'Said1' => [ "throw new \\RuntimeException( 'open /home/user/my secret/dir/x.php failed; password=hunter2; token=abc' );", 'RuntimeException' ],
+		'Said2' => [ "throw new \\LogicException( \"bad \\xff\\xfe password=hunter2 /etc/shadow\" );", 'LogicException' ],
+		'Said3' => [ "throw new class( 'password=hunter2 in /srv/my secret/x.php' ) extends \\DomainException {};", 'DomainException@anonymous' ],
+	];
+	$copy = domRequest( $where );
+
+	foreach( $cases as $name => [ $top, $kind ] ) {
+
+		mkdir( $features. '/CrmProbeTwo/'. $name );
+		file_put_contents( $features. '/CrmProbeTwo/'. $name. '/'. $name. '.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\n$top\nclass $name { public static function x( array &\$appData ): bool { return true; } }\n" );
+		$class = 'Nino\\Modules\\CrmProbeTwo\\'. $name;
+
+		foreach( [ 'first', 'second' ] as $asking ) {
+
+			$answer = null;
+			$errors = ninoErrors( static function() use ( &$copy, $class, &$answer ): void {
+				$answer = \Nino\Modules\Crm\Erasure::add( $copy, [ 'package' => 'crm-probe-two', 'key' => 'twos', 'count' => [ $class, 'x' ], 'reason' => 'twos' ] );
+			} );
+			$said = implode( ' ', array_column( $errors, 1 ) );
+
+			if( $answer !== false || count( $errors ) !== 1 || str_contains( $said, $class ) === false || str_contains( $said, '('. $kind. ')' ) === false || mb_check_encoding( $said, 'UTF-8' ) === false || str_contains( $said, "\0" ) === true
+				|| preg_match( '/hunter2|password|token|secret|\/home|\/etc|\/srv|\.php|shadow/', str_replace( $class, '', $said ) ) === 1 )
+				$wrong[] = $name. ' at the '. $asking. ' asking says '. json_encode( $said, JSON_INVALID_UTF8_SUBSTITUTE );
+		}
+
+		domRemove( $features. '/CrmProbeTwo/'. $name );
+	}
+
+	$kept = json_encode( $copy['./crm/register/broken'] ?? [], JSON_INVALID_UTF8_SUBSTITUTE );
+
+	if( count( (array) ( $copy['./crm/register/broken'] ?? [] ) ) !== 3 || preg_match( '/hunter2|password|secret|\.php/', (string) $kept ) === 1 )
+		$wrong[] = 'the app data keeps '. $kept;
+
+	error_reporting( $reporting );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'the memory of the classes that could not be loaded does not tell capitals apart, as php does not: once a class is kept, every spelling of its name - lower case, upper case, with a backslash at the start - is refused with the cause, and a class that is fine is taken in every spelling', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-late-case' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+	mkdir( $features. '/CrmProbeTwo/Spelled' );
+	file_put_contents( $features. '/CrmProbeTwo/Spelled/Spelled.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nthrow new \\RuntimeException( 'spelled' );\nclass Spelled { public static function x( array &\$appData ): bool { return true; } }\n" );
+	mkdir( $features. '/CrmProbeTwo/Spelledfine' );
+	file_put_contents( $features. '/CrmProbeTwo/Spelledfine/Spelledfine.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Spelledfine { public static function x( array &\$appData ): bool { return true; } }\n" );
+	$copy = domRequest( $where );
+	$class = 'Nino\\Modules\\CrmProbeTwo\\Spelled';
+	$fine = 'Nino\\Modules\\CrmProbeTwo\\Spelledfine';
+	$asked = 0;
+	$ask = static function( string $name ) use ( &$copy, &$asked ): array {
+
+		$answer = null;
+		// Every asking has a key of its own: the same key with another description is refused for that
+		$key = 'twoc'. chr( 97 + $asked++ );
+		$errors = ninoErrors( static function() use ( &$copy, $name, $key, &$answer ): void {
+			$answer = \Nino\Modules\Crm\Status::add( $copy, [ 'package' => 'crm-probe-two', 'key' => $key, 'state' => [ $name, 'x' ] ] );
+		} );
+
+		return [ $answer, implode( ' ', array_column( $errors, 1 ) ) ];
+	};
+
+	if( $ask( $class )[0] !== false )
+		$wrong[] = 'the first asking is not refused';
+
+	foreach( [ 'as written' => $class, 'lower case' => strtolower( $class ), 'upper case' => strtoupper( $class ), 'a backslash at the start' => '\\'. $class, 'a backslash and lower case' => '\\'. strtolower( $class ) ] as $what => $name ) {
+
+		[ $answer, $said ] = $ask( $name );
+
+		if( $answer !== false || str_contains( $said, 'could not be loaded' ) === false || str_contains( $said, 'RuntimeException' ) === false )
+			$wrong[] = $what. ': '. json_encode( $answer ). ' '. $said;
+	}
+
+	foreach( [ 'as written' => $fine, 'lower case' => strtolower( $fine ), 'a backslash at the start' => '\\'. $fine ] as $what => $name )
+		if( $ask( $name )[0] !== true )
+			$wrong[] = 'a class that is fine, '. $what. ', is refused';
+
+	domRemove( $features. '/CrmProbeTwo/Spelled' );
+	domRemove( $features. '/CrmProbeTwo/Spelledfine' );
+	error_reporting( $reporting );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'what a refusal for a class that could not be loaded said is forgotten before the next question, at each place that asks - the lists of the register, the icons that are added and the routes of an icon: a refusal for another reason, in the same request, carries nothing of the class', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-late-forget' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+	$icon = [ 'package' => 'crm-probe-two', 'key' => 'twoi', 'prefix' => 'twoi-', 'slot' => '/icon/twoi', 'route' => '/crm/twoi', 'letters' => 'TI' ];
+	$more = [ 'key' => 'twoj', 'prefix' => 'twoj-', 'slot' => '/icon/twoj', 'route' => '/crm/twoj' ] + $icon;
+	$said = static function( array &$copy, callable $ask, string $class ): string {
+
+		$answer = null;
+		$errors = ninoErrors( static function() use ( &$copy, $ask, $class, &$answer ): void {
+			$answer = $ask( $copy, $class );
+		} );
+
+		return json_encode( $answer ). ' '. implode( ' ', array_column( $errors, 1 ) );
+	};
+	// What each place says of a class that could not be loaded, then of a question that is refused for another reason: in the same app data
+	$places = [
+		'Register::add' => [
+			static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Status::add( $a, [ 'package' => 'crm-probe-two', 'key' => 'twor', 'state' => [ $class, 'x' ] ] ),
+			static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Status::add( $a, [ 'package' => 'crm-probe-two', 'key' => 'Not A Key', 'state' => [ $class, 'x' ] ] ),
+		],
+		'Icons::add' => [
+			static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Surface\Icons::add( $a, [ 'letters' => [ $class, 'x' ] ] + $more ),
+			static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Surface\Icons::add( $a, [ 'letters' => 'ABCD' ] + $more ),
+		],
+		'registerIcons' => [
+			static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Surface\Icons::registerIcons( $a, 'twoi', $class ),
+			static fn( array &$a, string $class ): bool => \Nino\Modules\Crm\Surface\Icons::registerIcons( $a, 'twoi', 'Nino\\Modules\\Another\\Thing' ),
+		],
+	];
+
+	$number = 0;
+
+	foreach( $places as $place => [ $broken, $other ] ) {
+
+		// Each place has a class of its own: php declares a class once
+		$name = 'Forgotten'. ++$number;
+		mkdir( $features. '/CrmProbeTwo/'. $name );
+		file_put_contents( $features. '/CrmProbeTwo/'. $name. '/'. $name. '.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nthrow new \\RuntimeException( 'forgotten' );\nclass $name { public static function x( array &\$appData ): string { return 'AB'; } }\n" );
+		$class = 'Nino\\Modules\\CrmProbeTwo\\'. $name;
+		$copy = domRequest( $where );
+		\Nino\Modules\Crm\Surface\Icons::add( $copy, $icon );
+		ninoWarnings();
+
+		if( str_contains( $said( $copy, $broken, $class ), 'could not be loaded' ) === false )
+			$wrong[] = $place. ': the class that could not be loaded is not said';
+
+		$then = $said( $copy, $other, $class );
+
+		if( str_contains( $then, 'false' ) === false || str_contains( $then, 'Crm:' ) === false || str_contains( $then, 'could not be loaded' ) === true || str_contains( $then, $class ) === true )
+			$wrong[] = $place. ': a refusal for another reason says '. $then;
+
+		domRemove( $features. '/CrmProbeTwo/'. $name );
+	}
+
+	error_reporting( $reporting );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'what the register keeps of a class that could not be loaded is the app data of the request, whatever the letters of the name: another request, which never asked, is answered by php, which has the class its file declared (an exception at the top of the file, measured with Later; a file that does not parse is no case of this pin)', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-late-request' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	mkdir( $features. '/CrmProbeTwo/Later' );
+	file_put_contents( $features. '/CrmProbeTwo/Later/Later.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nthrow new \\LogicException( 'later at the top' );\nclass Later { public static function x( array &\$appData ): bool { return true; } }\n" );
+	$class = 'Nino\\Modules\\CrmProbeTwo\\Later';
+	$first = domRequest( $where );
+	$second = domRequest( $where );
+	$wrong = [];
+
+	if( \Nino\Modules\Crm\Register::owned( $first, 'crm-probe-two', [ $class, 'x' ] ) !== false || \Nino\Modules\Crm\Register::owned( $first, 'crm-probe-two', [ $class, 'x' ] ) !== false )
+		$wrong[] = 'the request that asked';
+
+	if( \Nino\Modules\Crm\Register::owned( $second, 'crm-probe-two', [ $class, 'x' ] ) !== true )
+		$wrong[] = 'the request that did not ask';
+
+	domRemove( $features. '/CrmProbeTwo/Later' );
+
+	return $wrong === [];
+} )() );
+check( 'the letters of an icon that a method of the package says wrong are drawn as the letters of the core with one warning for each app of the request, and not one for the request: two apps, each drawn again and again, say it twice', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'letters-each' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	mkdir( $features. '/CrmProbeTwo/Each' );
+	file_put_contents( $features. '/CrmProbeTwo/Each/Each.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Each { public static function long( array &\$appData ): string { return 'TOOLONGTEXT'; } }\n" );
+	$copy = domRequest( $where );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+	$said = [ 'package' => 'crm-probe-two', 'letters' => [ 'Nino\\Modules\\CrmProbeTwo\\Each', 'long' ] ];
+
+	if( \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'key' => 'eachone', 'prefix' => 'eachone-', 'slot' => '/icon/eachone', 'route' => '/crm/eachone' ] + $said ) !== true || \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'key' => 'eachtwo', 'prefix' => 'eachtwo-', 'slot' => '/icon/eachtwo', 'route' => '/crm/eachtwo' ] + $said ) !== true )
+		$wrong[] = 'the apps are not entered';
+
+	$errors = ninoErrors( static function() use ( &$copy ): void {
+
+		foreach( [ 'eachone', 'eachtwo', 'eachone', 'eachtwo' ] as $app ) {
+			\Nino\Modules\Crm\Surface\Icons::svg( $copy, $app );
+			\Nino\Modules\Crm\Surface\Icons::touchQuery( $copy, $app );
+		}
+	} );
+
+	if( array_column( $errors, 0 ) !== [ E_USER_WARNING, E_USER_WARNING ] || count( array_unique( array_column( $errors, 1 ) ) ) !== 2 )
+		$wrong[] = 'the warnings are '. count( $errors );
+
+	error_reporting( $reporting );
+	domRemove( $features. '/CrmProbeTwo/Each' );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'each of the 19 places that call a method of a package says how many arguments it passes and which of them are variables: a method that needs one more than the place passes is refused with one warning, one that needs as many is taken, and a method that takes an argument as a reference is taken only where the place passes a variable - at every position of every place, a variadic one included', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'owned-matrix' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	mkdir( $features. '/CrmProbeTwo/Matrix' );
+	$methods = '';
+
+	// v<n>: n arguments by value; w<n>: one more than n; vr<n>: n by value and a reference to every argument after them, variadic; r<n>_<i>: n arguments, the one at i a reference
+	$list = static fn( int $count, int $reference = -1 ): string => implode( ', ', array_map( static fn( int $i ): string => ( $i === $reference ? '&$a' : '$a' ). $i, $count > 0 ? range( 0, $count - 1 ) : [] ) );
+
+	for( $n = 0; $n <= 4; $n++ ) {
+
+		$methods .= "\tpublic static function v$n( ". $list( $n ). " ): void {}\n";
+		$methods .= "\tpublic static function w$n( ". $list( $n + 1 ). " ): void {}\n";
+		$methods .= "\tpublic static function vr$n( ". ( $n > 0 ? $list( $n ). ', ' : '' ). "&...\$rest ): void {}\n";
+
+		for( $i = 0; $i < $n; $i++ )
+			$methods .= "\tpublic static function r{$n}_$i( ". $list( $n, $i ). " ): void {}\n";
+	}
+
+	file_put_contents( $features. '/CrmProbeTwo/Matrix/Matrix.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Matrix {\n". $methods. "}\n" );
+	$class = 'Nino\\Modules\\CrmProbeTwo\\Matrix';
+	$own = [ \Nino\Modules\CrmProbeTwo::class, 'init' ];
+	$clean = [ \Nino\Modules\CrmProbeTwo::class, 'clean' ];
+	$package = 'crm-probe-two';
+	$icon = [ 'package' => $package, 'key' => 'twom', 'prefix' => 'twom-', 'slot' => '/icon/twom', 'route' => '/crm/twom' ];
+	$kinds = [ 'package' => $package, 'kind' => 'two-kind', 'thing' => 'two-thing', 'purposes' => [ 'one' ], 'logbook' => 'two-log', 'parent' => '', 'foreign' => false, 'owner' => $own, 'label' => $own ];
+	$erasure = [ 'package' => $package, 'key' => 'twoa', 'before' => 'logbook', 'count' => $own, 'rows' => $own, 'rows_before' => 'client', 'reason' => 'twoa', 'answer' => [ 409, 'x', 'crm_two' ], 'shared' => $own, 'gather' => $own, 'finish' => $own, 'perm' => '/_admin/crm' ];
+	$wipe = [ 'package' => $package, 'key' => 'twob', 'rows' => $own, 'count' => true, 'before' => 'logbook', 'rows_before' => 'clients', 'leftover' => $own, 'perm' => '/_admin/crm' ];
+	$setting = [ 'package' => $package, 'key' => 'two_key', 'default' => 'x', 'clean' => $clean, 'read_only' => false, 'host' => false, 'written' => $own, 'refusal' => 'crm_two', 'before' => null, 'rank' => 500 ];
+	$note = [ 'package' => $package, 'key' => 'two_note', 'read' => $own, 'write' => $own, 'rank' => 500 ];
+	$status = [ 'package' => $package, 'key' => 'twostatus', 'rank' => 500, 'state' => $own, 'hint' => false, 'fix' => $own ];
+	$app = [ 'package' => $package, 'key' => 'two', 'route' => '/crm/two', 'scope' => '/crm/two', 'manifest' => '/crm/two/manifest.json', 'values' => $own, 'icon' => 'two' ];
+	// place => [ what enters it with the method, how many arguments the place passes, the positions of them that are variables ]; the methods the other fields name are good ones
+	$sites = [
+		'Api target' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Api::add( $a, [ 'crm-probe-two/run' => $m ], [ 'package' => $package ] ), 2, [ 0, 1 ] ],
+		'Status state' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Status::add( $a, [ 'state' => $m ] + $status ), 1, [ 0 ] ],
+		'Status fix' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Status::add( $a, [ 'fix' => $m ] + $status ), 1, [ 0 ] ],
+		'Notifications read' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Notifications::add( $a, [ 'read' => $m ] + $note ), 1, [ 0 ] ],
+		'Notifications write' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Notifications::add( $a, [ 'write' => $m ] + $note ), 2, [ 0 ] ],
+		'Erasure count' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Erasure::add( $a, [ 'count' => $m ] + $erasure ), 2, [ 0 ] ],
+		'Erasure rows' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Erasure::add( $a, [ 'rows' => $m ] + $erasure ), 3, [ 0 ] ],
+		'Erasure shared' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Erasure::add( $a, [ 'shared' => $m ] + $erasure ), 3, [ 0 ] ],
+		'Erasure gather' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Erasure::add( $a, [ 'gather' => $m ] + $erasure ), 2, [ 0 ] ],
+		'Erasure finish' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Erasure::add( $a, [ 'finish' => $m ] + $erasure ), 3, [ 0, 2 ] ],
+		'Settings clean' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Settings::add( $a, [ [ 'clean' => $m ] + $setting ] ), 2, [] ],
+		'Settings written' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Settings::add( $a, [ [ 'written' => $m ] + $setting ] ), 3, [ 0 ] ],
+		'Records owner' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Records::addKind( $a, [ 'owner' => $m ] + $kinds ), 2, [ 0 ] ],
+		'Records label' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Records::addKind( $a, [ 'label' => $m ] + $kinds ), 2, [ 0 ] ],
+		'Apps values' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Surface\Apps::add( $a, [ 'values' => $m ] + $app ), 2, [ 0, 1 ] ],
+		'Data source' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Surface\Data::add( $a, $m, [ 'package' => $package ] ), 1, [ 0 ] ],
+		'Wipe rows' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'rows' => $m ] + $wipe ), 2, [ 0 ] ],
+		'Wipe leftover' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'leftover' => $m ] + $wipe ), 2, [ 0, 1 ] ],
+		'Icons letters' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Surface\Icons::add( $a, [ 'letters' => $m ] + $icon ), 1, [ 0 ] ],
+	];
+	$r = domRequest( $where );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$wrong = [];
+
+	foreach( $sites as $place => [ $enter, $passes, $variables ] ) {
+
+		// [ the method, whether it is taken ]
+		$tries = [ [ 'v'. $passes, true ], [ 'w'. $passes, false ] ];
+
+		for( $i = 0; $i < $passes; $i++ )
+			$tries[] = [ 'r'. $passes. '_'. $i, in_array( $i, $variables, true ) ];
+
+		$tries[] = [ 'vr0', count( array_diff( range( 0, $passes - 1 ), $variables ) ) === 0 ];
+		$tries[] = [ 'vr'. ( $passes - 1 ), in_array( $passes - 1, $variables, true ) ];
+
+		foreach( $tries as [ $method, $taken ] ) {
+
+			$copy = $r;
+			ninoWarnings();
+			$answer = null;
+			$errors = ninoErrors( static function() use ( $enter, &$copy, $class, $method, &$answer ): void {
+				$answer = $enter( $copy, [ $class, $method ] );
+			} );
+
+			if( $answer !== $taken || array_column( $errors, 0 ) !== ( $taken === true ? [] : [ E_USER_WARNING ] ) )
+				$wrong[] = $place. ' '. $method. ' (taken: '. json_encode( $answer ). ')';
+		}
+	}
+
+	error_reporting( $reporting );
+	domRemove( $features. '/CrmProbeTwo/Matrix' );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [] && count( $sites ) === 19;
+} )() );
+check( 'what a method says as the letters of an icon is drawn only where it is one to three characters of text with no control character in them: too long a text, a number, a list, an object, nothing, an empty text, a control character, a method that throws or fails - each is the letters of the core, drawn on the page with one warning and no fault, the icon and the hash of the page included', ( static function() use ( $features ): bool {
+
+	[ $project, $where ] = domWorld( 'letters-said' );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	mkdir( $features. '/CrmProbeTwo/Said' );
+	file_put_contents( $features. '/CrmProbeTwo/Said/Said.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Said {\n\tpublic static function good( array &\$appData ): string { return 'AB'; }\n\tpublic static function wide( array &\$appData ): string { return 'ÄÖÜ'; }\n\tpublic static function long( array &\$appData ): string { return 'TOOLONGTEXT'; }\n\tpublic static function four( array &\$appData ): string { return 'ABCD'; }\n\tpublic static function number( array &\$appData ): int { return 123; }\n\tpublic static function many( array &\$appData ): array { return [ 'x' ]; }\n\tpublic static function object( array &\$appData ): object { return new \\stdClass(); }\n\tpublic static function nothing( array &\$appData ): mixed { return null; }\n\tpublic static function empty( array &\$appData ): string { return ''; }\n\tpublic static function control( array &\$appData ): string { return \"A\\0\"; }\n\tpublic static function lines( array &\$appData ): string { return \"A\\nB\"; }\n\tpublic static function broken( array &\$appData ): string { return \"\\xC3\\x28\"; }\n\tpublic static function throws( array &\$appData ): string { throw new \\RuntimeException( 'no' ); }\n\tpublic static function fails( array &\$appData ): string { return strlen(); }\n}\n" );
+	$r = domRequest( $where );
+	$reporting = error_reporting( E_ALL );
+	ninoWarnings();
+	$icon = [ 'package' => 'crm-probe-two', 'key' => 'two', 'prefix' => 'two-', 'slot' => '/icon/two', 'route' => '/crm/two' ];
+	$wrong = [];
+	$said = [ 'good' => 'AB', 'wide' => 'ÄÖÜ', 'long' => false, 'four' => false, 'number' => false, 'many' => false, 'object' => false, 'nothing' => false, 'empty' => false, 'control' => false, 'lines' => false, 'broken' => false, 'throws' => false, 'fails' => false ];
+
+	foreach( $said as $method => $drawn ) {
+
+		$copy = $r;
+
+		if( \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'letters' => [ 'Nino\\Modules\\CrmProbeTwo\\Said', $method ] ] + $icon ) !== true )
+			$wrong[] = $method. ' (not taken)';
+
+		$svg = '';
+		$query = '';
+		$threw = null;
+		$errors = ninoErrors( static function() use ( &$copy, &$svg, &$query, &$threw ): void {
+
+			try {
+				$svg = \Nino\Modules\Crm\Surface\Icons::svg( $copy, 'two' );
+				\Nino\Modules\Crm\Surface\Icons::svg( $copy, 'two' );
+				$query = \Nino\Modules\Crm\Surface\Icons::touchQuery( $copy, 'two' );
+			}
+			catch( \Throwable $e ) {
+				$threw = get_class( $e );
+			}
+		} );
+		$levels = array_column( $errors, 0 );
+
+		if( $threw !== null || $levels !== ( $drawn === false ? [ E_USER_WARNING ] : [] ) || str_contains( $svg, '>'. ( $drawn === false ? 'CRM' : $drawn ). '</text>' ) === false || ( $drawn === false && str_contains( $svg, 'TOOLONGTEXT' ) === true ) )
+			$wrong[] = $method. ( $threw !== null ? ' threw '. $threw : '' );
+	}
+
+	error_reporting( $reporting );
+	domRemove( $features. '/CrmProbeTwo/Said' );
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'a description of an icon the register has is the same again only where it is the same to the letter: a second add with another kind of value - letters that are true for letters that are a text - is no repeat, and is refused; the letters beside a shape are checked like any letters, and so is a text with a control character in it', ( static function() use ( &$r, $own ): bool {
+
+	$icon = [ 'package' => 'crm-probe-two', 'key' => 'twoi', 'prefix' => 'twoi-', 'slot' => '/icon/twoi', 'route' => '/crm/twoi' ];
+	$wrong = [];
+	$copy = $r;
+	ninoWarnings();
+
+	if( \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'letters' => 'TW' ] + $icon ) !== true || \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'letters' => 'TW' ] + $icon ) !== true || ninoWarnings() !== [] )
+		$wrong[] = 'the same again';
+
+	foreach( [ 'true for a text' => true, 'one for a text' => 1, 'a list for a text' => [ 'TW' ] ] as $what => $letters ) {
+
+		ninoWarnings();
+
+		if( \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'letters' => $letters ] + $icon ) !== false || count( ninoWarnings() ) !== 1 )
+			$wrong[] = $what;
+	}
+
+	$shape = [ [ 0, 0 ], [ 512, 0 ], [ 256, 512 ] ];
+
+	foreach( [ 'a closure beside a shape' => [ static fn( array &$appData ): string => 'X', false ], 'a function beside a shape' => [ 'strtoupper', false ], 'letters of a method of another package beside a shape' => [ [ \Nino\Modules\CrmProbe\Domain::class, 'count' ], false ],
+		'a text that is too long beside a shape' => [ 'ABCD', false ], 'a control character beside a shape' => [ "A\0", false ], 'letters that are a good text beside a shape' => [ 'TW', true ], 'no letters beside a shape' => [ '', true ] ] as $what => [ $letters, $taken ] ) {
+
+		ninoWarnings();
+		$other = $r;
+
+		if( \Nino\Modules\Crm\Surface\Icons::add( $other, [ 'key' => 'twos', 'prefix' => 'twos-', 'slot' => '/icon/twos', 'route' => '/crm/twos', 'letters' => $letters, 'shape' => $shape, 'package' => 'crm-probe-two' ] ) !== $taken || count( ninoWarnings() ) !== ( $taken === true ? 0 : 1 ) )
+			$wrong[] = $what;
+	}
+
+	foreach( [ 'a null byte' => "A\0", 'a control character' => "\x01", 'a line break' => "A\nB", 'a delete' => "\x7f", 'a control character of the second plane' => "\xC2\x85", 'a text that is no UTF-8' => "\xC3\x28" ] as $what => $letters ) {
+
+		ninoWarnings();
+		$copy = $r;
+
+		if( \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'letters' => $letters ] + $icon ) !== false || count( ninoWarnings() ) !== 1 || isset( $copy['./crm/icons/apps']['twoi'] ) === true )
+			$wrong[] = $what;
+	}
+
+	foreach( [ 'a letter with a mark' => 'É', 'three letters' => 'ÄÖÜ', 'one letter' => 'A' ] as $what => $letters ) {
+
+		ninoWarnings();
+		$copy = $r;
+
+		if( \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'letters' => $letters ] + $icon ) !== true || ninoWarnings() !== [] )
+			$wrong[] = $what;
+	}
+
+	if( $wrong !== [] )
+		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
+
+	return $wrong === [];
+} )() );
+check( 'the routes of an icon are answered by a class of the package that is written in the folder of the package: a class that says it is in the namespace of the package and lies in the folder of another is refused with one warning and nothing is registered for it, a class of the package itself is taken', ( static function() use ( &$r, $features ): bool {
+
+	mkdir( $features. '/CrmProbe/Mimic' );
+	file_put_contents( $features. '/CrmProbe/Mimic/Mimic.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Mimic { public static function callbackIcon( array &\$appData, array &\$request ): void {} }\n" );
+	require_once $features. '/CrmProbe/Mimic/Mimic.php';
+	mkdir( $features. '/CrmProbeTwo/Iconic' );
+	file_put_contents( $features. '/CrmProbeTwo/Iconic/Iconic.php', "<?php\nnamespace Nino\\Modules\\CrmProbeTwo;\nclass Iconic {\n\tpublic static function callbackIcon( array &\$appData, array &\$request ): void {}\n\tpublic static function callbackIconPng( array &\$appData, array &\$request ): void {}\n\tpublic static function callbackIconPng192( array &\$appData, array &\$request ): void {}\n\tpublic static function callbackIconPng512( array &\$appData, array &\$request ): void {}\n}\n" );
+	$copy = $r;
+	ninoWarnings();
+	$entered = \Nino\Modules\Crm\Surface\Icons::add( $copy, [ 'package' => 'crm-probe-two', 'key' => 'twor', 'prefix' => 'twor-', 'slot' => '/icon/twor', 'route' => '/crm/twor', 'letters' => 'TR' ] );
+	$routes = $copy['/nino/http/routes'] ?? [];
+	$callbacks = \Nino\Callbacks::registered( $copy, '/nino/http/response/GET://crm/twor.svg' );
+	$mimic = \Nino\Modules\Crm\Surface\Icons::registerIcons( $copy, 'twor', 'Nino\\Modules\\CrmProbeTwo\\Mimic' );
+	$warned = count( ninoWarnings() );
+	$same = ( $copy['/nino/http/routes'] ?? [] ) === $routes && \Nino\Callbacks::registered( $copy, '/nino/http/response/GET://crm/twor.svg' ) === $callbacks;
+	$own = \Nino\Modules\Crm\Surface\Icons::registerIcons( $copy, 'twor', 'Nino\\Modules\\CrmProbeTwo\\Iconic' );
+	domRemove( $features. '/CrmProbe/Mimic' );
+	domRemove( $features. '/CrmProbeTwo/Iconic' );
+
+	return $entered === true && $mimic === false && $warned === 1 && $same === true && $own === true && ninoWarnings() === [] && isset( $copy['/nino/http/routes']['GET://crm/twor.svg'] ) === true;
+} )() );
 check( 'the letters of an icon are a text, whatever else the text is - the name of a function of php too - and what says them from the app is a method of the package written as [ class, method ]: a closure, a function, self, a method of another package and a method of this one that is none are refused with the one warning, and php says nothing of its own', ( static function() use ( &$r, $own, $foreign ): bool {
 
 	$reporting = error_reporting( E_ALL );
 	$wrong = [];
 	$icon = [ 'package' => 'crm-probe-two', 'key' => 'two', 'prefix' => 'two-', 'slot' => '/icon/two', 'route' => '/crm/two' ];
 
-	foreach( [ 'Log', 'Pi', 'Max', 'Key', 'Abs', 'Dir', 'Ord', 'End', 'Pos', 'dl', 'TW', 'A' ] as $letters ) {
+	foreach( [ 'End', 'Pos', 'Log', 'Pi', 'Max', 'Key', 'Abs', 'Dir', 'Ord', 'dl', 'TW', 'A' ] as $letters ) {
 
 		$copy = $r;
 		$entered = null;
@@ -3053,7 +3811,7 @@ check( 'the letters of an icon are a text, whatever else the text is - the name 
 
 	return $wrong === [] && $errors === [];
 } )() );
-check( 'every place a package enters itself answers a bool and says no on a field that is no text where a text is meant: an object, a list, a number, a flag or nothing in a field is false with the one warning of the register - never an Error, a warning of php or a notice - and an id, a key or a package that is none is always refused', ( static function() use ( &$r, $features, $own ): bool {
+check( 'every place a package enters itself answers a bool and says no on a field that is no text where a text is meant: an object, a list, a number, a flag or nothing in a field is false with the one warning of the register - never an Error, a warning of php or a notice - and an id, a key or a package that is none is always refused', ( static function() use ( &$r, $features, $own, $clean ): bool {
 
 	file_put_contents( $features. '/CrmProbeTwo/probe.js', '//' );
 	file_put_contents( $features. '/CrmProbeTwo/probe.css', '/**/' );
@@ -3066,7 +3824,7 @@ check( 'every place a package enters itself answers a bool and says no on a fiel
 		'Erasure::add' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Erasure::add( $a, $d ), [ 'package' => $package, 'key' => 'twoa', 'before' => 'logbook', 'count' => $own, 'rows' => $own, 'rows_before' => 'client', 'reason' => 'twoa', 'answer' => [ 409, 'x', 'crm_two' ], 'shared' => $own, 'gather' => $own, 'finish' => $own, 'perm' => '/_admin/crm' ], [ 'package', 'key', 'count' ] ],
 		'Wipe::add' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Wipe::add( $a, $d ), [ 'package' => $package, 'key' => 'twob', 'rows' => $own, 'count' => true, 'before' => 'logbook', 'rows_before' => 'clients', 'leftover' => $own, 'perm' => '/_admin/crm' ], [ 'package', 'key' ] ],
 		'Db::addSchema' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Db::addSchema( $a, $d ), [ 'package' => $package, 'version' => 1, 'tables' => [ 'crm_two_items' ], 'file' => $features. '/CrmProbeTwo/schema.php' ], [ 'package', 'file' ] ],
-		'Settings::add' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Settings::add( $a, [ $d ] ), [ 'package' => $package, 'key' => 'two_key', 'default' => 'x', 'clean' => $own, 'read_only' => false, 'host' => false, 'written' => $own, 'refusal' => 'crm_two', 'before' => null, 'rank' => 500 ], [ 'package', 'key' ] ],
+		'Settings::add' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Settings::add( $a, [ $d ] ), [ 'package' => $package, 'key' => 'two_key', 'default' => 'x', 'clean' => $clean, 'read_only' => false, 'host' => false, 'written' => $own, 'refusal' => 'crm_two', 'before' => null, 'rank' => 500 ], [ 'package', 'key' ] ],
 		'Sequences::add' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Sequences::add( $a, $d ), [ 'package' => $package, 'category' => 'twocat' ], [ 'package', 'category' ] ],
 		'Status::add' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Status::add( $a, $d ), [ 'package' => $package, 'key' => 'twostatus', 'rank' => 500, 'state' => $own, 'hint' => false, 'fix' => $own ], [ 'package', 'key', 'state' ] ],
 		'Notifications::add' => [ static fn( array &$a, array $d ): bool => \Nino\Modules\Crm\Notifications::add( $a, $d ), [ 'package' => $package, 'key' => 'two_note', 'read' => $own, 'write' => $own, 'rank' => 500 ], [ 'package', 'key', 'read', 'write' ] ],
@@ -3095,9 +3853,9 @@ check( 'every place a package enters itself answers a bool and says no on a fiel
 
 			return $added;
 		}, [ 'package' => $package ], [ 'package' ] ],
-		// The page is one the package entered itself: the entry of the rail is made first, with the same options
-		'Devices::allow' => [ static function( array &$a, array $o ): bool {
-			\Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/two', 'Two', 'two', $o );
+		// The page is one the package entered itself: the entry of the rail is made first, by the package that is the right one, so that the refusal that is counted is the one of allow()
+		'Devices::allow' => [ static function( array &$a, array $o ) use ( $package ): bool {
+			\Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/two', 'Two', 'two', [ 'package' => $package ] );
 
 			return \Nino\Modules\Crm\Surface\Devices::allow( $a, '/crm/two', $o );
 		}, [ 'package' => $package ], [ 'package' ] ],
@@ -3121,9 +3879,6 @@ check( 'every place a package enters itself answers a bool and says no on a fiel
 			if( $call( $copy, $base ) !== true || ninoWarnings() !== [] )
 				$wrong[] = $name. ' (the good description)';
 
-			// The menu and the devices say no with false alone: the rail of the page is made on every request
-			$quiet = in_array( $name, [ 'Menu::add', 'Devices::allow' ], true );
-
 			foreach( array_keys( $base ) as $field )
 				foreach( $weird as $what => $value ) {
 
@@ -3144,7 +3899,7 @@ check( 'every place a package enters itself answers a bool and says no on a fiel
 						}
 					} );
 					$levels = array_column( $errors, 0 );
-					$good = $threw === null && ( ( $result === false && ( $levels === [ E_USER_WARNING ] || ( $quiet === true && $levels === [] ) ) ) || ( $result === true && $levels === [] && in_array( $field, $ids, true ) === false ) );
+					$good = $threw === null && ( ( $result === false && $levels === [ E_USER_WARNING ] ) || ( $result === true && $levels === [] && in_array( $field, $ids, true ) === false ) );
 
 					if( $good === false )
 						$wrong[] = $name. ': '. $field. ' as '. $what. ( $threw !== null ? ' threw '. $threw : '' );

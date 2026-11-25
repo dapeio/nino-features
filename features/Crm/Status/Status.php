@@ -56,10 +56,10 @@ namespace Nino\Modules\Crm {
 				'fields' => [ 'package' => Register::REQUIRED, 'state' => Register::REQUIRED, 'rank' => 500, 'hint' => false, 'fix' => null ],
 				'rules' => [
 					'package' => Register::packageRule( $appData, $core ),
-					'state' => static fn( mixed $state ): bool => Register::callable( $state ),
+					'state' => static function( mixed $state ) use ( &$appData ): bool { return Register::callable( $appData, $state, 1, [ 0 ] ); },
 					'rank' => static fn( mixed $rank ): bool => is_int( $rank ),
 					'hint' => static fn( mixed $hint ): bool => is_bool( $hint ),
-					'fix' => static fn( mixed $fix ): bool => $fix === null || Register::callable( $fix ),
+					'fix' => static function( mixed $fix ) use ( &$appData ): bool { return $fix === null || Register::callable( $appData, $fix, 1, [ 0 ] ); },
 				],
 			] );
 		}
@@ -340,7 +340,7 @@ namespace Nino\Modules\Crm {
 		 */
 		public static function head( array &$appData ): array {
 
-			$lacks = array_values( array_filter( self::HEAD, static fn( string $name ): bool => \Nino\Filesystem::fileExists( $appData, Mail::TEMPLATES. '/'. $name. '.tpl' ) === false ) );
+			$lacks = array_values( array_filter( self::HEAD, static function( string $name ) use ( &$appData ): bool { return \Nino\Filesystem::fileExists( $appData, Mail::TEMPLATES. '/'. $name. '.tpl' ) === false; } ) );
 
 			return [ 'state' => $lacks === [] ? 'ok' : ( count( $lacks ) === count( self::HEAD ) ? 'none' : 'partial' ), 'lacks' => $lacks ];
 		}

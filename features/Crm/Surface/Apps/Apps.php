@@ -61,7 +61,7 @@ namespace Nino\Modules\Crm\Surface {
 					'scope' => static fn( mixed $scope, array $full ): bool => is_string( $scope ) === true && Devices::isRoute( $scope, $core ) && ( $core === true || $scope === $full['route'] || str_starts_with( $scope, $full['route']. '/' ) === true ),
 					'manifest' => static fn( mixed $manifest, array $full ): bool => is_string( $manifest ) === true && str_starts_with( $manifest, '/crm/' ) === true && str_contains( $manifest, '..' ) === false
 						&& ( $core === true || ( str_starts_with( $manifest, (string) $full['route']. '/' ) === true && preg_match( '~^/crm/[a-z0-9/.-]+$~D', $manifest ) === 1 ) ),
-					'values' => static fn( mixed $values ): bool => \Nino\Modules\Crm\Register::callable( $values ),
+					'values' => static function( mixed $values ) use ( &$appData ): bool { return \Nino\Modules\Crm\Register::callable( $appData, $values, 2, [ 0, 1 ] ); },
 					'icon' => static fn( mixed $icon ): bool => is_string( $icon ) === true && preg_match( '/^[a-z]{1,20}$/D', $icon ) === 1,
 				],
 				'refuse' => static function( array $entry, array $known ): string {

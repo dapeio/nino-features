@@ -77,12 +77,23 @@ namespace Nino\Modules\Crm\Surface {
 		 *	@param		string		$route				The address of the page below the directory of the project: /crm/<name>, lower case letters, digits, hyphens and slashes, no slash at the end
 		 *	@param		array 		$opts					package (required): the key of the package that enters the page, see Register::package()
 		 *
-		 *	@return 	bool											Whether the page is on the list now; false for an address that is not below /crm, that is the surface's own or the core's, or that the package did not enter
+		 *	@return 	bool											Whether the page is on the list now; false, with a warning, for an address that is not below /crm, that is the surface's own or the core's, or that the package did not enter
 		 */
 		public static function allow( array &$appData, string $route, array $opts = [] ): bool {
 
-			if( array_diff_key( $opts, [ 'package' => 1 ] ) !== [] || \Nino\Modules\Crm\Register::package( $appData, $opts['package'] ?? null ) === null || self::isRoute( $route ) === false || ( $appData[self::OWNERS][$route] ?? null ) !== $opts['package'] )
+			$bad = match( true ) {
+				array_diff_key( $opts, [ 'package' => 1 ] ) !== [] => 'option',
+				\Nino\Modules\Crm\Register::package( $appData, $opts['package'] ?? null ) === null => 'package',
+				self::isRoute( $route ) === false => 'route',
+				( $appData[self::OWNERS][$route] ?? null ) !== $opts['package'] => 'page of another',
+				default => '',
+			};
+
+			if( $bad !== '' ) {
+				trigger_error( 'Crm: the page was not let in for the devices ('. $bad. ')', E_USER_WARNING );
+
 				return false;
+			}
 
 			return self::let( $appData, $route );
 		}

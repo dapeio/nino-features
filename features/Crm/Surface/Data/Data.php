@@ -30,7 +30,7 @@ namespace Nino\Modules\Crm\Surface {
 				'id' => 'package',
 				'idRule' => \Nino\Modules\Crm\Register::packageRule( $appData ),
 				'fields' => [ 'source' => \Nino\Modules\Crm\Register::REQUIRED ],
-				'rules' => [ 'source' => static fn( mixed $source ): bool => \Nino\Modules\Crm\Register::callable( $source ) ],
+				'rules' => [ 'source' => static function( mixed $source ) use ( &$appData ): bool { return \Nino\Modules\Crm\Register::callable( $appData, $source, 1, [ 0 ] ); } ],
 			] );
 		}
 

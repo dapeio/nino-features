@@ -8,7 +8,7 @@ namespace Nino\Modules\Crm {
 	 *							a line of the status, a schema - and the list is taken whole or not at all. The common form is `X::add( array &$appData, array $spec ): bool`:
 	 *							a field the shape does not have, a key another package holds, a default of the wrong type or a callable that is none gives false with an
 	 *							E_USER_WARNING that names the register and the reason - never a value of the description - and nothing is entered; the same description
-	 *							again is as good as the first time, so a package may enter itself twice (a request that boots a module twice, a test). The entries of a
+	 *							again is as good as the first time where the register says so (Menu::add() and Devices::allow() refuse a second entry of the same route or key, with a warning), so a package may enter itself twice (a request that boots a module twice, a test). The entries of a
 	 *							register stand in $appData, never in a static field, so that a second request in the same process starts from what it registered itself.
 	 *
 	 *							A shape is
@@ -28,6 +28,10 @@ namespace Nino\Modules\Crm {
 
 		/**	The field of an entry that says in which order it was entered	*/
 		public const string SEQ = 'seq';
+
+		// What the register keeps of the classes that could not be loaded in the request (class in lower case => what is said of it), and what the last question that was refused for one said
+		private const string BROKEN = './crm/register/broken';
+		private const string CAUSE = './crm/register/cause';
 
 		/**	The field every description of a package carries: the key of the feature that enters it	*/
 		public const string PACKAGE = 'package';
@@ -51,6 +55,7 @@ namespace Nino\Modules\Crm {
 
 			foreach( $list as $spec ) {
 
+				self::forget( $appData );
 				$bad = self::refusal( $spec, $known, $found, $shape );
 
 				if( $bad !== '' )
@@ -67,7 +72,7 @@ namespace Nino\Modules\Crm {
 			}
 
 			if( $bad !== '' ) {
-				trigger_error( 'Crm: the '. $label. ' of a package were refused ('. $bad. ')', E_USER_WARNING );
+				trigger_error( 'Crm: the '. $label. ' of a package were refused ('. $bad. ')'. self::cause( $appData ), E_USER_WARNING );
 
 				return false;
 			}
@@ -193,7 +198,7 @@ namespace Nino\Modules\Crm {
 
 		/**
 		 *	The class and the method of a value that is written as [ class, method ], as text and nothing else: the class is a name (a leading backslash is taken off), none of self, static and parent, and the method is a plain name -
-		 *	no :: in it, so it cannot lead to the method of another class. PHP is not asked anything: no class is loaded
+		 *	no :: in it, so it cannot lead to the method of another class, and none that begins with two underscores (the magic methods are the language's). PHP is not asked anything: no class is loaded
 		 *
 		 *	@param		mixed			$value
 		 *
@@ -209,32 +214,123 @@ namespace Nino\Modules\Crm {
 			if( in_array( strtolower( ltrim( $value[0], '\\' ) ), [ 'self', 'static', 'parent' ], true ) === true )
 				return null;
 
+			// A method whose name begins with two underscores is the language's (__callStatic, __set_state): it is called by PHP and by nobody else, and what it answers is not what a package says
+			if( str_starts_with( $value[1], '__' ) === true )
+				return null;
+
 			return [ ltrim( $value[0], '\\' ), $value[1] ];
 		}
 
 		/**
-		 *	Whether a value is a callable as the registers take it: [ class, method ] as two strings - no closure, nothing that cannot be written down - of a public static method that the class has under that name, see written().
-		 *	Everything else is refused before PHP is asked about it
+		 *	The class of a name, loaded the way the autoloader of the kernel loads it, or null where there is none to ask: no class of that name, or a class whose file does not load. A file whose code throws when it is loaded
+		 *	(a ParseError, an exception at its top) makes the class no class, in this question and in every later one of the request: the throw is caught here and what was said of it is kept in the app data - PHP itself keeps a class
+		 *	that its file declared before the code that threw, so that the second question would find it and be told yes by PHP. What is kept is the name of the class and the kind of the throwable (its class; of an anonymous class what stands before its null byte, where PHP puts the file), never its message and no path (cause()): a message is the package's own text and may carry what the package holds. The memory is the key ./crm/register/broken of the app data of the request, one entry for each class in lower case (PHP finds a class whatever its letters). A package is code with the rights of the kernel and can change that key, so the memory is a guard against a package that is broken, not against one that deceives. A file that
+		 *	cannot be compiled - a method declared twice, a class that extends one that is not there - is a fatal error of PHP, which nothing catches: it ends the request, here as anywhere. A class that was loaded by other code of the
+		 *	request before the first question, or by a file that threw there, is as PHP has it: the register knows only the loads it made itself
 		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$class				A name written as text, without a leading backslash
+		 *
+		 *	@return 	\ReflectionClass|null
+		 */
+		public static function reflect( array &$appData, string $class ): ?\ReflectionClass {
+
+			$key = strtolower( $class );
+
+			if( isset( $appData[self::BROKEN][$key] ) === true ) {
+				$appData[self::CAUSE] = $appData[self::BROKEN][$key];
+
+				return null;
+			}
+
+			try {
+				return new \ReflectionClass( $class );
+			}
+			catch( \Throwable $e ) {
+
+				// No class of that name is no class that failed
+				if( $e instanceof \ReflectionException )
+					return null;
+
+				$appData[self::BROKEN][$key] = ': the class '. $class. ' could not be loaded ('. strtok( get_class( $e ), "\0" ). ')';
+				$appData[self::CAUSE] = $appData[self::BROKEN][$key];
+
+				return null;
+			}
+		}
+
+		/**
+		 *	Forget what the last refusal for a class that could not be loaded said: a place that makes its own warning calls it before it asks, so that a cause that belongs to an earlier question is not the one it says
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	void
+		 */
+		public static function forget( array &$appData ): void {
+
+			unset( $appData[self::CAUSE] );
+		}
+
+		/**
+		 *	What the last question that was refused because of a class that could not be loaded said of it, for the end of a warning: '' where the question was refused for another reason. The warning of the place that refuses carries it
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	string										'' or ': the class <name> could not be loaded (<kind of throwable>)'
+		 */
+		public static function cause( array &$appData ): string {
+
+			return (string) ( $appData[self::CAUSE] ?? '' );
+		}
+
+		/**
+		 *	Whether a value is a callable as the registers take it: [ class, method ] as two strings - no closure, nothing that cannot be written down - of a public static method that the class has under that name, see written().
+		 *	Everything else is refused before PHP is asked about it. A class that cannot be loaded (its file does not parse, its code throws) is no class, see reflect(): the answer is false and nothing is thrown
+		 *
+		 *	@param		array 		&$appData
 		 *	@param		mixed			$value
+		 *	@param		int|null	$arguments		How many arguments the caller will pass: a method that needs more is refused, since it could not be called; null asks nothing of the parameters
+		 *	@param		array 		$reference		The positions of the arguments (from 0) that the caller passes as a reference, a variable it holds: &$appData, say. A method that takes an argument as a reference at any other position of the $arguments is refused - the caller passes
+		 *																	a value there, and php says so with a warning at every call
 		 *
 		 *	@return 	bool
 		 */
-		public static function callable( mixed $value ): bool {
+		public static function callable( array &$appData, mixed $value, ?int $arguments = null, array $reference = [] ): bool {
 
 			$written = self::written( $value );
 
 			if( $written === null )
 				return false;
 
+			$class = self::reflect( $appData, $written[0] );
+
+			if( $class === null )
+				return false;
+
 			try {
-				$method = new \ReflectionMethod( $written[0], $written[1] );
+				$method = $class->getMethod( $written[1] );
 			}
-			catch( \ReflectionException $e ) {
+			catch( \Throwable $e ) {
 				return false;
 			}
 
-			return $method->isPublic() === true && $method->isStatic() === true && $method->isAbstract() === false;
+			if( $method->isPublic() === false || $method->isStatic() === false || $method->isAbstract() === true )
+				return false;
+
+			if( $arguments === null )
+				return true;
+
+			if( $method->getNumberOfRequiredParameters() > $arguments )
+				return false;
+
+			// A parameter that is taken as a reference gets a variable or nothing: where the caller passes a value (a variadic one is every position from its own on) php warns at every call
+			foreach( $method->getParameters() as $position => $parameter )
+				if( $parameter->isPassedByReference() === true )
+					for( $at = $position; $at < ( $parameter->isVariadic() === true ? $arguments : min( $position + 1, $arguments ) ); $at++ )
+						if( in_array( $at, $reference, true ) === false )
+							return false;
+
+			return true;
 		}
 
 		/**
@@ -245,10 +341,12 @@ namespace Nino\Modules\Crm {
 		 *	@param		array 		&$appData
 		 *	@param		mixed			$package			The key of the package that enters it
 		 *	@param		mixed			$value
+		 *	@param		int|null	$arguments		How many arguments the caller will pass, see callable()
+		 *	@param		array 		$reference		The positions of the arguments that the caller passes as a reference, see callable()
 		 *
 		 *	@return 	bool
 		 */
-		public static function owned( array &$appData, mixed $package, mixed $value ): bool {
+		public static function owned( array &$appData, mixed $package, mixed $value, ?int $arguments = null, array $reference = [] ): bool {
 
 			if( is_string( $value ) === true && preg_match( '/^([^:]+)::([^:]+)$/D', $value, $match ) === 1 )
 				$value = [ $match[1], $match[2] ];
@@ -259,14 +357,15 @@ namespace Nino\Modules\Crm {
 			if( $feature === null || $written === null )
 				return false;
 
-			// The namespace is what a class says of itself, and it is read from the name before the class is asked for
-			if( strcasecmp( $written[0], $feature['space'] ) !== 0 && strncasecmp( $written[0], $feature['space']. '\\', strlen( $feature['space'] ) + 1 ) !== 0 )
+			// The namespace is what a class says of itself, and it is read from the name before the class is asked for - letter for letter: the autoloader of the kernel makes the path of a class from the name as it is written, and on a disk that tells capitals apart
+			// a folder that is spelled otherwise is another folder
+			if( strcmp( $written[0], $feature['space'] ) !== 0 && strncmp( $written[0], $feature['space']. '\\', strlen( $feature['space'] ) + 1 ) !== 0 )
 				return false;
 
-			if( self::callable( $written ) === false )
+			if( self::callable( $appData, $written, $arguments, $reference ) === false )
 				return false;
 
-			// The file is where it was written: the class and the method both lie in the folder of the package - a method that is inherited, comes from a trait or is the kernel's own (no file) does not
+			// The file is where it was written: the class and the method both lie in the folder of the package - a method that is inherited from a class in a file outside the folder of the package, comes from a trait in such a file, or is the kernel's own (no file), does not
 			try {
 				$class = ( new \ReflectionClass( $written[0] ) )->getFileName();
 				$method = ( new \ReflectionMethod( $written[0], $written[1] ) )->getFileName();
@@ -370,7 +469,7 @@ namespace Nino\Modules\Crm {
 		 */
 		public static function packageRule( array &$appData, bool $core = false ): callable {
 
-			return $core === true ? static fn( mixed $package ): bool => $package === Api::CORE : static fn( mixed $package ): bool => self::package( $appData, $package ) !== null;
+			return $core === true ? static fn( mixed $package ): bool => $package === Api::CORE : static function( mixed $package ) use ( &$appData ): bool { return self::package( $appData, $package ) !== null; };
 		}
 
 		/**

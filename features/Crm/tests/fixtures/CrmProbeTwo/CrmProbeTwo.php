@@ -17,5 +17,18 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 		}
+
+		/**
+		 *	A method that takes its two arguments as values, as the check of a setting is called ( string $key, string $value )
+		 *
+		 *	@param		string		$key
+		 *	@param		string		$value
+		 *
+		 *	@return 	string
+		 */
+		public static function clean( string $key, string $value ): string {
+
+			return $value;
+		}
 	}
 }

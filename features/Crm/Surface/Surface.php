@@ -192,7 +192,7 @@ namespace Nino\Modules\Crm {
 				'perms'    => [ 'crm' => true, 'elements' => \Nino\Auth::checkPermission( $appData, Values::PERM ), 'text' => \Nino\Auth::checkPermission( $appData, Company::PERM ) ],
 				'device'   => $device,
 				'texts'    => Surface\Texts::all( $appData ),
-				'links'    => $links + array_map( static fn( string $panel ): string => Hosts::address( $appData, '/_admin/'. \Nino\AdminAddress::of( $panel ) ), self::PANELS ),
+				'links'    => $links + array_map( static function( string $panel ) use ( &$appData ): string { return Hosts::address( $appData, '/_admin/'. \Nino\AdminAddress::of( $panel ) ); }, self::PANELS ),
 				'packages' => (object) Surface\Data::all( $appData ),
 			];
 
@@ -206,7 +206,9 @@ namespace Nino\Modules\Crm {
 				$data['menu'] = Surface\Menu::items( $appData, $dir );
 			}
 
-			$values = self::brands( $appData ) + $page['values']( $appData, $dir ) + [
+			// What a package takes as a reference is a copy: the directory of the page is the core's
+			$given = $dir;
+			$values = self::brands( $appData ) + $page['values']( $appData, $given ) + [
 				'css'       => $links['css'],
 				'site'      => $links['site'],
 				'workbench' => $links['workbench'],
@@ -271,7 +273,8 @@ namespace Nino\Modules\Crm {
 				// The way back is the address of the page, below the directory: where the CRM has a host of its own that is its start page
 				$back = Hosts::address( $appData, (string) $page['route'] );
 				$data = [ 'base' => $dir, 'route' => str_starts_with( $back, $dir. '/' ) === true ? substr( $back, strlen( $dir ) ) : (string) $page['route'], 'csrf' => \Nino\Csrf::getToken( $appData ), 'texts' => Surface\Texts::group( $appData, 'login.' ) ];
-				$values = self::brands( $appData ) + $page['values']( $appData, $dir ) + [ 'css' => $links['css'], 'site' => $links['site'], 'script' => $dir. '/crm/assets/'. self::assetName( $appData, 'login.js' ) ];
+				$given = $dir;
+				$values = self::brands( $appData ) + $page['values']( $appData, $given ) + [ 'css' => $links['css'], 'site' => $links['site'], 'script' => $dir. '/crm/assets/'. self::assetName( $appData, 'login.js' ) ];
 
 				self::send( $request, Surface\App::trim( $appData, self::fill( $appData, self::template( $appData, 'login' ), $values, [ 'data' => self::json( $data ) ] ), (string) $page['icon'] ) );
 

@@ -22,14 +22,26 @@ namespace Nino\Modules {
 	 *
 	 *											init() registers behaviour and writes nothing: the database is opened on first use, never in an init().
 	 *
+	 *											THE BACKUP. The database is the one file /data/crm.sqlite, in the DELETE journal mode (no file of a log beside it). The core answers '/nino/admin/backup' (callbackBackup()): the backup does not pack
+	 *											the file as it lies but a whole copy of it, made with VACUUM INTO through a connection of its own - the state before a write that is open, which carries the application id of the core and has no free
+	 *											pages and no file of a log beside it. The copy is looked at before it is handed over: PRAGMA integrity_check, the full one - every index against its table and the unique keys, so that an index with a wrong,
+	 *											a missing or a doubled entry is found, which VACUUM INTO carries over as it is -, and its application id. A file that is not there, one with nothing in it and one that is not the core's by its header - another
+	 *											database, a text, a directory - is not handed over and not touched, and the backup packs it as it lies; so is a file of the core that was cut off to less than its header of 72 bytes, which has no header to be told
+	 *											by: it is packed as it lies, without an error. A file that is the core's and cannot be copied - it cannot be read, a writer holds it longer than the wait (five seconds), it is damaged, or its copy is -
+	 *											makes the callback throw, and the backup ends with the core named (backups_hook, crm); nothing is left in the folder of the copy, and the safety copy before a restore goes on all the same and holds the files as they lie.
+	 *											The callback opens the file for writing, like every connection of the core: a journal that a process that was ended in the middle of a transaction left beside the file (a hot journal) is rolled back by SQLite
+	 *											before it reads, so that the file is whole as it was before that transaction and the copy has that state - the one write this callback makes below data/. A writer that holds a transaction open is not waited
+	 *											for as long as the transaction has written nothing to the file (its changes are in the cache of its connection until the cache is full or it ends): the copy is the state before it. Where it has written -
+	 *											a large transaction, or one at its commit - the callback waits five seconds and throws. Nothing else is made for the copy: no folder below data/, no table, no file of a log.
+	 *
 	 *											THE PLACES A PACKAGE ENTERS ITSELF. Every call is made from the init() of the package, after
 	 *											\Nino\Modules\Crm::featureOn( $appData, 'crm' ) has said yes. Every call names the package that makes it, the same way: the field package of the description where the call
 	 *											takes a description (a spec; Settings::add() a list of them), the option package of the last argument, an array $opts, where it takes plain arguments - and the one place that
 	 *											says what a package is is Register::package(): a slug, none of the first words of the core's (Api::reserved()) and the key of a feature that is on. What the package may bring is
 	 *											what the kernel says of that feature - its folder and its namespace -, never guessed from the call: files lie below that folder (with a separator at its end: features/Foo is not
-	 *											features/FooBar), classes in that namespace - the callables of Erasure::add() and Wipe::add(), and the letters of Icons::add() where they are no text (a text there is always the letters; a method is written as [ class, method ] alone), are public static methods of classes there, written as [ class, method ] with a plain method name or as class::method, and both the class and the method are written in the folder of the package - a method that is inherited from another file, comes from a trait of another file or is the language's own (cases and from of an enum) is refused, as are a closure, a function, self, static, parent and a method name that has a :: in it: Register::owned( array &$appData, mixed $package, mixed $value ): bool; the name of the class is read as text against the namespace before any class is loaded -, routes are the ones the package entered itself, and the pages of the core (/crm/todo and what lies below it) are no package's. Each call
-	 *											answers bool - true where all it was given is entered, false with an E_USER_WARNING (a text that carries no personal data) where anything was refused, and then none of the list is
-	 *											entered. The same description a second time is as good as the first. Whether a package is removed - for the steps of an open deletion, the data of a package that is gone and the button that takes them away - is asked in one place:
+	 *											features/FooBar), classes in that namespace - the callables of Erasure::add() and Wipe::add(), and the letters of Icons::add() where they are no text (a text there is always the letters; a method is written as [ class, method ] alone), are public static methods of classes there, written as [ class, method ] with a plain method name or as class::method, and both the class and the method are written in the folder of the package - a method that is inherited from a class in a file outside that folder, comes from a trait in such a file or is the language's own (cases and from of an enum) is refused, as are a closure, a function, self, static, parent, a method name that has a :: in it or begins with two underscores, a method that needs more arguments than the place passes it (a place that calls a method says how many it passes), one that takes an argument as a reference where the place passes a value (&$appData is a reference where the place holds the variable; the places say which), and a class that cannot be loaded - its file does not parse or its code throws when it is loaded; the question is answered no at every asking of the request and the warning names the class and the kind of the throwable, never its message and no path; a file that cannot be compiled - a method declared twice, say - is a fatal error of PHP that nothing catches: Register::owned( array &$appData, mixed $package, mixed $value, ?int $arguments = null, array $reference = [] ): bool; the name of the class is read as text against the namespace, letter for letter, before any class is loaded -, routes are the ones the package entered itself, and the pages of the core (/crm/todo and what lies below it) are no package's. Each call
+	 *											answers bool - true where all it was given is entered, false with an E_USER_WARNING (a text that carries no personal data: the register, the field that was refused and, for a class that could not be loaded, its name and the kind of the throwable, never its message) where anything was refused, and then none of the list is
+	 *											entered. The same description a second time is as good as the first where the place takes a list or a description (Register::add()); Menu::add() refuses a second entry of the same route or key, while Devices::allow() takes the same page again and refuses a page the package did not enter itself, with a warning. Whether a package is removed - for the steps of an open deletion, the data of a package that is gone and the button that takes them away - is asked in one place:
 	 *											Register::gone( array &$appData, string $key, string $folder = '' ): bool, true only where the features directory can be read, the kernel knows no feature of the key and refuses no directory, every entry of the directory that is no regular file (a package is a directory for the kernel; .htaccess, .DS_Store, a README are files) is one the kernel knows and the folder - the name the kernel had for it, Register::directory() - is not there; nothing is taken from a name.
 	 *											- Db::addSchema( array &$appData, array $spec ): bool       package, version, tables, file (a php file in the folder of the package): the tables of the package in the file of the CRM, only statements on its own tables
 	 *											- Settings::add( array &$appData, array $keys ): bool       the keys of the settings the package owns, each with package, its rule, default and what is done after a write
@@ -67,8 +79,8 @@ namespace Nino\Modules {
 		public const string MANAGE_PERM = '/_admin/crm/manage';
 
 		/**
-		 *	Register the places the core owns while it is on: the number sequence of the clients, the line of the status, the words of the mails, the band at the head of every mail and
-		 *	the hosts. Nothing is opened or written
+		 *	Register the places the core owns while it is on: the number sequence of the clients, the line of the status, the words of the mails, the band at the head of every mail,
+		 *	the hosts and the hook of the backup (callbackBackup()). Nothing is opened or written
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -91,6 +103,34 @@ namespace Nino\Modules {
 
 			// The page /crm with its login, its devices that stay signed in and its files
 			\Nino\Modules\Crm\Surface::init( $appData );
+
+			// What the backup packs of the database is a copy that is whole, made by the core when the backup asks for it
+			\Nino\Callbacks::registerCallback( $appData, '/nino/admin/backup', [ self::class, 'callbackBackup' ] );
+		}
+
+		/**
+		 *	Hand the backup a whole copy of the database: the file is copied with VACUUM INTO into the folder of the run, under the name it has below data/, the copy is checked (integrity_check and the application id, Db::backup()), and the backup packs
+		 *	the copy where the live file stands. What is not the core's is not handed over and not touched - a file that is not there, one that has nothing in it, another database, a text, a directory, and a file of the core that is cut
+		 *	off to less than its header of 72 bytes: the backup packs it as it lies, as it would without this callback, and says nothing. What is the core's and cannot be copied - it cannot be read, a writer that has written to the file holds it for longer than the wait,
+		 *	it is damaged or its copy is - throws, and the backup ends with the core named: nothing falls back to the live file. The file is opened for writing, so that a hot journal beside it is rolled back first (Db::backup()). Nothing else is made here: no folder
+		 *	below data/, no table, no row, and the connection of the request is not used
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$args				(reference) dataDir: the live data directory, staging: the folder of this run for this feature
+		 *
+		 *	@return 	void
+		 *
+		 *	@throws		\RuntimeException					The arguments are not what the backup gives
+		 *	@throws		\PDOException							The database of the core cannot be copied
+		 */
+		public static function callbackBackup( array &$appData, array &$args ): void {
+
+			if( is_string( $args['dataDir'] ?? null ) === false || is_string( $args['staging'] ?? null ) === false || $args['dataDir'] === '' || $args['staging'] === '' )
+				throw new \RuntimeException( 'the backup did not say where the data is and where the copy goes' );
+
+			$name = basename( \Nino\Modules\Crm\Db::FILE );
+
+			\Nino\Modules\Crm\Db::backup( $args['dataDir']. '/'. $name, $args['staging']. '/'. $name );
 		}
 
 		/**

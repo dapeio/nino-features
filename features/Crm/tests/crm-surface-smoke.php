@@ -1246,8 +1246,10 @@ try {
 	[ $status, $body ] = srfGet( $where, '/crm/probeapp', null, [ 'crm_remember' => srfCookie( $c )[0] ] );
 	check( 'the page of the app of a package is the page of the surface with no rail, the key of the app in its block, its own manifest and title - for the device as for a session', $status === 200 && srfKind( $status, $body ) === 'app' && srfData( $body )['app'] === 'probeapp'
 		&& str_contains( (string) $body, 'href="/crm/probeapp/manifest.webmanifest"' ) === true && str_contains( (string) $body, '<title>Probe app</title>' ) === true && isset( srfData( $body )['menu'] ) === false );
+	$pageBody = (string) $body;
 	[ $status, $body ] = srfGet( $where, '/crm/probeapp' );
 	check( 'the login of the app of a package comes back to the app', srfKind( $status, $body ) === 'login' && srfData( $body )['route'] === '/crm/probeapp' );
+	check( 'a values method of an app that takes the directory as a reference, which the place allows, changes a copy: the login and the page of the app still lie below the directory of the core and say nothing of what the method put in it', str_contains( (string) $body, 'hijacked' ) === false && str_contains( (string) $body, '<script src="/crm/assets/' ) === true && str_contains( $pageBody, 'hijacked' ) === false && str_contains( $pageBody, '<script src="/crm/assets/' ) === true );
 	[ $status, $body, $header ] = srfGet( $where, '/crm/probeapp/icon.svg' );
 	check( 'the icon of the app of a package is answered by the routes it registered, public, with its letters', $status === 200 && str_contains( (string) $body, '>PRB</text>' ) === true );
 	$request = srfRequest( $where, $crm );
@@ -1267,7 +1269,7 @@ try {
 	$crm = $S['crm@example.org'];
 	$wrong = [];
 
-	foreach( [ 'Log', 'Pi', 'Max', 'Key', 'Abs', 'Dir', 'Ord', 'End' ] as $letters ) {
+	foreach( [ 'End', 'Log', 'Pi', 'Max', 'Key', 'Abs', 'Dir', 'Ord' ] as $letters ) {
 
 		$GLOBALS['srfSet'] = [ './crm-surface-probe/letters' => $letters ];
 		[ $status, $body ] = srfGet( $where, '/crm/probeapp/icon.svg' );
@@ -1572,8 +1574,10 @@ try {
 		$refused[$what] = \Nino\Modules\Crm\Surface\Menu::add( $a, $route, $word, $key, [ 'package' => 'crm-surface-probe' ] );
 
 	$warned = ninoWarnings();
-	check( 'an entry of the rail is refused for a route that is none (outside /crm, the page itself, capitals, slashes, a climb, a null byte, a space, a query, a hash), for no word or one of blanks, for a key that is none and for the key of an entry of the core: '. count( $menu ). ' of them, the last with a warning', array_filter( $refused ) === [] && \Nino\Modules\Crm\Surface\Menu::entries( $a ) === [] && count( $warned ) === 1 && str_contains( $warned[0], 'overview' ) === true );
-	check( 'an entry that is good is on the list; the same route or the same key again is refused and the first stays; a key of digits is a key, and so is "0"', \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/one', 'One', 'one', [ 'package' => 'crm-surface-probe' ] ) === true && \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/one', 'Two', 'two', [ 'package' => 'crm-surface-probe' ] ) === false && \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/two', 'Two', 'one', [ 'package' => 'crm-surface-probe' ] ) === false
+	check( 'an entry of the rail is refused for a route that is none (outside /crm, the page itself, capitals, slashes, a climb, a null byte, a space, a query, a hash), for no word or one of blanks, for a key that is none and for the key of an entry of the core: '. count( $menu ). ' of them, each with one warning that says why and names neither the route, the word nor the key', array_filter( $refused ) === [] && \Nino\Modules\Crm\Surface\Menu::entries( $a ) === [] && count( $warned ) === count( $menu ) && str_contains( end( $warned ), 'key of the core' ) === true
+		&& array_filter( $warned, static fn( string $line ): bool => str_contains( $line, '/crm' ) === true || str_contains( $line, 'overview' ) === true ) === [] );
+	ninoWarnings();
+	check( 'an entry that is good is on the list; the same route or the same key again is refused, each with one warning, and the first stays; a key of digits is a key, and so is "0"', \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/one', 'One', 'one', [ 'package' => 'crm-surface-probe' ] ) === true && ninoWarnings() === [] && \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/one', 'Two', 'two', [ 'package' => 'crm-surface-probe' ] ) === false && count( ninoWarnings() ) === 1 && \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/two', 'Two', 'one', [ 'package' => 'crm-surface-probe' ] ) === false && count( ninoWarnings() ) === 1
 		&& \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/n1', 'N', '0', [ 'package' => 'crm-surface-probe' ] ) === true && \Nino\Modules\Crm\Surface\Menu::add( $a, '/crm/n2', 'N', '123', [ 'package' => 'crm-surface-probe' ] ) === true && array_column( \Nino\Modules\Crm\Surface\Menu::items( $a, '' ), 'key' ) === [ 'one', '0', '123' ]
 		&& array_filter( array_column( \Nino\Modules\Crm\Surface\Menu::items( $a, '' ), 'key' ), 'is_string' ) === [ 'one', '0', '123' ] && \Nino\Modules\Crm\Surface\Menu::items( $a, '/sub' )[0]['href'] === '/sub/crm/one' );
 	check( 'the rail is made in one pass: a word that holds a token of the markup is a word, and the entries of the core stand in their rank beside those of the features', ( static function() use ( &$a ): bool {
@@ -1588,7 +1592,8 @@ try {
 	$a = srfRequest( $where );
 	$routes = [ '/crm', '/crm/', '/crm/A', '/crm//x', '/crm/x/', '/crm/../x', 'crm/x', '/x', '', "/crm/x\0", '/crm/x y', '/crm/x?a=1', '/crm/-', '/crm/x_y' ];
 	$before = \Nino\Modules\Crm\Surface\Devices::pages( $a );
-	check( 'a page for the devices is refused where its address is none: '. count( $routes ). ' addresses, and the list is as it was', array_filter( array_map( static fn( string $route ): bool => \Nino\Modules\Crm\Surface\Devices::allow( $a, $route, [ 'package' => 'crm-surface-probe' ] ), $routes ) ) === [] && \Nino\Modules\Crm\Surface\Devices::pages( $a ) === $before );
+	ninoWarnings();
+	check( 'a page for the devices is refused where its address is none: '. count( $routes ). ' addresses, each with one warning, and the list is as it was', array_filter( array_map( static fn( string $route ): bool => \Nino\Modules\Crm\Surface\Devices::allow( $a, $route, [ 'package' => 'crm-surface-probe' ] ), $routes ) ) === [] && \Nino\Modules\Crm\Surface\Devices::pages( $a ) === $before && count( ninoWarnings() ) === count( $routes ) );
 	$enter = static function( string $route ) use ( &$a ): bool {
 
 		return \Nino\Modules\Crm\Surface\Devices::claim( $a, $route, 'crm-surface-probe' ) === true && srfVia( \Nino\Modules\Crm\Surface\Devices::class, 'allow', $a, $route ) === true;
@@ -1641,6 +1646,20 @@ try {
 
 		return $one === true && \Nino\Modules\Crm\Surface\Texts::add( $b, $probe. '/text', $two ) === false && \Nino\Modules\Crm\Surface\Scripts::add( $b, 'two.js', $probe. '/assets/probe.js', $two ) === false && \Nino\Modules\Crm\Surface\Scripts::add( $b, 'two.js', $features. '/CrmSurfaceProbeTwo/assets/two.js', $two ) === true
 			&& \Nino\Modules\Crm\Surface\Menu::add( $b, '/crm/shared', 'Mine', 'mine', $two ) === false && \Nino\Modules\Crm\Surface\Devices::allow( $b, '/crm/shared', $two ) === false && \Nino\Modules\Crm\Surface\Devices::allow( $b, '/crm/shared', [ 'package' => 'crm-surface-probe' ] ) === true;
+	} )() );
+
+	check( 'an entry of the rail for the route of an app of another package, and the devices let in for a page of another package, are refused each with one warning, and the page stays the first package\'s', ( static function() use ( $where ): bool {
+
+		$b = srfRequest( $where );
+		$two = [ 'package' => 'crm-surface-probe-two' ];
+		$entered = \Nino\Modules\Crm\Surface\Apps::add( $b, [ 'package' => 'crm-surface-probe', 'key' => 'claimed', 'route' => '/crm/claimed', 'scope' => '/crm/claimed', 'manifest' => '/crm/claimed/manifest.webmanifest', 'values' => [ \Nino\Modules\CrmSurfaceProbe::class, 'appValues' ], 'icon' => 'claimed' ] );
+		ninoWarnings();
+		$menu = \Nino\Modules\Crm\Surface\Menu::add( $b, '/crm/claimed', 'Mine', 'mine', $two );
+		$menuWarnings = count( ninoWarnings() );
+		$devices = \Nino\Modules\Crm\Surface\Devices::allow( $b, '/crm/claimed', $two );
+		$deviceWarnings = count( ninoWarnings() );
+
+		return $entered === true && $menu === false && $menuWarnings === 1 && $devices === false && $deviceWarnings === 1 && in_array( 'mine', array_column( \Nino\Modules\Crm\Surface\Menu::items( $b, '' ), 'key' ), true ) === false;
 	} )() );
 
 	// Apps and their icons
