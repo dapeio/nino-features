@@ -499,6 +499,18 @@ unset( $appData['./nino/elements/cache'] );
 check( 'fifteen dates are seeded, with the moments global and the words in German, and the English ones beside', count( (array) \Nino\Elements::queryElements( $appData, '/events', [], 'de_DE', [] ) ) === 15
 	&& ( \Nino\Elements::getElement( $appData, '/events/soon', 'en_US' )['start'] ?? '' ) === '2026-12-11T10:00' && ( \Nino\Elements::getElement( $appData, '/events/soon', 'en_US' )['title'] ?? '' ) === 'Soon' );
 
+$appData['./nino/locales/current'] = 'en_US';
+
+try {
+	pinElements( $appData );
+}
+catch( \Throwable $thrown ) {
+	check( 'the pins of Events::elements() ran to their end - '. $thrown->getMessage(), false );
+}
+
+check( 'the pins of Events::elements() leave the language of the page as they found it', ( $appData['./nino/locales/current'] ?? null ) === 'en_US' );
+$appData['./nino/locales/current'] = 'de_DE';
+
 $drawnDemo = eventsFind( eventsRender( $appData, (string) ( \Nino\Components::groups( $appData )['events']['demo'] ?? '' ) ), '//time' );
 check( 'the demo of the group draws the dates of the project with their own day in its list, three chips of two days, besides the three chips it holds itself', count( $drawnDemo ) === 6 && count( array_unique( array_map( static fn( DOMElement $chip ): string => $chip->getAttribute( 'datetime' ), array_slice( $drawnDemo, 3 ) ) ) ) === 2 );
 $block = \Nino\Blocks::get( $appData, 'events-list' );
@@ -1145,3 +1157,46 @@ preg_match( '/^(\d+) checks, (\d+) failed/m', implode( "\n", $output ), $counted
 check( 'the process ran the checks of the second half, all of them', $status === 0 && ( $counted[1] ?? '0' ) >= '35' && ( $counted[2] ?? '1' ) === '0' );
 
 ninoDone( $appData );
+
+/**
+ *	Events::elements(), the list of the feed that a package may ask for: public, every date once, each in the language of the page with the fallback to another, and the very
+ *	list the feed is made of
+ *
+ *	@param		array 		&$appData
+ *
+ *	@return 	void
+ */
+function pinElements( array &$appData ): void {
+
+	$method = new \ReflectionMethod( \Nino\Modules\Events::class, 'elements' );
+	$parameter = $method->getParameters()[0];
+
+	check( 'Events::elements() is public and static, takes the app data by reference, answers an array ', $method->isPublic() === true && $method->isStatic() === true && count( $method->getParameters() ) === 1 && $parameter->isPassedByReference() === true
+		&& (string) $parameter->getType() === 'array' && (string) $method->getReturnType() === 'array'
+		&& str_contains( (string) ( new \ReflectionClass( \Nino\Modules\Events::class ) )->getDocComment(), 'elements( $appData )' ) === true );
+
+	$was = $appData['./nino/locales/current'] ?? null;
+	$appData['./nino/locales/current'] = 'en_US';
+	$found = \Nino\Modules\Events::elements( $appData );
+	$uris = array_column( $found, '.uri' );
+	$byUri = array_column( $found, null, '.uri' );
+	sort( $uris );
+
+	$expected = array_map( static fn( string $slug ): string => '/events/'. $slug, array_keys( eventsSeed() ) );
+	sort( $expected );
+
+	check( 'it lists every date of the type once - fifteen, each with its \'.uri\' - and nothing else, as a list with the keys 0 to 14', count( $found ) === 15 && $uris === $expected && array_is_list( $found ) === true && array_is_list( \Nino\Modules\Events::elements( $appData ) ) === true );
+	check( '...in the language of the page where the date has a text in it - its \'.lang\' is empty - and in the language that has one where it has not, with that \'.lang\'', ( $byUri['/events/soon']['title'] ?? '' ) === 'Soon' && ( $byUri['/events/soon']['.lang'] ?? '?' ) === ''
+		&& ( $byUri['/events/later']['title'] ?? '' ) === 'Feier, groß; mit \\ Gästen' && ( $byUri['/events/later']['.lang'] ?? '' ) === 'de-DE' );
+
+	$appData['./nino/locales/current'] = 'de_DE';
+	$german = array_column( \Nino\Modules\Events::elements( $appData ), null, '.uri' );
+
+	check( '...and the page in German has the German text of the date that has both', ( $german['/events/soon']['title'] ?? '' ) === 'Bald' );
+	check( '...it is the list the feed is made of: the feed holds one VEVENT for each of the dates() of this list that a visitor may see, ten of the fifteen', substr_count( eventsServe( $appData, '/.events.ics' )[4], 'BEGIN:VEVENT' ) === 10
+		&& count( \Nino\Modules\Events::dates( $appData, \Nino\Modules\Events::elements( $appData ), 'all', '', true ) ) === 10 );
+	if( $was === null )
+		unset( $appData['./nino/locales/current'] );
+	else
+		$appData['./nino/locales/current'] = $was;
+}

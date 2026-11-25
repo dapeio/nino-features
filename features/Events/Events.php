@@ -35,6 +35,10 @@ namespace Nino\Modules {
 	 *										default, is the one php runs in, date_default_timezone_get() -,
 	 *										the chip writes in it and the calendar file converts from it to UTC.
 	 *
+	 *										A package that lists the dates by its own rules asks elements( $appData ) for them, each in the
+	 *										language of the page with the fallback to another, and hands them to dates() with a scope and a
+	 *										group - the same two calls the feed makes.
+	 *
 	 *										Two routes: /.events.ics, the feed of the public dates (and, with
 	 *										the token of a member in ?k=, of the dates of their group as well,
 	 *										see Events\Tokens), and /.events/<slug>.ics, one date. The file
@@ -658,7 +662,7 @@ namespace Nino\Modules {
 			$member	= $id !== null && class_exists( '\\Nino\\Modules\\Members' ) === true ? \Nino\Modules\Members::account( $appData, $id ) : null;
 			$member	= $member !== null && $member['active'] === true ? $member : null;
 
-			$dates		= self::dates( $appData, self::_elements( $appData ), 'all', $member === null ? '' : (string) $member['group'], true );
+			$dates		= self::dates( $appData, self::elements( $appData ), 'all', $member === null ? '' : (string) $member['group'], true );
 
 			$response = &$request['/nino/http/response'];
 
@@ -716,13 +720,14 @@ namespace Nino\Modules {
 
 		/**
 		 *	Every date of the type, each in the language of the page with what that language has no text for taken from another
-		 *	(\Nino\Elements::getElementWithFallback()): a calendar entry has to have a title
+		 *	(\Nino\Elements::getElementWithFallback()): a calendar entry has to have a title. This is the list the feed is made of and
+		 *	the one a package that lists the dates by its own rules - a page that is no list of this feature - asks for, to hand to dates()
 		 *
 		 *	@param		array 		&$appData
 		 *
-		 *	@return 	array									Elements
+		 *	@return 	array									Elements, each as getElementWithFallback() answers it - with its '.uri' and, where the language had no text, the '.lang' it is in
 		 */
-		private static function _elements( array &$appData ): array {
+		public static function elements( array &$appData ): array {
 
 			$elements	= \Nino\Elements::queryElements( $appData, self::TYPE, [], '', [] );
 			$found		= [];
