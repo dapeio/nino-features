@@ -206,4 +206,8 @@ return [
 	'[[/_admin/error/pdf_template_missing]]' => 'Diese Vorlage gibt es nicht mehr.',
 	'[[/_admin/error/pdf_block_missing]]' => 'Diesen Textbaustein gibt es nicht mehr.',
 	'[[/_admin/error/pdf_block_used]]' => 'Diese Vorlagen nutzen den Textbaustein: %s. Nimm ihn zuerst aus ihnen heraus.',
+	'[[/_admin/error/pdf_template_used]]' => 'Diese Vorlage wird noch genutzt: %s. Nimm sie dort zuerst heraus.',
+	'[[/_admin/error/pdf_template_unknown]]' => 'Ob noch etwas diese Vorlage nutzt, ließ sich nicht feststellen (%s), deshalb bleibt sie.',
+	'[[/_admin/error/pdf_data_large]]' => 'Die Daten der Vorschau sind größer, als eine Vorschau annimmt.',
+	'[[/_admin/pdf/label/function]]' => 'eine Funktion',
 ];

@@ -206,4 +206,8 @@ return [
 	'[[/_admin/error/pdf_template_missing]]' => 'This template does not exist any more.',
 	'[[/_admin/error/pdf_block_missing]]' => 'This text block does not exist any more.',
 	'[[/_admin/error/pdf_block_used]]' => 'These templates use the text block: %s. Take it out of them first.',
+	'[[/_admin/error/pdf_template_used]]' => 'This template is still in use: %s. Take it out of there first.',
+	'[[/_admin/error/pdf_template_unknown]]' => 'Whether something still uses this template could not be found out (%s), so it stays.',
+	'[[/_admin/error/pdf_data_large]]' => 'The data of the preview is larger than a preview takes.',
+	'[[/_admin/pdf/label/function]]' => 'a function',
 ];

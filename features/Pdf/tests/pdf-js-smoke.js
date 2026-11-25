@@ -622,6 +622,22 @@ const closeRecord = function( w ) { fire( buttons( w.dialog() ).find( function( 
 
 {
 	const w = world();
+
+	w.open( 'pdf-templates', TEMPLATES );
+
+	const list = w.mounts['pdf-templates-list'];
+	const drop = function( key ) { return buttons( rowsOf( list ).find( function( row ) { return row.dataset.row === key } ) ).pop() };
+
+	press( drop( 'offer-one' ) );
+	w.press( W('confirm/template-title') );
+	w.answer( 409, { error : 'x', code : 'pdf_template_used', params : [ 'crm-documents (3)' ] } );
+
+	check( 'D2. a template that something uses is not deleted: the row stays and the sentence of the server stands over the list, with the packages and their numbers',
+		keysOf( list ).indexOf( 'offer-one' ) !== -1 && text( list ).indexOf( words['/_admin/error/pdf_template_used'].replace( '%s', 'crm-documents (3)' ) ) !== -1 );
+}
+
+{
+	const w = world();
 	const dialogs = [];
 
 	w.open( 'pdf-templates', TEMPLATES );

@@ -37,7 +37,7 @@ namespace Nino\Modules\Pdf\Tabs {
 		}
 
 		public static function perm(): string {
-			return \Nino\Modules\Pdf\Admin::MANAGE_PERM;
+			return \Nino\Modules\Pdf::PERM;
 		}
 
 		public static function panes(): array {

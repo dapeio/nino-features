@@ -1,0 +1,97 @@
+{
+    "empty pdf/layout/get []": {
+        "status": 200,
+        "sha256": "f02589d485ecd78bf2d1b6f937e0a6c5cb53e971056e3aafbb622c41c569142f",
+        "length": 1443
+    },
+    "empty pdf/blocks/list []": {
+        "status": 200,
+        "sha256": "bc9af88831fe62fd0fc39384553b4e1512898a7942bb4ca172d166d6b060759c",
+        "length": 49
+    },
+    "empty pdf/templates/list []": {
+        "status": 200,
+        "sha256": "c9b1ca13bcba75ebec35994c3c1f1ad3f0c59fdcba1b383885fc4c43425c081d",
+        "length": 134
+    },
+    "empty pdf/templates/get {\"key\":\"fx-one\"}": {
+        "status": 404,
+        "sha256": "9e41ba583ceaa09c181ff0aa6e03b1a40066d23fcebc7c12fdcd909b50680fb0",
+        "length": 67
+    },
+    "empty pdf/templates/get {\"key\":\"seals\"}": {
+        "status": 404,
+        "sha256": "9e41ba583ceaa09c181ff0aa6e03b1a40066d23fcebc7c12fdcd909b50680fb0",
+        "length": 67
+    },
+    "empty pdf/templates/get {\"key\":\"nope\"}": {
+        "status": 404,
+        "sha256": "9e41ba583ceaa09c181ff0aa6e03b1a40066d23fcebc7c12fdcd909b50680fb0",
+        "length": 67
+    },
+    "empty pdf/templates/get {\"key\":\"123\"}": {
+        "status": 404,
+        "sha256": "9e41ba583ceaa09c181ff0aa6e03b1a40066d23fcebc7c12fdcd909b50680fb0",
+        "length": 67
+    },
+    "empty pdf/layout/preview []": {
+        "status": 200,
+        "sha256": "721309de81e19a07d23f5e3f46e66e12e6c261a2a1093570d157ca0fca922a72",
+        "length": 2509
+    },
+    "stock pdf/layout/get []": {
+        "status": 200,
+        "sha256": "0bce186f8adaeabd5852c501e0ea5520c9a162e5dcdf5cad24f524288208d762",
+        "length": 1955
+    },
+    "stock pdf/blocks/list []": {
+        "status": 200,
+        "sha256": "827b3a7a8b112f8525c52981ab41ba6ce8f136c5b2106ab9da78d2aff0d822d9",
+        "length": 9367
+    },
+    "stock pdf/templates/list []": {
+        "status": 200,
+        "sha256": "061f8a555d00215dd638b19846db2243a14d40525e47869a927199eb0ef2d4b8",
+        "length": 502
+    },
+    "stock pdf/templates/get {\"key\":\"fx-one\"}": {
+        "status": 200,
+        "sha256": "5223fc5b205922669060c3bb89b133b4bb5c9334fdab82ab25161fef437b864c",
+        "length": 658
+    },
+    "stock pdf/templates/get {\"key\":\"seals\"}": {
+        "status": 200,
+        "sha256": "74cdb08f17e4e653742b747278267af34ff8f0db99d77c31e4f8efedb6b6d484",
+        "length": 728
+    },
+    "stock pdf/templates/get {\"key\":\"nope\"}": {
+        "status": 404,
+        "sha256": "9e41ba583ceaa09c181ff0aa6e03b1a40066d23fcebc7c12fdcd909b50680fb0",
+        "length": 67
+    },
+    "stock pdf/templates/get {\"key\":\"123\"}": {
+        "status": 404,
+        "sha256": "9e41ba583ceaa09c181ff0aa6e03b1a40066d23fcebc7c12fdcd909b50680fb0",
+        "length": 67
+    },
+    "stock pdf/layout/preview []": {
+        "status": 200,
+        "sha256": "35d5c8bf7739fbbbd81a0cb66d0aee2698da222bd119d8dd2c04f7a7d55db37b",
+        "length": 2513
+    },
+    "stock pdf/preview {\"name\":\"Fixture one\",\"tag\":\"\",\"blocks\":[{\"type\":\"html\",\"block\":\"fx-text\"},{\"type\":\"html\",\"block\":\"fx-text\"},{\"type\":\"input\",\"name\":\"note\",\"label\":\"Note\",\"multiline\":true,\"required\":false},{\"type\":\"pagebreak\"},{\"type\":\"html\",\"html\":\"<p>[[name]] from [[\\/nowhere\\/text]]<\\/p>\"},{\"type\":\"slot\",\"name\":\"rows\"},{\"type\":\"signature\",\"name\":\"seller\",\"party\":\"owner\",\"label\":\"The seller\",\"page\":\"last\",\"x\":20,\"y\":230,\"w\":60,\"h\":20,\"line\":true}]}": {
+        "status": 200,
+        "sha256": "8486b01664c40aea73ba3ef8a9e94f09e3620907d3cd40e44e915c57566be08b",
+        "length": 4809
+    },
+    "stock pdf/preview {\"name\":\"\",\"tag\":\"zzz\",\"blocks\":[]}": {
+        "status": 400,
+        "sha256": "42d326485073121af728e7ce80209761776d38288a1d2426c0c98ba0daabfe89",
+        "length": 93
+    },
+    "stock pdf/preview {\"name\":\"Empty\",\"tag\":\"\",\"blocks\":[]}": {
+        "status": 200,
+        "sha256": "261ecdefb5c320b6b745e2ac4ee117c2338dbc70450c47d5ac48ce0c78ac124e",
+        "length": 2514
+    }
+}

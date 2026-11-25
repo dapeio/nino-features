@@ -102,7 +102,7 @@ ninoUser( $appData, 'dev@example.com' );
 $panels = \Nino\Admin\Admin::panels( $appData );
 check( 'the panel is in the registry: its own screen in one mount, three tabs of its own after it - pictures, text blocks, templates - and the Settings tab the kernel adds', isset( $panels['pdf'] ) === true
 	&& array_keys( $panels['pdf']['tabs'] ) === [ 'pdf-pictures', 'pdf-blocks', 'pdf-templates', 'pdf-settings' ] && $panels['pdf']['panes'] === [ 'pdf-layout' ] && $panels['pdf']['template'] === '' && $panels['pdf']['group'] === 'features'
-	&& $panels['pdf']['tabs']['pdf-pictures']['perm'] === $panels['pdf']['perm'] && $panels['pdf']['tabs']['pdf-blocks']['perm'] === $panels['pdf']['perm'] && $panels['pdf']['tabs']['pdf-templates']['perm'] === $panels['pdf']['perm'] && $panels['pdf']['perm'] === \Nino\Modules\Pdf\Admin::MANAGE_PERM );
+	&& $panels['pdf']['tabs']['pdf-pictures']['perm'] === $panels['pdf']['perm'] && $panels['pdf']['tabs']['pdf-blocks']['perm'] === $panels['pdf']['perm'] && $panels['pdf']['tabs']['pdf-templates']['perm'] === $panels['pdf']['perm'] && $panels['pdf']['perm'] === Pdf::PERM );
 check( '...and a feature that has not been given tags lists none: the tags are the words of a project, and the feature brings no list of its own', Pdf::tags( $appData ) === [] );
 
 \Nino\Features::saveSettings( $appData, 'pdf', [ 'tags' => "offer\nBad Tag\ninvoice\nx\nthis-tag-is-longer-than-forty-characters-by-far" ] );
@@ -370,7 +370,7 @@ $post( 'pdf/templates/delete', [ 'key' => 'offer-one-copy-2' ] );
 $post( 'pdf/templates/save', [ 'key' => 'invoice-a', 'isNew' => true, 'name' => 'Invoice A', 'tag' => 'invoice', 'blocks' => [] ] );
 $post( 'pdf/templates/save', [ 'key' => 'invoice-b', 'isNew' => true, 'name' => 'apple invoice', 'tag' => 'invoice', 'blocks' => [] ] );
 check( 'templates() lists all, sorted by name; templates( "invoice" ) only those of that tag; a tag nobody has lists none', array_keys( Pdf::templates( $appData ) ) === [ 'invoice-b', 'invoice-a', 'offer-one', 'offer-one-copy' ]
-	&& array_keys( Pdf::templates( $appData, 'invoice' ) ) === [ 'invoice-b', 'invoice-a' ] && Pdf::templates( $appData, 'invoice' )['invoice-a'] === [ 'name' => 'Invoice A', 'tag' => 'invoice' ] && Pdf::templates( $appData, 'contract' ) === [] );
+	&& array_keys( Pdf::templates( $appData, 'invoice' ) ) === [ 'invoice-b', 'invoice-a' ] && array_diff_key( Pdf::templates( $appData, 'invoice' )['invoice-a'], [ 'changed' => 0 ] ) === [ 'name' => 'Invoice A', 'tag' => 'invoice' ] && Pdf::templates( $appData, 'contract' ) === [] );
 $listed = $post( 'pdf/templates/list' )[1];
 check( 'templates/list answers key, name, tag and the number of blocks of each, with the tags, the library and the paper for the editor', array_column( $listed['templates'], 'blocks', 'key' ) === [ 'invoice-b' => 0, 'invoice-a' => 0, 'offer-one' => 7, 'offer-one-copy' => 7 ]
 	&& $listed['tags'] === Pdf::tags( $appData ) && array_column( $listed['library'], 'key' ) === [ 'intro', 'spare' ] && $listed['paper'] === [ 215.9, 279.4 ] );

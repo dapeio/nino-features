@@ -4,8 +4,8 @@ return [
 	'key'					=> 'pdf',
 	'name'				=> [ 'en_US' => 'PDF', 'de_DE' => 'PDF' ],
 	'description'	=> [
-		'en_US' => 'A PDF builder with no library: the owner sets the layout once - paper, margins, font, header and footer with page numbers, a logo and a signature - and keeps a library of text blocks and templates built from them. render() turns a template and what a caller knows into the bytes of a PDF, the same bytes every time, and templates(), fields(), inputs(), tags() and layout() tell a caller what to offer. Every PDF is set by rules in CSS notation that the owner overrides property by property, and install() adds templates, text blocks and layout texts to a project without touching what it has.',
-		'de_DE' => 'Ein PDF-Baukasten ohne Bibliothek: Der Inhaber stellt das Layout einmal ein - Papier, Ränder, Schrift, Kopfbereich und Fußbereich mit Seitenzahlen, ein Logo und eine Unterschrift - und führt eine Bibliothek von Textbausteinen und Vorlagen daraus. render() macht aus einer Vorlage und dem, was ein Aufrufer weiß, die Bytes eines PDFs, jedes Mal dieselben, und templates(), fields(), inputs(), tags() und layout() sagen einem Aufrufer, was er anbieten kann. Jedes PDF wird nach Regeln in CSS-Schreibweise gesetzt, die der Inhaber Eigenschaft für Eigenschaft überschreibt, und install() legt Vorlagen, Textbausteine und Layout-Texte in einem Projekt an, ohne anzufassen, was es hat.',
+		'en_US' => 'A PDF builder with no library: the owner sets the layout once - paper, margins, font, header and footer with page numbers, a logo and a signature - and keeps a library of text blocks and templates built from them. render() turns a template and what a caller knows into the bytes of a PDF, the same bytes every time, and templates(), fields(), inputs(), tags() and layout() tell a caller what to offer. Every PDF is set by rules in CSS notation that the owner overrides property by property, and install() adds templates, text blocks and layout texts to a project without touching what it has. A package that brings a screen of its own builds on the writers of Store, the four views of View, preview(), uses(), vocabulary() and editorAddress().',
+		'de_DE' => 'Ein PDF-Baukasten ohne Bibliothek: Der Inhaber stellt das Layout einmal ein - Papier, Ränder, Schrift, Kopfbereich und Fußbereich mit Seitenzahlen, ein Logo und eine Unterschrift - und führt eine Bibliothek von Textbausteinen und Vorlagen daraus. render() macht aus einer Vorlage und dem, was ein Aufrufer weiß, die Bytes eines PDFs, jedes Mal dieselben, und templates(), fields(), inputs(), tags() und layout() sagen einem Aufrufer, was er anbieten kann. Jedes PDF wird nach Regeln in CSS-Schreibweise gesetzt, die der Inhaber Eigenschaft für Eigenschaft überschreibt, und install() legt Vorlagen, Textbausteine und Layout-Texte in einem Projekt an, ohne anzufassen, was es hat. Ein Paket mit eigenem Bildschirm baut auf den Schreibern von Store, den vier Ansichten von View, preview(), uses(), vocabulary() und editorAddress() auf.',
 	],
 	// What the Description tab shows: all six sections, the empty ones too
 	'manual'			=> [
@@ -87,6 +87,18 @@ return [
 			],
 		],
 		'callbacks' => [
+			'/pdf/template/uses' => [
+				'en_US' => 'Asked of each listener by uses(), and so by every deletion of a template: it answers template key, package and count, and a count above nought, or an answer that is none, keeps the template.',
+				'de_DE' => 'Wird von uses() und so bei jedem Löschen einer Vorlage gefragt: Ein Listener antwortet Schlüssel, Paket und Anzahl, und eine Anzahl über null oder eine ungültige Antwort behält die Vorlage.',
+			],
+			'/pdf/vocabulary' => [
+				'en_US' => 'Asked of each listener by vocabulary() for the groups of tokens, the slots and the sample data that a caller\'s templates may use; what is invalid in an answer is left out and the rest stays.',
+				'de_DE' => 'Wird von vocabulary() nach den Tokengruppen, Platzhaltern und Beispieldaten gefragt, die die Vorlagen eines Aufrufers nutzen dürfen; Ungültiges fällt weg, der Rest bleibt.',
+			],
+			'/pdf/editor' => [
+				'en_US' => 'Asked of each listener by editorAddress() for where the editor of a template or a block is: a path or a hash of the site, and whether it opens inside the screen that asked.',
+				'de_DE' => 'Wird von editorAddress() bei jedem Listener gefragt, wo der Editor einer Vorlage oder eines Bausteins ist: ein Pfad oder ein Hash der Website und ob er im fragenden Bildschirm aufgeht.',
+			],
 			'/nino/http/output' => [
 				'en_US' => 'Lets the responses of the workbench embed a blob: address, by one source added to their frame-src, so that the preview shows; a page of the site keeps its policy.',
 				'de_DE' => 'Lässt die Antworten der Workbench eine blob:-Adresse einbetten, durch eine Quelle mehr im frame-src, damit die Vorschau erscheint; eine Seite der Website behält ihre Policy.',

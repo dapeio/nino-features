@@ -62,6 +62,11 @@
 
 }
 
+/* The sentence of a refusal names a listener by its class, a word with no place to break: it wraps anywhere, so that it never widens the page */
+.pdf-refusal .nino-admin-error {
+	overflow-wrap: anywhere;
+}
+
 /* What the script hides with the attribute stays hidden: a display of the shell is an author's declaration, which beats the browser's [hidden] */
 #pdf-layout [hidden],
 #pdf-templates-edit [hidden] {

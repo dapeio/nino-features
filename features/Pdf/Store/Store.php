@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Modules\Pdf\Store		What the panel may write: the layout, its pictures, the blocks and the templates
+ *	Modules\Pdf\Store		What may be written: the layout, its pictures, the blocks and the templates
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -20,6 +20,17 @@ namespace Nino\Modules\Pdf {
 	 *	Nino							A compact filesystembased php framework
 	 *	Store							The checks and the writes behind the panel's actions, so that
 	 *										what the panel stores is what \Nino\Modules\Pdf reads back.
+	 *
+	 *										Eight of its methods are the public interface of the feature to a
+	 *										package that brings a screen of its own, and the panel calls the same
+	 *										ones: saveLayout( $appData, $data ), saveImage( $appData, $kind, $bytes ),
+	 *										deleteImage( $appData, $kind ), saveBlock( $appData, $data ),
+	 *										deleteBlock( $appData, $key ), saveTemplate( $appData, $data ),
+	 *										duplicateTemplate( $appData, $key, $name ) and deleteTemplate( $appData, $key ).
+	 *										Their signatures and the form of their answers stay as they are, and a
+	 *										package makes the permission check itself (\Nino\Modules\Pdf::PERM): the
+	 *										writes check what is written, not who writes. The other methods are the
+	 *										feature's own.
 	 *
 	 *										Every method answers a map: ok, and what it made - or fail, the
 	 *										arguments of \Nino\Http::fail() for a refusal a person can cause:
@@ -279,7 +290,10 @@ namespace Nino\Modules\Pdf {
 		}
 
 		/**
-		 *	Remove one template
+		 *	Remove one template - unless something uses it: a caller that counts a use of it (\Nino\Modules\Pdf::uses()) refuses
+		 *	the deletion with 409 and the code pdf_template_used, and so does a caller that gave no valid answer about it, with the
+		 *	code pdf_template_unknown, since what is not known to be unused is not removed: a caller that failed as a whole, or one whose
+	 *	failure lies in the entry of this template's key
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key
@@ -290,6 +304,23 @@ namespace Nino\Modules\Pdf {
 
 			if( Feature::template( $appData, $key ) === null )
 				return self::_fail( 404, 'there is no such template', 'pdf_template_missing' );
+
+			$asked = Feature::uses( $appData );
+
+			if( ( $asked['uses'][$key] ?? [] ) !== [] ) {
+
+				$by = [];
+
+				foreach( $asked['uses'][$key] as $package => $count )
+					$by[] = $package. ' ('. $count. ')';
+
+				return self::_fail( 409, 'the template is used: '. implode( ', ', $by ), 'pdf_template_used', [ implode( ', ', $by ) ] );
+			}
+
+			$unknown = array_values( array_unique( array_merge( $asked['unknown'][$key] ?? [], $asked['failed'] ) ) );
+
+			if( $unknown !== [] )
+				return self::_fail( 409, 'whether the template is used could not be found out', 'pdf_template_unknown', [ implode( ', ', $unknown ) ] );
 
 			$path = \Nino\Filesystem::path( $appData, Feature::TEMPLATES. '/'. $key. '.php' );
 			@unlink( $path );

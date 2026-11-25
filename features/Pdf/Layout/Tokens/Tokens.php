@@ -52,7 +52,7 @@ namespace Nino\Modules\Pdf\Layout {
 		 */
 		public static function fill( array &$appData, string $html, array $tokens, bool $preview = false, bool $band = false ): string {
 
-			return (string) preg_replace_callback( '/\[\[(\/[A-Za-z0-9_.\/-]{1,200}|[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*)\]\]/', static function( array $found ) use ( &$appData, $tokens, $preview, $band ): string {
+			return (string) preg_replace_callback( '/\[\[('. \Nino\Modules\Pdf::TOKEN_PART. ')\]\]/', static function( array $found ) use ( &$appData, $tokens, $preview, $band ): string {
 
 				$name = $found[1];
 

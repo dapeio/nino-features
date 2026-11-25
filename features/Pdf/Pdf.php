@@ -15,6 +15,7 @@ namespace Nino\Modules {
 	use Nino\Modules\Pdf\Layout\Engine;
 	use Nino\Modules\Pdf\Layout\Sheet;
 	use Nino\Modules\Pdf\Layout\Tokens;
+	use Nino\Modules\Pdf\Store;
 
 	/**
 	 *	Nino							A compact filesystembased php framework
@@ -34,7 +35,7 @@ namespace Nino\Modules {
 	 *										The API, all of it static:
 	 *
 	 *										  render( $appData, $template, $data, $options )   the bytes, or null
-	 *										  templates( $appData, $tag )                      key => name, tag
+	 *										  templates( $appData, $tag )                      key => name, tag, changed (the day, Y-m-d)
 	 *										  fields( $appData, $template )                    the signature blocks
 	 *										  inputs( $appData, $template )                    the input blocks
 	 *										  tags( $appData )                                 the project's tags
@@ -42,6 +43,33 @@ namespace Nino\Modules {
 	 *										  design( $appData )                               the rules a PDF is set with: the feature's, the owner's over them
 	 *										  sheet( $appData )                                the feature's own rules as CSS text
 	 *										  install( $appData, $templates, $blocks, $layout ) add what a caller brings, add-only
+	 *
+	 *										What a package that brings a screen of its own may build on - the public interface, which
+	 *										the panel of the workbench uses itself:
+	 *
+	 *										  \Nino\Modules\Pdf\Store    the eight writers: saveLayout, saveImage, deleteImage, saveBlock,
+	 *										                            deleteBlock, saveTemplate, duplicateTemplate, deleteTemplate - each
+	 *										                            answers [ ok, ... ] or [ fail ], the arguments of \Nino\Http::fail()
+	 *										  \Nino\Modules\Pdf\View     layout, blocks, templates, offer: the data of the screens, read only
+	 *										  preview( $appData, $posted, $data )     the bytes of an unsaved template, or fail
+	 *										  previewLayout( $appData, $data )        the bytes of the layout's own preview
+	 *										  PERM                                    the permission of the panel and of every screen of it
+	 *										  uses( $appData )                        who uses which template - asks /pdf/template/uses
+	 *										  vocabulary( $appData )                  the tokens, slots and sample data of the callers - asks /pdf/vocabulary
+	 *										  editorAddress( $appData, $about )       where the editor of a template or a block is - asks /pdf/editor
+	 *
+	 *										Three callbacks are asked, each listener on its own with a fresh argument, in the
+	 *										order they are registered; one that throws or answers what is no answer is named in a
+	 *										warning and its answer is dropped.
+	 *
+	 *										  /pdf/template/uses   [ 'uses' => [] ]; a listener answers [ 'uses' => [ template key => [ package => count ] ] ],
+	 *										                       a package a slug, a count a whole number from 0. Deleting a template is refused
+	 *										                       while a count is above nought, and while a listener answered what is no answer
+	 *										  /pdf/vocabulary      [ 'groups' => [], 'slots' => [], 'sample' => [] ]; a listener answers the same: groups
+	 *										                       [ key, label, tokens: [ [ token, label ] ] ], slots [ name, label ], sample token => text,
+	 *										                       a label a map of locale => text; what is invalid is left out, the rest stays
+	 *										  /pdf/editor          [ surface, part, key, tag, href, inside ]; a listener answers href - a path of the
+	 *										                       site or a hash, never a scheme or a host - and inside, whether it opens in the screen that asked
 	 *
 	 *										A document is laid out by \Nino\Modules\Pdf\Layout\Engine from the
 	 *										HTML of its blocks - a small subset, see \Nino\Modules\Pdf\Layout\Html -
@@ -71,6 +99,32 @@ namespace Nino\Modules {
 
 		// A key of a template or of a block, and a tag: a slug of 2 to 40 characters
 		public const string SLUG = '/^[a-z][a-z0-9-]{1,39}$/D';
+
+		// The permission of the panel and of every screen a package draws of the feature
+		public const string PERM = '/_admin/pdf/manage';
+
+		// The callbacks the feature asks, see the docblock of the class
+		public const string USES = '/pdf/template/uses';
+		public const string VOCABULARY = '/pdf/vocabulary';
+		public const string EDITOR = '/pdf/editor';
+
+		// A token as [[token]] reads it - a key with slashes, or a name with dots: TOKEN is the whole, anchored pattern a package may match a text with, TOKEN_PART its fragment, which the engine builds its own pattern from
+		public const string TOKEN_PART = '\/[A-Za-z0-9_.\/-]{1,200}|[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*';
+		public const string TOKEN = '/^(?:'. self::TOKEN_PART. ')$/D';
+
+		// What an answer to /pdf/vocabulary may hold: groups, tokens of a group, slots, sample values, and the characters of a sample value
+		public const int MAX_GROUPS = 20;
+		public const int MAX_GROUP_TOKENS = 100;
+		public const int MAX_SLOTS = 20;
+		public const int MAX_SAMPLES = 500;
+		public const int MAX_SAMPLE = 500;
+
+		// An address a listener of /pdf/editor may give: a path of the site or a hash, up to this many characters
+		public const int MAX_ADDRESS = 500;
+		public const string ADDRESS = '~^(?:/(?![/\\\\])|\#)[A-Za-z0-9\-._\~!$&()*+,;=:@/?#%]*$~D';
+
+		// What the tokens of a preview may weigh: the length of their texts and keys, and 32 for each entry - the largest sample a vocabulary may hold (MAX_SAMPLES of them, a key of 200 characters and a text of MAX_SAMPLE each) with a thousand for the nodes around it
+		public const int MAX_DATA = self::MAX_SAMPLES * ( 32 + 200 + self::MAX_SAMPLE ) + 1000;
 
 		// What a layout holds when nothing is saved: the paper, the margins in mm (top, right, bottom, left), the font, the base size in pt, the owner's rules over the feature's sheet (CSS, see Sheet)
 		public const array DEFAULTS = [
@@ -185,7 +239,7 @@ namespace Nino\Modules {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string|null	$tag					Only the templates of this tag
 		 *
-		 *	@return 	array											key => [ name, tag ]
+		 *	@return 	array											key => [ name, tag, changed ], changed the day (Y-m-d, UTC) the file of the template was written, '' where the file has none
 		 */
 		public static function templates( array &$appData, ?string $tag = null ): array {
 
@@ -196,7 +250,7 @@ namespace Nino\Modules {
 				$template = self::template( $appData, $key );
 
 				if( $template !== null && ( $tag === null || $template['tag'] === $tag ) )
-					$list[$key] = [ 'name' => $template['name'], 'tag' => $template['tag'] ];
+					$list[$key] = [ 'name' => $template['name'], 'tag' => $template['tag'], 'changed' => self::_day( @filemtime( \Nino\Filesystem::path( $appData, self::TEMPLATES. '/'. $key. '.php' ) ) ) ];
 			}
 
 			uksort( $list, static fn( string $a, string $b ): int => [ mb_strtolower( $list[$a]['name'] ), $a ] <=> [ mb_strtolower( $list[$b]['name'] ), $b ] );
@@ -347,6 +401,441 @@ namespace Nino\Modules {
 			\Nino\Modules\Pdf\Fonts\Metrics::load( $appData );
 
 			return \Nino\Modules\Pdf\Store::install( $appData, $templates, $blocks, $layout, $overwrite );
+		}
+
+		/**
+		 *	The bytes of a template that is not saved - what an editor holds - with sample data: [[name]] for a token a caller has no
+		 *	value for, the label for an input, a table for a slot, the sample text for a template with no body. Written nowhere
+		 *
+		 *	$posted is what the editor posts - name, tag, blocks - and is checked as a save would check it, with the tag not held to
+		 *	the project's list; $data is what render() takes (tokens), so that the tokens of a vocabulary's sample are filled in.
+		 *
+		 *	It checks no right: a caller that draws a screen checks Pdf::PERM first. What it answers shows what the layout holds - the
+		 *	signature, the logo and the text blocks of the library, whatever the template names - to whoever receives the bytes. $data's
+		 *	tokens - the only part of it a preview reads - are held to MAX_DATA (the text of their strings and keys and a weight for each
+		 *	entry) and refused above it; what they hold is otherwise a caller's own.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$posted				name, tag, blocks
+		 *	@param		array 		$data					See render()
+		 *
+		 *	@return 	array											[ bytes ], or [ fail ] - the arguments of \Nino\Http::fail(), as Store answers a refusal
+		 */
+		public static function preview( array &$appData, array $posted, array $data = [] ): array {
+
+			if( self::_weighs( $data['tokens'] ?? [] ) === false )
+				return [ 'fail' => [ 413, 'the data of a preview is too large', 'pdf_data_large', [ self::MAX_DATA ], '' ] ];
+
+			$checked = Store::template( $appData, $posted, false );
+
+			if( isset( $checked['fail'] ) === true )
+				return [ 'fail' => $checked['fail'] ];
+
+			return [ 'bytes' => self::compose( $appData, $checked['template'], $data, [ 'title' => $checked['template']['name'] ], true ) ];
+		}
+
+		/**
+		 *	The bytes of the sample text laid out with the layout and the design as they are saved. It checks no right - a caller
+		 *	that draws a screen checks Pdf::PERM first - and what it answers shows the layout: the logo, the signature, the header
+		 *	and the footer. The tokens of $data are held to MAX_DATA as preview() holds them
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$data					See render()
+		 *
+		 *	@return 	array											[ bytes ], or [ fail ] for data that is too large
+		 */
+		public static function previewLayout( array &$appData, array $data = [] ): array {
+
+			if( self::_weighs( $data['tokens'] ?? [] ) === false )
+				return [ 'fail' => [ 413, 'the data of a preview is too large', 'pdf_data_large', [ self::MAX_DATA ], '' ] ];
+
+			return [ 'bytes' => self::compose( $appData, [ 'name' => 'Design', 'tag' => '', 'blocks' => [] ], $data, [ 'title' => 'Design' ], true ) ];
+		}
+
+		/**
+		 *	Who uses which template, as the callers say it: the callback /pdf/template/uses is asked of each listener on its own, with
+		 *	[ 'uses' => [] ], and a listener answers [ 'uses' => [ template key => [ package => count ] ] ] - by returning it, or by
+		 *	filling the argument. A package is a slug, a count a whole number from 0 or a text of digits alone (what a database gives
+		 *	for COUNT), a key a slug of a template. The counts of a package that two listeners give for one template add up.
+		 *
+		 *	What is wrong is put on what it is wrong for. A listener that throws, answers what is no array or has no list under 'uses',
+		 *	or has a key that is no slug - a list instead of a map, 'Shared', 'shared ', a number - is in 'failed': nothing can be said
+		 *	for it. A listener whose key is readable but whose entry is not - packages that are no map, a package that is no slug, a
+		 *	count that is no whole number from 0 - is in 'unknown' under that key alone. What it gave that is valid stands. A caller
+		 *	that has to be sure that nothing uses a template - the deletion - treats a key in 'unknown' and every listener in 'failed' as unknown.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											uses: template key => package => count, only counts above nought, both sorted; unknown: template key => the listeners; failed: the listeners
+		 */
+		public static function uses( array &$appData ): array {
+
+			$uses = [];
+			$unknown = [];
+			$failed = [];
+
+			foreach( self::_ask( $appData, self::USES, [ 'uses' => [] ] ) as $heard ) {
+
+				$list = $heard['answer']['uses'] ?? null;
+
+				if( is_array( $list ) === false ) {
+					$failed[] = self::_named( self::USES, $heard, 'gave no list of uses' );
+					continue;
+				}
+
+				foreach( $list as $key => $packages ) {
+
+					if( is_string( $key ) === false || preg_match( self::SLUG, $key ) !== 1 ) {
+						$failed[] = self::_named( self::USES, $heard, 'gave a key that is no template key' );
+						continue;
+					}
+
+					if( is_array( $packages ) === false ) {
+						$unknown[$key][] = self::_named( self::USES, $heard, 'gave no list of packages for "'. $key. '"' );
+						continue;
+					}
+
+					foreach( $packages as $package => $given ) {
+
+						$count = self::_count( $given );
+
+						if( is_string( $package ) === false || preg_match( self::SLUG, $package ) !== 1 || $count === null ) {
+							$unknown[$key][] = self::_named( self::USES, $heard, 'gave a package that is no slug or a count that is no whole number for "'. $key. '"' );
+							continue;
+						}
+
+						if( $count > 0 ) {
+							$have = $uses[$key][$package] ?? 0;
+							$uses[$key][$package] = $count > PHP_INT_MAX - $have ? PHP_INT_MAX : $have + $count;
+						}
+					}
+				}
+			}
+
+			ksort( $uses );
+			ksort( $unknown );
+
+			foreach( $uses as &$packages )
+				ksort( $packages );
+
+			return [ 'uses' => $uses, 'unknown' => array_map( static fn( array $who ): array => array_values( array_unique( $who ) ), $unknown ), 'failed' => array_values( array_unique( $failed ) ) ];
+		}
+
+		/**
+		 *	What the callers' templates may use, as the callers say it: the callback /pdf/vocabulary is asked of each listener on its own,
+		 *	with [ 'groups' => [], 'slots' => [], 'sample' => [] ], and a listener answers the same -
+		 *
+		 *	  groups   [ key (a slug), label, tokens: [ [ token, label ] ] ] - a token as [[token]] reads it, without the brackets
+		 *	  slots    [ name (a slug), label ] - the names of the slot blocks the caller fills
+		 *	  sample   token => text (or a number) - what a preview shows for the token; a dotted token is nested by the caller that hands it to preview()
+		 *	  label    a map of locale => text, such as [ 'en_US' => 'Name', 'de_DE' => 'Name' ], the locales those of the site ('/nino/locales/available')
+		 *
+		 *	What is not valid - a key, a token or a name that is no slug or token or is over 200 characters, a label that is no map of texts of
+		 *	1 to MAX_LABEL characters without a control character, a part over its number - is left out with what hangs on it (a token without a valid
+		 *	label is no token), and the rest of the answer stands. The numbers are held where an answer is read: of each list the first entries up to its
+		 *	number are looked at and no more, so that an answer of any size costs what a full one does. A text is a text: markup and [[...]] in a label
+		 *	or a sample are kept as they are, to be written as text by whoever draws them. The answers add up: a group of the same key is one group
+		 *	- of at most MAX_GROUP_TOKENS tokens whoever gave them - the label of the first listener stands, a token or a slot or a sample of a name that is taken is left out.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											groups, slots, sample
+		 */
+		public static function vocabulary( array &$appData ): array {
+
+			$locales = \Nino\Locales::getAvailableLocales( $appData );
+			$groups = [];
+			$slots = [];
+			$sample = [];
+			$seen = [];
+
+			foreach( self::_ask( $appData, self::VOCABULARY, [ 'groups' => [], 'slots' => [], 'sample' => [] ] ) as $heard ) {
+
+				foreach( is_array( $heard['answer']['groups'] ?? null ) === true ? array_slice( $heard['answer']['groups'], 0, self::MAX_GROUPS ) : [] as $group ) {
+
+					$key = is_array( $group ) === true ? ( $group['key'] ?? null ) : null;
+					$label = is_array( $group ) === true ? self::_label( $group['label'] ?? null, $locales ) : null;
+
+					if( is_string( $key ) === false || preg_match( self::SLUG, $key ) !== 1 || ( isset( $groups[$key] ) === false && ( $label === null || count( $groups ) >= self::MAX_GROUPS ) ) )
+						continue;
+
+					$groups[$key] = $groups[$key] ?? [ 'key' => $key, 'label' => $label, 'tokens' => [] ];
+
+					foreach( is_array( $group['tokens'] ?? null ) === true ? array_slice( $group['tokens'], 0, self::MAX_GROUP_TOKENS ) : [] as $token ) {
+
+						if( count( $groups[$key]['tokens'] ) >= self::MAX_GROUP_TOKENS )
+							break;
+
+						$name = is_array( $token ) === true ? ( $token['token'] ?? null ) : null;
+						$text = is_array( $token ) === true ? self::_label( $token['label'] ?? null, $locales ) : null;
+
+						if( self::_isToken( $name ) === false || $text === null || isset( $seen[$name] ) === true )
+							continue;
+
+						$seen[$name] = true;
+						$groups[$key]['tokens'][] = [ 'token' => $name, 'label' => $text ];
+					}
+				}
+
+				foreach( is_array( $heard['answer']['slots'] ?? null ) === true ? array_slice( $heard['answer']['slots'], 0, self::MAX_SLOTS ) : [] as $slot ) {
+
+					$name = is_array( $slot ) === true ? ( $slot['name'] ?? null ) : null;
+					$text = is_array( $slot ) === true ? self::_label( $slot['label'] ?? null, $locales ) : null;
+
+					if( is_string( $name ) === true && preg_match( self::SLUG, $name ) === 1 && $text !== null && isset( $slots[$name] ) === false && count( $slots ) < self::MAX_SLOTS )
+						$slots[$name] = [ 'name' => $name, 'label' => $text ];
+				}
+
+				foreach( is_array( $heard['answer']['sample'] ?? null ) === true ? array_slice( $heard['answer']['sample'], 0, self::MAX_SAMPLES, true ) : [] as $token => $value ) {
+
+					if( count( $sample ) >= self::MAX_SAMPLES )
+						break;
+
+					if( self::_isToken( $token ) === true && isset( $sample[$token] ) === false
+						&& ( is_string( $value ) === true || is_int( $value ) === true || is_float( $value ) === true ) && self::_text( (string) $value, self::MAX_SAMPLE, true, true ) !== null )
+						$sample[$token] = (string) $value;
+				}
+			}
+
+			return [ 'groups' => array_values( array_filter( $groups, static fn( array $group ): bool => $group['tokens'] !== [] ) ), 'slots' => array_values( $slots ), 'sample' => $sample ];
+		}
+
+		/**
+		 *	Where the editor of a template or of a block is: the callback /pdf/editor is asked of each listener on its own, with
+		 *	[ surface, part, key, tag, href, inside ], href being the address of the panel of the workbench - a path, below the
+		 *	directory the project is served from - and inside false. A listener answers by returning an array or by changing its
+		 *	argument; one that returns nothing and changes nothing, or gives no href of its own (inside alone, or the very address it was
+		 *	handed), has no answer and hides no later listener. The first answer with a valid href - a path of the site that starts with one slash, or a hash,
+		 *	of the characters RFC 3986 allows in a path, a query and a fragment, at most MAX_ADDRESS of them, so no space, quote, bracket,
+		 *	backslash, scheme or host - and, where it gives one, an inside that is a boolean, decides; an answer that has an href that is
+		 *	none is named in a warning and left out.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$about				surface (what asks: 'crm'), part ('templates', 'blocks', 'pictures', 'layout' or 'design'), key (a template or a block), tag (of a template to be made); each a text of at most 200 characters, what is none is ''
+		 *
+		 *	@return 	array											href, inside
+		 */
+		public static function editorAddress( array &$appData, array $about ): array {
+
+			$asked = [];
+
+			foreach( [ 'surface', 'part', 'key', 'tag' ] as $name )
+				$asked[$name] = is_string( $about[$name] ?? null ) === true && mb_strlen( $about[$name] ) <= 200 ? $about[$name] : '';
+
+			$tab = [ 'templates' => 'pdf-templates', 'blocks' => 'pdf-blocks', 'pictures' => 'pdf-pictures' ][ $asked['part'] ] ?? '';
+			$parts = in_array( $asked['part'], [ 'templates', 'blocks' ], true ) === true && preg_match( self::SLUG, $asked['key'] ) === 1 ? [ $asked['key'] ] : [];
+			$asked['href'] = rtrim( \Nino\Filesystem::getDir( $appData ), '/' ). '/_admin'. \Nino\AdminAddress::of( 'pdf', $parts, $tab );
+			$asked['inside'] = false;
+
+			foreach( self::_ask( $appData, self::EDITOR, $asked ) as $heard ) {
+
+				$href = $heard['answer']['href'] ?? null;
+				$inside = $heard['answer']['inside'] ?? false;
+
+				// Nothing answered, or an answer with no address of its own: the next listener is heard
+				if( $href === null || $href === $asked['href'] )
+					continue;
+
+				if( is_string( $href ) === true && mb_strlen( $href ) <= self::MAX_ADDRESS && preg_match( self::ADDRESS, $href ) === 1 && is_bool( $inside ) === true )
+					return [ 'href' => $href, 'inside' => $inside ];
+
+				self::_named( self::EDITOR, $heard, 'answered no address of this site' );
+			}
+
+			return [ 'href' => $asked['href'], 'inside' => false ];
+		}
+
+		/**
+		 *	Ask a callback of each listener on its own: every listener gets a fresh $asked and answers by returning an array or by
+		 *	changing the argument; what one does cannot reach another. A listener that throws is named in a warning
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$hook
+		 *	@param		array 		$asked
+		 *
+		 *	@return 	array											owner (the class, or the word for a function), answer (an array, or null for a listener that threw or answered what is no array), in the order of the listeners
+		 */
+		private static function _ask( array &$appData, string $hook, array $asked ): array {
+
+			$heard = [];
+
+			foreach( \Nino\Callbacks::registered( $appData, $hook ) as $callback ) {
+
+				$owner = \Nino\Callbacks::owner( $callback ) ?? self::_function( $appData );
+				$given = $asked;
+
+				try {
+					$replaced = call_user_func_array( $callback, [ &$appData, &$given ] );
+				} catch( \Throwable $thrown ) {
+					trigger_error( 'Pdf: the listener of '. $hook. ' ('. $owner. ') threw '. $thrown::class. ': '. $thrown->getMessage(), E_USER_WARNING );
+					$heard[] = [ 'owner' => $owner, 'answer' => null ];
+					continue;
+				}
+
+				$answer = $replaced ?? $given;
+
+				if( is_array( $answer ) === false )
+					trigger_error( 'Pdf: the listener of '. $hook. ' ('. $owner. ') answered no list', E_USER_WARNING );
+
+				$heard[] = [ 'owner' => $owner, 'answer' => is_array( $answer ) === true ? $answer : null ];
+			}
+
+			return $heard;
+		}
+
+		/**
+		 *	The word a listener that is no class is named by, in the language of the workbench's session
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	string
+		 */
+		private static function _function( array &$appData ): string {
+
+			$word = \Nino\Admin\Admin::textFills( $appData, '/features/Pdf/text', \Nino\Admin\Admin::sessionLocale( $appData ) )['[[/_admin/pdf/label/function]]'] ?? '';
+
+			return is_string( $word ) === true && $word !== '' ? $word : 'function';
+		}
+
+		/**
+		 *	Name a listener that gave no valid answer: a warning, unless _ask() has said so already
+		 *
+		 *	@param		string		$hook
+		 *	@param		array 		$heard				One entry of _ask()
+		 *	@param		string		$why
+		 *
+		 *	@return 	string										The owner
+		 */
+		private static function _named( string $hook, array $heard, string $why ): string {
+
+			if( $heard['answer'] !== null )
+				trigger_error( 'Pdf: the listener of '. $hook. ' ('. $heard['owner']. ') '. $why, E_USER_WARNING );
+
+			return $heard['owner'];
+		}
+
+		/**
+		 *	The day a file was written, in UTC, as the project's clock and zone make no part of it
+		 *
+		 *	@param		int|false	$time					A modification time
+		 *
+		 *	@return 	string										Y-m-d, '' for a time that is none
+		 */
+		private static function _day( int|false $time ): string {
+
+			return $time === false ? '' : gmdate( 'Y-m-d', $time );
+		}
+
+		/**
+		 *	A count as a listener gives it: a whole number from 0, or a text of digits alone (up to 19 of them)
+		 *
+		 *	@param		mixed			$given
+		 *
+		 *	@return 	int|null									Null for anything else
+		 */
+		private static function _count( mixed $given ): ?int {
+
+			if( is_int( $given ) === true )
+				return $given >= 0 ? $given : null;
+
+			return is_string( $given ) === true && preg_match( '/^[0-9]{1,19}$/D', $given ) === 1 ? (int) $given : null;
+		}
+
+		/**
+		 *	Whether a value is a token as [[token]] reads it, of at most 200 characters
+		 *
+		 *	@param		mixed			$token
+		 *
+		 *	@return 	bool
+		 */
+		private static function _isToken( mixed $token ): bool {
+
+			return is_string( $token ) === true && strlen( $token ) <= 200 && preg_match( self::TOKEN, $token ) === 1;
+		}
+
+		/**
+		 *	Whether $data is within MAX_DATA: the length of every string and key, and a weight of 32 for every entry, counted as the
+		 *	tree is read, which stops at the first entry that goes over
+		 *
+		 *	@param		mixed			$data
+		 *
+		 *	@return 	bool
+		 */
+		private static function _weighs( mixed $data ): bool {
+
+			$left = self::MAX_DATA;
+
+			return self::_spend( $data, $left, 0 );
+		}
+
+		/**
+		 *	One step of _weighs()
+		 *
+		 *	@param		mixed			$value
+		 *	@param		int				$left					What is left to spend
+		 *	@param		int				$depth
+		 *
+		 *	@return 	bool
+		 */
+		private static function _spend( mixed $value, int &$left, int $depth ): bool {
+
+			$left -= 32 + ( is_string( $value ) === true ? strlen( $value ) : 0 );
+
+			if( $left < 0 || $depth > 8 )
+				return false;
+
+			if( is_array( $value ) === true )
+				foreach( $value as $key => $one ) {
+
+					$left -= is_string( $key ) === true ? strlen( $key ) : 0;
+
+					if( $left < 0 || self::_spend( $one, $left, $depth + 1 ) === false )
+						return false;
+				}
+
+			return true;
+		}
+
+		/**
+		 *	A label as a map of locale => text: the texts that are valid, of 1 to MAX_LABEL characters, in a locale the site has
+		 *
+		 *	@param		mixed			$label
+		 *	@param		array 		$locales			The locales of the site
+		 *
+		 *	@return 	array|null								Null where no text is valid
+		 */
+		private static function _label( mixed $label, array $locales ): ?array {
+
+			$texts = [];
+
+			if( is_array( $label ) === false )
+				return null;
+
+			// The languages of the site are walked and looked up, so that no more is read than the site has languages, wherever the label lists them
+			foreach( $locales as $locale )
+				if( is_string( $locale ) === true && is_string( $label[$locale] ?? null ) === true && self::_text( $label[$locale], self::MAX_LABEL, false, false ) !== null )
+					$texts[$locale] = $label[$locale];
+
+			return $texts === [] ? null : $texts;
+		}
+
+		/**
+		 *	A text a caller gave: valid UTF-8, no control character - a line feed, a carriage return and a tab only where $lines says they may be -,
+		 *	of at most $max characters, empty only where $empty says it may be
+		 *
+		 *	@param		string		$text
+		 *	@param		int				$max
+		 *	@param		bool			$empty
+		 *	@param		bool			$lines
+		 *
+		 *	@return 	string|null
+		 */
+		private static function _text( string $text, int $max, bool $empty, bool $lines ): ?string {
+
+			if( ( $text === '' && $empty === false ) || strlen( $text ) > 4 * $max || mb_strlen( $text ) > $max || mb_check_encoding( $text, 'UTF-8' ) === false || preg_match( $lines === true ? '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/' : '/[\x00-\x1F\x7F]/', $text ) === 1 )
+				return null;
+
+			return $text;
 		}
 
 		/**
