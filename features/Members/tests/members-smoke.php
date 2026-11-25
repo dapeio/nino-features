@@ -502,7 +502,7 @@ check( 'its manual says all six sections in both languages, and its section of t
 		foreach( (array) ( $manifest['manual'][$section] ?? [] ) as $line )
 			if( is_array( $line ) === false || trim( (string) ( $line['en_US'] ?? '' ) ) === '' || trim( (string) ( $line['de_DE'] ?? '' ) ) === '' )
 				return false;
-	return isset( $manifest['manual']['install']['elements/privacy.php'] ) === true && count( $manifest['manual']['shortcodes'] ) >= 4 && count( $manifest['manual']['routes'] ) === 8
+	return isset( $manifest['manual']['install']['elements/privacy.php'] ) === true && count( $manifest['manual']['shortcodes'] ) >= 4 && count( $manifest['manual']['routes'] ) === 9
 		&& array_diff( [ '/members/login', '/members/logout', '/members/start', '/members/login-form', '/members/open', '/members/changed', '/members/removed', '/members/language' ], array_keys( $manifest['manual']['callbacks'] ) ) === [];
 } )() );
 
@@ -3118,6 +3118,385 @@ function membersLoginSlotChecks( array &$appData ): void {
 		&& count( membersFind( $plain, '//form//input' ) ) === count( membersFind( $filled, '//form//input' ) ) );
 }
 
+/**
+ *	The mail of a code lapses with its code. The mail to somebody and the mail to nobody carry the same expiry - the minutes of the setting, in seconds, less the one second that keeps
+ *	the end of the mail from falling after the end of the code - for a code to sign in and for the code of a new address, also where a second turns between the two; a mail that has
+ *	lapsed goes to no transport, is in no file with its text and is 'failed' to the outbox, and the code it carried is as good as any code that ran out; the run after the expiry does the same
+ *	file operations and gives the same answer for every address; the brake of the site does not count a mail once the outbox has taken it out, and holds again when the share fills anew while
+ *	the transport is still down; and the mails that are worth as much a day later carry no expiry
+ *
+ *	@param		array 		&$appData
+ *
+ *	@return 	void
+ */
+function membersExpiryChecks( array &$appData ): void {
+
+	global $mails, $delivery;
+
+	$members = \Nino\Modules\Members::class;
+	$sandbox = ninoSandboxDir( $appData );
+	$original = $appData['/nino/mail/cap'] ?? null;
+	\Nino\Features::saveSettings( $appData, 'members', [ 'paths' => [], 'start' => '/', 'attempts' => 10, 'linkMinutes' => 15 ] );
+
+	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php' ] as $file )
+		\Nino\Filesystem::putFileContent( $appData, $file, [] );
+
+	$ada = $members::add( $appData, 'ada@example.org', 'Ada', 'staff' );
+	$members::add( $appData, 'tak@example.org', 'Tak', '' );
+
+	$outbox = static fn(): array => array_values( (array) ( \Nino\MailQueue::decode( (string) @file_get_contents( \Nino\Filesystem::path( $GLOBALS['appData'], \Nino\MailQueue::WAITING ) ) )['waiting'] ?? [] ) );
+	$everything = static function() use ( $sandbox ): string {
+
+		$all = '';
+
+		foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $sandbox. '/private', \FilesystemIterator::SKIP_DOTS ) ) as $file )
+			if( $file->isFile() === true )
+				$all .= (string) file_get_contents( $file->getPathname() ). "\n";
+
+		return $all;
+	};
+	$reset = static function() use ( &$appData ): void {
+
+		global $mails, $delivery;
+
+		foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE, \Nino\MailQueue::FAILED, '/data/mail-status.php', '/data/mail-queue-lapsed.php', '/data/mail-queue-untried.php', '/data/members-tokens.php' ] as $name )
+			@unlink( \Nino\Filesystem::path( $appData, $name ) );
+
+		unset( $appData['./nino/filesystem/cache'], $appData['./nino/mail/now'] );
+		clearstatcache();
+		$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+		$appData['/nino/mail/cap'] = 0;
+		membersVisitor();
+		membersFresh( $appData );
+		$mails = [];
+		$delivery = true;
+		ninoWarnings();
+	};
+	// The request for a code as far as its answer: the mail is in the outbox and nothing has run after the answer yet
+	$post = static function( string $email ) use ( &$appData ): void {
+
+		$_POST = [ 'email' => $email, 'return' => '/join', '_csrf' => \Nino\Csrf::getToken( $appData ) ];
+		$request = ninoVisit( $appData, '/.members/login', 'POST' );
+		\Nino\Http::response( $appData, $request );
+		$_POST = [];
+	};
+	// The work the kernel runs after an answer
+	$run = static function() use ( &$appData ): void {
+
+		$request = [ '/nino/http/response' => [ 'statusCode' => 303, 'header' => [], 'body' => '' ] ];
+
+		foreach( \Nino\Http::prepareAfter( $appData, $request ) as $work )
+			$work();
+	};
+
+	// --- the outbox takes the expiry for every value the setting allows: a value it refused would leave a member with no mail, the same for a stranger, and one line in the log ---
+
+	$bounds = (array) ( \Nino\Features::manifest( dirname( __DIR__ ) )['settings']['linkMinutes'] ?? [] );
+	check( 'the minutes the setting allows, in seconds, are all within what the outbox takes as an expiry - from MailQueue::MIN_EXPIRES to MailQueue::MAX_AGE - so that it never refuses the mail of a code as invalid', defined( '\Nino\MailQueue::MIN_EXPIRES' ) === true && defined( '\Nino\MailQueue::MAX_AGE' ) === true && is_int( $bounds['min'] ?? null ) === true && is_int( $bounds['max'] ?? null ) === true
+		&& $bounds['min'] * 60 >= \Nino\MailQueue::MIN_EXPIRES && $bounds['max'] * 60 <= \Nino\MailQueue::MAX_AGE && $bounds['min'] <= $bounds['default'] && $bounds['default'] <= $bounds['max'] );
+
+	// --- the same expiry for both kinds: the setting's minutes, in seconds - for a code to sign in and for the code of a new address ---
+
+	$seen = [];
+	// A row is made inside one second of the clock, so that the seconds it counts are the ones of the setting: a second that turns inside it is made again
+	$stable = static function( callable $make ): array {
+
+		for( $try = 0; $try < 5; $try++ ) {
+
+			if( fmod( microtime( true ), 1.0 ) > 0.9 )
+				usleep( 120000 );
+
+			$second = time();
+			$row = $make();
+
+			if( time() === $second )
+				break;
+		}
+
+		return $row;
+	};
+
+	foreach( [ 15, 30 ] as $minutes ) {
+
+		\Nino\Features::saveSettings( $appData, 'members', [ 'linkMinutes' => $minutes ] );
+
+		foreach( [ 'ada@example.org' => 'somebody', 'zed@example.org' => 'nobody' ] as $address => $who ) {
+
+			$seen['code'][$minutes][$who] = $stable( static function() use ( $reset, $post, $outbox, $address, &$appData ): array {
+
+				$reset();
+				$post( $address );
+				$entry = $outbox()[0] ?? [];
+
+				return [ count( $outbox() ), $entry['expires'] ?? null, $entry['queued'] ?? null, $entry['kind'] ?? null, strlen( (string) @file_get_contents( \Nino\Filesystem::path( $appData, \Nino\MailQueue::WAITING ) ) ) ];
+			} );
+		}
+
+		foreach( [ 'fre@example.org' => 'somebody', 'tak@example.org' => 'nobody' ] as $address => $who ) {
+
+			$seen['change'][$minutes][$who] = $stable( static function() use ( $reset, $outbox, $address, $members, $ada, &$appData ): array {
+
+				global $mails;
+
+				$reset();
+				membersSignIn( $appData, $ada );
+				$mails = [];
+				membersFresh( $appData );
+				$members::askChange( $appData, (array) $members::current( $appData ), $address );
+				$entry = $outbox()[0] ?? [];
+				$row = [ count( $outbox() ), $entry['expires'] ?? null, $entry['queued'] ?? null, $entry['kind'] ?? null, strlen( (string) @file_get_contents( \Nino\Filesystem::path( $appData, \Nino\MailQueue::WAITING ) ) ) ];
+				membersAfter( $appData, '' );
+
+				return $row;
+			} );
+		}
+	}
+
+	$span = static fn( array $row ): ?int => is_int( $row[1] ) === true && is_int( $row[2] ) === true ? $row[1] - $row[2] : null;
+	\Nino\Features::saveSettings( $appData, 'members', [ 'linkMinutes' => 15 ] );
+
+	foreach( [ 'code', 'change' ] as $kind )
+		foreach( [ 15, 30 ] as $minutes )
+			check( 'the mail of a '. $kind. ' carries the expiry of the setting\'s '. $minutes. ' minutes, in seconds, less the one second of the margin, for the address that has an account and for the one that has none alike - the same value, the same kind of mail, the same size of the outbox',
+				$seen[$kind][$minutes]['somebody'][0] === 1 && $seen[$kind][$minutes]['nobody'][0] === 1 && $span( $seen[$kind][$minutes]['somebody'] ) === $minutes * 60 - 1 && $span( $seen[$kind][$minutes]['nobody'] ) === $minutes * 60 - 1
+				&& $seen[$kind][$minutes]['somebody'][3] === \Nino\Mail::CLIENT && $seen[$kind][$minutes]['nobody'][3] === \Nino\Mail::CLIENT && $seen[$kind][$minutes]['somebody'][4] === $seen[$kind][$minutes]['nobody'][4] );
+
+	// --- the end of the mail is never after the end of the code: a second turns, once between the end of the code being fixed and the mail being queued, once inside the outbox's own
+	// reading of its clock - for the address that has an account and for the one that has none alike. The turn is made to happen: the first read of a file that lies at that place - the
+	// accounts, read after the end of the code is fixed; the secret of the outbox, read inside its call - waits for the next second ---
+
+	$turned = [];
+
+	foreach( [ 'between' => [ 'read', 'members.php' ], 'inside' => [ 'read', 'mail-secret.php' ] ] as $where => [ $step, $file ] )
+		foreach( [ 'ada@example.org' => 'somebody', 'zed@example.org' => 'nobody' ] as $address => $who ) {
+
+			$reset();
+			$waited = false;
+			FaultFs::on( [ $step => static function( string $path ) use ( &$waited, $file ): bool {
+
+				if( $waited === false && str_contains( $path, '/'. $file ) === true ) {
+
+					$waited = true;
+
+					for( $second = time(); time() === $second; )
+						usleep( 1000 );
+				}
+
+				return false;
+			} ] );
+			$post( $address );
+			FaultFs::off();
+			$entry = $outbox()[0] ?? [];
+			$turned[$where][$who] = [ $waited, is_int( $entry['expires'] ?? null ) === true ? $entry['expires'] - (int) ( membersPending( $appData )['until'] ?? 0 ) : null ];
+		}
+
+	foreach( [ 'between' => 'between the end of the code being fixed and the mail being queued', 'inside' => 'inside the call of the outbox, between the clock the end is counted on and the clock the outbox reads' ] as $where => $when )
+		check( 'a second that turns '. $when. ' does not put the end of the mail after the end of the code: it ends in the same second or the one before, the same for the address that has an account and the one that has none',
+			$turned[$where]['somebody'][0] === true && $turned[$where]['nobody'][0] === true && $turned[$where]['somebody'][1] === $turned[$where]['nobody'][1]
+			&& $turned[$where]['somebody'][1] !== null && $turned[$where]['somebody'][1] >= -1 && $turned[$where]['somebody'][1] <= 0 );
+
+	// --- the mail that is worth as much a day later carries none: the notice to the old address ---
+
+	$reset();
+	membersSignIn( $appData, $ada );
+	$mails = [];
+	membersFresh( $appData );
+	$members::askChange( $appData, (array) $members::current( $appData ), 'ada.moved@example.org' );
+	membersAfter( $appData, '' );
+	$code = str_replace( ' ', '', membersCodeOf( end( $mails ) ?: [] ) );
+	$mails = [];
+	$delivery = false;
+	$answer = $members::confirmChange( $appData, (array) $members::current( $appData ), $code );
+	$notice = $outbox();
+	$members::change( $appData, $ada['id'], [ 'email' => 'ada@example.org' ] );
+	$delivery = true;
+	check( 'the notice to the old address is queued with no expiry - it is worth as much a day later - and a link of the owner is never in the outbox, which has no expiry for it', $answer === 'ok' && count( $notice ) === 1 && ( $notice[0]['to'] ?? '' ) === 'ada@example.org'
+		&& array_key_exists( 'expires', $notice[0] ) === false );
+
+	// --- the mail that has lapsed: no transport, no text in any file, and failed for the outbox - for the address with an account and the one with none alike ---
+
+	$key = static fn( string $email, array $pending ): string => 'members/code-'. hash( 'sha256', \Nino\Csrf::getToken( $GLOBALS['appData'] ). '|'. $email. '|'. ( $pending['nonce'] ?? '' ). '|'. intdiv( \Nino\MailQueue::now( $GLOBALS['appData'] ), \Nino\MailQueue::KEY_MEMORY ) );
+	// $offset is the second of the run, counted from the expiry: -1 is the second before it, 0 the second it names
+	$lapse = static function( string $email, int $offset ) use ( &$appData, $reset, $post, $run, $outbox, $everything, $key ): array {
+
+		global $mails;
+
+		$reset();
+		$post( $email );
+		$entry = $outbox()[0] ?? [];
+		$pending = (array) membersPending( $appData );
+		$name = $key( $email, $pending );
+		$code = membersCodeOf( $entry );
+		$stated = [ \Nino\Mail::state( $appData, $name ), str_contains( $everything(), $code ) ];
+		$appData['./nino/mail/now'] = (int) ( $entry['expires'] ?? 0 ) + $offset;
+		$run();
+
+		return [ 'code' => str_replace( ' ', '', $code ), 'before' => $stated, 'state' => \Nino\Mail::state( $appData, $name ), 'transport' => count( $mails ), 'waiting' => count( $outbox() ), 'counts' => \Nino\Mail::queued( $appData ),
+			'text' => str_contains( $everything(), $code ), 'warnings' => ninoWarnings() ];
+	};
+	$lapsed = [ 'somebody' => $lapse( 'ada@example.org', 0 ), 'nobody' => $lapse( 'zed@example.org', 0 ) ];
+	$late = [ 'somebody' => $lapse( 'ada@example.org', -1 ), 'nobody' => $lapse( 'zed@example.org', -1 ) ];
+	check( 'a mail that is run after the second its expiry names goes to no transport and waits no more, for an address with an account and for one with none: nothing was asked of the transport, the outbox is empty, and neither is a failure of the dashboard - the same counts',
+		$lapsed['somebody']['transport'] === 0 && $lapsed['nobody']['transport'] === 0 && $lapsed['somebody']['waiting'] === 0 && $lapsed['nobody']['waiting'] === 0 && $lapsed['somebody']['counts'] === $lapsed['nobody']['counts']
+		&& $lapsed['somebody']['counts']['waiting'] === 0 && $lapsed['somebody']['counts']['failed'] === 0 );
+	check( '...its text is in no file of the project any more - not the code - though it was in the outbox a moment before, and the outbox says failed of its key, for both', $lapsed['somebody']['before'] === [ \Nino\Mail::STATE_WAITING, true ] && $lapsed['nobody']['before'] === [ \Nino\Mail::STATE_WAITING, true ]
+		&& $lapsed['somebody']['text'] === false && $lapsed['nobody']['text'] === false
+		&& $lapsed['somebody']['state'] === \Nino\Mail::STATE_FAILED && $lapsed['nobody']['state'] === \Nino\Mail::STATE_FAILED );
+	check( '...and one run a second before the expiry delivers it, as it was: the transport has the mail of the member, the other is let go, and the key says sent for both', $late['somebody']['transport'] === 1 && $late['nobody']['transport'] === 0 && $late['somebody']['state'] === \Nino\Mail::STATE_SENT && $late['nobody']['state'] === \Nino\Mail::STATE_SENT
+		&& $late['somebody']['waiting'] === 0 && $late['nobody']['waiting'] === 0 && $late['somebody']['warnings'] === [] && $late['nobody']['warnings'] === [] );
+
+	// --- the code of a mail that lapsed is as good as any code that ran out: the same answer, for the request that ran out and for the record that did ---
+
+	$answers = [];
+
+	foreach( [ 'lapsed' => 0, 'delivered' => -1 ] as $name => $offset )
+		foreach( [ 'ada@example.org', 'zed@example.org' ] as $address )
+			foreach( [ 'request', 'record' ] as $ran ) {
+
+				$mine = $lapse( $address, $offset );
+
+				if( $ran === 'request' )
+					$_SESSION[ $appData['./nino/uid'] ]['./members/pending']['until'] = time() - 1;
+				else {
+					$file = membersFile( $appData, 'tokens' );
+
+					foreach( $file as $hash => $each )
+						$file[$hash]['expires'] = time() - 1;
+
+					\Nino\Filesystem::putFileContent( $appData, '/data/members-tokens.php', $file );
+				}
+
+				$answers[$name][$address][$ran] = [ $mine['state'], membersCodeServe( $appData, $mine['code'] ), \Nino\Modules\Members::current( $appData ) ];
+			}
+
+	$rows = static fn( array $group ): array => [ ...array_values( $group['ada@example.org'] ), ...array_values( $group['zed@example.org'] ) ];
+
+	check( 'the code of a mail that lapsed signs nobody in once it ran out: the request that ran out is gone and the record that ran out is wrong, as they are for the code of a mail that was delivered, for an address with an account and one with none alike',
+		$answers['lapsed']['ada@example.org']['request'][1] === [ 303, '/join?members=gone', 'no-store', '' ] && $answers['lapsed']['ada@example.org']['record'][1] === [ 303, '/join?members=wrong', 'no-store', '' ]
+		&& array_column( $answers['lapsed']['ada@example.org'], 1 ) === array_column( $answers['delivered']['ada@example.org'], 1 ) && array_column( $answers['lapsed']['zed@example.org'], 1 ) === array_column( $answers['lapsed']['ada@example.org'], 1 )
+		&& array_column( $answers['lapsed']['zed@example.org'], 1 ) === array_column( $answers['delivered']['zed@example.org'], 1 ) && array_filter( $rows( $answers['lapsed'] ), static fn( array $row ): bool => $row[2] !== null || $row[0] !== \Nino\Mail::STATE_FAILED ) === []
+		&& array_filter( $rows( $answers['delivered'] ), static fn( array $row ): bool => $row[2] !== null || $row[0] !== \Nino\Mail::STATE_SENT ) === [] );
+
+	// --- the brake of the site counts what waits: a mail that lapsed is counted until the outbox has taken it out, and not after ---
+
+	$sendFrom = static function( int $n, string $email ) use ( &$appData ): string {
+
+		$_SERVER['REMOTE_ADDR'] = '192.0.2.'. ( 1 + $n % 250 );
+		membersVisitor();
+
+		return membersAnswer( membersServe( $appData, '/.members/login', 'POST', [ 'email' => $email, 'return' => '/join' ] ) )[1];
+	};
+	$reset();
+	$delivery = false;
+	$share = $members::siteShare();
+
+	// Members, one for each place of the share: the mail of an address with no account is let go as it is made and never waits
+	for( $n = 0; $n < $share; $n++ ) {
+		$members::add( $appData, sprintf( 'e%02d@example.org', $n ), 'E', '' );
+		$sendFrom( $n, sprintf( 'e%02d@example.org', $n ) );
+	}
+
+	$full = [ \Nino\Mail::queued( $appData )['waiting'], $members::standing( $appData )['braked'] ];
+	$appData['./nino/mail/now'] = ( $outbox()[0]['expires'] ?? 0 ) + 1;
+	$delivery = true;
+	$mails = [];
+	$members::add( $appData, 'late1@example.org', 'L', '' );
+	$members::add( $appData, 'late2@example.org', 'L', '' );
+	$first = $sendFrom( 100, 'late1@example.org' );
+	$firstMails = count( $mails );
+	$firstCounts = \Nino\Mail::queued( $appData );
+	$firstWords = ninoWarnings();
+	$second = $sendFrom( 101, 'late2@example.org' );
+	$secondMails = array_column( $mails, 'to' );
+	check( 'the share of the site is full of mails that wait - '. $share. ' - and the panel is told that sign-ins are held back', $full === [ $share, true ] );
+	check( 'a request after their expiry is still held, as the outbox counts a mail that waits to be taken out as waiting - the answer is the same, no mail goes, the log says that requests are held back - and the run after that request takes them all out: nothing waits, the brake is off',
+		$first === '/join?members=sent' && $firstMails === 0 && $firstCounts['waiting'] === 0 && $firstCounts['failed'] === $share && $members::standing( $appData )['braked'] === false
+		&& in_array( 'Members: requests for a code are held back, mails wait in the outbox', $firstWords, true ) === true && count( $outbox() ) === 0 );
+	check( '...and the next request is let through: its mail goes to the transport, and the mails that lapsed are no reason to hold it - the outbox counts none of them as waiting', $second === '/join?members=sent' && $secondMails === [ 'late2@example.org' ] && \Nino\Mail::queued( $appData )['waiting'] === 0
+		&& $members::standing( $appData )['braked'] === false );
+
+	// --- the brake holds again where the share fills anew while the transport is still down: the mails that lapsed were taken out and are on record as failed, and that is no reason to let a request through ---
+
+	$reset();
+	$delivery = false;
+
+	for( $n = 0; $n < $share; $n++ )
+		$sendFrom( 20 + $n, sprintf( 'e%02d@example.org', $n ) );
+
+	$appData['./nino/mail/now'] = ( $outbox()[0]['expires'] ?? 0 ) + 1;
+	$sendFrom( 60, 'late1@example.org' );
+	$swept = \Nino\Mail::queued( $appData );
+
+	for( $n = 0; $n < $share; $n++ )
+		$sendFrom( 80 + $n, sprintf( 'e%02d@example.org', $n ) );
+
+	$refilled = [ \Nino\Mail::queued( $appData ), $members::standing( $appData )['braked'], count( $outbox() ) ];
+	$sendFrom( 140, 'late2@example.org' );
+	$again = [ \Nino\Mail::queued( $appData ), count( $outbox() ) ];
+	$delivery = true;
+	check( 'the transport is down and the mails of '. $share. ' requests lapsed: the run after the next request takes them out of the outbox and counts them as failed, none as waiting', $swept['waiting'] === 0 && $swept['failed'] === $share );
+	check( '...and when '. $share. ' requests fill the share anew while the transport is still down - failed mails on record - the brake holds again: a request after that queues nothing and the outbox keeps the '. $share. ' that wait',
+		$refilled[0]['waiting'] === $share && $refilled[0]['failed'] > 0 && $refilled[1] === true && $refilled[2] === $share && $again[0]['waiting'] === $share && $again[1] === $share );
+
+	// --- the run after the expiry is the same for every address: the request that takes a lapsed mail out does the same file operations and gives the same answer - the same status, the
+	// same header lines, the same page - whether the mail was to a member, to nobody or to a switched-off account. Where the transport works or no run came before the expiry, which is where
+	// the outbox promises it ---
+
+	$off = $members::add( $appData, 'off@example.org', 'Off', '' );
+	$members::change( $appData, $off['id'], [ 'active' => false ] );
+	$after = static function( string $email, bool $working ) use ( &$appData, $reset, $post, $run, $outbox, $sandbox ): array {
+
+		global $mails, $delivery;
+
+		$reset();
+		$delivery = $working;
+		$post( $email );
+		$entry = $outbox()[0] ?? [];
+
+		if( $working === true )
+			$run();
+
+		$before = count( $outbox() );
+		$appData['./nino/mail/now'] = (int) ( $entry['expires'] ?? 0 ) + 1;
+		membersVisitor();
+		unset( $appData['./nino/filesystem/cache'] );
+		clearstatcache();
+		$sent = count( $mails );
+		FaultFs::on();
+		$request = membersServe( $appData, '/' );
+		$log = array_map( static fn( array $line ): string => (string) preg_replace( '/[0-9a-f]{12}\.tmp/', 'X.tmp', str_replace( $sandbox, '<sandbox>', implode( ' ', array_map( 'strval', $line ) ) ) ), FaultFs::$log );
+		FaultFs::off();
+		$answer = $request['/nino/http/response'];
+		$delivery = true;
+
+		return [ 'operations' => $log, 'status' => $answer['statusCode'], 'header' => $answer['header'], 'body' => md5( (string) ( $answer['body'] ?? '' ) ), 'warnings' => ninoWarnings(), 'transport' => count( $mails ) - $sent,
+			'counts' => \Nino\Mail::queued( $appData ), 'outbox' => [ $before, count( $outbox() ) ] ];
+	};
+	$sweeps = [];
+
+	foreach( [ 'a transport that works' => true, 'no run before the expiry' => false ] as $case => $working )
+		foreach( [ 'ada@example.org', 'zed@example.org', 'off@example.org' ] as $address )
+			$sweeps[$case][$address] = $after( $address, $working );
+
+	foreach( $sweeps as $case => $rows )
+		check( 'the request after the expiry - '. $case. ' - does the same file operations and gives the same status, header lines and page for an address with an account, for one with none and for a switched-off account; no mail goes, and the outbox is left with none that waits',
+			count( array_unique( array_map( 'serialize', $rows ) ) ) === 1 && $rows['zed@example.org']['status'] === 200 && $rows['zed@example.org']['transport'] === 0 && $rows['zed@example.org']['outbox'][1] === 0
+			&& $rows['zed@example.org']['outbox'][0] === ( $case === 'no run before the expiry' ? 1 : 0 ) && ( $rows['zed@example.org']['operations'] !== [] ) === ( $case === 'no run before the expiry' ) );
+
+	$reset();
+	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5, 'linkMinutes' => 15 ] );
+
+	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php' ] as $file )
+		@unlink( \Nino\Filesystem::path( $appData, $file ) );
+
+	if( $original === null )
+		unset( $appData['/nino/mail/cap'] );
+	else
+		$appData['/nino/mail/cap'] = $original;
+
+	unset( $appData['./nino/filesystem/cache'] );
+}
+
 membersLoginSlotChecks( $appData );
 
 // --- The panel's script, where node is on the path -----------------------------------
@@ -3142,6 +3521,7 @@ membersFixRoundChecks( $appData );
 membersRememberFixChecks( $appData );
 membersRemoveGroupsChecks( $appData );
 membersVoidChecks( $appData );
+membersExpiryChecks( $appData );
 
 echo "\n";
 ninoDone( $appData );

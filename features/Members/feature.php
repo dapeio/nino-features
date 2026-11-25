@@ -59,12 +59,16 @@ return [
 				'de_DE' => 'Das Formular verbirgt die Konten nur, wo der Server den Client vor der Arbeit nach der Antwort entlässt (php-fpm, LiteSpeed) und einen freien Worker hat; das Panel sagt, wo.',
 			],
 			'POST /.members/login, the outbox' => [
-				'en_US' => 'The mail of a code waits in the outbox, readable, until it is delivered - up to two days where the transport fails -, and a mail delivered late carries a code that has run out.',
-				'de_DE' => 'Die Mail eines Codes liegt lesbar im Postausgang, bis sie zugestellt ist – bis zu zwei Tage, wo der Transport ausfällt –, und eine spät zugestellte Mail trägt einen abgelaufenen Code.',
+				'en_US' => 'The mail of a code waits in the outbox, readable, and lapses with the code: after its minutes nobody delivers it, its text is gone once a run takes it out, and where none comes it lies there.',
+				'de_DE' => 'Die Mail eines Codes liegt lesbar im Postausgang und verfällt mit dem Code: Nach seinen Minuten stellt sie niemand zu, ihr Text ist weg, sobald ein Lauf sie wegräumt, und wo keiner kommt, liegt sie.',
 			],
 			'POST /.members/login, what stays open' => [
 				'en_US' => 'A failing mail transport shows in the time before the answer even where the server lets go first, and where it does not the time of the answer and the next request tell an address with an account.',
 				'de_DE' => 'Ein ausfallender Mail-Transport zeigt sich in der Zeit vor der Antwort auch dort, wo der Server zuerst entlässt, und sonst verraten Antwortzeit und nächste Anfrage eine Adresse mit Konto.',
+			],
+			'POST /.members/login, after a refusal' => [
+				'en_US' => 'Where a transport refused a mail that then lapsed, the run that takes it out differs for an address with an account: file operations, a log line, a failed count; that lies with the kernel.',
+				'de_DE' => 'Hat ein Transport eine Mail abgelehnt und verfällt sie, unterscheidet sich der Lauf, der sie wegräumt, für eine Adresse mit Konto: Dateioperationen, Logzeile, Fehlerzähler; das liegt beim Kernel.',
 			],
 			'POST /.members/code' => [
 				'en_US' => 'Takes the code: a right one signs the member in and leads on, a wrong one counts as a try, and the fifth ends the request.',
@@ -177,12 +181,14 @@ return [
 				'de_DE' => 'Die Sitzungsepoche, die das Abmelden aller ersetzt und die eine Sicherung mitnimmt.',
 			],
 			'elements/privacy.php' => [
-				'en_US' => 'Brings its section of the privacy policy for the Legal module; a starting point, no legal advice.',
-				'de_DE' => 'Bringt den Abschnitt der Datenschutzerklärung für das Modul Legal mit; ein Ausgangspunkt, keine Rechtsberatung.',
+				'en_US' => 'Brings its section of the privacy policy for the Legal module, a starting point and no legal advice; a project that has the section copies changed words by hand.',
+				'de_DE' => 'Bringt den Abschnitt der Datenschutzerklärung für das Modul Legal mit, ein Ausgangspunkt ohne Rechtsberatung; ein Projekt, das den Abschnitt hat, übernimmt geänderte Worte von Hand.',
 			],
 		],
 	],
 	'category'		=> 'security',
+	// The kernel whose outbox takes the field 'expires' of a mail (\Nino\Mail::queue()): the mail of a code lapses with the code only there. A kernel without the field - the constraint cannot tell the two
+	// apart - ignores it, and the mail then waits in the outbox as any mail does, up to two days; sign-in works the same and nothing tells a member from a stranger, but the section of the privacy policy is untrue for it
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
 	'requires'		=> [ 'basis' ],
@@ -214,8 +220,8 @@ return [
 			'type'		=> 'int',
 			'label'		=> [ 'en_US' => 'Code valid for', 'de_DE' => 'Code gültig für' ],
 			'hint'		=> [
-				'en_US' => 'How long the code a member asks for can be used, once - the code to sign in and the code for a new sign-in address alike. The link the owner sends from the panel is valid just as long. The section of the privacy policy names fifteen minutes - change it with this.',
-				'de_DE' => 'Wie lange der Code, den ein Mitglied anfordert, benutzt werden kann, einmal – der Code zum Anmelden ebenso wie der für eine neue Anmeldeadresse. Der Link, den der Inhaber im Panel schickt, gilt ebenso lange. Der Abschnitt der Datenschutzerklärung nennt fünfzehn Minuten – ändere ihn mit.',
+				'en_US' => 'How long the code a member asks for can be used, once - the code to sign in and the code for a new sign-in address alike. The link the owner sends from the panel is valid just as long. The mail that carries a code lapses after the same minutes. The section of the privacy policy names fifteen minutes - change it with this.',
+				'de_DE' => 'Wie lange der Code, den ein Mitglied anfordert, benutzt werden kann, einmal – der Code zum Anmelden ebenso wie der für eine neue Anmeldeadresse. Der Link, den der Inhaber im Panel schickt, gilt ebenso lange. Die Mail, die einen Code trägt, verfällt nach denselben Minuten. Der Abschnitt der Datenschutzerklärung nennt fünfzehn Minuten – ändere ihn mit.',
 			],
 			'min'			=> 5,
 			'max'			=> 1440,

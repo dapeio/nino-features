@@ -2155,6 +2155,11 @@ namespace Nino\Modules {
 		 *	names an id that no account has - twelve random hex digits, as long as an id is, so that the file is as large as the one of a member's code - and what the record is
 		 *	spent for is 'gone', as it is for an account that was deleted since.
 		 *
+		 *	The mail lapses with its code: it carries 'expires' - the seconds that are left of the code, less one - for both kinds, so that from the last second of the code nobody delivers it, and once
+		 *	a run has taken it out its text is in no file and the outbox says 'failed' of its key. Where no run comes - no request that sets one off, no cron job - it lies in the file, text and all, until one does, and a transport that was asked before the
+		 *	second is not called back. A mail whose expiry the outbox refuses ('invalid', which the bounds of the setting keep from happening) ends like any other refusal: the same for both kinds,
+		 *	the code spent, one line in the log that names the reason and no address
+		 *
 		 *	The key is made of the session, the address, the nonce of the request and the time slot of the kernel's memory for keys (MailQueue::KEY_MEMORY): within a slot a
 		 *	second request is the mail of the first - the outbox answers 'conflict' for a mail that waits or went out lately, for both kinds alike - and in the next slot it is
 		 *	a mail of its own, for both kinds alike, since the kernel has forgotten the key of a mail to nobody by then and a mail that waits for its transport would still hold
@@ -2205,7 +2210,12 @@ namespace Nino\Modules {
 			// The code of the language of the request: the same for every address, whoever the hook of the language would name for an account
 			[ $subject, $body, $replyTo ] = self::_compose( $appData, '', $kind, $code, false, '' );
 
-			$queued = \Nino\Mail::queue( $appData, [ 'to' => $email, 'subject' => $subject, 'body' => $body, 'replyTo' => $replyTo ], $real === true ? \Nino\Mail::CLIENT : \Nino\Mail::VOID,
+			// The mail is worth what the code is worth: it lapses with it - the seconds that are left of the code, the same expression for the mail to somebody and the mail to nobody, which is
+			// what keeps the two the same operations and the same bytes. They are counted from the end that was kept (until), on the clock that fixed it (time(), which the clock of the outbox is
+			// where no test sets one) and less one: the outbox reads its clock once more inside the call, and a second that turns in between would put the end of the mail after the end of the code,
+			// where it now lapses in the last second of the code at the latest. The bounds of the setting keep the value within what the outbox takes: five minutes to a day, less the seconds
+			// this request has used
+			$queued = \Nino\Mail::queue( $appData, [ 'to' => $email, 'subject' => $subject, 'body' => $body, 'replyTo' => $replyTo, 'expires' => $until - time() - 1 ], $real === true ? \Nino\Mail::CLIENT : \Nino\Mail::VOID,
 				'members/'. $kind. '-'. hash( 'sha256', \Nino\Csrf::getToken( $appData ). '|'. $email. '|'. $nonce. '|'. intdiv( \Nino\MailQueue::now( $appData ), \Nino\MailQueue::KEY_MEMORY ) ) );
 
 			if( $queued !== '' ) {
@@ -2228,7 +2238,7 @@ namespace Nino\Modules {
 		 *	Whether the requests for a code hold their share of the outbox: as many mails wait in it as half of the places for visitors. It goes by what waits and not by how
 		 *	many requests came, so that nothing is held back while the mails are delivered - they wait only a moment - and where the delivery stalls (the server drops the work after the answer,
 		 *	the transport is down) the requests hold at most that share and the mails of the other features keep their places. The same read for every request that gets as far as a code,
-		 *	before any address is looked at, and a mail to nobody waits like a mail of a member until it is let go, so both kinds see the same state and decide the same - no oracle. Where the brake
+		 *	before any address is looked at, and a mail to nobody waits like a mail of a member until it is let go, so both kinds see the same state and decide the same - no oracle. A mail that has lapsed counts as waiting for as long as it lies in the file, which is until the next run of the outbox, the work after the next request that sets one off: that request is held, the one after it is not, and where the transport is still down and the share fills anew it is held again. Where the brake
 		 *	holds nothing is kept and nothing is queued, but the steps that change nothing are taken all the same (the lock and the read of the file of the codes, a read of the outbox, the mail
 		 *	made from the template), so that the time before the answer says as little as can be said without a wait; one line without an address says it once an hour. The file of the
 		 *	codes is bounded apart from this: CODE_MAX live records in all, of which only the ones for addresses with no account are ever dropped, and for the accounts the cap of three requests an hour for an address (see _keep())
@@ -2469,7 +2479,8 @@ namespace Nino\Modules {
 		/**
 		 *	The notice to the old address of an account that its address was changed, by the member's own confirmation, put in the outbox of the kernel: the answer to the member
 		 *	does not wait for a transport, and a notice the transport does not take is tried again. It names neither the new address nor a code, so what waits in the outbox is
-		 *	no secret. What the outbox refuses is a warning for the log that names no address
+		 *	no secret. It carries no 'expires': it is worth as much a day later as at once - the member is told that the address of the account was changed - so it is tried for as long as
+		 *	the outbox tries a mail. What the outbox refuses is a warning for the log that names no address
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$to						The old address
