@@ -83,7 +83,7 @@ $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates, is written for this kernel and names the two files its counter and its epoch write',
 	is_array( $manifest ) === true && $manifest['key'] === 'protected' && \Nino\Features::satisfies( (string) $manifest['nino'] ) === true && isset( $manifest['components'] ) === false
-	&& $manifest['data'] === [ '/data/protected.php', '/data/protected-session.php' ] );
+	&& $manifest['data'] === [ '/data/protected-session.php' ] );
 
 $appData = ninoSandbox( 'protected' );
 $appData['./nino/filesystem/path'] = $root;
@@ -158,7 +158,7 @@ function protectedUnlock( array &$appData, array $post ): array {
  *	@return 	int
  */
 function protectedTries( array &$appData, string $ip ): int {
-	return (int) ( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )[ hash( 'sha256', \Nino\Http::clientBucket( $ip ) ) ]['tries'] ?? 0 );
+	return (int) ( ninoCounter( $appData, 'protected' )[ hash( 'sha256', \Nino\Http::clientBucket( $ip ) ) ]['tries'] ?? 0 );
 }
 
 $locked = static fn( array $request ): bool => $request['/nino/http/response']['statusCode'] === 401 && $request['/nino/http/response']['body'] === '[template /templates/page-protected]';
@@ -295,8 +295,8 @@ $wrongForm = $draw( (string) $wrong['/nino/http/response']['body'] );
 check( 'a wrong password is answered 401 with the form again and one error line, the path carried back, a try on file and no session',
 	$locked( $wrong ) === true && substr_count( $wrongForm, ' role="alert" hidden>' ) === 1 && str_contains( $wrongForm, 'name="return" value="/intern/notes"' ) === true
 	&& \Nino\Modules\ProtectedArea::unlocked( $appData ) === false && protectedTries( $appData, '198.51.100.40' ) === 1 );
-check( 'the counter is the kernel\'s, under the file the manifest names, and holds the client by a hash: the address is nowhere in it',
-	str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/protected.php' ) ), '198.51.100.40' ) === false && in_array( '/data/protected.php', $manifest['data'], true ) === true );
+check( 'the counter is the kernel\'s, in the folder of the counters, and holds the client by a hash: the address is nowhere in it',
+	str_contains( implode( array_map( 'file_get_contents', glob( \Nino\Filesystem::path( $appData, '/data/.counters/protected' ). '/*.php' ) ?: [] ) ), '198.51.100.40' ) === false && ninoCounter( $appData, 'protected' ) !== [] );
 check( 'the password is in no answer: not in the form, not in a header', str_contains( $wrongForm, 'not-the-password' ) === false && str_contains( json_encode( $wrong['/nino/http/response']['header'] ), 'not-the-password' ) === false );
 check( 'a post whose values are arrays is answered, not raised at', protectedUnlock( $appData, [ 'password' => [ 'x' ], 'return' => [ 'y' ] ] )['/nino/http/response']['statusCode'] === 401 );
 
@@ -711,7 +711,7 @@ check( 'the feature sets no cookie and no session setting of its own, and no pas
 echo "\nSwitched off\n";
 
 check( 'switched off, the panel is gone and the counter, the epoch and the settings stay', \Nino\Features::deactivate( $appData, 'protected' ) === true
-	&& \Nino\Filesystem::fileExists( $appData, '/data/protected.php' ) === true && \Nino\Filesystem::fileExists( $appData, '/data/protected-session.php' ) === true
+	&& ninoCounter( $appData, 'protected' ) !== [] && \Nino\Filesystem::fileExists( $appData, '/data/protected-session.php' ) === true
 	&& \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/intern' ] );
 $off = ninoSandbox( 'protected-off' );
 \Nino\Html::init( $off );

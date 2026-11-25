@@ -139,7 +139,7 @@ return [
 	'nino'				=> '^2.0',
 	'php'					=> [ 'ext' => [ 'gd' ] ],
 	'requires'		=> [ 'basis', 'pdf', 'members' ],
-	// The index and one directory for each request with its PDFs and the picture of the signature. The counter of the posts lives beside them (sign-tries.php) and stays out of a backup: it is an hour long
+	// The index and one directory for each request with its PDFs and the picture of the signature. The counter of the posts is the kernel's (the folder .counters/sign-tries) and stays out of a backup: it is an hour long
 	'data'				=> [ '/data/sign' ],
 	// The script of the pad: the look is the standard part of the group
 	'assets'			=> [ '/features/Sign/assets/sign.js' ],

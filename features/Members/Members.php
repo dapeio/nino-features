@@ -138,10 +138,10 @@ namespace Nino\Modules {
 		private const string CONFIRM = './members/confirm';
 
 		// The counter of the login requests, \Nino\Feature::count() under this
-		// name: the file /data/members-tries.php. Not 'members' - that is the file of
-		// the accounts, and a counter drops whatever in its file is no entry of its
-		// own, the accounts among it. It is not in the manifest's 'data' either: a
-		// window of an hour is nothing a backup carries
+		// name: the folder /data/.counters/members-tries. Not 'members' all the same: a
+		// counter and the file of the accounts of one name do not disturb each other, but the kernel names the file in a
+		// warning and the operator who finds both has to guess. It is not in the manifest's 'data': a window of an hour is
+		// nothing a backup carries
 		private const string COUNTER = 'members-tries';
 
 		private const int WINDOW = 3600;

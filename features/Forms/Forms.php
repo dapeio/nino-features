@@ -89,7 +89,7 @@ namespace Nino\Modules {
 		public const string ROUTE = '/nino/http/response/POST://.form';
 
 		// This feature's only file, the counter \Nino\Feature::count() keeps
-		// under this name: /data/forms-rate.php, one entry per hashed client ip
+		// under this name: the folder /data/.counters/forms-rate, one entry per hashed client ip
 		// for the hour it is in. Not in the manifest's 'data': it is a spam
 		// counter that rebuilds itself, and a backup carrying it would restore
 		// an hour of somebody's rate limit along with the site

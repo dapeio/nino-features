@@ -818,14 +818,14 @@ ninoWarnings();
 $gone = basisDraw( $home, '[section-wrap][section-row][section-col]x[/section-col][/section-row][/section-wrap][section-wrap][/section-wrap]' );
 $said = ninoWarnings();
 check( 'F1: a component of a feature that is off is no component: it and what it holds draw nothing, and the log says so once', $gone === '' && count( $said ) === 1 && str_contains( $said[0], 'section-wrap' ) && str_contains( $said[0], 'no component that is registered' ) );
-// ...and the next requests do not say it a second time within the hour: a request is a new run of the register, the counter is the file of the project's data
+// ...and the next requests do not say it a second time within the hour: a request is a new run of the register, the counter is the folder of the project's data
 unset( $home[\Nino\Components::NOTICED] );
 basisDraw( $home, '[section-wrap][/section-wrap]' );
 $second = ninoWarnings();
 unset( $home[\Nino\Components::NOTICED] );
 basisDraw( $home, '[section-wrap][/section-wrap][section-row][/section-row]' );
 $other = ninoWarnings();
-\Nino\Filesystem::mutate( $home, '/data/component-notices.php', static fn( array $state ): array => array_map( static fn( array $entry ): array => [ 'reset' => time() - 1 ] + $entry, $state ), [] );
+ninoCounterSet( $home, 'component-notices', array_map( static fn( array $entry ): array => [ 'reset' => time() - 1 ] + $entry, ninoCounter( $home, 'component-notices' ) ) );
 unset( $home[\Nino\Components::NOTICED] );
 basisDraw( $home, '[section-wrap][/section-wrap]' );
 $later = ninoWarnings();

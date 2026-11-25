@@ -288,7 +288,7 @@ $request = $post( [ 'email' => 'jo@example.com' ], false, false );
 check( 'SAFETY: a post without the token of the session is a 403, with a script and without - no redirect, nothing recorded, nothing mailed', $scripted === 403 && $status( $request ) === 403 && $where( $request ) === '' && $read() === [] && $mails === [] );
 
 // The mail cap of the kernel is the rate: a signup is counted when its mail is sent, so a browser without a script is counted as the script is
-$tries = static fn(): int => (int) ( \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] )[ hash( 'sha256', '127.0.0.1' ) ]['tries'] ?? 0 );
+$tries = static fn(): int => (int) ( ninoCounter( $appData, 'ratelimit' )[ hash( 'sha256', '127.0.0.1' ) ]['tries'] ?? 0 );
 $write( [] );
 $mails = [];
 $fresh();

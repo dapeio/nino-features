@@ -215,14 +215,14 @@ function membersAnswer( array $request ): array {
  *	The data files of the feature as they are on disk, read fresh
  *
  *	@param		array 		&$appData
- *	@param		string		$name					accounts, tokens or session
+ *	@param		string		$name					accounts, tokens, session or tries (the counter of the sign-in, whichever of its files hold the entries)
  *
  *	@return 	array
  */
 function membersFile( array &$appData, string $name ): array {
 
-	$file = [ 'accounts' => '/data/members.php', 'tokens' => '/data/members-tokens.php', 'session' => '/data/members-session.php', 'tries' => '/data/members-tries.php' ][$name];
-	$state = \Nino\Filesystem::getFileContent( $appData, $file, [] );
+	$file = [ 'accounts' => '/data/members.php', 'tokens' => '/data/members-tokens.php', 'session' => '/data/members-session.php' ][$name] ?? '';
+	$state = $name === 'tries' ? ninoCounter( $appData, 'members-tries' ) : \Nino\Filesystem::getFileContent( $appData, $file, [] );
 
 	return is_array( $state ) === true ? $state : [];
 }
@@ -239,8 +239,8 @@ function membersFile( array &$appData, string $name ): array {
  */
 function membersFresh( array &$appData ): void {
 
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
-	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
+	ninoCounterSet( $appData, 'ratelimit', [] );
 	@unlink( \Nino\Filesystem::path( $appData, \Nino\MailQueue::KEYS ) );
 	@unlink( \Nino\Filesystem::path( $appData, '/data/mail-states.php' ) );
 	// ...and the slot the session remembers a queued request in: a new window is a new slot
@@ -1375,8 +1375,8 @@ for( $try = 1; $try <= 6; $try++ ) {
 check( 'the sixth request of one visitor in an hour - the setting attempts says five - is answered ?members=limit, and leaves no record of a code and no mail, a member\'s address or not',
 	array_values( array_slice( $limits, 0, 5 ) ) === array_fill( 0, 5, '/join?members=sent' ) && $limits[6] === '/join?members=limit' && $mails === [] && membersFile( $appData, 'tokens' ) === $tokensBefore );
 check( '...the counter has a file of its own, hashed - the accounts are what they were, and neither the address of the visitor nor an email address is written anywhere in it',
-	count( membersFile( $appData, 'accounts' )['accounts'] ) === 3 && count( membersFile( $appData, 'tries' ) ) === 6 && str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/members-tries.php' ) ), '127.0.0.1' ) === false
-	&& str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/members-tries.php' ) ), 'example.org' ) === false );
+	count( membersFile( $appData, 'accounts' )['accounts'] ) === 3 && count( membersFile( $appData, 'tries' ) ) === 6 && str_contains( implode( array_map( 'file_get_contents', glob( \Nino\Filesystem::path( $appData, '/data/.counters/members-tries' ). '/*.php' ) ?: [] ) ), '127.0.0.1' ) === false
+	&& str_contains( implode( array_map( 'file_get_contents', glob( \Nino\Filesystem::path( $appData, '/data/.counters/members-tries' ). '/*.php' ) ?: [] ) ), 'example.org' ) === false );
 
 \Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 2 ] );
 membersFresh( $appData );
@@ -2836,7 +2836,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 		} )() );
 
 	// The page that is read: a post, an endpoint of the feature and an answer that is no page do not look at the cookie
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	$cookie = $newId. '.'. $newToken;
 	[ , $setPost, $memberPost ] = membersVisitWith( $appData, $cookie, '/club/news', 'POST' );
 	[ , $setEndpoint, $memberEndpoint ] = membersVisitWith( $appData, $cookie, '/.members/login?t=x' );
@@ -2852,7 +2852,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 
 	// A member who is signed in is no business of the cookie: the token stays and no cookie is set
 	membersVisitor();
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	membersSignIn( $appData, (array) \Nino\Modules\Members::account( $appData, $eveId ) );
 	$_COOKIE['nino_remember'] = $cookie;
 	unset( $appData['./members/cookies'] );
@@ -2870,7 +2870,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 	[ $request, $set, $member ] = membersVisitWith( $appData, $cookie );
 	check( 'a token that has run out signs nobody in, and its cookie is deleted', $member === null && count( $set ) === 1 && str_starts_with( $set[0], 'nino_remember=; Max-Age=0' ) );
 
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	$lines = membersDevice( $appData, 'eve@example.org' );
 	$cookie = membersCookieValue( $lines[0] ?? '' );
 	\Nino\Modules\Members::change( $appData, $eveId, [ 'active' => false ] );
@@ -2897,7 +2897,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 	check( '...and so does the member\'s own change, with the code of the new address', $done === 'ok' && membersDevices( $appData, $eveId ) === [] && membersVisitWith( $appData, $cookie )[2] === null );
 
 	// Signing out: this device goes, the others stay
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	$one = membersCookieValue( membersDevice( $appData, 'eve3@example.org' )[0] ?? '' );
 	$two = membersCookieValue( membersDevice( $appData, 'eve3@example.org' )[0] ?? '' );
 	check( 'two devices: the account keeps two tokens', count( membersDevices( $appData, $eveId ) ) === 2 );
@@ -2920,7 +2920,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 	check( '...a sign-out with a cookie that is garbage deletes it too and changes nothing', count( membersCookies( $appData ) ) === 1 && count( membersDevices( $appData, $eveId ) ) === 1 );
 
 	// The eleventh device takes the place of the oldest
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	$first = $one;
 	$cookies = [ $first ];
 	for( $round = 0; $round < 10; $round++ )
@@ -2929,7 +2929,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 	check( 'an account keeps ten devices at most: the eleventh makes the oldest go, and the cookie of that one signs nobody in',
 		count( $list ) === 10 && in_array( hash( 'sha256', explode( '.', $first )[1] ), array_column( $list, 'hash' ), true ) === false && in_array( hash( 'sha256', explode( '.', $cookies[10] )[1] ), array_column( $list, 'hash' ), true ) === true
 		&& membersVisitWith( $appData, $first )[2] === null );
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	check( '...and the newest of them is as good as ever', ( membersVisitWith( $appData, $cookies[10] )[2]['id'] ?? '' ) === $eveId );
 
 	// Every device of an account: forgetAll() - the list empty, the epoch of the account new, no session of it left but the one that asked
@@ -2960,13 +2960,13 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 	check( 'forgetAll() of another account leaves the session of whoever asks and its cookie as they are', $other === true && \Nino\Runtime::getSessionValue( $appData, './members/account' ) === $sessionOf && membersCookies( $appData ) === [] );
 
 	// Sign everybody out ends the devices of everybody
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	$cookieA = membersCookieValue( membersDevice( $appData, 'eve3@example.org' )[0] ?? '' );
 	check( 'signOutAll() ends the devices as it ends the sessions: every list is empty and the cookie signs nobody in', \Nino\Modules\Members::signOutAll( $appData ) === true && membersDevices( $appData, $eveId ) === [] && membersVisitWith( $appData, $cookieA )[2] === null );
 	check( '...and with nothing to end it is as quiet as before', \Nino\Modules\Members::signOutAll( $appData ) === true );
 
 	// A bad cookie is one try of its address, and an address that has brought twenty is not looked at any more
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	$bad = [ 'garbage', 'abcdefabcdef.'. str_repeat( 'A', 43 ), $eveId. '.'. str_repeat( 'B', 43 ), $eveId. '.'. str_repeat( 'B', 42 ) ];
 	$deleted = 0;
 
@@ -2978,7 +2978,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 	check( 'a cookie that is garbage, of an account nobody has, of a token the account does not hold or of the wrong length is deleted each time', $deleted === 4 );
 	check( '...and each one is a try of the address: four are in the counter, and the address is not yet at its end', \Nino\Feature::spent( $appData, 'members-tries', 'remember|127.0.0.1', 4 ) === true && \Nino\Feature::spent( $appData, 'members-tries', 'remember|127.0.0.1', 5 ) === false );
 	$good = membersCookieValue( membersDevice( $appData, 'eve3@example.org' )[0] ?? '' );
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 
 	for( $round = 0; $round < 20; $round++ )
 		\Nino\Feature::count( $appData, 'members-tries', 'remember|127.0.0.1', 20, 3600 );
@@ -2988,7 +2988,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 		( $member['id'] ?? '' ) === $eveId && count( $set ) === 1 && membersCookieValue( $set[0] ) !== '' && membersCookieValue( $set[0] ) !== $good );
 	[ , $setBad ] = membersVisitWith( $appData, 'abcdefabcdef.'. str_repeat( 'A', 43 ) );
 	check( '...a wrong cookie from such an address is neither counted nor deleted any more - the count stays at twenty', $setBad === [] && \Nino\Feature::spent( $appData, 'members-tries', 'remember|127.0.0.1', 20 ) === true && \Nino\Feature::spent( $appData, 'members-tries', 'remember|127.0.0.1', 21 ) === false );
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	[ , $setNext ] = membersVisitWith( $appData, 'abcdefabcdef.'. str_repeat( 'A', 43 ) );
 	check( '...and in the next window a wrong cookie is deleted and counted again', count( $setNext ) === 1 && str_starts_with( $setNext[0], 'nino_remember=; Max-Age=0' ) && \Nino\Feature::spent( $appData, 'members-tries', 'remember|127.0.0.1', 1 ) === true );
 
@@ -3047,7 +3047,7 @@ function membersDeviceChecks( array &$appData, array &$told ): void {
 	check( 'where the epoch cannot be written a good code answers 500 and signs nobody in - and sets no cookie, makes no device', $refused['/nino/http/response']['statusCode'] === 500 && \Nino\Modules\Members::current( $appData ) === null && membersCookies( $appData ) === [] );
 
 	// Signing out with the token a use has just replaced - the second tab - takes the device as well
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
 	$first = membersCookieValue( membersDevice( $appData, 'eve3@example.org' )[0] ?? '' );
 	$before = count( membersDevices( $appData, $eveId ) );
 	[ , $setRotated ] = membersVisitWith( $appData, $first );
@@ -4148,8 +4148,10 @@ function membersOnceCheck( array &$appData ): void {
 	// What the check made is taken away: the suite starts from a project with no member
 	@unlink( $mailFile );
 
-	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php', '/data/members-tries.php' ] as $file )
+	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php' ] as $file )
 		@unlink( \Nino\Filesystem::path( $appData, $file ) );
+
+	ninoCounterSet( $appData, 'members-tries', [] );
 
 	unset( $appData['./nino/filesystem/cache'] );
 	membersFresh( $appData );
@@ -4388,9 +4390,9 @@ function membersVoidChecks( array &$appData ): void {
 		ninoWarnings();
 	};
 
-	// What a request leaves, said so that two can be compared: what the disk was asked, the whole answer, the log, the mail that went to a transport, what the outbox and the
+	// What a request leaves, said so that two can be compared (the file of a counter that a key falls into, and its lock, are the same for the comparison: which one it is says nothing of the account; the order and the number of the operations are compared all the same): what the disk was asked, the whole answer, the log, the mail that went to a transport, what the outbox and the
 	// file of the codes hold now
-	$normal = static fn( array $log ): array => array_map( static fn( array $line ): string => preg_replace( '/[0-9a-f]{12}\.tmp/', 'X.tmp', str_replace( $GLOBALS['sandbox'], '<sandbox>', implode( ' ', array_map( 'strval', $line ) ) ) ), $log );
+	$normal = static fn( array $log ): array => array_map( static fn( array $line ): string => preg_replace( [ '/[0-9a-f]{12}\.tmp/', '#(/\.counters/[a-z-]+/)[0-9a-f]{2}\.php#', '#/\.locks/[0-9a-f]{40}\.lock#' ], [ 'X.tmp', '$1XX.php', '/.locks/X.lock' ], str_replace( $GLOBALS['sandbox'], '<sandbox>', implode( ' ', array_map( 'strval', $line ) ) ) ), $log );
 	$GLOBALS['sandbox'] = $sandbox;
 	$ask = static function( string $email, array $fail = [], ?callable $prepare = null, bool $fresh = true ) use ( &$appData, $reset, $normal, $outbox ): array {
 
@@ -4671,7 +4673,7 @@ function membersVoidChecks( array &$appData ): void {
 		\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 1 ] );
 		membersServe( $appData, '/.members/login', 'POST', [ 'email' => 'bare@example.org', 'return' => '/join' ] );
 		$tokensBefore = count( membersFile( $appData, 'tokens' ) );
-		\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', [] );
+		ninoCounterSet( $appData, 'ratelimit', [] );
 		FaultFs::on();
 		$refused = membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
 		$log[$address] = [ $normal( FaultFs::$log ), membersAnswer( $refused ), count( membersFile( $appData, 'tokens' ) ) === $tokensBefore ];
@@ -4713,7 +4715,7 @@ function membersVoidChecks( array &$appData ): void {
 	foreach( [ 'ada@example.org', 'zed@example.org' ] as $address ) {
 
 		$reset();
-		\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
+		ninoCounterSet( $appData, 'members-tries', [] );
 		$procs = [];
 
 		for( $n = 1; $n <= 20; $n++ ) {
@@ -5208,8 +5210,10 @@ function membersVoidChecks( array &$appData ): void {
 		$appData['/nino/mail/cap'] = $original;
 
 	$reset();
-	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php', '/data/members-tries.php' ] as $file )
+	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php' ] as $file )
 		@unlink( \Nino\Filesystem::path( $appData, $file ) );
+
+	ninoCounterSet( $appData, 'members-tries', [] );
 
 	unset( $appData['./nino/filesystem/cache'] );
 }

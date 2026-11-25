@@ -891,9 +891,9 @@ else {
 }
 
 // One unit of the system's cap for a run, whoever it goes to; and a run that failed halfway is not sent twice to those who have the mail
-$sysCount = static function() use ( &$appData ): int { $file = (array) \Nino\Filesystem::getFileContent( $appData, '/data/sysmail-system.php', [] ); return (int) ( array_values( $file )[0]['tries'] ?? 0 ); };
+$sysCount = static function() use ( &$appData ): int { $file = ninoCounter( $appData, 'sysmail-system' ); return (int) ( array_values( $file )[0]['tries'] ?? 0 ); };
 $reset( [ 'delivered' => [ 'kind' => '', 'to' => [] ] ] );
-\Nino\Filesystem::putFileContent( $appData, '/data/sysmail-system.php', [] );
+ninoCounterSet( $appData, 'sysmail-system', [] );
 $at( $when + 30 * $day );
 $taken();
 \Nino\Modules\Sysadmin::run( $appData );

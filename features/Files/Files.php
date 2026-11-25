@@ -74,9 +74,9 @@ namespace Nino\Modules {
 		// The most files one mail of a notify names
 		public const int NOTIFY_MAX = 200;
 
-		// The counter of the chunk requests, \Nino\Feature::count() under this name: the file /data/files-tries.php.
-		// Not 'files' - that is the file of the index, and a counter drops whatever in its file is no entry of its own,
-		// the index among it. It is not in the manifest's 'data' either: a window of an hour is nothing a backup carries
+		// The counter of the chunk requests, \Nino\Feature::count() under this name: the folder /data/.counters/files-tries/.
+		// Not 'files' all the same: a counter and the file of the index of one name do not disturb each other, but the kernel names the file in a warning
+		// and the operator who finds both has to guess. It is not in the manifest's 'data': a window of an hour is nothing a backup carries
 		private const string COUNTER = 'files-tries';
 
 		private const int WINDOW = 3600;

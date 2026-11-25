@@ -39,8 +39,8 @@ namespace Nino\Modules {
 	 *										the session unlocked (\Nino\Runtime::setSessionValue())
 	 *										- no account, no per-user record, just this one
 	 *										flag. GET /.protected/logout clears it again. Wrong
-	 *										attempts are capped per client ip and hour in
-	 *										/data/protected.php, by \Nino\Feature::count().
+	 *										attempts are capped per client ip and hour by
+	 *										\Nino\Feature::count(), the counter 'protected'.
 	 *										Every unlock is stamped with the session epoch of
 	 *										/data/protected-session.php (see _epoch()), and
 	 *										signOutAll() - the panel's button, and every password
@@ -77,8 +77,8 @@ namespace Nino\Modules {
 		private const string EPOCH_PATH 		= '/data/protected-session.php';
 
 		// Wrong-attempt counter: the kernel's, \Nino\Feature::count() under this
-		// name, keyed by the client's address - the file /data/protected.php that
-		// the manifest's 'data' entry documents
+		// name, keyed by the client's address - the folder /data/.counters/protected,
+		// which is no part of a backup: a window of an hour is nothing it carries
 		private const string COUNTER 		= 'protected';
 
 		private const int DEFAULT_ATTEMPTS	= 5;

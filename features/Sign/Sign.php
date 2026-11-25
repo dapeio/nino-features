@@ -84,8 +84,8 @@ namespace Nino\Modules {
 		// The page of the route /.sign: the unit gives its words
 		private const string PAGE_URI = '/.sign';
 
-		// The counter of the posts, \Nino\Feature::count() under this name: the file /data/sign-tries.php. Not 'sign' - that is the
-		// directory of the requests - and not in the manifest's 'data': a window of an hour is nothing a backup carries
+		// The counter of the posts, \Nino\Feature::count() under this name: the folder /data/.counters/sign-tries.
+		// Not in the manifest's 'data': a window of an hour is nothing a backup carries
 		private const string COUNTER = 'sign-tries';
 
 		private const int WINDOW = 3600;

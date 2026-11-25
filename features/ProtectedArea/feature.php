@@ -72,10 +72,6 @@ return [
 				'en_US' => 'A block: a headline, a line of text and the password form.',
 				'de_DE' => 'Ein Block: eine Überschrift, eine Zeile Text und das Passwortformular.',
 			],
-			'/data/protected.php' => [
-				'en_US' => 'The counter of wrong attempts per client and hour, which a backup carries.',
-				'de_DE' => 'Der Zähler der Fehlversuche je Besucher und Stunde, den eine Sicherung mitnimmt.',
-			],
 			'/data/protected-session.php' => [
 				'en_US' => 'The session epoch that signing everybody out replaces, which a backup carries.',
 				'de_DE' => 'Die Sitzungsepoche, die das Abmelden aller ersetzt und die eine Sicherung mitnimmt.',
@@ -90,8 +86,8 @@ return [
 	'version'			=> '2.0.0',
 	'nino'				=> '^2.0',
 	'requires'		=> [ 'basis' ],
-	// The attempt-cap counter and the session epoch this feature owns - what a backup carries
-	'data'				=> [ '/data/protected.php', '/data/protected-session.php' ],
+	// The session epoch this feature owns - what a backup carries. The counter of the attempts is the kernel's (a folder below data/.counters) and stays out of it: it is an hour long
+	'data'				=> [ '/data/protected-session.php' ],
 	'settings'		=> [
 		'paths' => [
 			'type'	=> 'lines',

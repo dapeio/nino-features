@@ -204,7 +204,7 @@ return [
 	'php'					=> [ 'ext' => [ 'fileinfo' ] ],
 	'requires'		=> [ 'members', 'basis' ],
 	// The index only. The daily backup of the kernel reads its whole archive into memory, so the bytes of the files (up to the setting maxSize each) stay out of it and the operator saves /data/files
-	// with the server; the counter of the chunk requests (files-tries.php) is an hour long and stays out as well
+	// with the server; the counter of the chunk requests (the folder .counters/files-tries) is an hour long and stays out as well
 	'data'				=> [ '/data/files.php' ],
 	'assets'			=> [ '/features/Files/assets/files.js' ],
 	'settings'		=> [

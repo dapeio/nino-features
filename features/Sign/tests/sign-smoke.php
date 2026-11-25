@@ -285,10 +285,10 @@ function signBody( array &$appData, array $request ): string {
  */
 function signFresh( array &$appData ): void {
 
-	foreach( [ 'sign-tries', 'members-tries', 'ratelimit' ] as $counter )
-		\Nino\Filesystem::putFileContent( $appData, '/data/'. $counter. '.php', [] );
+	foreach( [ 'sign-tries', 'members-tries', 'ratelimit', 'sysmail-system', 'sysmail-test' ] as $counter )
+		ninoCounterSet( $appData, $counter, [] );
 
-	foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE, '/data/mail-keys.php', \Nino\MailQueue::FAILED, '/data/sysmail-system.php', '/data/sysmail-test.php' ] as $file )
+	foreach( [ \Nino\MailQueue::WAITING, \Nino\MailQueue::DUE, '/data/mail-keys.php', \Nino\MailQueue::FAILED ] as $file )
 		@unlink( \Nino\Filesystem::path( $appData, $file ) );
 
 	unset( $appData['./nino/filesystem/cache'] );
@@ -1153,7 +1153,7 @@ $flash = static function( string $html ): string {
 	return $found === [] ? '' : $found[0]->getAttribute( 'data-sign-state' );
 };
 $drawn = signUrl( signPng() );
-$counter = static fn(): array => \Nino\Filesystem::getFileContent( $GLOBALS['appData'], '/data/sign-tries.php', [] );
+$counter = static fn(): array => ninoCounter( $GLOBALS['appData'], 'sign-tries' );
 $files = static fn( string $of ): array => array_map( 'basename', glob( \Nino\Filesystem::path( $GLOBALS['appData'], '/data/sign/'. $of ). '/*' ) ?: [] );
 $untouched = static fn(): bool => signIndex( $GLOBALS['appData'] ) === $GLOBALS['base'] && $GLOBALS['files']( $GLOBALS['id'] ) === [ 'shown.pdf' ];
 
@@ -1627,8 +1627,8 @@ $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 [ $goodStatus, $goodLocation, ] = $answer( signServe( $appData, '/.sign', 'POST', [ 't' => $cappedToken, 'action' => 'sign', 'consent' => '1', 'image' => $drawn ] ) );
 check( 'the setting attempts caps the posts of a visitor in an hour: the first three are answered, the next ones are the state limit (429) - even a good one, which signs nothing - and another visitor is not held back',
 	$limits === [ '400 consent', '400 consent', '400 consent', '429 limit', '429 limit' ] && $otherStatus === 400 && $flash( $otherHtml ) === 'consent' && $goodStatus === 429 && $goodLocation === '' && $stateOf( $cappedId ) !== 'signed' );
-check( '...the visitor is counted by a hash and for an hour: the address is not in the file of the counter, and the window of each count closes an hour from the first try', count( $counter() ) === 2 && array_filter( $counter(), static fn( array $entry ): bool => abs( (int) $entry['reset'] - ( time() + 3600 ) ) > 5 ) === [] && str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/sign-tries.php' ) ), '127.0.0.1' ) === false
-	&& str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/sign-tries.php' ) ), '10.9.9.9' ) === false );
+check( '...the visitor is counted by a hash and for an hour: the address is not in the file of the counter, and the window of each count closes an hour from the first try', count( $counter() ) === 2 && array_filter( $counter(), static fn( array $entry ): bool => abs( (int) $entry['reset'] - ( time() + 3600 ) ) > 5 ) === [] && str_contains( implode( array_map( 'file_get_contents', glob( \Nino\Filesystem::path( $appData, '/data/.counters/sign-tries' ). '/*.php' ) ?: [] ) ), '127.0.0.1' ) === false
+	&& str_contains( implode( array_map( 'file_get_contents', glob( \Nino\Filesystem::path( $appData, '/data/.counters/sign-tries' ). '/*.php' ) ?: [] ) ), '10.9.9.9' ) === false );
 signFresh( $appData );
 [ $afterReset, , ] = $answer( signServe( $appData, '/.sign', 'POST', [ 't' => $cappedToken, 'action' => 'decline' ] ) );
 check( '...and a new hour is a new count', $afterReset === 303 && $stateOf( $cappedId ) === 'declined' );
@@ -2560,10 +2560,10 @@ $post = static function( string $address ) use ( &$appData, $capToken ): int {
 signFresh( $appData );
 $sameNetwork = [ $post( '2001:db8:1:1::1' ), $post( '2001:db8:1:1:ffff:eeee:dddd:1' ), $post( '2001:db8:1:1::99' ) ];
 $otherNetwork = $post( '2001:db8:1:2::1' );
-$tries = \Nino\Filesystem::getFileContent( $appData, '/data/sign-tries.php', [] );
+$tries = ninoCounter( $appData, 'sign-tries' );
 check( 'the posts are counted by the network of the client: three addresses of one /64 are one visitor - the third post of two is refused, 429 - and another /64 is another visitor', $sameNetwork === [ 400, 400, 429 ] && $otherNetwork === 400 );
 check( '...the counter is kept under the sha256 of the network as the kernel names it - not of the address, not of a prefix - and not in clear', isset( $tries[ hash( 'sha256', '2001:db8:1:1::/64' ) ] ) === true && isset( $tries[ hash( 'sha256', 'visitor|2001:db8:1:1::1' ) ] ) === false
-	&& str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/sign-tries.php' ) ), '2001:db8' ) === false );
+	&& str_contains( implode( array_map( 'file_get_contents', glob( \Nino\Filesystem::path( $appData, '/data/.counters/sign-tries' ). '/*.php' ) ?: [] ) ), '2001:db8' ) === false );
 signFresh( $appData );
 $mapped = [ $post( '203.0.113.5' ), $post( '::ffff:203.0.113.5' ), $post( '203.0.113.5' ) ];
 check( '...an IPv4 address and the same address mapped into IPv6 are one visitor', $mapped === [ 400, 400, 429 ] );
@@ -2581,7 +2581,7 @@ $viaProxy = static function( string $client ) use ( &$appData, $capToken ): int 
 signFresh( $appData );
 $behindSame = [ $viaProxy( '2001:db8:7:7::1' ), $viaProxy( '2001:db8:7:7:aaaa:bbbb:cccc:2' ), $viaProxy( '2001:db8:7:7::3' ) ];
 $behindOther = $viaProxy( '2001:db8:7:8::1' );
-$behindTries = \Nino\Filesystem::getFileContent( $appData, '/data/sign-tries.php', [] );
+$behindTries = ninoCounter( $appData, 'sign-tries' );
 check( 'behind a proxy the site trusts the client is the one the proxy names, counted by its network: two addresses of one /64 are one visitor - the third post of two is refused, 429 - and another /64 behind the same proxy is another',
 	$behindSame === [ 400, 400, 429 ] && $behindOther === 400 && isset( $behindTries[ hash( 'sha256', '2001:db8:7:7::/64' ) ] ) === true && isset( $behindTries[ hash( 'sha256', '203.0.113.7' ) ] ) === false && isset( $behindTries[ hash( 'sha256', '2001:db8:7:8::/64' ) ] ) === true );
 unset( $appData['/nino/http/proxies'] );

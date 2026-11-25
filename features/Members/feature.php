@@ -187,7 +187,7 @@ return [
 	'nino'				=> '^2.0',
 	'requires'		=> [ 'basis' ],
 	// The accounts, the links that are out and the session epoch - what a backup carries. A restore replaces the three whole, and an epoch
-	// from the backup ends every session of the day, which is right. The counter of the requests for a code lives beside them (members-tries.php) and stays
+	// from the backup ends every session of the day, which is right. The counter of the requests for a code is the kernel's (the folder .counters/members-tries) and stays
 	// out of a backup: it is an hour long
 	'data'				=> [ '/data/members.php', '/data/members-tokens.php', '/data/members-session.php' ],
 	'settings'		=> [

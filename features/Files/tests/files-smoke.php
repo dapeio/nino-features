@@ -208,9 +208,9 @@ function filesAnswer( array $request ): array {
  */
 function filesFresh( array &$appData ): void {
 
-	\Nino\Filesystem::putFileContent( $appData, '/data/files-tries.php', [] );
-	\Nino\Filesystem::putFileContent( $appData, '/data/members-tries.php', [] );
-	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', [] );
+	ninoCounterSet( $appData, 'files-tries', [] );
+	ninoCounterSet( $appData, 'members-tries', [] );
+	ninoCounterSet( $appData, 'ratelimit', [] );
 }
 
 /**
@@ -1451,12 +1451,12 @@ check( 'a part with an error on it (php took it partly) is 400 files_chunk thoug
 
 // The csrf token
 filesFresh( $appData );
-$counterBefore = \Nino\Filesystem::getFileContent( $appData, '/data/files-tries.php', [] );
+$counterBefore = ninoCounter( $appData, 'files-tries' );
 $indexBefore = filesIndex( $appData );
 $noToken = filesServe( $appData, '/.files/upload', 'POST', $fields + [ 'folder' => $room['id'] ], false, [ 'chunk' => filesPart( $appData, str_repeat( 'a', 100 ) ) ] )['/nino/http/response'];
 $wrongToken = filesServe( $appData, '/.files/upload', 'POST', $fields + [ 'folder' => $room['id'], '_csrf' => 'not-the-token' ], false, [ 'chunk' => filesPart( $appData, str_repeat( 'a', 100 ) ) ] )['/nino/http/response'];
 check( 'a request without the csrf token - or with another - is refused with the 403 and the empty body the kernel answers, counts for nothing and writes nothing', [ $noToken['statusCode'], $noToken['body'] ] === [ 403, false ] && [ $wrongToken['statusCode'], $wrongToken['body'] ] === [ 403, false ]
-	&& \Nino\Filesystem::getFileContent( $appData, '/data/files-tries.php', [] ) === $counterBefore && filesIndex( $appData ) === $indexBefore && filesParts( $appData ) === [] );
+	&& ninoCounter( $appData, 'files-tries' ) === $counterBefore && filesIndex( $appData ) === $indexBefore && filesParts( $appData ) === [] );
 
 // The cap: chunk requests per visitor and hour
 \Nino\Features::saveSettings( $appData, 'files', [ 'attempts' => 3 ] );
@@ -1472,10 +1472,10 @@ filesFresh( $appData );
 $statuses = [];
 for( $try = 1; $try <= 301; $try++ )
 	$statuses[] = filesMemberSend( $appData, $fields + [ 'folder' => $room['id'] ], filesPart( $appData, 'a' ) )[0];
-$tries = \Nino\Filesystem::getFileContent( $appData, '/data/files-tries.php', [] );
+$tries = ninoCounter( $appData, 'files-tries' );
 check( 'with the default of 300 the 301st chunk request of a visitor in an hour is 429 files_limit, and the 300 before it were answered', count( array_unique( array_slice( $statuses, 0, 300 ) ) ) === 1 && $statuses[299] === 404 && $statuses[300] === 429 );
-check( '...the counter has a file of its own - not the index, which a counter would have emptied - hashed: neither the address of the visitor nor a name is written in it, and the index is what it was', is_file( \Nino\Filesystem::path( $appData, '/data/files-tries.php' ) ) === true
-	&& count( $tries ) === 1 && str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/files-tries.php' ) ), '127.0.0.1' ) === false && filesIndex( $appData ) === $indexBefore && count( filesIndex( $appData )['files'] ) > 5 );
+check( '...the counter has a folder of its own - not the index - hashed: neither the address of the visitor nor a name is written in it, and the index is what it was', is_dir( \Nino\Filesystem::path( $appData, '/data/.counters/files-tries' ) ) === true
+	&& count( $tries ) === 1 && str_contains( implode( array_map( 'file_get_contents', glob( \Nino\Filesystem::path( $appData, '/data/.counters/files-tries' ). '/*.php' ) ?: [] ) ), '127.0.0.1' ) === false && filesIndex( $appData ) === $indexBefore && count( filesIndex( $appData )['files'] ) > 5 );
 filesFresh( $appData );
 
 // The chunk of an upload is the one its first chunk had: a script that found the web server takes less than the setting sends smaller chunks
@@ -2656,12 +2656,12 @@ check( 'a backup without an index, and a call without a staging directory, chang
 filesSpecChecks( $appData, $room, $panel );
 
 // Deactivation takes the panel away and keeps what the project has
-$kept = [ 'index' => filesIndex( $appData ), 'bytes' => count( glob( $dataDir. '/files/*.*' ) ?: [] ), 'counter' => is_file( $dataDir. '/files-tries.php' ) ];
+$kept = [ 'index' => filesIndex( $appData ), 'bytes' => count( glob( $dataDir. '/files/*.*' ) ?: [] ), 'counter' => is_dir( $dataDir. '/.counters/files-tries' ) ];
 filesWorkbench( 'admin' );
 check( 'the feature the Members feature\'s sibling needs cannot be switched off from under it: Members is refused while Files is active', is_string( \Nino\Features::deactivate( $appData, 'members' ) ) === true );
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'files' ) === true );
 check( '...the panel is not in the registry any more, and its actions are unknown', isset( \Nino\Admin\Admin::panels( $appData )['files'] ) === false && ninoCall( $appData, $panel, [], 'files/list' )[0] === 404 );
-check( '...the index, the bytes and the counter stay as they were', $kept['index'] === filesIndex( $appData ) && $kept['index']['files'] !== [] && $kept['bytes'] === count( glob( $dataDir. '/files/*.*' ) ?: [] ) && $kept['bytes'] > 0 && $kept['counter'] === is_file( $dataDir. '/files-tries.php' ) );
+check( '...the index, the bytes and the counter stay as they were', $kept['index'] === filesIndex( $appData ) && $kept['index']['files'] !== [] && $kept['bytes'] === count( glob( $dataDir. '/files/*.*' ) ?: [] ) && $kept['bytes'] > 0 && $kept['counter'] === is_dir( $dataDir. '/.counters/files-tries' ) );
 check( '...and the class is out of /nino/modules', in_array( '\\Nino\\Modules\\Files', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 
 echo "\n";

@@ -923,10 +923,10 @@ check( 'a capped client ip is refused with the code mailer_ratelimit, not report
 foreach( [ 'en_US', 'de_DE' ] as $locale )
 	check( "...and the code has its sentence in $locale, which is not empty and names the hour", preg_match( '/Stunde|hour/', trim( \Nino\Admin\Admin::textFills( $appData, '/features/Mailer/text', $locale )['[[/_admin/error/'. $limitedBody['code']. ']]'] ?? '' ) ) === 1 );
 
-/*	The counter is the kernel's: its file is keyed by the sha256 of the client's
+/*	The counter is the kernel's: its entry is keyed by the sha256 of the client's
 	address, never by the address, and the try that was refused was counted
 	too - six tries for the default cap of five	*/
-$rateState = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
+$rateState = ninoCounter( $appData, 'ratelimit' );
 check( 'the refused try was counted as well, under the hash of the address and under no other key', ( $rateState[hash( 'sha256', '127.0.0.1' )]['tries'] ?? null ) === 6 && isset( $rateState['127.0.0.1'] ) === false );
 
 // ...and what the cap said belongs to that call: the next one, refused by the

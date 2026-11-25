@@ -269,10 +269,10 @@ check( 'a word of the blocklist in any field refuses, case ignored, with a scrip
 
 // The rate limit counts what the engine accepted: a 200 for the script, the redirect that says success for a browser without it
 \Nino\Features::saveSettings( $appData, 'forms', [ 'minSeconds' => 0, 'rateLimit' => 2, 'blocklist' => [] ] );
-\Nino\Filesystem::putFileContent( $appData, '/data/forms-rate.php', [] );
+ninoCounterSet( $appData, 'forms-rate', [] );
 $sent = [];
 $go = static fn( bool $script ): array => post( $appData, $valid, $script );
-$wasCounter = static fn(): int => (int) ( \Nino\Filesystem::getFileContent( $appData, '/data/forms-rate.php', [] )[ hash( 'sha256', '127.0.0.1' ) ]['tries'] ?? 0 );
+$wasCounter = static fn(): int => (int) ( ninoCounter( $appData, 'forms-rate' )[ hash( 'sha256', '127.0.0.1' ) ]['tries'] ?? 0 );
 $one = status( $go( false ) );
 check( 'a submission of a browser without a script is counted: the limit holds for it as for the script', $one === 303 && $wasCounter() === 1 );
 \Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
@@ -281,7 +281,7 @@ $third = $go( true );
 check( 'the second is accepted and the third is turned away with a 429, which costs nothing', $two === 200 && status( $third ) === 429 && $wasCounter() === 2 && count( $sent ) === 2 );
 $fourth = $go( false );
 check( '...and without a script the same refusal comes back as the redirect with ?form=error, and counts nothing', $bounce( $fourth ) === true && $wasCounter() === 2 && count( $sent ) === 2 );
-\Nino\Filesystem::putFileContent( $appData, '/data/forms-rate.php', [] );
+ninoCounterSet( $appData, 'forms-rate', [] );
 post( $appData, [ 'email' => 'not-an-email' ] + $valid, true );
 post( $appData, [ 'email' => 'not-an-email' ] + $valid, false );
 check( 'a submission the engine refused counts nothing', $wasCounter() === 0 );
