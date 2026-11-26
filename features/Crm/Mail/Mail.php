@@ -418,7 +418,7 @@ namespace Nino\Modules\Crm {
 			$none = [ 'word' => '', 'domain' => '', 'color' => self::BRAND_COLOR, 'ink' => self::BRAND_INK ];
 
 			// Drawing a band reads the settings and never makes the database: a file that is not the core's yet is the band of no wordmark
-			if( Db::kind( \Nino\Filesystem::path( $appData, Db::FILE ) ) !== 'ours' )
+			if( Db::kindFor( $appData, \Nino\Filesystem::path( $appData, Db::FILE ) ) !== 'ours' )
 				return $none;
 
 			try {

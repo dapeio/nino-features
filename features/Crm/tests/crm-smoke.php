@@ -294,6 +294,23 @@ function crmRelease( array $held ): void {
 }
 
 /**
+ *	A writer in a process of its own that has written and holds the database: it opens the file, runs what $code says with its connection $db and says it holds; it rolls back when it is released
+ *
+ *	@param		string		$file
+ *	@param		string		$code					php that runs on the connection $db, for example $db->exec( 'BEGIN IMMEDIATE' );
+ *
+ *	@return 	array											The process and its pipes
+ */
+function crmWriter( string $file, string $code ): array {
+
+	$program = '$in = fopen( "php://stdin", "r" ); $db = new PDO( "sqlite:". $argv[1], null, null, [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ] ); $db->exec( "PRAGMA busy_timeout = 0" ); eval( $argv[2] ); echo "held\n"; fflush( STDOUT ); fgets( $in ); $db->exec( "ROLLBACK" );';
+	$process = proc_open( [ PHP_BINARY, '-r', $program, $file, $code ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ] ], $pipes );
+	fgets( $pipes[1] );
+
+	return [ $process, $pipes ];
+}
+
+/**
  *	A request of the site that is turned by the hosts: the Host header and the path it came with, answered as the path the request is for after the hosts had their say
  *
  *	@param		array 		&$appData
@@ -1790,16 +1807,14 @@ check( 'the owner is called by the setting where it has one, else by the name of
 	} )() === true );
 // A reader that only reads: a database that another connection holds locked is not waited for twice in a request, and a file that is not the core's is no file to read
 $lockedRead = crmRequest( $stDir );
-$holder = new \PDO( 'sqlite:'. $stDir. '/private/data/crm.sqlite' );
-$holder->exec( 'BEGIN EXCLUSIVE' );
+$holder = crmHold( $stDir. '/private/data/crm.sqlite' );
 $began = microtime( true );
 $busy = \Nino\Modules\Crm\Settings::readOnly( $lockedRead, 'seller_name' );
 $waited = microtime( true ) - $began;
-$holder->exec( 'ROLLBACK' );
+crmRelease( $holder );
 $retried = \Nino\Modules\Crm\Settings::readOnly( $lockedRead, 'seller_name' );
 $next = crmRequest( $stDir );
 check( 'a read that only reads waits for a locked database for a fraction of a second, answers nothing, is not tried again in the same request - the answer stays nothing though the lock is gone - and the next request reads the value', $busy === '' && $waited < 2.0 && $retried === '' && \Nino\Modules\Crm\Settings::readOnly( $next, 'seller_name' ) !== '' );
-$holder = null;
 $strange = crmSandbox( 'crm6-strange' );
 \Nino\Features::activate( $strange, 'crm' );
 $strangeDir = ninoSandboxDir( $strange );
@@ -2707,17 +2722,14 @@ rmdir( $direct );
 check( 'the callback is no state: neither the core nor the class of the database has a static field', ( new \ReflectionClass( \Nino\Modules\Crm::class ) )->getStaticProperties() === [] && ( new \ReflectionClass( \Nino\Modules\Crm\Db::class ) )->getStaticProperties() === [] );
 
 // A writer that has begun a transaction and not ended it: SQLite lets a reader see the file as it was before it, and the copy is that state
-$holder = new \PDO( 'sqlite:'. $bkFile );
-$holder->setAttribute( \PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION );
-$holder->exec( 'BEGIN IMMEDIATE' );
-$holder->exec( 'INSERT INTO settings ( key, value ) VALUES ( \'bk.held\', \'not yet\' )' );
+$holder = crmWriter( $bkFile, '$db->exec( "BEGIN IMMEDIATE" ); $db->exec( "INSERT INTO settings ( key, value ) VALUES ( \'bk.held\', \'not yet\' )" );' );
 $live = array_slice( crmFingerprint( $bkFile ), 0, 3 );
 
 try {
 	$run = crmBackup( $bkDir );
 }
 finally {
-	$holder->exec( 'ROLLBACK' );
+	crmRelease( $holder );
 }
 
 $copy = $run['archive']['folder'] ?? '';
@@ -2726,7 +2738,7 @@ check( 'a writer that holds an open transaction while the backup runs: the backu
 	is_string( $run['answer'] ) === true && $run['seconds'] < 3 && ( $held[1] ?? '' ) === 'ok' && ( $held[0] ?? 0 ) === \Nino\Modules\Crm\Db::APPLICATION_ID && $held[2] === $expect[2] && in_array( 'bk.held', array_column( $held[2], 'key' ), true ) === false && array_slice( crmFingerprint( $bkFile ), 0, 3 ) === $live );
 
 // A writer at its commit holds the file for readers: the copy cannot be made, and the backup ends with the core named, after the wait
-$holder->exec( 'BEGIN EXCLUSIVE' );
+$holder = crmHold( $bkFile );
 $archives = glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [];
 $live = array_slice( crmFingerprint( $bkFile ), 0, 3 );
 
@@ -2734,14 +2746,13 @@ try {
 	$run = crmBackup( $bkDir );
 }
 finally {
-	$holder->exec( 'ROLLBACK' );
+	crmRelease( $holder );
 }
 
 check( 'a database that stays locked for longer than the wait is no copy: the backup ends with 500, the code backups_hook and the key of the core, after the five seconds the core waits for a lock and not much more, no archive is made, and the file is as it was',
 	is_array( $run['answer'] ) === true && $run['answer'][0] === 500 && ( $run['answer'][2] ?? '' ) === 'backups_hook' && ( $run['answer'][3] ?? [] ) === [ 'crm' ] && $run['seconds'] > 4.5 && $run['seconds'] < 15 && ( glob( \Nino\Modules\Backups::dir( $bkRequest ). '/*.php' ) ?: [] ) === $archives && array_slice( crmFingerprint( $bkFile ), 0, 3 ) === $live && glob( $bkFile. '-*' ) === [] );
 $run = crmBackup( $bkDir );
 check( '...and once the lock is gone the next backup is made, with the copy', is_string( $run['answer'] ) === true && ( $run['archive']['stamp']['copies'] ?? [] ) === [ 'data/crm.sqlite' ] && $bkRows( $run['archive']['folder']. '/data/crm.sqlite' ) === $expect );
-$holder = null;
 
 // A file that is not the core's - another database, a text, a file with nothing in it, a directory - is not handed over and not touched: the backup packs it as it lies, as it would without the callback
 [ $fb, $fbDir ] = crmWorld( 'crm7-backup-foreign' );
@@ -2974,13 +2985,8 @@ check( 'a journal that a writer left beside the file is rolled back by the callb
 	is_string( $run['answer'] ) === true && $hot === $before && is_file( $bkFile. '-journal' ) === false && $bkRows( $bkFile ) === $before && ( $run['archive']['stamp']['copies'] ?? [] ) === [ 'data/crm.sqlite' ] );
 
 // A writer that has written to the file - a transaction larger than its cache - holds it for readers, and the callback waits for it as for a writer at its commit
-$holder = new \PDO( 'sqlite:'. $bkFile, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
-$holder->exec( 'PRAGMA cache_size = 2' );
 $size = filesize( $bkFile );
-$holder->exec( 'BEGIN IMMEDIATE' );
-
-for( $i = 0; $i < 200; $i++ )
-	$holder->exec( 'INSERT INTO settings ( key, value ) VALUES ( \'spill.'. $i. '\', \''. str_repeat( 'y', 1500 ). '\' )' );
+$holder = crmWriter( $bkFile, '$db->exec( "PRAGMA cache_size = 2" ); $db->exec( "BEGIN IMMEDIATE" ); for( $i = 0; $i < 200; $i++ ) $db->exec( "INSERT INTO settings ( key, value ) VALUES ( \'spill.". $i. "\', \'". str_repeat( "y", 1500 ). "\')" );' );
 
 clearstatcache( true, $bkFile );
 $spilled = filesize( $bkFile ) > $size;
@@ -2990,8 +2996,7 @@ try {
 	$run = crmBackup( $bkDir );
 }
 finally {
-	$holder->exec( 'ROLLBACK' );
-	$holder = null;
+	crmRelease( $holder );
 }
 
 check( 'a writer whose transaction has written to the file is waited for, not seen in the copy: the file has grown, the backup ends after the five seconds with 500, backups_hook and the key of the core, and no archive is made',

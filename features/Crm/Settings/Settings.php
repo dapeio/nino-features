@@ -49,6 +49,7 @@ namespace Nino\Modules\Crm {
 		/**	The connections of the reads that only read, by file, and the longest wait a read by file has failed after in this request	*/
 		private const string READERS = './crm/settings/reader';
 		private const string TRIED = './crm/settings/tried';
+		private const string READER_AT = './crm/settings/reader-at';
 
 		/**	The longest name of the owner, and how long a read that only reads waits for a locked database, in milliseconds	*/
 		private const int OWNER_MAX = 120;
@@ -280,6 +281,24 @@ namespace Nino\Modules\Crm {
 		}
 
 		/**
+		 *	The device and inode of the files the readers of this request are open on (see Db::held())
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	array											A list of [ device, inode ]
+		 */
+		public static function held( array &$appData ): array {
+
+			$held = [];
+
+			foreach( $appData[self::READERS] ?? [] as $file => $reader )
+				if( $reader instanceof \PDO && ( $appData[self::READER_AT][$file] ?? [] ) !== [] )
+					$held[] = $appData[self::READER_AT][$file];
+
+			return $held;
+		}
+
+		/**
 		 *	A setting of the module as readOnly() reads it, with the failure told apart from the empty setting
 		 *
 		 *	@param		array 		&$appData
@@ -292,7 +311,7 @@ namespace Nino\Modules\Crm {
 
 			$file = \Nino\Filesystem::path( $appData, Db::FILE );
 
-			if( Db::kind( $file ) !== 'ours' )
+			if( Db::kindFor( $appData, $file ) !== 'ours' )
 				return '';
 
 			// A read that failed - the database is locked, there is no table yet - is not tried again in this request for a wait that is not longer: a page asks for the name many times and waits no more than once
@@ -300,8 +319,10 @@ namespace Nino\Modules\Crm {
 				return null;
 
 			try {
-				if( isset( $appData[self::READERS][$file] ) === false )
+				if( isset( $appData[self::READERS][$file] ) === false ) {
 					$appData[self::READERS][$file] = new \PDO( 'sqlite:file:'. $file. '?mode=ro', null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC, \PDO::ATTR_TIMEOUT => 0 ] );
+					$appData[self::READER_AT][$file] = Db::identity( $file );
+				}
 
 				$appData[self::READERS][$file]->exec( 'PRAGMA busy_timeout = '. $wait );
 				$statement = $appData[self::READERS][$file]->prepare( 'SELECT value FROM settings WHERE key = :key' );
@@ -474,7 +495,7 @@ namespace Nino\Modules\Crm {
 			Db::exec( $appData, 'INSERT INTO settings ( key, value ) VALUES ( :k, :v ) ON CONFLICT( key ) DO UPDATE SET value = excluded.value', [ 'k' => $key, 'v' => $clean ] );
 
 			// What was read for the request is read again: the reader that only reads is none of the connection that wrote
-			unset( $appData[self::READERS], $appData[self::TRIED] );
+			unset( $appData[self::READERS], $appData[self::READER_AT], $appData[self::TRIED] );
 
 			if( $written !== null )
 				call_user_func_array( $written, [ &$appData, $clean, $differs ] );

@@ -350,11 +350,530 @@ function domCrashed( string $section, \Throwable $error ): void {
 	fwrite( STDERR, $error->getMessage(). "\n" );
 }
 
+/**
+ *	The file protocol of php with a record of every open of the database of the sandbox that is made by anything but its connection (SQLite opens the file with its own calls, never through a stream of php). What the record keeps
+ *	of an open: the path, whether a file of the core made it (a frame of the stack below the folder of the feature), whether the process held a lock of SQLite on the file at that moment (/proc/locks lists the POSIX locks by
+ *	process and inode), and the method that asked. Every other operation is what php does itself
+ */
+final class DomFileWatch {
+
+	public $context;
+
+	// What was opened: [ path, core, locked, method ]
+	public static array $log = [];
+
+	// Opens that the suite makes on purpose, to see that the record sees them: they are kept apart
+	public static array $control = [];
+	public static bool $controlling = false;
+
+	// The folder of the feature of the run, with a separator at its end
+	public static string $core = '';
+
+	private $handle = null;
+	private $directory = null;
+
+	public static function on( string $core ): void {
+		self::$core = $core;
+		stream_wrapper_unregister( 'file' );
+		stream_wrapper_register( 'file', self::class );
+	}
+
+	public static function off(): void {
+		stream_wrapper_restore( 'file' );
+	}
+
+	private static function real( callable $call ): mixed {
+		stream_wrapper_restore( 'file' );
+
+		try {
+			return $call();
+		}
+		finally {
+			stream_wrapper_unregister( 'file' );
+			stream_wrapper_register( 'file', self::class );
+		}
+	}
+
+	/**
+	 *	Whether this process holds a POSIX lock on the file the path names (the main file, for its journal)
+	 */
+	private static function locked( string $path ): bool {
+
+		$main = preg_replace( '/-journal$/', '', $path );
+		$stat = self::real( static fn(): mixed => @stat( $main ) );
+
+		if( is_array( $stat ) === false )
+			return false;
+
+		foreach( explode( "\n", (string) self::real( static fn(): mixed => @file_get_contents( '/proc/locks' ) ) ) as $line )
+			if( preg_match( '/^\d+:\s+POSIX\s+\S+\s+\S+\s+(\d+)\s+[0-9a-f]+:[0-9a-f]+:(\d+)\s/', $line, $found ) === 1 && (int) $found[1] === getmypid() && (int) $found[2] === (int) $stat['ino'] )
+				return true;
+
+		return false;
+	}
+
+	public function stream_open( string $path, string $mode, int $options, ?string &$opened ): bool {
+
+		if( preg_match( '~/crm\.sqlite(?:-journal)?$~', $path ) === 1 ) {
+
+			$core = false;
+			$method = '';
+			$frames = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS );
+
+			// The innermost frame that is a file of the feature or this suite says who asked; what lies between them - the kernel - does not decide
+			foreach( $frames as $at => $frame )
+				if( isset( $frame['file'] ) === true && ( str_starts_with( $frame['file'], self::$core ) === true || $frame['file'] === __FILE__ ) ) {
+					$core = $frame['file'] !== __FILE__;
+
+					foreach( array_slice( $frames, $at ) as $caller )
+						if( isset( $caller['class'] ) === true && $caller['class'] !== self::class ) {
+							$method = $caller['class']. '::'. $caller['function'];
+							break;
+						}
+
+					break;
+				}
+
+			$entry = [ $path, $core, self::locked( $path ), $method ];
+
+			if( self::$controlling === true )
+				self::$control[] = $entry;
+			else
+				self::$log[] = $entry;
+		}
+
+		$this->handle = self::real( static fn(): mixed => @fopen( $path, $mode ) );
+
+		return $this->handle !== false;
+	}
+
+	public function stream_read( int $count ): string|false { return fread( $this->handle, $count ); }
+	public function stream_write( string $data ): int { return (int) fwrite( $this->handle, $data ); }
+	public function stream_eof(): bool { return feof( $this->handle ); }
+	public function stream_tell(): int { return (int) ftell( $this->handle ); }
+	public function stream_seek( int $offset, int $whence ): bool { return fseek( $this->handle, $offset, $whence ) === 0; }
+	public function stream_flush(): bool { return fflush( $this->handle ); }
+	public function stream_close(): void { fclose( $this->handle ); }
+	public function stream_stat(): array|false { return fstat( $this->handle ); }
+	// PHP asks with 0 whether the stream can be locked at all
+	public function stream_lock( int $operation ): bool { return ( $operation & ~LOCK_NB ) === 0 || flock( $this->handle, $operation ); }
+	public function stream_truncate( int $size ): bool { return ftruncate( $this->handle, $size ); }
+	public function stream_set_option( int $option, int $arg1, ?int $arg2 ): bool { return false; }
+
+	public function url_stat( string $path, int $flags ): array|false {
+		return self::real( static fn(): mixed => ( $flags & STREAM_URL_STAT_LINK ) !== 0 ? @lstat( $path ) : @stat( $path ) );
+	}
+
+	public function unlink( string $path ): bool { return self::real( static fn(): mixed => @unlink( $path ) ); }
+	public function rename( string $from, string $to ): bool { return self::real( static fn(): mixed => @rename( $from, $to ) ); }
+	public function mkdir( string $path, int $mode, int $options ): bool { return self::real( static fn(): mixed => @mkdir( $path, $mode, ( $options & STREAM_MKDIR_RECURSIVE ) !== 0 ) ); }
+	public function rmdir( string $path, int $options ): bool { return self::real( static fn(): mixed => @rmdir( $path ) ); }
+
+	public function stream_metadata( string $path, int $option, mixed $value ): bool {
+
+		return match( $option ) {
+			STREAM_META_ACCESS => self::real( static fn(): mixed => @chmod( $path, (int) $value ) ),
+			STREAM_META_TOUCH => self::real( static fn(): mixed => @touch( $path, ...( is_array( $value ) === true ? $value : [] ) ) ),
+			STREAM_META_OWNER, STREAM_META_OWNER_NAME => self::real( static fn(): mixed => @chown( $path, $value ) ),
+			STREAM_META_GROUP, STREAM_META_GROUP_NAME => self::real( static fn(): mixed => @chgrp( $path, $value ) ),
+			default => false,
+		};
+	}
+
+	public function dir_opendir( string $path, int $options ): bool {
+		$this->directory = self::real( static fn(): mixed => @opendir( $path ) );
+
+		return $this->directory !== false;
+	}
+
+	public function dir_readdir(): string|false { return readdir( $this->directory ); }
+	public function dir_rewinddir(): bool { rewinddir( $this->directory ); return true; }
+	public function dir_closedir(): bool { closedir( $this->directory ); return true; }
+}
+
+/**
+ *	A second process on the database file: it asks for the write lock without waiting and says whether it got it. It is a real process of its own, so that the locks of SQLite between it and this one are the locks of the
+ *	file - inside one process SQLite keeps them in memory and a file that was opened and closed again beside a connection is not seen. One question is one line to its input and one line from its output, no sleep
+ *
+ *	@param		string		$file
+ *
+ *	@return 	array											The process and its pipes
+ */
+function domPeer( string $file ): array {
+
+	$code = '$in = fopen( "php://stdin", "r" ); $db = null;'
+		. ' while( fgets( $in ) !== false ) { try { $db ??= new PDO( "sqlite:". $argv[1], null, null, [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ] );'
+		. ' $db->exec( "PRAGMA busy_timeout = 0" ); $db->exec( "BEGIN IMMEDIATE" ); $db->exec( "ROLLBACK" ); echo "got the write lock\n"; }'
+		. ' catch( PDOException $e ) { echo in_array( (int) ( $e->errorInfo[1] ?? 0 ) & 0xFF, [ 5, 6 ], true ) === true ? "locked\n" : "error ". $e->getMessage(). "\n"; } }';
+	$process = proc_open( [ PHP_BINARY, '-r', $code, $file ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ], 2 => [ 'file', '/dev/null', 'w' ] ], $pipes );
+	stream_set_timeout( $pipes[1], 30 );
+
+	return [ 'process' => $process, 'pipes' => $pipes ];
+}
+
+/**
+ *	The second process for the file of a request: the one that was there is ended
+ *
+ *	@param		array 		&$peer
+ *	@param		array 		&$appData
+ *
+ *	@return 	void
+ */
+function domPeerOn( array &$peer, array &$appData ): void {
+
+	if( $peer !== [] )
+		domPeerStop( $peer );
+
+	$peer = domPeer( \Nino\Filesystem::path( $appData, \Nino\Modules\Crm\Db::FILE ) );
+}
+
+/**
+ *	Ask the second process for the write lock
+ *
+ *	@param		array 		&$peer
+ *
+ *	@return 	string										locked, got the write lock, or what went wrong
+ */
+function domPeerAsk( array &$peer ): string {
+
+	fwrite( $peer['pipes'][0], "go\n" );
+	$line = fgets( $peer['pipes'][1] );
+
+	return $line === false ? 'no answer' : trim( $line );
+}
+
+/**
+ *	End the second process
+ *
+ *	@param		array 		&$peer
+ *
+ *	@return 	void
+ */
+function domPeerStop( array &$peer ): void {
+
+	fclose( $peer['pipes'][0] );
+	stream_get_contents( $peer['pipes'][1] );
+	fclose( $peer['pipes'][1] );
+	proc_close( $peer['process'] );
+}
+
+/**
+ *	Make the connection of a request ask the second process for the write lock before and after every row it writes - in every table, for every kind of write - and write what it said to $seen. A temporary trigger runs inside
+ *	the statement, so inside the transaction the statement is in
+ *
+ *	@param		array 		&$appData
+ *	@param		array 		&$peer
+ *	@param		array 		&$seen
+ *	@param		\PDO|null	$pdo					The connection; the one of the request where it is none
+ *
+ *	@return 	void
+ */
+function domArm( array &$appData, array &$peer, array &$seen, ?\PDO $pdo = null ): void {
+
+	$pdo ??= \Nino\Modules\Crm\Db::pdo( $appData );
+	$pdo->sqliteCreateFunction( 'dom_peer', static function() use ( &$peer, &$seen ): int {
+		$seen[] = domPeerAsk( $peer );
+
+		return 0;
+	} );
+
+	foreach( $pdo->query( 'SELECT name FROM sqlite_master WHERE type = \'table\' AND name NOT LIKE \'sqlite\_%\' ESCAPE \'\\\'' )->fetchAll( \PDO::FETCH_COLUMN ) as $table )
+		foreach( [ 'INSERT', 'UPDATE', 'DELETE' ] as $event )
+			foreach( [ 'BEFORE', 'AFTER' ] as $when )
+				$pdo->exec( 'CREATE TEMP TRIGGER IF NOT EXISTS dom_'. strtolower( $when. '_'. $event. '_'. $table ). ' '. $when. ' '. $event. ' ON "'. $table. '" BEGIN SELECT dom_peer(); END' );
+}
+
+/**
+ *	What a run does to the lock of the second process: armed, run, and the answers it gave while the run was inside a statement
+ *
+ *	@param		array 		&$appData
+ *	@param		array 		&$peer
+ *	@param		callable	$run
+ *
+ *	@return 	array											[ the answers, what the run returned ]
+ */
+function domLocked( array &$appData, array &$peer, callable $run ): array {
+
+	$seen = [];
+	domArm( $appData, $peer, $seen );
+	$result = $run();
+
+	return [ $seen, $result ];
+}
+
+/**
+ *	Whether the second process was refused every time it asked, and asked at least $least times
+ *
+ *	@param		array 		$seen
+ *	@param		int				$least
+ *
+ *	@return 	bool
+ */
+function domRefused( array $seen, int $least = 1 ): bool {
+
+	return count( $seen ) >= $least && array_unique( $seen ) === [ 'locked' ];
+}
+
+/**
+ *	What the files of the core opened of the database while the call ran, by anything but a connection
+ *
+ *	@param		callable	$run
+ *
+ *	@return 	array											The opens of the core: [ path, core, locked, method ]
+ */
+function domOpened( callable $run ): array {
+
+	$from = count( DomFileWatch::$log );
+	DomFileWatch::on( (string) realpath( $GLOBALS['features'] ). '/Crm/' );
+
+	try {
+		$run();
+	}
+	finally {
+		DomFileWatch::off();
+	}
+
+	return array_values( array_filter( array_slice( DomFileWatch::$log, $from ), static fn( array $open ): bool => $open[1] === true ) );
+}
+
+/**
+ *	A writer in a process of its own that holds the database: it opens the file, runs what $code says with its connection $db - begins the transaction, writes what it writes - and says it holds; it lets go when it is released.
+ *	What a lock held "by another process" is for the file is only seen from a process of its own: a connection of the same process does not hold the file against its sibling the way a writer of another process does
+ *
+ *	@param		string		$file
+ *	@param		string		$code					php that runs on the connection $db, for example $db->exec( 'BEGIN EXCLUSIVE' );
+ *
+ *	@return 	array											The process and its pipes, and whether it holds
+ */
+function domHold( string $file, string $code ): array {
+
+	$program = '$in = fopen( "php://stdin", "r" ); $db = new PDO( "sqlite:". $argv[1], null, null, [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ] ); $db->exec( "PRAGMA busy_timeout = 0" ); eval( $argv[2] ); echo "held\n"; fgets( $in ); $db->exec( "ROLLBACK" );';
+	$process = proc_open( [ PHP_BINARY, '-r', $program, $file, $code ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes );
+	stream_set_timeout( $pipes[1], 30 );
+
+	return [ 'process' => $process, 'pipes' => $pipes, 'held' => trim( (string) fgets( $pipes[1] ) ) === 'held' ];
+}
+
+/**
+ *	Let the writer go: it rolls back and ends
+ *
+ *	@param		array 		$holder
+ *
+ *	@return 	void
+ */
+function domRelease( array $holder ): void {
+
+	fwrite( $holder['pipes'][0], "go\n" );
+	fclose( $holder['pipes'][0] );
+	stream_get_contents( $holder['pipes'][1] );
+	stream_get_contents( $holder['pipes'][2] );
+	proc_close( $holder['process'] );
+}
+
+/**
+ *	A pin that says what it saw where it fell: the condition, and the facts that made it
+ *
+ *	@param		bool			$ok
+ *	@param		mixed			$saw
+ *
+ *	@return 	bool
+ */
+function domSaw( bool $ok, mixed $saw ): bool {
+
+	if( $ok === false )
+		echo "        saw: ". substr( (string) json_encode( $saw, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), 0, 600 ). "\n";
+
+	return $ok;
+}
+
+/**
+ *	The closes in a trace of a process (strace -e trace=openat,close,fcntl) that let go of a lock of SQLite: the close of a descriptor on the database file while another descriptor of the process on the same file holds a
+ *	POSIX lock - fcntl(2): the close of any descriptor of a file lets go of every lock the process holds on it
+ *
+ *	@param		string		$trace
+ *
+ *	@return 	array											lost (the lines of the closes), locks (how many locks were taken on the file), opened (how many descriptors were opened on it)
+ */
+function domLockLoss( string $trace ): array {
+
+	$files = [];
+	$held = [];
+	$lost = [];
+	$locks = 0;
+	$opened = 0;
+
+	foreach( explode( "\n", $trace ) as $number => $line ) {
+
+		if( preg_match( '~^openat\(AT_FDCWD, "([^"]+)", [^)]*\)\s+= (\d+)~', $line, $found ) === 1 ) {
+
+			if( str_ends_with( $found[1], '/crm.sqlite' ) === true ) {
+				$files[$found[2]] = $found[1];
+				$held[$found[2]] = [];
+				$opened++;
+			}
+			else
+				unset( $files[$found[2]], $held[$found[2]] );
+
+			continue;
+		}
+
+		if( preg_match( '~^fcntl\((\d+), F_SETLKW?, \{l_type=(F_\w+), l_whence=SEEK_SET, l_start=(\d+), l_len=(\d+)\}\) = 0~', $line, $found ) === 1 ) {
+
+			if( isset( $files[$found[1]] ) === false )
+				continue;
+
+			if( $found[2] === 'F_UNLCK' ) {
+
+				if( $found[3] === '0' && $found[4] === '0' )
+					$held[$found[1]] = [];
+				else
+					unset( $held[$found[1]][$found[3]] );
+			}
+			else {
+				$held[$found[1]][$found[3]] = true;
+				$locks++;
+			}
+
+			continue;
+		}
+
+		if( preg_match( '~^close\((\d+)\)\s+= 0~', $line, $found ) === 1 && isset( $files[$found[1]] ) === true ) {
+
+			foreach( $files as $other => $path )
+				if( $other !== $found[1] && $path === $files[$found[1]] && $held[$other] !== [] )
+					$lost[] = ( $number + 1 ). ': close('. $found[1]. ') while fd '. $other. ' holds '. implode( ',', array_keys( $held[$other] ) );
+
+			unset( $files[$found[1]], $held[$found[1]] );
+		}
+	}
+
+	return [ 'lost' => $lost, 'locks' => $locks, 'opened' => $opened ];
+}
+
+/**
+ *	What the core does with a database in one process, from a first request to the test phase: clients added and changed, tasks, shares, the logbook, the settings, a project deleted, a deletion that fails in a step and is finished,
+ *	a deletion, the settings and the band read while a connection is open, the copy for a backup, and the test phase. For a run under strace
+ *
+ *	@param		array 		&$request					A request signed in as the owner
+ *	@param		array 		$m								What domFilled() made
+ *
+ *	@return 	void
+ */
+function domWorkload( array &$request, array $m ): void {
+
+	$new = domClient( $request, [ 'name' => 'Workload' ] );
+	domPost( $request, 'crm-clients/save', [ 'id' => $new, 'city' => 'Graz' ] );
+	domPost( $request, 'crm-tasks/add', [ 'project' => $m['p3'], 'text' => 'work' ] );
+	domPost( $request, 'crm-projects/share', [ 'id' => $m['p2'], 'client' => (string) $m['c'] ] );
+	domPost( $request, 'crm-projects/unshare', [ 'id' => $m['p2'], 'client' => (string) $m['c'] ] );
+	domPost( $request, 'crm-logbook/add', [ 'client' => (string) $m['a'], 'text' => 'Work' ] );
+	domPost( $request, 'crm-projects/phase', [ 'id' => $m['p3'], 'phase' => 'review' ] );
+	domPost( $request, 'crm/settings-save', [ 'seller_name' => 'The Owner' ] );
+	\Nino\Modules\Crm\Settings::readOnly( $request, 'seller_name' );
+	\Nino\Modules\Crm\Mail::doShortcodeHead( $request, '' );
+	\Nino\Modules\Crm\Db::inspect( $request );
+
+	$staging = ninoSandboxDir( $request ). '/workload-staging';
+	mkdir( $staging, 0755, true );
+	$args = [ 'dataDir' => dirname( \Nino\Filesystem::path( $request, \Nino\Modules\Crm\Db::FILE ) ), 'staging' => $staging ];
+	\Nino\Modules\Crm::callbackBackup( $request, $args );
+
+	domPost( $request, 'elements/delete', [ 'type' => 'crm-projects', 'uri' => $m['p2'], 'locale' => 'de_DE' ] );
+	$request['./crm-probe/fail-once'] = true;
+	domPost( $request, 'crm-clients/delete', [ 'id' => $m['a'], 'confirm' => 'K-0001' ] );
+	\Nino\Modules\Crm\Erasure::resume( $request, 'K-0001' );
+	domPost( $request, 'crm-clients/delete', [ 'id' => $new, 'confirm' => \Nino\Modules\Crm\Clients::get( $request, $new )['number'] ?? '' ] );
+	$request['/crm-probe-wipe'] = true;
+	domPost( $request, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+}
+
+/**
+ *	One round of the chaos: savers and deleters of clients as processes of their own, started together, no signal sent to any; then the whole file is checked
+ *
+ *	@param		string		$name
+ *
+ *	@return 	array											integrity_check, foreign_key_check (the rows), the number of clients left, the number of processes that did not end well
+ */
+function domChaos( string $name ): array {
+
+	[ $project, $where, $request ] = domWorld( $name );
+	domSignIn( $request, 'admin@example.org' );
+	$doomed = [];
+
+	for( $i = 0; $i < 12; $i++ ) {
+		$client = domClient( $request, [ 'name' => 'Doomed '. $i ] );
+		$doomed[] = $client. ':'. \Nino\Modules\Crm\Clients::get( $request, $client )['number'];
+	}
+
+	$go = $where. '/go';
+	$procs = [];
+
+	for( $p = 0; $p < 8; $p++ )
+		$procs[] = proc_open( [ PHP_BINARY, __FILE__, 'chaos-save-worker', $GLOBALS['features'], $where, $go, '15' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes[$p], null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+
+	for( $r = 0; $r < 3; $r++ )
+		$procs[] = proc_open( array_merge( [ PHP_BINARY, __FILE__, 'chaos-delete-worker', $GLOBALS['features'], $where, $go ], array_slice( $doomed, $r * 4, 4 ) ), [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes[8 + $r], null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+
+	// The workers say they are up by a file of their own and begin when the file "go" is there
+	for( $wait = 0; count( glob( $go. '-up-*' ) ?: [] ) < 11 && $wait < 30000; $wait++ )
+		usleep( 1000 );
+
+	file_put_contents( $go, 'go' );
+	$bad = 0;
+
+	foreach( $procs as $n => $process ) {
+		stream_get_contents( $pipes[$n][1] );
+		stream_get_contents( $pipes[$n][2] );
+		$bad += proc_close( $process ) === 0 ? 0 : 1;
+	}
+
+	$after = domRequest( $where );
+	$pdo = \Nino\Modules\Crm\Db::pdo( $after );
+
+	return [
+		$pdo->query( 'PRAGMA integrity_check' )->fetchAll( \PDO::FETCH_COLUMN ),
+		$pdo->query( 'PRAGMA foreign_key_check' )->fetchAll(),
+		(int) $pdo->query( 'SELECT COUNT(*) FROM clients' )->fetchColumn(),
+		$bad,
+	];
+}
+
 /*	Worker modes: this same file re-entered as a process of its own, pointed at a sandbox somebody else built. Numbers taken by several processes, two writers on one client and a reader while a writer holds
 	are only seen from other processes: flock() is per open file description	*/
-if( in_array( $argv[1] ?? '', [ 'clients-worker', 'writer-worker', 'holder-worker', 'reader-worker', 'shared-worker' ], true ) === true ) {
+if( in_array( $argv[1] ?? '', [ 'clients-worker', 'writer-worker', 'holder-worker', 'reader-worker', 'shared-worker', 'chaos-save-worker', 'chaos-delete-worker', 'workload-worker' ], true ) === true ) {
 
 	$worker = domRequest( (string) $argv[3] );
+
+	// Savers and deleters of clients that run in a process of their own, as a request of the site does: they say they are up, and begin together when the file of the suite says go
+	if( in_array( $argv[1], [ 'chaos-save-worker', 'chaos-delete-worker' ], true ) === true ) {
+
+		domSignIn( $worker, 'admin@example.org' );
+		touch( $argv[4]. '-up-'. getmypid() );
+
+		while( is_file( $argv[4] ) === false ) {
+			clearstatcache();
+			usleep( 300 );
+		}
+
+		if( $argv[1] === 'chaos-delete-worker' )
+			foreach( array_slice( $argv, 5 ) as $pair ) {
+				[ $client, $number ] = explode( ':', $pair );
+				domPost( $worker, 'crm-clients/delete', [ 'id' => (int) $client, 'confirm' => $number ] );
+			}
+		else
+			for( $round = 0; $round < (int) $argv[5]; $round++ )
+				domPost( $worker, 'crm-clients/save', [ 'name' => 'W'. getmypid(). '-'. $round, 'street' => 'Weg 1', 'zip' => '12345', 'city' => 'Berlin', 'country' => 'DE' ] );
+
+		exit( 0 );
+	}
+
+	// The whole of what the core does, in one process: a run under strace
+	if( $argv[1] === 'workload-worker' ) {
+
+		domSignIn( $worker, 'admin@example.org' );
+		domWorkload( $worker, (array) json_decode( (string) $argv[4], true ) );
+		exit( 0 );
+	}
 
 	if( $argv[1] === 'clients-worker' ) {
 
@@ -2172,8 +2691,7 @@ check( 'a step in the journal that no package that is on stands for is a reason 
 check( 'where the file is held and the register of the packages cannot be read, the data of a package that is gone are not "none": orphansKnown() and orphanKeys() say null, and the test phase says busy - with 503 crm_busy and the time to try again - and deletes nothing', ( static function() use ( &$a ): bool {
 	$file = \Nino\Filesystem::path( $a, '/data/crm.sqlite' );
 	$free = \Nino\Modules\Crm\Db::orphansKnown( $a ) === [] && \Nino\Modules\Crm\Erasure::orphanKeys( $a ) === [];
-	$holder = new \PDO( 'sqlite:'. $file );
-	$holder->exec( 'BEGIN EXCLUSIVE' );
+	$holder = domHold( $file, '$db->exec( "BEGIN EXCLUSIVE" );' );
 
 	try {
 		$known = \Nino\Modules\Crm\Db::orphansKnown( $a );
@@ -2182,21 +2700,20 @@ check( 'where the file is held and the register of the packages cannot be read, 
 		$plain = \Nino\Modules\Crm\Db::orphans( $a );
 	}
 	finally {
-		$holder->exec( 'ROLLBACK' );
+		domRelease( $holder );
 	}
 
 	return $free && $known === null && $keys === null && $run === 'busy' && $plain === [] && domCount( $a, 'clients' ) === 3;
 } )() );
 check( 'the answer of a busy database to the test phase is 503 crm_busy with Retry-After', ( static function() use ( &$a ): bool {
 	$file = \Nino\Filesystem::path( $a, '/data/crm.sqlite' );
-	$holder = new \PDO( 'sqlite:'. $file );
-	$holder->exec( 'BEGIN EXCLUSIVE' );
+	$holder = domHold( $file, '$db->exec( "BEGIN EXCLUSIVE" );' );
 
 	try {
 		[ $status, $body, $request ] = domPost( $a, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
 	}
 	finally {
-		$holder->exec( 'ROLLBACK' );
+		domRelease( $holder );
 	}
 
 	return $status === 503 && ( $body['code'] ?? '' ) === 'crm_busy' && ( $request['/nino/http/response']['header']['Retry-After'] ?? '' ) === '5' && domCount( $a, 'clients' ) === 3;
@@ -2244,8 +2761,7 @@ check( 'the test phase does not begin while a deletion is open: 409 crm_wipe_ope
 \Nino\Modules\Crm\Settings::set( $a, 'app_host', 'app.example.org' );
 $GLOBALS['where_held'] = $where;
 check( 'POST /crm/api while another process holds the file longer than the wait is 503 with Retry-After, whatever the name, and no action is run; with the lock gone it is answered as before', ( static function() use ( &$a, $m ): bool {
-	$holder = new \PDO( 'sqlite:'. \Nino\Filesystem::path( $a, '/data/crm.sqlite' ) );
-	$holder->exec( 'BEGIN EXCLUSIVE' );
+	$holder = domHold( \Nino\Filesystem::path( $a, '/data/crm.sqlite' ), '$db->exec( "BEGIN EXCLUSIVE" );' );
 	$answers = [];
 
 	try {
@@ -2255,7 +2771,7 @@ check( 'POST /crm/api while another process holds the file longer than the wait 
 		}
 	}
 	finally {
-		$holder->exec( 'ROLLBACK' );
+		domRelease( $holder );
 	}
 
 	$later = domRequest( $GLOBALS['where_held'] );
@@ -4044,14 +4560,13 @@ foreach( $rowOf as $what => $insert ) {
 $bare = domRequest( $where, [ './crm-probe/domain' => true ] );
 domSignIn( $bare, 'admin@example.org' );
 check( 'where the database is held, whether it holds a row of a project cannot be told: nothing is cleared and the answer is busy, not "none"', ( static function() use ( &$bare ): bool {
-	$holder = new \PDO( 'sqlite:'. \Nino\Filesystem::path( $bare, '/data/crm.sqlite' ) );
-	$holder->exec( 'BEGIN EXCLUSIVE' );
+	$holder = domHold( \Nino\Filesystem::path( $bare, '/data/crm.sqlite' ), '$db->exec( "BEGIN EXCLUSIVE" );' );
 
 	try {
 		return \Nino\Modules\Crm\Projects::sweep( $bare ) === 'busy' && \Nino\Modules\Crm\Projects::strays( $bare ) === null;
 	}
 	finally {
-		$holder->exec( 'ROLLBACK' );
+		domRelease( $holder );
 	}
 } )() );
 file_put_contents( $typeFile, $typeKept );
@@ -4267,15 +4782,14 @@ check( 'a commit that the readers keep off for the whole wait does not leave a n
 		&& \Nino\Modules\Crm\Projects::strayState( $a )['state'] === 'ok' && domCount( $a, 'tasks', 'project = \''. $m['p3']. '\'' ) === 0 && count( $a['./crm-probe/told'][\Nino\Modules\Crm\Projects::REMOVED] ?? [] ) === $told + 1;
 } )() );
 check( 'the element of a project is not deleted through the Elements of the kernel while the file is held: the veto says the CRM is busy and the project stays; with the lock gone it goes, rows and all', ( static function() use ( &$a, $m ): bool {
-	$holder = new \PDO( 'sqlite:'. \Nino\Filesystem::path( $a, '/data/crm.sqlite' ) );
-	$holder->exec( 'BEGIN IMMEDIATE' );
+	$holder = domHold( \Nino\Filesystem::path( $a, '/data/crm.sqlite' ), '$db->exec( "BEGIN IMMEDIATE" );' );
 
 	try {
 		$warnings = [];
 		ninoErrors( static function() use ( &$a, $m, &$result ): void { $result = \Nino\Elements::deleteElement( $a, '/crm-projects/'. $m['p2'], '*' ); } );
 	}
 	finally {
-		$holder->exec( 'ROLLBACK' );
+		domRelease( $holder );
 	}
 
 	$kept = \Nino\Modules\Crm\Projects::get( $a, $m['p2'] ) !== null;
@@ -4342,6 +4856,322 @@ check( 'the description of a project of a package has no control character, no l
 }
 catch( \Throwable $e ) {
 	domCrashed( 'what the review asked for', $e );
+}
+
+// --- The file and its connection ----------------------------------------------------------------------------------------------
+
+echo "The file and its connection\n";
+
+try {
+
+/*	The pins of this part need a second PROCESS: inside one process SQLite keeps the locks of its connections in memory, and a file that is opened and closed again beside a connection - which lets go of every lock the process
+	holds on it (fcntl(2)) - is not seen by a second connection of the same process. A second process asks for the write lock without waiting, and what it says is the state of the file	*/
+[ $project, $where, $a, $m ] = domFilled( 'lock-erasure' );
+$dbFile = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+$peer = [];
+domPeerOn( $peer, $a );
+
+check( 'the second process is a real peer: it gets the write lock where nothing holds it, is refused while a transaction of this process holds it, and gets it again when that is over', ( static function() use ( &$a, &$peer ): bool {
+	$free = domPeerAsk( $peer );
+	$pdo = \Nino\Modules\Crm\Db::pdo( $a );
+	$pdo->exec( 'BEGIN IMMEDIATE' );
+	$held = domPeerAsk( $peer );
+	$pdo->exec( 'ROLLBACK' );
+
+	return $free === 'got the write lock' && $held === 'locked' && domPeerAsk( $peer ) === 'got the write lock';
+} )() );
+
+// The control of the pins: a file opened beside the connection and closed again is what lets the other process in - and the record of the opens sees it
+check( 'the control: a file opened and closed beside a connection that holds the write lock lets the second process write - and the record of the opens says what opened it, with the lock held at that moment - and not for the next open, the lock is gone', ( static function() use ( &$a, &$peer, $dbFile ): bool {
+	$pdo = \Nino\Modules\Crm\Db::pdo( $a );
+	$pdo->exec( 'BEGIN IMMEDIATE' );
+	DomFileWatch::$controlling = true;
+	DomFileWatch::on( (string) realpath( $GLOBALS['features'] ). '/Crm/' );
+
+	try {
+		$kind = \Nino\Modules\Crm\Db::kind( $dbFile );
+		file_get_contents( $dbFile, false, null, 0, 16 );
+	}
+	finally {
+		DomFileWatch::off();
+		DomFileWatch::$controlling = false;
+	}
+
+	$after = domPeerAsk( $peer );
+	$pdo->exec( 'ROLLBACK' );
+	$seen = array_slice( DomFileWatch::$control, -2 );
+
+	return domSaw( $kind === 'ours' && $after === 'got the write lock' && count( $seen ) === 2 && $seen[0][1] === true && $seen[0][2] === true && $seen[0][3] === 'Nino\\Modules\\Crm\\Db::kind' && $seen[1][1] === false && $seen[1][2] === false, [ $kind, $after, $seen ] );
+} )() );
+
+// Every place of the core that holds a transaction open while code runs: the second process is refused the write lock before and after every row, in every table
+[ $seen, $answer ] = domLocked( $a, $peer, static function() use ( &$a, $m ): string { return domAnswer( $a, 'crm-clients/delete', [ 'id' => $m['a'], 'confirm' => 'K-0001' ] ); } );
+check( 'the deletion of a client holds the write lock from the plan to the commit - through the questions of the core and the hooks of the package - and the second process is refused it every time it asks ('. count( $seen ). ' times)', $answer === '200 -' && domRefused( $seen, 20 ) );
+
+[ $project, $where, $a, $m ] = domFilled( 'lock-resume' );
+domPeerOn( $peer, $a );
+$a['./crm-probe/fail-once'] = true;
+[ $first, $answer ] = domLocked( $a, $peer, static function() use ( &$a, $m ): string { return domAnswer( $a, 'crm-clients/delete', [ 'id' => $m['a'], 'confirm' => 'K-0001' ] ); } );
+[ $second, $resumed ] = domLocked( $a, $peer, static function() use ( &$a ): array|string { return \Nino\Modules\Crm\Erasure::resume( $a, 'K-0001' ); } );
+check( 'a deletion that fails in a step of a package and the press that finishes it keep the lock of every transaction they hold: the second process is refused it every time it asks ('. count( $first ). ' and '. count( $second ). ' times)', domSaw( $answer === '500 crm_clients_delete_step' && is_array( $resumed ) === true && domRefused( $first, 10 ) && domRefused( $second, 1 ), [ $answer, $resumed, $first, $second ] ) );
+
+[ $project, $where, $a, $m ] = domFilled( 'lock-wipe' );
+domPeerOn( $peer, $a );
+$a['/crm-probe-wipe'] = true;
+[ $seen, $answer ] = domLocked( $a, $peer, static function() use ( &$a ): string { return domAnswer( $a, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] ); } );
+check( 'the test phase holds the write lock while the package deletes its rows with the core, and the second process is refused it every time it asks ('. count( $seen ). ' times)', domSaw( $answer === '200 -' && domRefused( $seen, 20 ), [ $answer, array_count_values( $seen ) ] ) );
+
+[ $project, $where, $a, $m ] = domFilled( 'lock-project' );
+domPeerOn( $peer, $a );
+domBody( $a, 'crm-tasks/add', [ 'project' => $m['p2'], 'text' => 'a task' ] );
+domBody( $a, 'crm-projects/share', [ 'id' => $m['p2'], 'client' => (string) $m['c'] ] );
+[ $seen, $answer ] = domLocked( $a, $peer, static function() use ( &$a, $m ): string { return domAnswer( $a, 'elements/delete', [ 'type' => 'crm-projects', 'uri' => $m['p2'], 'locale' => 'de_DE' ] ); } );
+check( 'a project is deleted with its element in a transaction that keeps the write lock through the deletion of the element of the kernel and the hooks that run in it ('. count( $seen ). ' times)', domSaw( $answer === '200 -' && domRefused( $seen, 3 ), [ $answer, array_count_values( $seen ) ] ) );
+
+[ $project, $where, $a, $m ] = domFilled( 'lock-writes' );
+domPeerOn( $peer, $a );
+check( 'every other write the endpoint makes - a client added and changed, a task, a share and its end, a phase, a logbook line, the settings - is refused to the second process at every row, and every one of them is answered', ( static function() use ( &$a, &$peer, $m ): bool {
+	$answers = [];
+	$per = [];
+	[ $seen, $answers[] ] = domLocked( $a, $peer, static function() use ( &$a ): int { return domPost( $a, 'crm-clients/save', [ 'name' => 'Added' ] )[0]; } );
+	$all = $seen;
+	$per['add'] = array_count_values( $seen );
+	$id = (int) ( \Nino\Modules\Crm\Db::row( $a, 'SELECT id FROM clients WHERE name = \'Added\'' )['id'] ?? 0 );
+
+	foreach( [
+		[ 'crm-clients/save', [ 'id' => $id, 'city' => 'Graz' ] ], [ 'crm-tasks/add', [ 'project' => $m['p3'], 'text' => 'a task' ] ], [ 'crm-projects/share', [ 'id' => $m['p2'], 'client' => (string) $m['c'] ] ],
+		[ 'crm-projects/unshare', [ 'id' => $m['p2'], 'client' => (string) $m['c'] ] ], [ 'crm-projects/phase', [ 'id' => $m['p3'], 'phase' => 'review' ] ], [ 'crm-logbook/add', [ 'client' => (string) $m['a'], 'text' => 'A note' ] ],
+		[ 'crm/settings-save', [ 'seller_name' => 'The Owner' ] ],
+	] as [ $action, $data ] ) {
+		[ $seen, $answers[] ] = domLocked( $a, $peer, static function() use ( &$a, $action, $data ): int { return domPost( $a, $action, $data )[0]; } );
+		$all = array_merge( $all, $seen );
+		$per[$action] = array_count_values( $seen );
+	}
+
+	return domSaw( $answers === array_fill( 0, 8, 200 ) && domRefused( $all, 8 ), [ $answers, $per ] );
+} )() );
+
+// The schema of a package is made in a transaction of the core: the connection is the one the test made, and the second process is refused the lock at every row the steps write
+[ $project, $where, $late ] = domWorld( 'lock-schema', false );
+\Nino\Modules\Crm\Db::pdo( $late );
+\Nino\Modules\Crm\Db::close( $late );
+\Nino\Features::activate( $project, 'crm-probe' );
+$late = domRequest( $where, [ './crm-probe/domain' => true ] );
+$lateFile = \Nino\Filesystem::path( $late, \Nino\Modules\Crm\Db::FILE );
+$own = new \PDO( 'sqlite:'. $lateFile, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC, \PDO::ATTR_EMULATE_PREPARES => false ] );
+$own->exec( 'PRAGMA busy_timeout = 5000' );
+$own->exec( 'PRAGMA foreign_keys = ON' );
+$own->exec( 'PRAGMA journal_mode = DELETE' );
+$late['./crm/db/connections'][$lateFile] = $own;
+$schemaPeer = domPeer( $lateFile );
+$seen = [];
+domArm( $late, $schemaPeer, $seen, $own );
+$made = \Nino\Modules\Crm\Db::ensure( $late );
+check( 'the steps that make or raise the schema of a package run inside a transaction of the core that keeps the write lock, and the second process is refused it every time it asks ('. count( $seen ). ' times)', $made === 1 && domRefused( $seen, 2 ) && in_array( 'crm-probe', array_keys( \Nino\Modules\Crm\Db::versions( $late ) ), true ) );
+domPeerStop( $schemaPeer );
+$own = null;
+
+// The data of a package that is gone are taken away in a transaction as well
+[ $project, $where, $a, $m ] = domFilled( 'lock-drop' );
+\Nino\Features::deactivate( $project, 'crm-probe' );
+\Nino\Features::remove( $project, 'crm-probe' );
+$r = domRequest( $where );
+domSignIn( $r, 'admin@example.org' );
+$dropPeer = domPeer( \Nino\Filesystem::path( $r, \Nino\Modules\Crm\Db::FILE ) );
+[ $seen, $dropped ] = domLocked( $r, $dropPeer, static function() use ( &$r ): array {
+	$_POST = [ 'action' => 'crm/drop-data', 'data' => json_encode( [ 'key' => 'crm-probe', 'typed' => 'crm-probe' ] ) ];
+	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
+	\Nino\Modules\Crm\Admin::apiDropData( $r, $request );
+	$_POST = [];
+
+	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body']['dropped'] ?? null ];
+} );
+check( 'taking the data of a package that is gone away runs in a transaction that keeps the write lock, and the second process is refused it every time it asks ('. count( $seen ). ' times)', $dropped === [ 200, 1 ] && domRefused( $seen, 1 ) );
+domPeerStop( $dropPeer );
+domCopy( $source. '/tests/fixtures/CrmProbe', $features. '/CrmProbe' );
+ninoWarnings();
+
+// What asks about the file while a connection holds the write lock: none of it opens the file, so none of it lets the lock go
+[ $project, $where, $a, $m ] = domFilled( 'lock-asks' );
+domPeerOn( $peer, $a );
+$asks = [
+	'Db::inspect' => static function( array &$request ): void { \Nino\Modules\Crm\Db::inspect( $request ); },
+	'Db::orphans' => static function( array &$request ): void { \Nino\Modules\Crm\Db::orphans( $request ); },
+	'Db::orphansKnown' => static function( array &$request ): void { \Nino\Modules\Crm\Db::orphansKnown( $request ); },
+	'Settings::readOrNull' => static function( array &$request ): void { \Nino\Modules\Crm\Settings::readOrNull( $request, 'seller_name' ); },
+	'Settings::readOnly' => static function( array &$request ): void { \Nino\Modules\Crm\Settings::readOnly( $request, 'seller_name' ); },
+	'Mail::doShortcodeHead' => static function( array &$request ): void { \Nino\Modules\Crm\Mail::doShortcodeHead( $request, '' ); },
+	'Crm::callbackBackup' => static function( array &$request ): void {
+		$staging = ninoSandboxDir( $request ). '/ask-staging';
+		is_dir( $staging ) === true || mkdir( $staging, 0755, true );
+		$args = [ 'dataDir' => dirname( \Nino\Filesystem::path( $request, \Nino\Modules\Crm\Db::FILE ) ), 'staging' => $staging ];
+		\Nino\Modules\Crm::callbackBackup( $request, $args );
+		unlink( $staging. '/crm.sqlite' );
+	},
+	'Db::backup with what the caller holds' => static function( array &$request ): void {
+		$target = ninoSandboxDir( $request ). '/ask-copy.sqlite';
+		\Nino\Modules\Crm\Db::backup( \Nino\Filesystem::path( $request, \Nino\Modules\Crm\Db::FILE ), $target, \Nino\Modules\Crm\Db::held( $request ) );
+		unlink( $target );
+	},
+];
+
+foreach( $asks as $what => $ask )
+	check( 'where a connection of the request holds the write lock, '. $what. ' leaves the file closed: the second process is refused the lock before and after, and nothing of the core opened the file', ( static function() use ( $where, &$peer, $ask ): bool {
+		$request = domRequest( $where );
+		$pdo = \Nino\Modules\Crm\Db::pdo( $request );
+		$pdo->exec( 'BEGIN IMMEDIATE' );
+		$before = domPeerAsk( $peer );
+		$opened = domOpened( static function() use ( &$request, $ask ): void { $ask( $request ); } );
+		$after = domPeerAsk( $peer );
+		$pdo->exec( 'ROLLBACK' );
+
+		return domSaw( $before === 'locked' && $after === 'locked' && $opened === [], [ $before, $after, $opened ] );
+	} )() );
+
+check( 'a reader of the settings that is open is a connection too: the connection that is made next, and every question about the file, opens it no other way', ( static function() use ( $where ): bool {
+	$request = domRequest( $where );
+	\Nino\Modules\Crm\Settings::readOnly( $request, 'seller_name' );
+	$opened = domOpened( static function() use ( &$request ): void {
+		\Nino\Modules\Crm\Db::pdo( $request );
+		\Nino\Modules\Crm\Db::inspect( $request );
+		\Nino\Modules\Crm\Settings::readOnly( $request, 'seller_name' );
+		\Nino\Modules\Crm\Db::pdo( $request );
+	} );
+
+	return $opened === [];
+} )() );
+check( 'a file that no connection is open on is told by its header, once: the question the first connection asks, and the one a backup asks - the file is opened for reading, and no lock is held', ( static function() use ( $where ): bool {
+	$request = domRequest( $where );
+	$first = domOpened( static function() use ( &$request ): void { \Nino\Modules\Crm\Db::pdo( $request ); } );
+	$request = domRequest( $where );
+	$copy = domOpened( static function() use ( $where ): void {
+		$staging = $where. '/backup-staging';
+		is_dir( $staging ) === true || mkdir( $staging, 0755, true );
+		$request = domRequest( $where );
+		$args = [ 'dataDir' => $where. '/private/data', 'staging' => $staging ];
+		\Nino\Modules\Crm::callbackBackup( $request, $args );
+	} );
+
+	return count( $first ) === 1 && $first[0][2] === false && count( $copy ) === 1 && $copy[0][2] === false && $copy[0][3] === 'Nino\\Modules\\Crm\\Db::kind';
+} )() );
+domPeerStop( $peer );
+
+// The source: the only places that ask the header of the file, and no function that opens a file is given the path of the database anywhere
+check( 'the header of the file is read in one place, Db::kind(), and asked in four: Db::kindFor() for the connection and the status, Settings and the mail band through it, and Db::backup() with what its caller holds - no other call of kind() in the feature', ( static function() use ( $source ): bool {
+	$calls = [];
+
+	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $source, \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
+
+		$relative = substr( (string) $file->getPathname(), strlen( $source ) + 1 );
+
+		if( str_ends_with( $relative, '.php' ) === false || str_starts_with( $relative, 'tests/' ) === true )
+			continue;
+
+		$code = '';
+
+		foreach( token_get_all( (string) file_get_contents( (string) $file->getPathname() ) ) as $token )
+			$code .= is_array( $token ) === true ? ( in_array( $token[0], [ T_COMMENT, T_DOC_COMMENT ], true ) === true ? ' ' : $token[1] ) : $token;
+
+		preg_match_all( '/(?<!function )\b(?:Db::|self::|static::)?(kindFor|kind)\s*\(/', $code, $found );
+
+		if( $found[1] !== [] )
+			$calls[$relative] = array_count_values( $found[1] );
+	}
+
+	ksort( $calls );
+	$calls = array_map( static function( array $names ): array { ksort( $names ); return $names; }, $calls );
+
+	return $calls === [ 'Db/Db.php' => [ 'kind' => 2, 'kindFor' => 2 ], 'Mail/Mail.php' => [ 'kindFor' => 1 ], 'Settings/Settings.php' => [ 'kindFor' => 1 ] ];
+} )() );
+check( 'no function of php that opens or reads a file is given the path of the database: of the ones that open, the feature has the read of the header in Db::kind() - one - and, besides what it does with files of its own, nothing', ( static function() use ( $source ): bool {
+	$opens = [ 'file_get_contents', 'fopen', 'file', 'readfile', 'copy', 'hash_file', 'md5_file', 'sha1_file', 'SplFileObject', 'finfo', 'fpassthru', 'parse_ini_file', 'file_put_contents', 'touch', 'rename', 'unlink', 'getimagesize', 'mime_content_type', 'fileinode', 'hash_update_file', 'finfo_open', 'finfo_file', 'exif_read_data', 'exif_thumbnail', 'simplexml_load_file', 'highlight_file', 'show_source', 'php_strip_whitespace', 'readgzfile', 'gzfile', 'gzopen', 'bzopen', 'fscanf', 'popen' ];
+	$found = [];
+
+	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $source, \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
+
+		$relative = substr( (string) $file->getPathname(), strlen( $source ) + 1 );
+
+		if( str_ends_with( $relative, '.php' ) === false || str_starts_with( $relative, 'tests/' ) === true )
+			continue;
+
+		$tokens = token_get_all( (string) file_get_contents( (string) $file->getPathname() ) );
+
+		foreach( $tokens as $at => $token )
+			if( is_array( $token ) === true && in_array( $token[0], [ T_STRING, T_NAME_FULLY_QUALIFIED ], true ) === true && in_array( ltrim( $token[1], '\\' ), $opens, true ) === true ) {
+
+				// A call of the function, not a name and not a method of that name: the token before is no arrow or colons, the next that is no blank is a bracket
+				$before = $at - 1;
+
+				while( $before > 0 && is_array( $tokens[$before] ) === true && $tokens[$before][0] === T_WHITESPACE )
+					$before--;
+
+				$next = $at + 1;
+
+				while( is_array( $tokens[$next] ?? '' ) === true && $tokens[$next][0] === T_WHITESPACE )
+					$next++;
+
+				if( ( $tokens[$next] ?? '' ) === '(' && in_array( is_array( $tokens[$before] ) === true ? $tokens[$before][0] : 0, [ T_DOUBLE_COLON, T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_FUNCTION ], true ) === false )
+					$found[$relative][] = ltrim( $token[1], '\\' );
+			}
+	}
+
+	ksort( $found );
+	$files = array_map( static function( array $names ): array { $count = array_count_values( $names ); ksort( $count ); return $count; }, $found );
+
+	// What each does, and with which file: the header of the database (Db::kind, once), the copy that is a backup (the target is a file that is not there, written by SQLite; the files a failed copy leaves are taken away),
+	// the files of the surface (its own stylesheets, scripts and icons, below the folder of the feature), the files of the project the kernel writes through Filesystem and none of them is the database
+	return domSaw( $files === [ 'Db/Db.php' => [ 'file_get_contents' => 1, 'unlink' => 1 ], 'Surface/Icons/Icons.php' => [ 'file_get_contents' => 3, 'file_put_contents' => 1, 'getimagesize' => 2, 'rename' => 1, 'sha1_file' => 2, 'unlink' => 3 ], 'Surface/Scripts/Scripts.php' => [ 'hash_file' => 1 ], 'Surface/Surface.php' => [ 'hash_file' => 1 ] ]
+		&& preg_match( '/function kind\(.*?file_get_contents\(.*?function kindFor\(/s', (string) file_get_contents( $source. '/Db/Db.php' ) ) === 1, $files );
+} )() );
+
+// Under strace: every open and close of a descriptor on the file, in a process that runs the whole of it
+$strace = trim( (string) shell_exec( 'command -v strace 2>/dev/null' ) );
+$traceLabel = 'a process that does what the core does - clients, tasks, shares, the logbook, the settings, the band, the copy of a backup, a project deleted, a deletion that fails in a step and is resumed, the test phase - never closes a descriptor on the file while another one of its descriptors holds a lock of SQLite (strace)';
+
+if( $strace === '' )
+	echo "SKIPPED - ". $traceLabel. ": strace is not installed\n";
+else {
+	[ $project, $where, $a, $m ] = domFilled( 'lock-strace' );
+	$out = $where. '/workload.strace';
+	$run = proc_open( [ $strace, '-o', $out, '-e', 'trace=openat,close,fcntl', PHP_BINARY, __FILE__, 'workload-worker', $features, $where, json_encode( $m ) ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $root ] + getenv() );
+	stream_get_contents( $pipes[1] );
+	stream_get_contents( $pipes[2] );
+	$code = proc_close( $run );
+	$trace = is_file( $out ) === true ? (string) file_get_contents( $out ) : '';
+	$loss = domLockLoss( $trace );
+
+	if( $loss['opened'] === 0 )
+		echo "SKIPPED - ". $traceLabel. ": strace could not trace the process here\n";
+	else {
+		foreach( $loss['lost'] as $line )
+			echo "        ". $line. "\n";
+
+		check( $traceLabel. ' ('. $loss['opened']. ' descriptors, '. $loss['locks']. ' locks)', $code === 0 && $loss['lost'] === [] && $loss['locks'] > 50 );
+	}
+}
+
+// The whole file, under load from processes of their own and no signal sent: the savers and the deleters, and then the file is looked at - the one that damaged it in ten of fourteen runs
+$chaos = [];
+$rounds = 0;
+
+while( $rounds < 3 ) {
+	$chaos = domChaos( 'lock-chaos' );
+	$rounds++;
+
+	if( $chaos[0] !== [ 'ok' ] || $chaos[1] !== [] )
+		break;
+}
+
+check( 'eight savers and three deleters of clients, each a process of its own, started together and none ended from outside, leave the file whole: integrity_check and foreign_key_check find nothing, and every process ended well ('. $rounds. ' round'. ( $rounds === 1 ? '' : 's' ). ')', $chaos[0] === [ 'ok' ] && $chaos[1] === [] && $chaos[3] === 0 && $chaos[2] >= 100 );
+
+// What the whole of this suite opened of the file besides its connections
+$lockedOpens = array_values( array_filter( DomFileWatch::$log, static fn( array $open ): bool => $open[1] === true && $open[2] === true ) );
+$coreOpens = array_values( array_filter( DomFileWatch::$log, static fn( array $open ): bool => $open[1] === true ) );
+check( 'in every window of this suite that watched the opens of the file the core opened it, beside its connections, never with a lock of the process held ('. count( $lockedOpens ). ' of '. count( $coreOpens ). ' opens of the core), and everything it opened beside them is the read of the header by Db::kind(), where no connection of the request was open', count( DomFileWatch::$control ) >= 2 && $lockedOpens === [] && array_unique( array_column( $coreOpens, 3 ) ) === [ 'Nino\\Modules\\Crm\\Db::kind' ] );
+
+}
+catch( \Throwable $e ) {
+	domCrashed( 'the file and its connection', $e );
 }
 
 // the end of this part of the suite is written below

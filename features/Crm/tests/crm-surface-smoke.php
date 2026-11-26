@@ -213,6 +213,37 @@ function srfVia( string $class, string $method, array &$appData, mixed ...$argum
 }
 
 /**
+ *	A writer in a process of its own that holds the database locked: it begins an exclusive transaction, says it holds, and rolls back when it is released. A lock held by another process is only seen from a process of its own
+ *
+ *	@param		string		$file
+ *
+ *	@return 	array											The process and its pipes
+ */
+function srfHold( string $file ): array {
+
+	$program = '$in = fopen( "php://stdin", "r" ); $db = new PDO( "sqlite:". $argv[1], null, null, [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ] ); $db->exec( "PRAGMA busy_timeout = 0" ); $db->exec( "BEGIN EXCLUSIVE" ); echo "held\n"; fflush( STDOUT ); fgets( $in ); $db->exec( "ROLLBACK" );';
+	$process = proc_open( [ PHP_BINARY, '-r', $program, $file ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ] ], $pipes );
+	fgets( $pipes[1] );
+
+	return [ $process, $pipes ];
+}
+
+/**
+ *	Let the writer go
+ *
+ *	@param		array 		$held					What srfHold() answered
+ *
+ *	@return 	void
+ */
+function srfRelease( array $held ): void {
+
+	@fwrite( $held[1][0], "\n" );
+	fclose( $held[1][0] );
+	fclose( $held[1][1] );
+	proc_close( $held[0] );
+}
+
+/**
  *	One GET of the site, the way the server hands it over, with the callbacks of the response run
  *
  *	@param		string		$where
@@ -1056,14 +1087,11 @@ try {
 	check( 'the page is the page again where the database can be read', srfKind( $status, $body ) === 'page' );
 
 	// The same for a database that is there and is locked by a writer that does not let go
-	$pdo = new \PDO( 'sqlite:'. $file );
-	$pdo->exec( 'PRAGMA busy_timeout = 0' );
-	$pdo->exec( 'BEGIN EXCLUSIVE' );
+	$holder = srfHold( $file );
 	$started = microtime( true );
 	[ $status, $body ] = srfGet( $where, '/crm', $crm );
 	$waited = microtime( true ) - $started;
-	$pdo->exec( 'ROLLBACK' );
-	$pdo = null;
+	srfRelease( $holder );
 	check( 'a database that is locked by a writer is no "no device" either: the page says it cannot be read, after the time the core waits and no longer', srfKind( $status, $body ) === 'down' && $waited < 20 );
 }
 catch( \Throwable $e ) {

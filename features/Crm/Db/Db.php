@@ -46,6 +46,9 @@ namespace Nino\Modules\Crm {
 
 		// What the module keeps of the database for the request: the connections by file, the files whose schemas were checked, and the schemas packages entered
 		private const string CONNECTIONS = './crm/db/connections';
+
+		// The device and inode of the file each connection of the request was opened on, by file (see kindFor())
+		private const string INODES = './crm/db/inodes';
 		private const string ENSURED = './crm/db/ensured';
 		private const string SCHEMAS = './crm/db/schemas';
 
@@ -104,7 +107,7 @@ namespace Nino\Modules\Crm {
 		 */
 		public static function close( array &$appData ): void {
 
-			unset( $appData[self::CONNECTIONS], $appData[self::ENSURED] );
+			unset( $appData[self::CONNECTIONS], $appData[self::INODES], $appData[self::ENSURED] );
 		}
 
 		/**
@@ -112,10 +115,11 @@ namespace Nino\Modules\Crm {
 		 *	is no database, a directory. Read from the header of the file alone: nothing is opened, so nothing of a foreign file is touched. A file with the mark of the core and no row of the core in its register is called ours here, as the header says; inspect() and pdo() tell it as it is - not the database of the CRM
 		 *
 		 *	@param		string		$file
+		 *	@param		array 		$held					Device and inode of every file a connection of this process is open on, as held() has them: such a file is ours and is not read (see kindFor())
 		 *
 		 *	@return 	string										absent, empty, ours, foreign or unreadable
 		 */
-		public static function kind( string $file ): string {
+		public static function kind( string $file, array $held = [] ): string {
 
 			clearstatcache( true, $file );
 
@@ -124,6 +128,13 @@ namespace Nino\Modules\Crm {
 
 			if( is_file( $file ) === false )
 				return 'foreign';
+
+			// A file a connection is open on is not opened here: close() of any descriptor of a file lets go of every POSIX lock the process holds on it (fcntl(2)) - the locks of SQLite
+			// of that connection too, the write lock of an open transaction among them - and another process then writes into the middle of that transaction
+			$stat = $held === [] ? false : stat( $file );
+
+			if( is_array( $stat ) === true && in_array( [ $stat['dev'], $stat['ino'] ], $held, true ) === true )
+				return 'ours';
 
 			if( filesize( $file ) === 0 )
 				return 'empty';
@@ -137,6 +148,53 @@ namespace Nino\Modules\Crm {
 				return 'foreign';
 
 			return (int) ( unpack( 'N', substr( $head, 68, 4 ) )[1] ?? 0 ) === self::APPLICATION_ID ? 'ours' : 'foreign';
+		}
+
+		/**
+		 *	What kind() says of the file, for a request: a file that a connection of the request is open on - the same device and inode - is ours as connect() found it, and is never opened and closed beside that connection.
+		 *	Every caller that can run while the request holds a connection, a transaction among them, asks this and never kind()
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$file
+		 *
+		 *	@return 	string										As kind()
+		 */
+		public static function kindFor( array &$appData, string $file ): string {
+
+			return self::kind( $file, self::held( $appData ) );
+		}
+
+		/**
+		 *	The device and inode of the files the connections of this request are open on: the connection of pdo() and the reader of the settings
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	array											A list of [ device, inode ]
+		 */
+		public static function held( array &$appData ): array {
+
+			$held = [];
+
+			foreach( $appData[self::CONNECTIONS] ?? [] as $file => $pdo )
+				if( $pdo instanceof \PDO && ( $appData[self::INODES][$file] ?? [] ) !== [] )
+					$held[] = $appData[self::INODES][$file];
+
+			return array_merge( $held, Settings::held( $appData ) );
+		}
+
+		/**
+		 *	The device and inode of a file that was just opened
+		 *
+		 *	@param		string		$file
+		 *
+		 *	@return 	array											[ device, inode ], [] where the file cannot be told
+		 */
+		public static function identity( string $file ): array {
+
+			clearstatcache( true, $file );
+			$stat = stat( $file );
+
+			return is_array( $stat ) === true ? [ $stat['dev'], $stat['ino'] ] : [];
 		}
 
 		/**
@@ -156,7 +214,7 @@ namespace Nino\Modules\Crm {
 			if( is_dir( dirname( $file ) ) === false )
 				throw new \PDOException( 'the directory of the database cannot be made' );
 
-			$kind = self::kind( $file );
+			$kind = self::kindFor( $appData, $file );
 
 			if( $kind === 'foreign' || $kind === 'unreadable' )
 				throw new \PDOException( $kind === 'foreign' ? 'the file is not the database of the CRM' : 'the database of the CRM cannot be read' );
@@ -171,6 +229,8 @@ namespace Nino\Modules\Crm {
 				$pdo->exec( 'PRAGMA '. $pragma );
 				$appData[self::PRAGMA_LOG][$file][] = $pragma;
 			}
+
+			$appData[self::INODES][$file] = self::identity( $file );
 
 			return $pdo;
 		}
@@ -190,14 +250,15 @@ namespace Nino\Modules\Crm {
 		 *
 		 *	@param		string		$file					The live file
 		 *	@param		string		$target				Where the copy is written: a file that does not exist
+		 *	@param		array 		$held					What held() says of the caller's connections: the live file is not read for its header when a connection of the caller is open on it
 		 *
 		 *	@return 	bool											true where a copy was written, false where there is nothing of the core to hand over
 		 *
 		 *	@throws		\PDOException							The file cannot be read or copied, or the copy is not whole
 		 */
-		public static function backup( string $file, string $target ): bool {
+		public static function backup( string $file, string $target, array $held = [] ): bool {
 
-			$kind = self::kind( $file );
+			$kind = self::kind( $file, $held );
 
 			if( $kind === 'unreadable' )
 				throw new \PDOException( 'the database of the CRM cannot be read' );
@@ -1198,7 +1259,7 @@ namespace Nino\Modules\Crm {
 		public static function inspect( array &$appData ): array {
 
 			$file = \Nino\Filesystem::path( $appData, self::FILE );
-			$kind = self::kind( $file );
+			$kind = self::kindFor( $appData, $file );
 			$stored = [];
 
 			if( $kind === 'ours' ) {

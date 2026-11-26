@@ -34,6 +34,13 @@ namespace Nino\Modules {
 	 *											for as long as the transaction has written nothing to the file (its changes are in the cache of its connection until the cache is full or it ends): the copy is the state before it. Where it has written -
 	 *											a large transaction, or one at its commit - the callback waits five seconds and throws. Nothing else is made for the copy: no folder below data/, no table, no file of a log.
 	 *
+	 *											THE FILE IS OPENED ONLY BY ITS CONNECTION. While a process holds a connection to /data/crm.sqlite - and a request of the core does from its first query to its end - nothing of that process opens the file, or its
+	 *											-journal, any other way: no file_get_contents, fopen, file, readfile, copy, hash_file, md5_file, sha1_file, SplFileObject, finfo or the like. POSIX locks belong to the process and the file, not to the descriptor
+	 *											(fcntl(2)): the close() of ANY descriptor of the process on the file lets go of every lock the process holds on it, those of SQLite included, the write lock of an open transaction among them, and another process then
+	 *											writes into the middle of that transaction and the file is damaged - SQLite does not notice, for it keeps the locks it thinks it has in its own memory. This holds for a package too, above all for what it runs inside a
+	 *											transaction of the core - the callables of Erasure::add() and Wipe::add(), the schema it enters with Db::addSchema(), the hooks of Settings::add() and Values::addType(): a package asks the core (Db::kindFor(), Db::inspect(),
+	 *											Settings::get()) and never opens the file to look at it. Whether a file is the core's is told, for the file a connection is open on, by the device and inode that connection was opened on, and never by reading the file again
+	 *
 	 *											THE PLACES A PACKAGE ENTERS ITSELF. Every call is made from the init() of the package, after
 	 *											\Nino\Modules\Crm::featureOn( $appData, 'crm' ) has said yes. Every call names the package that makes it, the same way: the field package of the description where the call
 	 *											takes a description (a spec; Settings::add() a list of them), the option package of the last argument, an array $opts, where it takes plain arguments - and the one place that
@@ -130,7 +137,7 @@ namespace Nino\Modules {
 
 			$name = basename( \Nino\Modules\Crm\Db::FILE );
 
-			\Nino\Modules\Crm\Db::backup( $args['dataDir']. '/'. $name, $args['staging']. '/'. $name );
+			\Nino\Modules\Crm\Db::backup( $args['dataDir']. '/'. $name, $args['staging']. '/'. $name, \Nino\Modules\Crm\Db::held( $appData ) );
 		}
 
 		/**
