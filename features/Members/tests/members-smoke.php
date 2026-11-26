@@ -22,6 +22,24 @@ declare(strict_types=1);
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
+require_once $root. '/tests/fixtures/faultfs.php';
+
+/**
+ *	The keys of the installation that the counters of the kernel are filed by. \Nino\Feature::count() puts every key of a counter in one of 256 files, chosen by an HMAC of the key under the
+ *	key of the installation, which is made at random for each one: two keys of one request that fall in one file are a lock, an open and a write fewer than they are in two files, and
+ *	that is a property of the counter of the kernel and none of an account. What the feature promises is that an address with an account and one with none are not told apart - so the
+ *	pairs of membersVoidChecks() are made under a key that gives every key of a request a file of its own ('apart'), the same in every run, and one check shows the promise under the
+ *	layouts a pair can have: both addresses share the file of the visitor, only the one with an account does, only the one with none does. Each key is sha256( 'members-smoke <layout> <n>' )
+ *	for the smallest n for which the layout holds under the HMAC of the kernel - for 'apart' with the keys of the visitor and the reasons said, and the address of every pair, in
+ *	files of their own; for the others with the keys of the visitor (127.0.0.1), of ada@example.org and of zed@example.org as the name says. Where the kernel files its keys another
+ *	way, the check of the layout says so, and a key is searched again by that rule
+ */
+const MEMBERS_SEEDS = [
+	'apart'			=> '809552e8259da3f89375ce7a1de3f7c2817488a7e2fba3c0d98ba5a3adb07a01',
+	'together'	=> '56fdabee6ee8fa91a53cff44ba924dbad3345557e2221c10fea4925fce5b0739',
+	'adaWith'		=> '0450752210cee05e8e7a35c21e7bb3c7f8a15d61b72b202e559450568657e9d8',
+	'zedWith'		=> '27ef31e44eed56c97630dcad3f44eb54ea67b73852df9596066fa541148cb559',
+];
 
 /*	Worker mode: this same file re-entered as a process of its own, pointed at a sandbox somebody else built. A request that is over before the process ends is only seen
 	from a second process, and so is a write that comes between two others: flock() is per open file description, so one process proves nothing about it	*/
@@ -102,27 +120,41 @@ if( in_array( $argv[1] ?? '', [ 'drop-worker', 'both-worker', 'hold-worker', 'li
 		exit( 0 );
 	}
 
-	// Holds the lock of the accounts for a while, and says when it has it
+	// The three processes of the race are in step by marks - files - and by nothing of the clock: a process that is told something goes on when the file is there, and a mark that
+	// never comes ends the wait after thirty seconds, so that it is a failed check and no hung suite. Holds the lock of the accounts, says that it has it ($argv[4]) and lets go of it
+	// when it is told that the link is made ($argv[5])
 	if( $argv[1] === 'hold-worker' ) {
 		\Nino\Filesystem::mutate( $worker, \Nino\Modules\Members::ACCOUNTS, static function() use ( $argv ): ?array {
 			file_put_contents( $argv[4], '1' );
-			usleep( 700000 );
+
+			for( $waited = 0; is_file( $argv[5] ) === false && $waited < 30000; $waited += 2 )
+				usleep( 2000 );
+
 			return null;
 		}, [] );
 		exit( 0 );
 	}
 
-	// Makes a link for the account while the lock is held: a moment after it was taken
-	while( is_file( $argv[4] ) === false )
+	// Makes a link for the account once it is told that the change of the address has the first deletion of the links behind it and waits for the accounts ($argv[4]), and says
+	// that it is made ($argv[5])
+	for( $waited = 0; is_file( $argv[4] ) === false && $waited < 30000; $waited += 2 )
 		usleep( 2000 );
 
-	usleep( 250000 );
-	echo json_encode( \Nino\Modules\Members::link( $worker, [ 'id' => $argv[5], 'email' => $argv[6] ], 'login', '', true, false ) !== false );
+	$linked = \Nino\Modules\Members::link( $worker, [ 'id' => $argv[6], 'email' => $argv[7] ], 'login', '', true, false ) !== false;
+	file_put_contents( $argv[5], '1' );
+	echo json_encode( $linked );
 	exit( 0 );
 }
 
 $dir = dirname( __DIR__ );
 $appData = ninoSandbox( 'members' );
+// ninoDone() takes the sandbox away at the end of a run, whether checks failed or not; a run that ends in an error nobody caught does not get there, and its sandbox is taken away as the process ends
+$sandboxDir = ninoSandboxDir( $appData );
+register_shutdown_function( static function() use ( $sandboxDir ): void {
+
+	if( $sandboxDir !== '' && is_dir( $sandboxDir ) === true )
+		\Nino\Filesystem::removeDir( $sandboxDir );
+} );
 $appData['./nino/filesystem/path'] = $root;
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
@@ -142,6 +174,10 @@ $panel = [ \Nino\Admin\Admin::class, 'handlePost' ];
 $mails = [];
 $delivery = true;
 \Nino\Callbacks::registerCallback( $appData, \Nino\Mail::TRANSPORT, static function( array &$appData, array &$mail ) use ( &$mails, &$delivery ): void {
+	// A transport that is asked while the answer is made - membersServe() says so - is one the visitor waits for
+	if( ( $GLOBALS['membersAnswering'] ?? false ) === true )
+		$GLOBALS['membersEarly'] = ( $GLOBALS['membersEarly'] ?? 0 ) + 1;
+
 	// A transport that costs time, as an SMTP server does
 	usleep( (int) ( $GLOBALS['membersDelay'] ?? 0 ) );
 	$mails[] = $mail;
@@ -182,7 +218,9 @@ function membersServe( array &$appData, string $uri, string $method = 'GET', arr
 	$_POST = $post + ( $method === 'POST' && $csrf === true ? [ '_csrf' => \Nino\Csrf::getToken( $appData ) ] : [] );
 	$request = ninoVisit( $appData, $uri, $method );
 	$started = hrtime( true );
+	$GLOBALS['membersAnswering'] = true;
 	\Nino\Http::response( $appData, $request );
+	$GLOBALS['membersAnswering'] = false;
 	$answered = hrtime( true );
 
 	// What \Nino\Http::output() does once the answer is finished: it asks which work may run after it, and runs that once the client is let go. The time
@@ -3397,7 +3435,8 @@ function membersExpiryChecks( array &$appData ): void {
 	}
 
 	$full = [ \Nino\Mail::queued( $appData )['waiting'], $members::standing( $appData )['braked'] ];
-	$appData['./nino/mail/now'] = ( $outbox()[0]['expires'] ?? 0 ) + 1;
+	// Every mail of the share has lapsed: the second after the expiry of the LAST of them. The mails are queued one request after the other, over more than one second where the requests are slow, and each carries the second of its own request
+	$appData['./nino/mail/now'] = max( array_column( $outbox(), 'expires' ) ?: [ 0 ] ) + 1;
 	$delivery = true;
 	$mails = [];
 	$members::add( $appData, 'late1@example.org', 'L', '' );
@@ -3423,7 +3462,7 @@ function membersExpiryChecks( array &$appData ): void {
 	for( $n = 0; $n < $share; $n++ )
 		$sendFrom( 20 + $n, sprintf( 'e%02d@example.org', $n ) );
 
-	$appData['./nino/mail/now'] = ( $outbox()[0]['expires'] ?? 0 ) + 1;
+	$appData['./nino/mail/now'] = max( array_column( $outbox(), 'expires' ) ?: [ 0 ] ) + 1;
 	$sendFrom( 60, 'late1@example.org' );
 	$swept = \Nino\Mail::queued( $appData );
 
@@ -4199,56 +4238,79 @@ function membersProofChecks( array &$appData ): void {
 
 	check( 'a request for a code is answered the same for a member, for an address nobody has, for another case of a member\'s and for one that is switched off: the status, every header, the body and what the session keeps', count( array_unique( array_map( 'json_encode', $answers ) ) ) === 1 );
 
-	// The time the answer takes belongs to the same class: the mail is sent after the answer, so that a transport that costs 150 ms is not seen by the visitor. A member, an address
-	// nobody has, another case of a member's, a switched-off account: the median of the answers of eight requests each, with that transport
+	// The time the answer takes belongs to the same class: the mail is sent after the answer, so that a transport that costs 150 ms is not seen by the visitor. That is said twice: by
+	// the transport, which counts the times it was asked while the answer was made, and by the clock - a member, an address nobody has, another case of a member's, a switched-off
+	// account: the median of the answers of eight requests each, with that transport. A time is a measurement, and a machine that stalls for a moment spoils it for every way at once
+	// and says nothing of the answer: a round that is out of its bounds is made again, up to five times. A transport that is waited for adds its 150 ms to the way it is on, in every round
 	$GLOBALS['membersDelay'] = 150000;
-	$timing = [];
-	$delivered = [];
+	$GLOBALS['membersEarly'] = 0;
+	$median = static fn( array $times ): float => $times[(int) ( count( $times ) / 2 )];
+	$ways = [ 'member' => 'proof@example.org', 'nobody' => 'nobody-at-all@example.org', 'capitals' => 'PROOF@EXAMPLE.ORG', 'switched off' => 'off@example.org' ];
+	$within = static fn( array $medians ): bool => max( $medians ) - min( $medians ) < 50 && max( $medians ) < 100;
 
-	foreach( [ 'member' => 'proof@example.org', 'nobody' => 'nobody-at-all@example.org', 'capitals' => 'PROOF@EXAMPLE.ORG', 'switched off' => 'off@example.org' ] as $kind => $address ) {
-		$timing[$kind] = [];
-		$count = count( $mails );
+	for( $try = 0; $try < 5; $try++ ) {
 
-		for( $round = 0; $round < 8; $round++ ) {
-			membersVisitor();
-			membersFresh( $appData );
-			membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
-			$timing[$kind][] = $GLOBALS['membersTimes'][0];
+		$timing = [];
+		$delivered = [];
+
+		foreach( $ways as $kind => $address ) {
+			$timing[$kind] = [];
+			$count = count( $mails );
+
+			for( $round = 0; $round < 8; $round++ ) {
+				membersVisitor();
+				membersFresh( $appData );
+				membersServe( $appData, '/.members/login', 'POST', [ 'email' => $address, 'return' => '/join' ] );
+				$timing[$kind][] = $GLOBALS['membersTimes'][0];
+			}
+
+			$delivered[$kind] = count( $mails ) - $count;
+			sort( $timing[$kind] );
 		}
 
-		$delivered[$kind] = count( $mails ) - $count;
-		sort( $timing[$kind] );
+		if( $within( array_map( $median, $timing ) ) === true )
+			break;
 	}
 
-	$median = static fn( array $times ): float => $times[(int) ( count( $times ) / 2 )];
 	check( 'with a transport that costs 150 ms the four ways take the same class of time to answer: the medians of eight requests for a member, for nobody, for a member in capitals and for one that is switched off are within 50 ms of each other and under the cost of one mail',
-		max( array_map( $median, $timing ) ) - min( array_map( $median, $timing ) ) < 50 && max( array_map( $median, $timing ) ) < 100 );
+		$within( array_map( $median, $timing ) ) === true );
 	check( '...and the mail comes: eight for the member and eight for the capitals, none for nobody and none for the switched-off account', $delivered['nobody'] === 0 && $delivered['switched off'] === 0 && $delivered['member'] === 8 && $delivered['capitals'] === 8 );
 
 	// The change of an address: the member who asks for a free address and the one who asks for an address that is another account's
 	$asker = $members::add( $appData, 'asker@example.org', 'Asker', 'p' );
 	$other = $members::add( $appData, 'taken-by-other@example.org', 'Other', 'p' );
 	membersSignIn( $appData, $asker );
-	$asks = [];
 
-	foreach( [ 'free' => 'free-new@example.org', 'taken' => 'taken-by-other@example.org' ] as $kind => $address ) {
-		$asks[$kind] = [];
-		$count = count( $mails );
+	for( $try = 0; $try < 5; $try++ ) {
 
-		for( $round = 0; $round < 5; $round++ ) {
-			membersFresh( $appData );
-			$started = hrtime( true );
-			$members::askChange( $appData, (array) $members::current( $appData ), $address );
-			$asks[$kind][] = ( hrtime( true ) - $started ) / 1e6;
-			membersAfter( $appData, '' );
+		$asks = [];
+
+		foreach( [ 'free' => 'free-new@example.org', 'taken' => 'taken-by-other@example.org' ] as $kind => $address ) {
+			$asks[$kind] = [];
+			$count = count( $mails );
+
+			for( $round = 0; $round < 5; $round++ ) {
+				membersFresh( $appData );
+				$started = hrtime( true );
+				$GLOBALS['membersAnswering'] = true;
+				$members::askChange( $appData, (array) $members::current( $appData ), $address );
+				$GLOBALS['membersAnswering'] = false;
+				$asks[$kind][] = ( hrtime( true ) - $started ) / 1e6;
+				membersAfter( $appData, '' );
+			}
+
+			$delivered[$kind] = count( $mails ) - $count;
+			sort( $asks[$kind] );
 		}
 
-		$delivered[$kind] = count( $mails ) - $count;
-		sort( $asks[$kind] );
+		if( abs( $median( $asks['free'] ) - $median( $asks['taken'] ) ) < 50 && $median( $asks['free'] ) < 100 )
+			break;
 	}
 
 	check( 'askChange() answers a free address and one that another account has in the same class of time, with the same transport - and only the free address is mailed',
 		abs( $median( $asks['free'] ) - $median( $asks['taken'] ) ) < 50 && $median( $asks['free'] ) < 100 && $delivered['free'] === 5 && $delivered['taken'] === 0 );
+	check( 'the transport that costs 150 ms is asked after the answer and never in it: the code of a request and of a change of an address is mailed in the work that follows the answer, for every one of the ways above',
+		$GLOBALS['membersEarly'] === 0 && $delivered['member'] === 8 && $delivered['free'] === 5 );
 	$GLOBALS['membersDelay'] = 0;
 	membersVisitor();
 
@@ -4500,8 +4562,8 @@ function membersOnceCheck( array &$appData ): void {
 	stream_set_blocking( $pipes[2], false );
 	$said = '';
 
-	// Five seconds are plenty for a process that sends one mail
-	for( $waited = 0; $waited < 5000; $waited += 10 ) {
+	// A cap and no window: a process that sends one mail is ended after thirty seconds if it has not ended itself
+	for( $waited = 0; $waited < 30000; $waited += 10 ) {
 		$said .= (string) stream_get_contents( $pipes[1] );
 		stream_get_contents( $pipes[2] );
 
@@ -4555,14 +4617,15 @@ function membersWorkerChecks( array &$appData ): void {
 		$process = proc_open( array_merge( [ PHP_BINARY, __FILE__ ], $args ), [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes );
 		return [ $process, $pipes ];
 	};
-	// A worker that does not end - a queue that is never emptied is a loop - is a failed pin and no hung suite: it is ended after ten seconds
+	// A worker that does not end - a queue that is never emptied is a loop - is a failed pin and no hung suite: it is ended after thirty seconds, which no worker that works comes near
+	// - the time is a cap for one that does not, and orders nothing
 	$finish = static function( array $started ): string {
 
 		stream_set_blocking( $started[1][1], false );
 		stream_set_blocking( $started[1][2], false );
 		$out = '';
 
-		for( $waited = 0; $waited < 10000; $waited += 10 ) {
+		for( $waited = 0; $waited < 30000; $waited += 10 ) {
 			$out .= (string) stream_get_contents( $started[1][1] );
 			stream_get_contents( $started[1][2] );
 
@@ -4631,23 +4694,36 @@ function membersWorkerChecks( array &$appData ): void {
 	check( 'where the write of the accounts fails - the account was found, the file is not written - remove() and removeGroups() answer write, nothing is deleted and /members/removed tells nobody',
 		$answer === 'write' && $groups === 'write' && $told === [] && (string) file_get_contents( $accountsFile ) === $accountsBefore && $members::account( $appData, (string) $stay['id'] ) !== null );
 
-	// The race the second deletion of the links closes
+	// The race the second deletion of the links closes. Three processes, in step by three marks and by nothing of the clock: the one that holds the lock of the accounts says that it
+	// does ($held); this process then changes the address, and says, as the first deletion of the links reads their file - under the lock of that file, so that a link is made after
+	// the deletion and not in it - that it is there ($deleted), and waits for the accounts; the third makes the link then and says that it is made ($linked); and the lock of the accounts
+	// is let go of when the link is made, and not before. The file of the links is there with a code of somebody else in it, so that the first deletion reads it
 	$racer = $members::add( $appData, 'racer@example.org', 'Racer', 'p' );
-	$ready = $sandbox. '/race-ready';
-	@unlink( $ready );
+	[ $held, $deleted, $linked ] = [ $sandbox. '/race-held', $sandbox. '/race-deleted', $sandbox. '/race-linked' ];
+	array_map( static fn( string $mark ): bool => @unlink( $mark ), [ $held, $deleted, $linked ] );
 	membersFresh( $appData );
-	$holder = $run( [ 'hold-worker', $sandbox, '203.0.113.78', $ready ] );
-	$linker = $run( [ 'link-worker', $sandbox, '203.0.113.79', $ready, (string) $racer['id'], 'racer@example.org' ] );
+	\Nino\Filesystem::putFileContent( $appData, $members::TOKENS, [ hash( 'sha256', 'of somebody else' ) => [ 'account' => 'aaaaaaaaaaaa', 'kind' => 'code', 'expires' => time() + 500, 'target' => '' ] ] );
+	$holder = $run( [ 'hold-worker', $sandbox, '203.0.113.78', $held, $linked ] );
+	$linker = $run( [ 'link-worker', $sandbox, '203.0.113.79', $deleted, $linked, (string) $racer['id'], 'racer@example.org' ] );
 
-	for( $waited = 0; is_file( $ready ) === false && $waited < 5000; $waited += 5 )
-		usleep( 5000 );
+	for( $waited = 0; is_file( $held ) === false && $waited < 30000; $waited += 2 )
+		usleep( 2000 );
 
+	FaultFs::on( [ 'read' => static function( string $path ) use ( $deleted ): bool {
+
+		if( str_ends_with( $path, '/members-tokens.php' ) === true && is_file( $deleted ) === false )
+			file_put_contents( $deleted, '1' );
+
+		return false;
+	} ] );
 	$changed = $members::change( $appData, (string) $racer['id'], [ 'email' => 'racer.new@example.org' ] );
+	FaultFs::off();
 	$made = $finish( $linker );
 	$finish( $holder );
 	unset( $appData['./nino/filesystem/cache'] );
 	check( 'a link made while the change of an address waits for the accounts - after the first deletion of the links, before the write - is none after the change: it is made, and it is deleted by the second deletion',
-		is_file( $ready ) === true && $made === 'true' && is_array( $changed ) === true && $changed['email'] === 'racer.new@example.org' && array_filter( membersFile( $appData, 'tokens' ), static fn( array $entry ): bool => $entry['account'] === $racer['id'] ) === [] );
+		is_file( $held ) === true && is_file( $deleted ) === true && is_file( $linked ) === true && $made === 'true' && is_array( $changed ) === true && $changed['email'] === 'racer.new@example.org'
+		&& array_filter( membersFile( $appData, 'tokens' ), static fn( array $entry ): bool => $entry['account'] === $racer['id'] ) === [] );
 }
 
 /**
@@ -4704,6 +4780,36 @@ function membersEndChecks( array &$appData ): void {
 }
 
 /**
+ *	Make the key of the installation the one given, and the counter of the members as if none had been tried: the kernel files its keys by it from the next count on
+ *
+ *	@param		array 		&$appData
+ *	@param		string		$seed					64 hex digits
+ *
+ *	@return 	void
+ */
+function membersSeed( array &$appData, string $seed ): void {
+
+	\Nino\Filesystem::putFileContent( $appData, '/data/.counters/seed.php', [ 'seed' => $seed ], true, 0600 );
+	ninoCounterSet( $appData, 'members-tries', [] );
+}
+
+/**
+ *	The file of the counter of the members that the kernel puts a key in, by the key of the installation that stands: the name of the file, asked of the kernel as the harness asks it
+ *	(ninoCounterSet())
+ *
+ *	@param		array 		&$appData
+ *	@param		string		$key					As Members counts it, eg. 'visitor|127.0.0.1' or 'address|ada@example.org'
+ *
+ *	@return 	string										'' where there is no key of the installation
+ */
+function membersShard( array &$appData, string $key ): string {
+
+	$seed = ( new ReflectionMethod( '\Nino\Feature', '_seed' ) )->invokeArgs( null, [ &$appData, false ] );
+
+	return $seed === null ? '' : basename( (string) ( new ReflectionMethod( '\Nino\Feature', '_shardPath' ) )->invoke( null, 'members-tries', hash( 'sha256', \Nino\Http::clientBucket( $key ) ), $seed ) );
+}
+
+/**
  *	The mail to nobody: a request for an address that has no account does, to the file, the answer and the log, what a request for one that has an account does, and what the
  *	outbox answers changes nothing a visitor can see. Pairs of two requests - an address with an account, an address with none - are compared in what the disk was asked, in the
  *	whole answer, in the log and in what was kept; the refusals of the outbox - conflict, full, ratelimited, unwritable - are each made for both
@@ -4718,8 +4824,6 @@ function membersVoidChecks( array &$appData ): void {
 
 	echo "\nModules\\Members - the mail to nobody: an address with no account is answered as one that has\n";
 
-	require_once dirname( __DIR__, 3 ). '/tests/fixtures/faultfs.php';
-
 	$members = \Nino\Modules\Members::class;
 	$GLOBALS['members'] = $members;
 	$sandbox = ninoSandboxDir( $appData );
@@ -4732,6 +4836,9 @@ function membersVoidChecks( array &$appData ): void {
 	// whose account was deleted
 	foreach( [ $members::ACCOUNTS, $members::TOKENS, '/data/members-session.php' ] as $file )
 		\Nino\Filesystem::putFileContent( $appData, $file, [] );
+
+	// The files of the counters are filed by a key that is the same in every run, and gives every key of a request a file of its own (see MEMBERS_SEEDS)
+	membersSeed( $appData, MEMBERS_SEEDS['apart'] );
 
 	$ada = $members::add( $appData, 'ada@example.org', 'Ada', 'staff' );
 	$members::add( $appData, 'bare@example.org', 'Bare', '' );
@@ -4772,8 +4879,23 @@ function membersVoidChecks( array &$appData ): void {
 
 	// What a request leaves, said so that two can be compared (the file of a counter that a key falls into, and its lock, are the same for the comparison: which one it is says nothing of the account; the order and the number of the operations are compared all the same): what the disk was asked, the whole answer, the log, the mail that went to a transport, what the outbox and the
 	// file of the codes hold now
-	$normal = static fn( array $log ): array => array_map( static fn( array $line ): string => preg_replace( [ '/[0-9a-f]{12}\.tmp/', '#(/\.counters/[a-z-]+/)[0-9a-f]{2}\.php#', '#/\.locks/[0-9a-f]{40}\.lock#' ], [ 'X.tmp', '$1XX.php', '/.locks/X.lock' ], str_replace( $GLOBALS['sandbox'], '<sandbox>', implode( ' ', array_map( 'strval', $line ) ) ) ), $log );
 	$GLOBALS['sandbox'] = $sandbox;
+	$normalise = static fn( array $log ): array => array_map( static fn( array $line ): string => preg_replace( [ '/[0-9a-f]{12}\.tmp/', '#(/\.counters/[a-z-]+/)[0-9a-f]{2}\.php#', '#/\.locks/[0-9a-f]{40}\.lock#' ], [ 'X.tmp', '$1XX.php', '/.locks/X.lock' ], str_replace( $GLOBALS['sandbox'], '<sandbox>', implode( ' ', array_map( 'strval', $line ) ) ) ), $log );
+	// Every log that is compared says whether the request wrote one file of the counter of the members twice - two of its keys in one file -, which is no work of an account but a layout
+	// of the kernel: it is told once, after the pairs, by name of the files, where $watch is true. The check of the layouts below sets it false, for it makes the layouts
+	$overlaps = [];
+	$watch = true;
+	$normal = static function( array $log ) use ( $normalise, &$overlaps, &$watch ): array {
+
+		$written = array_count_values( array_map( static fn( array $line ): string => $line[0] === 'rename' && preg_match( '#/\.counters/members-tries/[0-9a-f]{2}\.php$#', (string) ( $line[2] ?? '' ) ) === 1 ? basename( (string) $line[2] ) : '', $log ) );
+		unset( $written[''] );
+
+		foreach( $written as $file => $times )
+			if( $times > 1 && $watch === true )
+				$overlaps[] = $file;
+
+		return $normalise( $log );
+	};
 	$ask = static function( string $email, array $fail = [], ?callable $prepare = null, bool $fresh = true ) use ( &$appData, $reset, $normal, $outbox ): array {
 
 		global $mails;
@@ -4798,6 +4920,22 @@ function membersVoidChecks( array &$appData ): void {
 	$ask( 'ada@example.org' );
 	$ask( 'zed@example.org' );
 
+	// --- the layout of the counter that the pairs are made under: the keys of a request each in a file of their own ---
+
+	// What the pairs of this function ask for: the addresses - with an account and with none, the hostile ones of the pairs below among them - and the keys that each of those requests counts
+	// beside its address: the visitor (127.0.0.1, and the senders of the two pairs of the codes) and the reason the outbox gave
+	$hostile = [ "o'brien@example.org" => "o'brian@example.org", '"a\\"b"@example.org' => '"a\\"c"@example.org', '"a\\\\b"@example.org' => '"a\\\\c"@example.org', '"a@b"@example.org' => '"a@c"@example.org', str_repeat( 'x', 64 ). '@'. str_repeat( 'd', 60 ). '.org' => str_repeat( 'y', 64 ). '@'. str_repeat( 'd', 60 ). '.org' ];
+	$asked = array_map( 'mb_strtolower', [ 'ada@example.org', 'zed@example.org', 'bare@example.org', 'off@example.org', 'del@example.org', 'fre@example.org', 'tak@example.org', 'yvonne@example.org', ...array_keys( $hostile ), ...array_values( $hostile ) ] );
+	$shared = [ 'visitor|127.0.0.1', 'visitor|172.16.0.1', 'visitor|172.16.0.9', 'said-braked', 'said-ratelimited', 'said-unwritable' ];
+	$filed = array_map( static fn( string $key ): string => membersShard( $appData, $key ), $shared );
+	$crowded = array_values( array_filter( $asked, static fn( string $address ): bool => in_array( membersShard( $appData, 'address|'. $address ), $filed, true ) === true ) );
+
+	if( $crowded !== [] || count( array_unique( $filed ) ) !== count( $filed ) )
+		echo '  the kernel files the keys '. implode( ', ', $shared ). ' in '. implode( ', ', $filed ). ' and the addresses '. implode( ', ', $crowded ). " in one of those: the key MEMBERS_SEEDS['apart'] does not give them files of their own\n";
+
+	check( 'the counter of the kernel files the keys that a request of a pair counts - the visitor, the reason the outbox gave, the address - each in a file of its own under the key of the installation that is set, so that the requests of a pair are compared in the work they do and not in where the kernel put their keys',
+		in_array( '', $filed, true ) === false && count( array_unique( $filed ) ) === count( $filed ) && $crowded === [] );
+
 	// --- the pair: an address with an account, an address with none ---
 
 	$known = $ask( 'ada@example.org' );
@@ -4810,6 +4948,48 @@ function membersVoidChecks( array &$appData ): void {
 		&& array_keys( (array) $known['pending'] ) === array_keys( (array) $none['pending'] ) && ( $known['pending']['tries'] ?? -1 ) === 0 && ( $none['pending']['tries'] ?? -1 ) === 0 );
 	check( '...and only the one with an account is handed to a transport: one mail, to the address that was typed, six digits - the other is let go by the outbox, which counts it as delivered, and no failure', $known['sent'] === 1 && $known['mails'][0]['to'] === 'ada@example.org'
 		&& $none['sent'] === 0 && $none['counts']['waiting'] === 0 && $none['counts']['failed'] === 0 && $known['counts'] === $none['counts'] );
+
+	// --- the promise under every layout of the counter: the kernel files the keys of a request in files by a key that nobody can read, so two of them may share one. That is one lock, one
+	// open and one write fewer for the request - for ANY two keys, and an address with an account is not one of them: it counts the same keys as one with none. Four layouts of the keys of the
+	// visitor, of ada@example.org and of zed@example.org: each in a file of its own, all three in one file, and the visitor with the one or with the other ---
+
+	$watch = false;
+	$layouts = [];
+
+	foreach( [ 'apart', 'together', 'adaWith', 'zedWith' ] as $layout ) {
+
+		membersSeed( $appData, MEMBERS_SEEDS[$layout] );
+		$ask( 'ada@example.org' );
+		$ask( 'zed@example.org' );
+		$layouts[$layout] = [ 'ada' => $ask( 'ada@example.org' ), 'zed' => $ask( 'zed@example.org' ), 'files' => array_map( static fn( string $key ): string => membersShard( $appData, $key ), [ 'visitor|127.0.0.1', 'address|ada@example.org', 'address|zed@example.org' ] ) ];
+	}
+
+	$watch = true;
+	membersSeed( $appData, MEMBERS_SEEDS['apart'] );
+	$shapes = array_map( static fn( array $layout ): array => [ count( array_unique( $layout['files'] ) ), $layout['files'][0] === $layout['files'][1], $layout['files'][0] === $layout['files'][2], $layout['files'][1] === $layout['files'][2] ], $layouts );
+	$alike = static fn( array $pair ): bool => $pair['ada']['log'] !== [] && $pair['ada']['log'] === $pair['zed']['log'] && $pair['ada']['answer'] === $pair['zed']['answer'] && $pair['ada']['tokens'] === $pair['zed']['tokens'] && $pair['ada']['warnings'] === $pair['zed']['warnings'];
+	// What follows the counting of the request: from the read of the accounts on
+	$tail = static function( array $log ): array {
+
+		foreach( $log as $at => $line )
+			if( preg_match( '~^open \S+/data/members\.php rb~', $line ) === 1 )
+				return array_slice( $log, $at );
+
+		return [];
+	};
+
+	if( array_values( $shapes ) !== [ [ 3, false, false, false ], [ 1, true, true, true ], [ 2, true, false, false ], [ 2, false, true, false ] ] )
+		echo "  the kernel files the keys of the visitor, ada and zed as [ ". implode( ' ], [ ', array_map( static fn( array $layout ): string => implode( ' ', $layout['files'] ), $layouts ) ). " ]: the keys of MEMBERS_SEEDS do not give the layouts of their names\n";
+
+	check( 'the keys of the installation of MEMBERS_SEEDS put the keys of the visitor and of the two addresses where their names say: each in a file of its own, all three in one, the visitor with ada@example.org, the visitor with zed@example.org',
+		array_values( $shapes ) === [ [ 3, false, false, false ], [ 1, true, true, true ], [ 2, true, false, false ], [ 2, false, true, false ] ] );
+	check( 'a request for an address that has an account and one for an address that has none are the same work on the disk, the same answer and the same record of the code whichever files the kernel puts their keys in: each in one of its own, and the visitor and the address in one for both',
+		$alike( $layouts['apart'] ) === true && $alike( $layouts['together'] ) === true && $layouts['together']['ada']['log'] !== $layouts['apart']['ada']['log'] && count( $layouts['together']['ada']['log'] ) !== count( $layouts['apart']['ada']['log'] ) );
+	check( '...and where the visitor shares a file with the address of one of the two, that request is another work - the number of operations on the disk is a property of the counter of the kernel for the keys of that request and none of the account - and it is the one with an account in one layout and the one with none in the other: all the rest of it, from the read of the accounts on, and the answer, are the same',
+		$layouts['adaWith']['ada']['log'] !== $layouts['adaWith']['zed']['log'] && $layouts['adaWith']['zed']['log'] === $layouts['apart']['zed']['log'] && $layouts['adaWith']['ada']['log'] !== $layouts['apart']['ada']['log']
+		&& $layouts['zedWith']['zed']['log'] !== $layouts['zedWith']['ada']['log'] && $layouts['zedWith']['ada']['log'] === $layouts['apart']['ada']['log'] && $layouts['zedWith']['zed']['log'] !== $layouts['apart']['zed']['log']
+		&& count( $layouts['adaWith']['ada']['log'] ) === count( $layouts['zedWith']['zed']['log'] ) && $tail( $layouts['adaWith']['ada']['log'] ) !== [] && $tail( $layouts['adaWith']['ada']['log'] ) === $tail( $layouts['adaWith']['zed']['log'] )
+		&& $tail( $layouts['zedWith']['ada']['log'] ) === $tail( $layouts['zedWith']['zed']['log'] ) && $layouts['adaWith']['ada']['answer'] === $layouts['adaWith']['zed']['answer'] && $layouts['zedWith']['ada']['answer'] === $layouts['zedWith']['zed']['answer'] );
 
 	// The mail as the outbox holds it before it is delivered: the same template, the same sizes - the address is hyphens as long as it
 	$held = [];
@@ -5000,7 +5180,6 @@ function membersVoidChecks( array &$appData ): void {
 
 	// --- hostile addresses: a pair of one length each, the disk and the answer the same ---
 
-	$hostile = [ "o'brien@example.org" => "o'brian@example.org", '"a\\"b"@example.org' => '"a\\"c"@example.org', '"a\\\\b"@example.org' => '"a\\\\c"@example.org', '"a@b"@example.org' => '"a@c"@example.org', str_repeat( 'x', 64 ). '@'. str_repeat( 'd', 60 ). '.org' => str_repeat( 'y', 64 ). '@'. str_repeat( 'd', 60 ). '.org' ];
 	$pairs = [];
 
 	foreach( $hostile as $has => $hasNot ) {
@@ -5583,6 +5762,13 @@ function membersVoidChecks( array &$appData ): void {
 	check( 'the number of requests of a sender is the setting\'s, which is ten at most - a value above it is refused and leaves what was', ( new \ReflectionMethod( $members, '_attempts' ) )->invoke( null, $appData ) === 5 && \Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 50 ] ) !== []
 		&& ( new \ReflectionMethod( $members, '_attempts' ) )->invoke( null, $appData ) === 5 && \Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 10 ] ) === [] && ( new \ReflectionMethod( $members, '_attempts' ) )->invoke( null, $appData ) === 10 );
 	\Nino\Features::saveSettings( $appData, 'members', [ 'attempts' => 5 ] );
+
+	// The pairs above compare the work of two requests, and that is the same work only where no request put two of its keys in one file of the counter: none of the logs that were compared
+	// wrote a file of it twice
+	if( $overlaps !== [] )
+		echo '  a request of a pair wrote the file '. implode( ', ', array_unique( $overlaps ) ). " of the counter of the members twice: two of its keys are in one file under MEMBERS_SEEDS['apart']\n";
+
+	check( 'no request of the pairs above wrote a file of the counter twice: the keys of each were in files of their own, so that the work of the two of a pair is compared as the work of the same keys', $overlaps === [] );
 
 	if( $original === null )
 		unset( $appData['/nino/mail/cap'] );
