@@ -634,9 +634,15 @@ check( 'a site with room, no cap reached and no refused manifest has none of the
 // reads as well as the workbench does
 $appData['./nino/backups/memory'] = 1048576;
 $appData['./nino/backups/disk'] = 1;
+// A kernel that takes the room of the disk from \Nino\Backup::$diskFree, which no stored file can set, is told there
+$roomIsStatic = property_exists( \Nino\Backup::class, 'diskFree' );
+if( $roomIsStatic === true )
+	\Nino\Backup::$diskFree = 1;
 $appData['./nino/backups/today'] = date( 'Y-m-d', $base );
 \Nino\Modules\Backups::maybeRun( $appData );
 unset( $appData['./nino/backups/memory'], $appData['./nino/backups/disk'] );
+if( $roomIsStatic === true )
+	\Nino\Backup::$diskFree = null;
 $kept = array_values( array_filter( ninoWarnings(), static fn( string $warning ): bool => str_starts_with( $warning, 'Backup failed: ' ) ) );
 $noted = \Nino\Modules\Backups::missed( $appData );
 $failed = \Nino\Modules\Sysadmin\Report::backup( $appData, $base + 120 );
