@@ -1,0 +1,8 @@
+/* The dates on the surface of the CRM: the rows of their lists as cards on the phone, in the places the core names the cells of a card, and the fold of the dates that are over */
+@media (max-width: 759px) {
+	.tbl.cards[data-cards="dates"] tbody tr { grid-template-columns: minmax(0, 1fr) fit-content(50%); grid-template-areas: "id id" "date date" "who sub" }
+	.tbl.cards[data-cards="client-dates"] tbody tr { grid-template-columns: minmax(0, 1fr) fit-content(50%); grid-template-areas: "id id" "date sub" }
+}
+details.fold { margin-top: 12px }
+.dates-group { white-space: nowrap; font-weight: 600 }
+details.fold > summary { cursor: pointer; color: var(--fg-2); margin-bottom: 8px; min-height: 28px }
