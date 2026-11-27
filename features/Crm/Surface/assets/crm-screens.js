@@ -190,6 +190,7 @@
 
 			state.people = answer.body.clients;
 			state.erasing = Array.isArray( answer.body.erasing ) === true ? answer.body.erasing : [];
+			state.wiping = answer.body.wiping === true;
 
 			// What the columns of the packages need is read once, before the rows are drawn: a column that cannot be read stays empty
 			loadColumns( 'client', state.people ).then( function() {
@@ -235,8 +236,10 @@
 				filter.q = event.target.value;
 				filter.page = 1;
 				keepSearch( drawClients, true );
-			} } ), link( '#client-new', t( 'clients.new' ), { class: 'btn primary', id: 'new-client' } ) ) );
-		append( state.main, [ state.erasing.map( pendingDelete ), cardList( table, 'clients', [ 'id', 'who', 'sub', 'city' ].concat( extra.map( columnRole ), [ 'state' ] ), filter, again ), pagerOf( filter, pages, again ) ] );
+			} } ), state.wiping === true
+				? [ el( 'button', { type : 'button', class : 'btn primary', id : 'new-client', disabled : true, 'aria-describedby' : 'new-client-why', title : t( 'clients.new-wiping' ) , text : t( 'clients.new' ) } ), el( 'span', { class : 'state-note', id : 'new-client-why', text : t( 'clients.new-wiping' ) } ) ]
+				: link( '#client-new', t( 'clients.new' ), { class: 'btn primary', id: 'new-client' } ) ) );
+		append( state.main, [ state.wiping === true ? pendingWipe( state.view ) : null, state.erasing.map( pendingDelete ), cardList( table, 'clients', [ 'id', 'who', 'sub', 'city' ].concat( extra.map( columnRole ), [ 'state' ] ), filter, again ), pagerOf( filter, pages, again ) ] );
 	};
 	// --- The card of a client -------------------------------------------------------------------------------------------------
 
@@ -836,6 +839,22 @@
 		return el( 'div', { class : 'card pad delete-pending', dataset : { number : number } }, el( 'p', { text : t( 'client-delete.pending', number ) } ),
 			el( 'div', { class : 'actions' }, el( 'button', { type : 'button', class : 'btn danger', text : t( 'client-delete.finish' ), on : { click : function() {
 				deleteDialog( { number : number, title : t( 'client-delete.finish-title', number ), text : t( 'client-delete.finish-text' ), yes : t( 'client-delete.finish' ), resume : true, post : function( confirm ) { return { number : number, confirm : confirm } } } );
+			} } } ) ) );
+	};
+	/**
+	 *	The run of the test phase that is not finished, above the list of the clients: what it means and the button that finishes it - the dialog of the test phase, which reads the steps of the packages from the settings
+	 *
+	 *	@param		{number}	mine
+	 *
+	 *	@return		{Object}
+	 */
+	const pendingWipe = function( mine ) {
+
+		return el( 'div', { class : 'card pad wipe-pending', role : 'status' }, el( 'p', { text : t( 'wipe.pending' ) } ),
+			el( 'div', { class : 'actions' }, el( 'button', { type : 'button', class : 'btn danger', id : 'wipe-finish', text : t( 'wipe.finish' ), on : { click : function() {
+				api( 'crm/settings-get' ).then( function( answer ) {
+					wipeDialog( mine, answer.ok === true && answer.body.wipe !== undefined && Array.isArray( answer.body.wipe.steps ) === true ? answer.body.wipe.steps : [] );
+				} );
 			} } } ) ) );
 	};
 	/**
@@ -4116,22 +4135,75 @@
 			unlock : { field : 'confirm', word : t( 'wipe.word' ) },
 			run : function( values ) {
 
-				return api( 'crm/wipe', { confirm : values.confirm } ).then( function( answer ) {
-
-					// What a package held may be partly deleted after a refusal of a step: the next screen reads them from the server
-					forgetClients();
-
-					if( answer.ok !== true )
-						return errorText( answer, 'error.wipe' );
-
-					toast( wipeSentence( answer.body ) );
-
-					if( state.view === mine )
-						wn.location.hash = '#overview';
-
-					return null;
-				} );
+				return wipeRun( mine, values.confirm, [], false );
 			},
+		} );
+	};
+	/**
+	 *	One press of the test phase: the answer, and what a person does with it. A refusal of the server is said in the dialog, which stays; with the step done the toast gives the counts and the page goes to the overview, which reads
+	 *	everything anew. Where the run that was begun holds what a package that is removed - or that is on and has no such step any more - left over, the owner is asked whether to give it up: with the key of the package typed, which sends it
+	 *
+	 *	@param		{number}	mine
+	 *	@param		{string}	word						The word of the test phase, as it was typed
+	 *	@param		{Array}		forget					The keys of the steps that are given up
+	 *
+	 *	@return		{Promise}									null where the dialog is done, else the sentence it says
+	 */
+	const wipeRun = function( mine, word, forget, discard ) {
+
+		const sent = { confirm : word };
+
+		if( forget.length > 0 )
+			sent.forget = forget;
+
+		if( discard === true )
+			sent.discard = true;
+
+		return api( 'crm/wipe', sent ).then( function( answer ) {
+
+			// What a package held may be partly deleted after a refusal of a step: the next screen reads them from the server
+			forgetClients();
+
+			const body = answer.body !== null && typeof answer.body === 'object' ? answer.body : {};
+
+			// The package, not the step, is what the owner knows: the answer says its key first and the key of its step second
+			if( answer.ok !== true && [ 'crm_wipe_held_gone', 'crm_wipe_held_step' ].includes( body.code ) === true && Array.isArray( body.params ) === true && typeof body.params[0] === 'string' && typeof body.params[1] === 'string' ) {
+
+				const pack = body.params[0];
+				const step = body.params[1];
+
+				dialog( {
+					title : t( 'wipe.giveup-title' ), text : t( body.code === 'crm_wipe_held_gone' ? 'wipe.giveup-gone' : 'wipe.giveup-step', pack ), danger : true, yes : t( 'wipe.giveup-yes' ),
+					fields : [ { name : 'confirm', label : t( 'wipe.giveup-type', pack ), maxlength : 40, autocomplete : 'off' } ],
+					unlock : { field : 'confirm', word : pack },
+					run : function( values ) { return wipeRun( mine, word, forget.concat( [ { step : step, package : values.confirm } ] ), false ) },
+				} );
+
+				return null;
+			}
+
+			// A row that cannot be read has no way out but the owner's: the rest is thrown away, with the word of the test phase typed again and a sentence that says what is lost
+			if( answer.ok !== true && body.code === 'crm_wipe_journal' && discard !== true ) {
+
+				dialog( {
+					title : t( 'wipe.discard-title' ), text : t( 'wipe.discard-text' ), danger : true, yes : t( 'wipe.discard-yes' ),
+					fields : [ { name : 'confirm', label : t( 'wipe.type', t( 'wipe.word' ) ), maxlength : 20, autocomplete : 'off' } ],
+					unlock : { field : 'confirm', word : t( 'wipe.word' ) },
+					run : function( values ) { return wipeRun( mine, values.confirm, forget, true ) },
+				} );
+
+				return null;
+			}
+
+			if( answer.ok !== true )
+				return errorText( answer, 'error.wipe' );
+
+			toast( wipeSentence( answer.body ) );
+
+			if( state.view === mine )
+				wn.location.hash = '#overview';
+
+			return null;
 		} );
 	};
 	/**

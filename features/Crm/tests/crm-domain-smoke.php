@@ -595,8 +595,15 @@ function domArm( array &$appData, array &$peer, array &$seen, ?\PDO $pdo = null 
 function domLocked( array &$appData, array &$peer, callable $run ): array {
 
 	$seen = [];
+	$result = null;
 	domArm( $appData, $peer, $seen );
-	$result = $run();
+
+	// What the run opens of the file beside its connection while the process holds a lock on it is an answer of the same kind as a write the second process got in: no tool of the machine is needed to see it
+	$opens = domOpened( static function() use ( &$result, $run ): void { $result = $run(); } );
+
+	foreach( $opens as $open )
+		if( $open[2] === true )
+			$seen[] = 'opened with the lock held by '. $open[3];
 
 	return [ $seen, $result ];
 }
@@ -637,6 +644,88 @@ function domOpened( callable $run ): array {
 }
 
 /**
+ *	Wait until the process that told it is up (the file $signal-up holds its pid) has called the core ($signal-calling) and is asleep in the wait for the lock of the database: SQLite retries by a sleep, so the process is in the state S with
+ *	nanosleep as what it waits in (/proc/<pid>/wchan), three times in a row - not for a length of time that is a guess. Where /proc does not tell, there is nothing to look at: the answer says so and the wait is a length of time
+ *
+ *	@param		string		$signal
+ *
+ *	@return 	string										blocked, timeout (it was not asleep in the wait within eight seconds), noproc (nothing to look at; three seconds were waited)
+ */
+function domWaitBlocked( string $signal ): string {
+
+	for( $wait = 0; is_file( $signal. '-calling' ) === false && $wait < 8000; $wait++ )
+		usleep( 1000 );
+
+	$pid = (int) @file_get_contents( $signal. '-up' );
+
+	if( $pid < 1 || @file_get_contents( '/proc/'. $pid. '/wchan' ) === false ) {
+		usleep( 3000000 );
+
+		return 'noproc';
+	}
+
+	$in = 0;
+
+	for( $wait = 0; $wait < 400 && $in < 3; $wait++ ) {
+		$stat = (string) @file_get_contents( '/proc/'. $pid. '/stat' );
+		$state = substr( (string) ( explode( ') ', $stat )[1] ?? '' ), 0, 1 );
+		$in = $state === 'S' && str_contains( (string) @file_get_contents( '/proc/'. $pid. '/wchan' ), 'nanosleep' ) === true && is_file( $signal. '-calling' ) === true ? $in + 1 : 0;
+		usleep( 20000 );
+	}
+
+	return $in >= 3 ? 'blocked' : 'timeout';
+}
+
+/**
+ *	Say that the run is after its database step ($signal-told), and wait for the file $signal-restored, which another process makes when it has written the database back
+ *
+ *	@param		string		$file							The file that is waited for
+ *
+ *	@return 	bool
+ */
+function domWaitFile( string $file ): bool {
+
+	touch( substr( $file, 0, -9 ). '-told' );
+
+	for( $wait = 0; is_file( $file ) === false && $wait < 20000; $wait++ ) {
+		clearstatcache();
+		usleep( 1000 );
+	}
+
+	return is_file( $file );
+}
+
+/**
+ *	A pin that fell by an exception is a pin that failed, with the kind of the exception said - not a section that stopped
+ *
+ *	@param		callable	$pin
+ *
+ *	@return 	bool
+ */
+function domSafe( callable $pin ): bool {
+
+	try {
+		return $pin();
+	}
+	catch( \Throwable $e ) {
+		return domSaw( false, [ 'threw', get_class( $e ) ] );
+	}
+}
+
+/**
+ *	What a call opens of the database file by anything but its connection, besides the one read of the header that Db::kind() makes: in a place of the core that holds no lock of the process (the check of a step that a run holds, the
+ *	giving up of a step) a close of a descriptor of the file lets go of nothing, so only the record of the opens sees it - and none is right there
+ *
+ *	@param		callable	$run
+ *
+ *	@return 	array											The opens: [ path, core, locked, method ]
+ */
+function domStray( callable $run ): array {
+
+	return array_values( array_filter( domOpened( $run ), static fn( array $open ): bool => $open[3] !== 'Nino\\Modules\\Crm\\Db::kind' ) );
+}
+
+/**
  *	A writer in a process of its own that holds the database: it opens the file, runs what $code says with its connection $db - begins the transaction, writes what it writes - and says it holds; it lets go when it is released.
  *	What a lock held "by another process" is for the file is only seen from a process of its own: a connection of the same process does not hold the file against its sibling the way a writer of another process does
  *
@@ -651,7 +740,12 @@ function domHold( string $file, string $code ): array {
 	$process = proc_open( [ PHP_BINARY, '-r', $program, $file, $code ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes );
 	stream_set_timeout( $pipes[1], 30 );
 
-	return [ 'process' => $process, 'pipes' => $pipes, 'held' => trim( (string) fgets( $pipes[1] ) ) === 'held' ];
+	$held = trim( (string) fgets( $pipes[1] ) ) === 'held';
+
+	// A holder that does not hold proves nothing: the pins that ask it fail with it
+	check( 'the second process holds the database it was asked to hold (a pin that needs it would pass for nothing otherwise)', $held === true );
+
+	return [ 'process' => $process, 'pipes' => $pipes, 'held' => $held ];
 }
 
 /**
@@ -689,6 +783,7 @@ function domSaw( bool $ok, mixed $saw ): bool {
 /**
  *	The closes in a trace of a process (strace -e trace=openat,close,fcntl) that let go of a lock of SQLite: the close of a descriptor on the database file while another descriptor of the process on the same file holds a
  *	POSIX lock - fcntl(2): the close of any descriptor of a file lets go of every lock the process holds on it
+ *	The descriptors are told apart by the path the call names, not by device and inode: a path that reaches the file by a hard link is not seen as the file (a symbolic link and /./ are resolved by php before the call, and are). The windows of domLocked(), which watch the opens, and the second process do not depend on the path
  *
  *	@param		string		$trace
  *
@@ -772,6 +867,8 @@ function domWorkload( array &$request, array $m ): void {
 	\Nino\Modules\Crm\Settings::readOnly( $request, 'seller_name' );
 	\Nino\Modules\Crm\Mail::doShortcodeHead( $request, '' );
 	\Nino\Modules\Crm\Db::inspect( $request );
+	\Nino\Modules\Crm\Surface\Devices::remember( $request, 'admin@example.org' );
+	\Nino\Modules\Crm\Records::add( $request, [ 'kind' => 'probe-visit', 'client_id' => $m['b'], 'origin' => 'crm-probe', 'member' => [ 'email' => 'w@example.org', 'name' => 'W' ], 'ref' => 'w1', 'shown' => 'text', 'project' => $m['p3'] ] );
 
 	$staging = ninoSandboxDir( $request ). '/workload-staging';
 	mkdir( $staging, 0755, true );
@@ -794,7 +891,7 @@ function domWorkload( array &$request, array $m ): void {
  *
  *	@return 	array											integrity_check, foreign_key_check (the rows), the number of clients left, the number of processes that did not end well
  */
-function domChaos( string $name ): array {
+function domChaos( string $name, bool $restore = false ): array {
 
 	[ $project, $where, $request ] = domWorld( $name );
 	domSignIn( $request, 'admin@example.org' );
@@ -807,6 +904,13 @@ function domChaos( string $name ): array {
 
 	$go = $where. '/go';
 	$procs = [];
+	$stage = $where. '/stage';
+
+	// What a restore in the middle of it writes: the state the doomed clients are in, as a copy of the archive (the clients are deleted by the workers and saved over again)
+	if( $restore === true ) {
+		mkdir( $stage. '/data', 0755, true );
+		\Nino\Modules\Crm\Db::backup( \Nino\Filesystem::path( $request, \Nino\Modules\Crm\Db::FILE ), $stage. '/data/crm.sqlite', \Nino\Modules\Crm\Db::held( $request ) );
+	}
 
 	for( $p = 0; $p < 8; $p++ )
 		$procs[] = proc_open( [ PHP_BINARY, __FILE__, 'chaos-save-worker', $GLOBALS['features'], $where, $go, '15' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes[$p], null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
@@ -820,9 +924,26 @@ function domChaos( string $name ): array {
 
 	file_put_contents( $go, 'go' );
 	$bad = 0;
+	$restored = 'none';
+
+	// The restore of the database of the core while the savers and the deleters write: it is the online backup that waits for the locks of the others
+	if( $restore === true ) {
+		usleep( mt_rand( 5000, 60000 ) );
+		$args = [ 'dataDir' => dirname( \Nino\Filesystem::path( $request, \Nino\Modules\Crm\Db::FILE ) ), 'staging' => $stage ];
+
+		try {
+			\Nino\Modules\Crm::callbackRestore( $request, $args );
+			$restored = is_file( $stage. '/data/crm.sqlite' ) === false ? 'restored' : 'left';
+		}
+		catch( \RuntimeException $e ) {
+			$restored = 'held';
+		}
+	}
+
+	$statuses = [];
 
 	foreach( $procs as $n => $process ) {
-		stream_get_contents( $pipes[$n][1] );
+		$statuses = array_merge( $statuses, (array) json_decode( (string) stream_get_contents( $pipes[$n][1] ), true ) );
 		stream_get_contents( $pipes[$n][2] );
 		$bad += proc_close( $process ) === 0 ? 0 : 1;
 	}
@@ -835,11 +956,100 @@ function domChaos( string $name ): array {
 		$pdo->query( 'PRAGMA foreign_key_check' )->fetchAll(),
 		(int) $pdo->query( 'SELECT COUNT(*) FROM clients' )->fetchColumn(),
 		$bad,
+		array_values( array_diff( $statuses, [ 200, 503 ] ) ),
+		$restored,
 	];
 }
 
 /*	Worker modes: this same file re-entered as a process of its own, pointed at a sandbox somebody else built. Numbers taken by several processes, two writers on one client and a reader while a writer holds
 	are only seen from other processes: flock() is per open file description	*/
+/*	A press of the test phase in a process of its own that is ended from outside - with the signal 9, by the probe itself - after the database step: held-kills ends it in the leftover of a step with a list, leftover-kills in the one of the step with no list	*/
+if( ( $argv[1] ?? '' ) === 'kill-worker' ) {
+
+	$worker = domRequest( (string) $argv[3], [ './crm-probe/domain' => true, './crm-probe/gather' => $argv[4], (string) $argv[5] => true ] );
+	domSignIn( $worker, 'admin@example.org' );
+	domPost( $worker, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] + ( ( $argv[6] ?? '' ) === 'discard' ? [ 'discard' => true ] : [] ) );
+	exit( 0 );
+}
+
+/*	A restore of the database in a process of its own, in the moment a run says it is after its database step ($signal-told): the callback of the restore writes the archive back, and the file $signal-restored says it is done	*/
+if( ( $argv[1] ?? '' ) === 'restore-worker' ) {
+
+	$worker = domRequest( (string) $argv[3], [ './crm-probe/domain' => true ] );
+	domSignIn( $worker, 'admin@example.org' );
+
+	for( $wait = 0; is_file( (string) $argv[4]. '-told' ) === false && $wait < 20000; $wait++ ) {
+		clearstatcache();
+		usleep( 1000 );
+	}
+
+	$args = [ 'dataDir' => dirname( \Nino\Filesystem::path( $worker, \Nino\Modules\Crm\Db::FILE ) ), 'staging' => (string) $argv[5] ];
+	echo \Nino\Modules\Crm::restore( $worker, $args );
+	touch( (string) $argv[4]. '-restored' );
+	exit( 0 );
+}
+
+/*	The replacement of a live database that is damaged, in a process of its own that is ended from outside at a place of it ($argv[5]: written, cleared or renamed) - the signal 9, by the process itself	*/
+if( ( $argv[1] ?? '' ) === 'replace-kill-worker' ) {
+
+	$worker = domRequest( (string) $argv[3], [ './crm-probe/domain' => true ] );
+	$step = (string) $argv[5];
+	$worker['./crm/restore/at'] = static function( string $place ) use ( $step ): void { if( $place === $step ) posix_kill( getmypid(), 9 ); };
+	$args = [ 'dataDir' => dirname( \Nino\Filesystem::path( $worker, \Nino\Modules\Crm\Db::FILE ) ), 'staging' => (string) $argv[4] ];
+	echo \Nino\Modules\Crm::restore( $worker, $args );
+	exit( 0 );
+}
+
+/*	A write of a client, or of a project of a client, in a process of its own that waits for the word to go (a file) and then asks the core: what a request of the site does while a run of the test phase holds the write lock	*/
+if( ( $argv[1] ?? '' ) === 'signal-worker' ) {
+
+	$worker = domRequest( (string) $argv[3], [ './crm-probe/domain' => true ] );
+	domSignIn( $worker, 'admin@example.org' );
+	file_put_contents( (string) $argv[4]. '-up', (string) getmypid() );
+
+	for( $wait = 0; is_file( (string) $argv[4]. '-go' ) === false && $wait < 60000; $wait++ ) {
+		clearstatcache();
+		usleep( 500 );
+	}
+
+	touch( (string) $argv[4]. '-calling' );
+
+	if( $argv[5] === 'change' ) {
+		[ $status, $body ] = domPost( $worker, 'crm-clients/save', [ 'id' => (int) $argv[6], 'city' => 'Late' ] );
+		echo json_encode( [ $status, is_array( $body ) === true ? ( $body['code'] ?? 'ok' ) : '' ] );
+	}
+	elseif( $argv[5] === 'client' ) {
+		[ $status, $body ] = domPost( $worker, 'crm-clients/save', [ 'name' => 'Raced' ] );
+		echo json_encode( [ $status, is_array( $body ) === true ? ( $body['code'] ?? 'ok' ) : '' ] );
+	}
+	else
+		echo json_encode( [ \Nino\Modules\Crm\Projects::add( $worker, (int) $argv[6], [ 'title' => 'Raced' ], [ 'source' => 'crm-probe', 'text' => 'The probe made it' ] ) ] );
+
+	exit( 0 );
+}
+
+/*	The list of the clients with five packages at the limit of what they may add, in a process of its own with a memory limit: 1000 clients, and what the answer was, how many packages are in a row, how much memory it took	*/
+if( ( $argv[1] ?? '' ) === 'budget-worker' ) {
+
+	$bulk = (int) $argv[4];
+	$worker = domRequest( (string) $argv[3], [ './crm-probe/domain' => true, './crm-probe/view' => [ 'bulk' => $bulk ], './crm-probe/view-two' => [], './crm-probe/bulk' => $bulk ] );
+	domSignIn( $worker, 'admin@example.org' );
+	$pdo = \Nino\Modules\Crm\Db::pdo( $worker );
+	$pdo->exec( 'BEGIN' );
+	$pdo->exec( 'DELETE FROM clients' );
+
+	for( $at = 1; $at <= 1000; $at++ )
+		$pdo->exec( 'INSERT INTO clients ( id, number, name, created, updated ) VALUES ( '. $at. ', \'K-'. sprintf( '%04d', $at ). '\', \'Client '. $at. '\', \'2026-01-01T00:00:00Z\', \'2026-01-01T00:00:00Z\' )' );
+
+	$pdo->exec( 'COMMIT' );
+	\Nino\Modules\Crm\Db::drop( $worker );
+	ninoWarnings();
+	[ $status, $body ] = domPost( $worker, 'crm-clients/list', [] );
+	$rows = is_array( $body ) === true ? (array) ( $body['clients'] ?? [] ) : [];
+	echo json_encode( [ 'status' => $status, 'clients' => count( $rows ), 'packages' => count( (array) ( $rows[999]['packages'] ?? [] ) ), 'peak' => memory_get_peak_usage( true ), 'warnings' => count( ninoWarnings() ) ] );
+	exit( 0 );
+}
+
 if( in_array( $argv[1] ?? '', [ 'clients-worker', 'writer-worker', 'holder-worker', 'reader-worker', 'shared-worker', 'chaos-save-worker', 'chaos-delete-worker', 'workload-worker' ], true ) === true ) {
 
 	$worker = domRequest( (string) $argv[3] );
@@ -861,9 +1071,10 @@ if( in_array( $argv[1] ?? '', [ 'clients-worker', 'writer-worker', 'holder-worke
 				domPost( $worker, 'crm-clients/delete', [ 'id' => (int) $client, 'confirm' => $number ] );
 			}
 		else
-			for( $round = 0; $round < (int) $argv[5]; $round++ )
-				domPost( $worker, 'crm-clients/save', [ 'name' => 'W'. getmypid(). '-'. $round, 'street' => 'Weg 1', 'zip' => '12345', 'city' => 'Berlin', 'country' => 'DE' ] );
+			for( $round = 0, $statuses = []; $round < (int) $argv[5]; $round++ )
+				$statuses[] = domPost( $worker, 'crm-clients/save', [ 'name' => 'W'. getmypid(). '-'. $round, 'street' => 'Weg 1', 'zip' => '12345', 'city' => 'Berlin', 'country' => 'DE' ] )[0];
 
+		echo json_encode( $statuses ?? [] );
 		exit( 0 );
 	}
 
@@ -899,6 +1110,11 @@ if( in_array( $argv[1] ?? '', [ 'clients-worker', 'writer-worker', 'holder-worke
 		$results = [];
 
 		for( $round = 0; $round < (int) $argv[5]; $round++ ) {
+
+			// A suite that wants to know the write was asked for while the lock was held says where it is told the time of the first call
+			if( $round === 0 && isset( $argv[8] ) === true )
+				file_put_contents( $argv[8], (string) microtime( true ) );
+
 			$changed = \Nino\Modules\Crm\Clients::change( $worker, (int) $argv[4], [ 'phone' => '+49 '. $argv[7]. $round ] );
 			$results[] = is_array( $changed ) === true ? 'ok' : $changed;
 		}
@@ -930,7 +1146,16 @@ if( in_array( $argv[1] ?? '', [ 'clients-worker', 'writer-worker', 'holder-worke
 		while( is_file( $argv[6] ) === false )
 			usleep( 1000 );
 
+		// A suite that wants the lock to be there after it let the holder go says for how long more
+		if( isset( $argv[8] ) === true )
+			usleep( (int) $argv[8] );
+
 		$pdo->exec( 'COMMIT' );
+
+		// ...and, where it is asked to, the time of the commit
+		if( isset( $argv[7] ) === true )
+			file_put_contents( $argv[7], (string) microtime( true ) );
+
 		echo 'committed';
 		exit( 0 );
 	}
@@ -1148,7 +1373,7 @@ try {
 [ $project, $where, $a ] = domWorld( 'clients' );
 domSignIn( $a, 'crm@example.org' );
 
-check( 'no client yet: the list is empty and no deletion is waiting', domBody( $a, 'crm-clients/list' ) === [ 'clients' => [], 'erasing' => [] ] );
+check( 'no client yet: the list is empty and no deletion is waiting', domBody( $a, 'crm-clients/list' ) === [ 'clients' => [], 'erasing' => [], 'wiping' => false ] );
 
 $made = domBody( $a, 'crm-clients/save', [ 'company' => 'Studio GmbH', 'name' => 'Ada Example', 'street' => 'Weg 1', 'zip' => '12345', 'city' => 'Stadt', 'country' => 'at', 'email' => 'ada@example.org', 'phone' => '+49 (30) 123-456', 'vat_id' => 'de 123456789', 'buyer_reference' => 'ref-1', 'notes' => "one\ntwo", 'business' => true ] );
 $one = $made['client'] ?? [];
@@ -1877,6 +2102,43 @@ function domDiff( array $before, array $after ): array {
 }
 
 /**
+ *	Where a closure takes the app data by value: the use list that follows the token T_USE at $at, with $appData in it and no & before it
+ *
+ *	@param		array 		$tokens				token_get_all()
+ *	@param		int				$at						The place of a T_USE
+ *
+ *	@return 	array											The lines of the variable; [] for the use of a namespace or of a trait, which has no list in brackets, and for a list that takes it by reference
+ */
+function domCopiedUse( array $tokens, int $at ): array {
+
+	$open = $at + 1;
+
+	while( is_array( $tokens[$open] ?? null ) === true && $tokens[$open][0] === T_WHITESPACE )
+		$open++;
+
+	if( ( $tokens[$open] ?? '' ) !== '(' )
+		return [];
+
+	$lines = [];
+	$previous = '';
+
+	for( $to = $open + 1; $to < count( $tokens ) && $tokens[$to] !== ')'; $to++ ) {
+
+		$one = $tokens[$to];
+
+		if( is_array( $one ) === true && $one[0] === T_WHITESPACE )
+			continue;
+
+		if( is_array( $one ) === true && $one[0] === T_VARIABLE && $one[1] === '$appData' && $previous !== '&' )
+			$lines[] = $one[2];
+
+		$previous = is_array( $one ) === true ? ( in_array( $one[0], [ T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG, T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG ], true ) === true ? '&' : $one[1] ) : $one;
+	}
+
+	return $lines;
+}
+
+/**
  *	A world with clients, projects, tasks, releases, records, a logbook, items of the package of the suite and what its store holds - the data a deletion has to take apart
  *
  *	@param		string		$name
@@ -2045,9 +2307,10 @@ check( 'a deletion that finds the database held by a writer in another process w
 	$number = (string) \Nino\Modules\Crm\Clients::get( $a, $id )['number'];
 	$ready = $where. '/holder-ready';
 	$release = $where. '/holder-release';
-	$holder = proc_open( [ PHP_BINARY, __FILE__, 'holder-worker', $GLOBALS['features'], $where, (string) $id, $ready, $release ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+	$holder = proc_open( [ PHP_BINARY, __FILE__, 'holder-worker', $GLOBALS['features'], $where, (string) $id, $ready, $release, $where. '/holder-committed', '300000' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
 
-	for( $wait = 0; $wait < 5000 && is_file( $ready ) === false; $wait++ )
+	// The holder says it holds by a file; how long it takes to start is the machine's, so the wait ends by the signal, and only a holder that never starts ends it by the clock
+	for( $until = microtime( true ) + 120; microtime( true ) < $until && is_file( $ready ) === false; )
 		usleep( 1000 );
 
 	$reader = proc_open( [ PHP_BINARY, __FILE__, 'reader-worker', $GLOBALS['features'], $where, (string) $id ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $readerPipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
@@ -2055,12 +2318,17 @@ check( 'a deletion that finds the database held by a writer in another process w
 	proc_close( $reader );
 	file_put_contents( $release, 'go' );
 	$started = microtime( true );
+	$callAt = $started;
 	$deleted = domAnswer( $a, 'crm-clients/delete', [ 'id' => $id, 'confirm' => $number ] );
 	$waited = microtime( true ) - $started;
 	stream_get_contents( $pipes[1] );
 	proc_close( $holder );
 
-	return is_array( $seen ) === true && $seen['notes'] === '' && $seen['seconds'] < 2.0 && $deleted === '200 -' && \Nino\Modules\Crm\Clients::get( $a, $id ) === null && $waited < 5.0;
+	// What is pinned does not depend on how fast the machine is: the reader ended while the writer still held - it would have waited for it, and the writer waits for the release that is written after it - and the deletion went through; the clock only ends a hang
+	// The deletion was asked for while the holder had not committed - else this is no pin of waiting, and it says so
+	$met = is_file( $where. '/holder-committed' ) === true && $callAt < (float) file_get_contents( $where. '/holder-committed' );
+
+	return $met === true && is_file( $ready ) === true && is_array( $seen ) === true && $seen['notes'] === '' && $deleted === '200 -' && \Nino\Modules\Crm\Clients::get( $a, $id ) === null && $waited < 120.0;
 } )() );
 
 }
@@ -2458,6 +2726,11 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $sourc
 			}
 		}
 
+		// A closure that takes $appData in its use list without & takes a copy as well: what is kept in it is kept in the copy and lost
+		if( $token[0] === T_USE )
+			foreach( domCopiedUse( $tokens, $at ) as $line )
+				$arrows[] = $relative. ':'. $line;
+
 		// A static field, in a class of the core
 		if( $token[0] === T_STATIC && is_array( $tokens[$at + 2] ?? null ) === true && ( $tokens[$at + 2][0] ?? 0 ) === T_VARIABLE )
 			$statics[] = $relative. ': '. $tokens[$at + 2][1];
@@ -2483,7 +2756,24 @@ foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $sourc
 
 check( 'no class, no action, no table, no code of an error of the core names a package: not by the namespace, not by a word of a string - the names a package has are entered by the package', $names === [] );
 check( 'the core keeps no state in a static field: whatever a request knows stands in the app data of the request', array_unique( $statics ) === [] );
-check( 'no arrow function of the core names the app data, which it would take as a copy, and so lose what the register keeps of a class that could not be loaded: where the app data is handed on, a function takes it by reference', array_unique( $arrows ) === [] );
+check( 'no arrow function of the core names the app data and no closure takes it in its use list without the &, which is a copy as well and so loses what the register keeps of a class that could not be loaded: where the app data is handed on, a function takes it by reference', array_unique( $arrows ) === [] );
+check( 'the scan for a copy of the app data reads what it is made for: a closure with use ( $appData ) and one with use ( $other, $appData, &$third ) are found, use ( &$appData ), a list of others and the use of a namespace and of a trait are not', ( static function(): bool {
+
+	$found = static function( string $code ): int {
+
+		$tokens = token_get_all( '<?php '. $code );
+		$count = 0;
+
+		foreach( $tokens as $at => $token )
+			if( is_array( $token ) === true && $token[0] === T_USE )
+				$count += count( domCopiedUse( $tokens, $at ) );
+
+		return $count;
+	};
+
+	return $found( 'static function() use ( $appData ): bool { return true; };' ) === 1 && $found( 'function() use ($other, $appData, &$third) {};' ) === 1 && $found( 'function() use ( &$appData ) {};' ) === 0 && $found( 'function() use ( $other, & $appData ) {};' ) === 0
+		&& $found( 'function() use ( $appData2, $other ) {};' ) === 0 && $found( 'use Nino\\Modules\\Crm\\Api as Endpoint; class A { use B; }' ) === 0;
+} )() );
 check( 'the one grip on the shell of the workbench is one class: only Values names the file of the shell, the classes of the Elements panel and the helpers of the workbench - the panel of the feature, which the workbench loads as a panel, uses exactly its ten calls of guardPerm, postData, postString and relative', ( static function() use ( $source ): bool {
 	$holders = [];
 	$panel = [];
@@ -4069,7 +4359,7 @@ check( 'the letters of an icon that a method of the package says wrong are drawn
 
 	return $wrong === [];
 } )() );
-check( 'each of the 19 places that call a method of a package says how many arguments it passes and which of them are variables: a method that needs one more than the place passes is refused with one warning, one that needs as many is taken, and a method that takes an argument as a reference is taken only where the place passes a variable - at every position of every place, a variadic one included', ( static function() use ( $features ): bool {
+check( 'each of the 20 places that call a method of a package says how many arguments it passes and which of them are variables: a method that needs one more than the place passes is refused with one warning, one that needs as many is taken, and a method that takes an argument as a reference is taken only where the place passes a variable - at every position of every place, a variadic one included', ( static function() use ( $features ): bool {
 
 	[ $project, $where ] = domWorld( 'owned-matrix' );
 	\Nino\Features::activate( $project, 'crm-probe-two' );
@@ -4121,7 +4411,8 @@ check( 'each of the 19 places that call a method of a package says how many argu
 		'Apps values' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Surface\Apps::add( $a, [ 'values' => $m ] + $app ), 2, [ 0, 1 ] ],
 		'Data source' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Surface\Data::add( $a, $m, [ 'package' => $package ] ), 1, [ 0 ] ],
 		'Wipe rows' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'rows' => $m ] + $wipe ), 2, [ 0 ] ],
-		'Wipe leftover' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'leftover' => $m ] + $wipe ), 2, [ 0, 1 ] ],
+		'Wipe gather' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'gather' => $m ] + $wipe ), 1, [ 0 ] ],
+		'Wipe leftover' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Wipe::add( $a, [ 'leftover' => $m ] + $wipe ), 3, [ 0, 1 ] ],
 		'Icons letters' => [ static fn( array &$a, array $m ): bool => \Nino\Modules\Crm\Surface\Icons::add( $a, [ 'letters' => $m ] + $icon ), 1, [ 0 ] ],
 	];
 	$r = domRequest( $where );
@@ -4160,7 +4451,7 @@ check( 'each of the 19 places that call a method of a package says how many argu
 	if( $wrong !== [] )
 		fwrite( STDERR, 'WRONG '. implode( '; ', $wrong ). "\n" );
 
-	return $wrong === [] && count( $sites ) === 19;
+	return $wrong === [] && count( $sites ) === 20;
 } )() );
 check( 'what a method says as the letters of an icon is drawn only where it is one to three characters of text with no control character in them: too long a text, a number, a list, an object, nothing, an empty text, a control character, a method that throws or fails - each is the letters of the core, drawn on the page with one warning and no fault, the icon and the hash of the page included', ( static function() use ( $features ): bool {
 
@@ -4483,7 +4774,7 @@ check( 'and a project whose element is not there in a type file that can be read
 	return $strays === [ '99999' ] && \Nino\Modules\Crm\Projects::sweep( $back ) === [ '99999' ] && domCount( $back, 'tasks' ) === 2;
 } )() );
 
-check( 'the line of the activity log is written through Api::record() for a package: only the endpoint, the deletion of a client and the test phase call Values::log() itself, and its docblock says it is internal', ( static function() use ( $source ): bool {
+check( 'the line of the activity log is written through Api::record() for a package: only the endpoint, the deletion of a client and the test phase (its endpoint, and the line of a step given up) call Values::log() itself, and its docblock says it is internal', ( static function() use ( $source ): bool {
 	$callers = [];
 
 	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $source, \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
@@ -4497,7 +4788,7 @@ check( 'the line of the activity log is written through Api::record() for a pack
 
 	sort( $callers );
 
-	return $callers === [ 'Api/Api.php', 'Clients/Api/Api.php', 'Wipe/Api/Api.php' ] && preg_match( '~@internal[^/]*/\s*public static function log\(~s', (string) file_get_contents( $source. '/Values/Values.php' ) ) === 1;
+	return $callers === [ 'Api/Api.php', 'Clients/Api/Api.php', 'Wipe/Api/Api.php', 'Wipe/Wipe.php' ] && preg_match( '~@internal[^/]*/\s*public static function log\(~s', (string) file_get_contents( $source. '/Values/Values.php' ) ) === 1;
 } )() );
 
 // Where the type of the projects is not there - a state the core supports - and no row of any project is in the database either, there is nothing to clear and nothing to lose: the deletion of a client, its resuming, the test phase and the
@@ -4635,7 +4926,8 @@ check( 'a project that is deleted while the file is held by another process - a 
 	$release = $where. '/busy-release';
 	$holder = proc_open( [ PHP_BINARY, __FILE__, 'holder-worker', $GLOBALS['features'], $where, (string) $m['a'], $ready, $release ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $held, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
 
-	for( $wait = 0; $wait < 5000 && is_file( $ready ) === false; $wait++ )
+	// The holder says it holds by a file; how long it takes to start is the machine's, so the wait ends by the signal, and only a holder that never starts ends it by the clock
+	for( $until = microtime( true ) + 120; microtime( true ) < $until && is_file( $ready ) === false; )
 		usleep( 1000 );
 
 	try {
@@ -4654,7 +4946,8 @@ check( 'the workbench\'s own panel of the elements is no other way round: it del
 	$release = $where. '/panel-release';
 	$holder = proc_open( [ PHP_BINARY, __FILE__, 'holder-worker', $GLOBALS['features'], $where, (string) $m['a'], $ready, $release ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $held, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
 
-	for( $wait = 0; $wait < 5000 && is_file( $ready ) === false; $wait++ )
+	// The holder says it holds by a file; how long it takes to start is the machine's, so the wait ends by the signal, and only a holder that never starts ends it by the clock
+	for( $until = microtime( true ) + 120; microtime( true ) < $until && is_file( $ready ) === false; )
 		usleep( 1000 );
 
 	try {
@@ -4736,7 +5029,8 @@ check( 'a commit that waits for a reader who lets go after the first wait is tri
 	$ready = $where. '/shared-ready';
 	$holder = proc_open( [ PHP_BINARY, __FILE__, 'shared-worker', $GLOBALS['features'], $where, $ready, '7' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $held, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
 
-	for( $wait = 0; $wait < 5000 && is_file( $ready ) === false; $wait++ )
+	// The holder says it holds by a file; how long it takes to start is the machine's, so the wait ends by the signal, and only a holder that never starts ends it by the clock
+	for( $until = microtime( true ) + 120; microtime( true ) < $until && is_file( $ready ) === false; )
 		usleep( 1000 );
 
 	[ $status, $body ] = domPost( $a, 'elements/delete', [ 'type' => 'crm-projects', 'uri' => $m['p3'], 'locale' => '*' ] );
@@ -4761,7 +5055,8 @@ check( 'a commit that the readers keep off for the whole wait does not leave a n
 	$ready = $where. '/shared-ready';
 	$holder = proc_open( [ PHP_BINARY, __FILE__, 'shared-worker', $GLOBALS['features'], $where, $ready, (string) ( 2 * \Nino\Modules\Crm\Db::BUSY / 1000 + 4 ) ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $held, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
 
-	for( $wait = 0; $wait < 5000 && is_file( $ready ) === false; $wait++ )
+	// The holder says it holds by a file; how long it takes to start is the machine's, so the wait ends by the signal, and only a holder that never starts ends it by the clock
+	for( $until = microtime( true ) + 120; microtime( true ) < $until && is_file( $ready ) === false; )
 		usleep( 1000 );
 
 	try {
@@ -4820,12 +5115,17 @@ check( 'two real processes change two fields of one client: the one that holds t
 	$release = $where. '/f-release';
 	$start = $where. '/f-start';
 	file_put_contents( $start, 'go' );
-	$holder = proc_open( [ PHP_BINARY, __FILE__, 'holder-worker', $GLOBALS['features'], $where, (string) $m['a'], $ready, $release ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $held, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+	$holder = proc_open( [ PHP_BINARY, __FILE__, 'holder-worker', $GLOBALS['features'], $where, (string) $m['a'], $ready, $release, $where. '/f-committed' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $held, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
 
-	for( $wait = 0; $wait < 5000 && is_file( $ready ) === false; $wait++ )
+	// The holder says it holds by a file; how long it takes to start is the machine's, so the wait ends by the signal, and only a holder that never starts ends it by the clock
+	for( $until = microtime( true ) + 120; microtime( true ) < $until && is_file( $ready ) === false; )
 		usleep( 1000 );
 
-	$writer = proc_open( [ PHP_BINARY, __FILE__, 'writer-worker', $GLOBALS['features'], $where, (string) $m['a'], '1', $start, '5' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $wrote, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+	$writer = proc_open( [ PHP_BINARY, __FILE__, 'writer-worker', $GLOBALS['features'], $where, (string) $m['a'], '1', $start, '5', $where. '/f-calling' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $wrote, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+	// The write is let go only when the writer is at the call - and a little after, so that it is in the wait for the lock
+	for( $until = microtime( true ) + 120; microtime( true ) < $until && is_file( $where. '/f-calling' ) === false; )
+		usleep( 1000 );
+
 	usleep( 400000 );
 	file_put_contents( $release, 'go' );
 	$said = json_decode( (string) stream_get_contents( $wrote[1] ), true );
@@ -4834,7 +5134,10 @@ check( 'two real processes change two fields of one client: the one that holds t
 	proc_close( $holder );
 	$client = (array) \Nino\Modules\Crm\Clients::get( $a, $m['a'] );
 
-	return $said === [ 'ok' ] && $client['notes'] === 'held' && str_starts_with( (string) $client['phone'], '+49 5' ) === true;
+	// The pin holds only where the lock was there to be met: the call began before the holder committed - else the check says so, and is no green that proves nothing
+	$met = is_file( $where. '/f-calling' ) === true && is_file( $where. '/f-committed' ) === true && (float) file_get_contents( $where. '/f-calling' ) < (float) file_get_contents( $where. '/f-committed' );
+
+	return $met === true && $said === [ 'ok' ] && $client['notes'] === 'held' && str_starts_with( (string) $client['phone'], '+49 5' ) === true;
 } )() );
 check( 'a client is changed in the fields that were sent and only those are looked at: a field the client holds that would not be taken today stays as it is, and the change of another field goes through', ( static function() use ( &$a, $m ): bool {
 	\Nino\Modules\Crm\Db::exec( $a, 'UPDATE clients SET email = \'not an address\' WHERE id = :id', [ 'id' => $m['b'] ] );
@@ -4856,6 +5159,1112 @@ check( 'the description of a project of a package has no control character, no l
 }
 catch( \Throwable $e ) {
 	domCrashed( 'what the review asked for', $e );
+}
+
+// --- What the packages asked of the core a second time ------------------------------------------------------------------------
+
+echo "What the packages asked of the core a second time\n";
+
+try {
+
+[ $project, $where, $a, $m ] = domFilled( 'second' );
+
+// The options of the endpoint
+check( 'the endpoint takes the options package, files and needs and no other: an option panel is refused with one warning and none of the actions is entered, and the description of the class names no such option', ( static function() use ( &$a, $source ): bool {
+
+	ninoWarnings();
+	$refused = \Nino\Modules\Crm\Api::add( $a, [ 'crm-probe/panelled' => [ \Nino\Modules\CrmProbe\Domain::class, 'apiOpen' ] ], [ 'package' => 'crm-probe', 'panel' => true ] );
+	$said = ninoWarnings();
+	$doc = (string) file_get_contents( $source. '/Api/Api.php' );
+
+	return $refused === false && count( $said ) === 1 && domAnswer( $a, 'crm-probe/panelled' ) === '404 action' && str_contains( $doc, 'panel (' ) === false && str_contains( $doc, 'the options package' ) === true;
+} )() );
+
+// The group of a client
+check( 'the group of a client has one pattern, GROUP: the number of a client is a group of that shape, group() answers none for a text that is no number and ofGroup() finds the client only of a group of that shape', ( static function() use ( &$a, $m ): bool {
+
+	$shape = static fn( string $text ): bool => preg_match( \Nino\Modules\Crm\Clients::GROUP, $text ) === 1;
+	$odd = [ 'k-1', 'K-0001', "k-0001\n", 'k-00a1', ' k-0001', 'k-0001 ', 'x-0001', '', 'k-', 'k-001' ];
+
+	return $shape( 'k-0001' ) === true && $shape( 'k-12345' ) === true && array_filter( array_map( $shape, $odd ) ) === []
+		&& \Nino\Modules\Crm\Clients::group( 'K-0002' ) === 'k-0002' && $shape( \Nino\Modules\Crm\Clients::group( 'K-12345' ) ) === true
+		&& array_unique( array_map( [ \Nino\Modules\Crm\Clients::class, 'group' ], [ 'x', '', 'K-1', 'K-', 'Ada Example', ' K-0001 ', 'K-0001 ', ' K-0001', 'k-0001', "K-0001\n", "K\u{2013}0001", "K\u{2010}0001", 'K-00a1', 'K--0001', 'K-0001-' ] ) ) === [ '' ]
+		&& ( \Nino\Modules\Crm\Clients::ofGroup( $a, \Nino\Modules\Crm\Clients::group( 'K-0002' ) )['id'] ?? 0 ) === $m['b'] && \Nino\Modules\Crm\Clients::ofGroup( $a, \Nino\Modules\Crm\Clients::group( 'x' ) ) === null
+		&& ( static function() use ( &$a ): bool {
+
+			// A number that is no number of the core's - no four digits - is no client's group, even where a row has it
+			\Nino\Modules\Crm\Db::exec( $a, 'INSERT INTO clients ( id, number, name, created, updated ) VALUES ( 77, \'K-77\', \'Odd\', \'2026-01-01T00:00:00Z\', \'2026-01-01T00:00:00Z\' )' );
+
+			return \Nino\Modules\Crm\Clients::byNumber( $a, 'K-77' ) !== null && \Nino\Modules\Crm\Clients::ofGroup( $a, 'k-77' ) === null && \Nino\Modules\Crm\Clients::group( 'K-77' ) === '';
+		} )();
+} )() );
+
+// The logbook, found by what a package kept in it: the entry the core writes in the name of a package
+check( 'the projects a package made are found by what it kept in the logbook: the entry project-added that the core writes in the name of the package is found by its reference and by its project, the newest first - of its own source only, never of the core\'s or of another package\'s', ( static function() use ( &$a, $m ): bool {
+
+	$one = \Nino\Modules\Crm\Projects::add( $a, $m['a'], [ 'title' => 'First by the probe' ], [ 'source' => 'crm-probe', 'text' => 'The probe made the first', 'ref' => 'order-91' ] );
+	$two = \Nino\Modules\Crm\Projects::add( $a, $m['b'], [ 'title' => 'Second by the probe' ], [ 'source' => 'crm-probe', 'text' => 'The probe made the second', 'ref' => 'order-92' ] );
+	$other = \Nino\Modules\Crm\Projects::add( $a, $m['a'], [ 'title' => 'By another' ], [ 'source' => 'crm-probe-two', 'text' => 'The other made it', 'ref' => 'order-91' ] );
+	$again = \Nino\Modules\Crm\Projects::add( $a, $m['a'], [ 'title' => 'Third by the probe' ], [ 'source' => 'crm-probe', 'text' => 'The probe made the third', 'ref' => 'order-91' ] );
+
+	if( is_array( $one ) === false || is_array( $two ) === false || is_array( $other ) === false || is_array( $again ) === false )
+		return false;
+
+	// A row of the package of a kind that nobody entered and the core does not write: it is there and it is not found
+	\Nino\Modules\Crm\Db::exec( $a, 'INSERT INTO logbook ( client_id, project, at, source, kind, text, data, ref ) VALUES ( :client, \'\', \'2026-03-01T00:00:00Z\', \'crm-probe\', \'project-moved\', \'x\', \'{}\', \'order-91\' )', [ 'client' => $m['a'] ] );
+	$find = static fn( string $source, string $kind, array $where, int $limit = 50 ): array => \Nino\Modules\Crm\Logbook::find( $a, $source, $kind, $where, $limit );
+	$ids = static fn( array $rows ): array => array_column( $rows, 'project' );
+	$first = $one['project']['id'];
+	$second = $two['project']['id'];
+	$byRef = $find( 'crm-probe', 'project-added', [ 'ref' => 'order-91' ] );
+
+	return $ids( $byRef ) === [ $again['project']['id'], $first ] && $byRef[0]['client_id'] === $m['a'] && $byRef[0]['ref'] === 'order-91' && is_string( $byRef[0]['data']['label'] ?? null ) === true && $byRef[0]['data']['label'] !== ''
+		&& $ids( $find( 'crm-probe', 'project-added', [ 'project' => $second ] ) ) === [ $second ] && $find( 'crm-probe', 'project-added', [ 'project' => $second ] )[0]['client_id'] === $m['b']
+		&& $ids( $find( 'crm-probe', 'project-added', [ 'ref' => 'order-91' ], 1 ) ) === [ $again['project']['id'] ] && $ids( $find( 'crm-probe', 'project-added', [ 'ref' => 'order-91', 'project' => $first ] ) ) === [ $first ]
+		&& $ids( $find( 'crm-probe-two', 'project-added', [ 'ref' => 'order-91' ] ) ) === [ $other['project']['id'] ] && $find( 'crm-probe', 'project-added', [ 'project' => $other['project']['id'] ] ) === []
+		&& $ids( $find( 'crm', 'project-added', [ 'project' => $m['p1'] ] ) ) === [ $m['p1'] ] && $find( 'crm-probe', 'project-added', [ 'project' => $m['p1'] ] ) === [] && $find( 'crm', 'project-added', [ 'project' => $first ] ) === []
+		&& $find( 'crm-probe', 'project-added', [ 'ref' => 'order-9' ] ) === [] && $find( 'crm-probe', 'project-added', [ 'ref' => '' ] ) === [] && $find( 'crm-probe', 'project-added', [] ) === [] && $find( 'crm-probe', 'project-added', [ 'ref' => "order-91' OR '1'='1" ] ) === []
+		&& $find( 'crm-probe', 'client-added', [ 'ref' => (string) $m['a'] ] ) === [] && $find( 'crm-probe', 'note', [ 'project' => $first ] ) === [] && $find( 'crm-probe', 'project-moved', [ 'ref' => 'order-91' ] ) === [] && $find( 'Bad Source', 'project-added', [ 'ref' => 'order-91' ] ) === [];
+} )() );
+
+// The records of a client by purpose, and of many clients in one question
+check( 'the records of a client are asked by purpose: a purpose names the records that have it, a revocation has the purpose of what it takes back, an empty text is the records that have none, and a purpose that is none gives nothing', ( static function() use ( &$a, $m ): bool {
+
+	$member = [ 'id' => 'm1', 'email' => 'ada@example.org' ];
+	$beta = \Nino\Modules\Crm\Records::add( $a, [ 'kind' => 'probe-agree', 'client_id' => $m['a'], 'origin' => 'crm-probe', 'member' => $member, 'shown' => 'text', 'thing' => 'probe-item', 'thing_id' => '2', 'purpose' => 'beta', 'source' => 'crm-probe' ] );
+	$alpha = \Nino\Modules\Crm\Records::of( $a, $m['a'], 'probe-agree', 'alpha' );
+
+	if( is_array( $beta ) === false || count( $alpha ) !== 1 )
+		return false;
+
+	$back = \Nino\Modules\Crm\Records::add( $a, [ 'kind' => 'probe-revoke', 'client_id' => $m['a'], 'origin' => 'crm-probe', 'member' => $member, 'parent' => $alpha[0]['id'], 'source' => 'crm-probe' ] );
+	$kinds = static fn( array $rows ): array => array_column( $rows, 'kind' );
+	$of = static fn( ?string $kind, ?string $purpose ): array => \Nino\Modules\Crm\Records::of( $a, $m['a'], $kind, $purpose );
+
+	return is_array( $back ) === true && count( $of( null, null ) ) === 4 && count( $of( 'probe-agree', null ) ) === 2 && $kinds( $of( null, 'alpha' ) ) === [ 'probe-revoke', 'probe-agree' ] && $kinds( $of( 'probe-agree', 'alpha' ) ) === [ 'probe-agree' ]
+		&& $kinds( $of( 'probe-revoke', 'alpha' ) ) === [ 'probe-revoke' ] && $kinds( $of( null, 'beta' ) ) === [ 'probe-agree' ] && $of( 'probe-agree', 'beta' )[0]['id'] === $beta['id'] && $kinds( $of( null, '' ) ) === [ 'probe-visit' ] && $of( 'probe-visit', 'alpha' ) === []
+		&& $of( null, 'gamma' ) === [] && $of( null, 'Alpha' ) === [] && $of( null, "alpha' OR '1'='1" ) === [] && $of( 'probe-agree', 'gamma' ) === [] && \Nino\Modules\Crm\Records::of( $a, $m['b'], null, 'alpha' ) === []
+		&& ( static function( array $ids ): bool { $sorted = $ids; rsort( $sorted ); return $ids === $sorted && count( $ids ) === 2; } )( array_column( $of( null, 'alpha' ), 'id' ) ) && array_column( $of( null, 'alpha' ), 'client_id' ) === [ $m['a'], $m['a'] ];
+} )() );
+check( 'the records of many clients are asked in one question and come back by client: the ids are whole numbers or the digits of one as text, a number that is none - a sign, a zero in front, a float, a truth, a list, an empty text - is left out and so is a client twice, the newest first, and a client that has none is not in the answer', ( static function() use ( &$a, $m ): bool {
+
+	$member = [ 'id' => 'm2', 'email' => 'bea@example.org' ];
+	$bea = \Nino\Modules\Crm\Records::add( $a, [ 'kind' => 'probe-agree', 'client_id' => $m['b'], 'origin' => 'crm-probe', 'member' => $member, 'shown' => 'text', 'thing' => 'probe-item', 'thing_id' => '3', 'purpose' => 'alpha', 'source' => 'crm-probe' ] );
+
+	if( is_array( $bea ) === false )
+		return false;
+
+	$of = static fn( array $ids, string $kind = 'probe-agree' ): array => \Nino\Modules\Crm\Records::ofClients( $a, $ids, $kind );
+	$by = static fn( array $found ): array => array_map( static fn( array $rows ): array => array_column( $rows, 'id' ), $found );
+	$all = $of( [ $m['a'], $m['b'], $m['c'] ] );
+	$adas = array_column( \Nino\Modules\Crm\Records::of( $a, $m['a'], 'probe-agree' ), 'id' );
+
+	return array_keys( $all ) === [ $m['a'], $m['b'] ] && $all[$m['a']] === \Nino\Modules\Crm\Records::of( $a, $m['a'], 'probe-agree' ) && $by( $all ) === [ $m['a'] => $adas, $m['b'] => [ $bea['id'] ] ] && array_unique( array_map( 'gettype', array_column( $all[$m['a']], 'client_id' ) ) ) === [ 'integer' ]
+		&& $of( [ (string) $m['a'], (string) $m['b'] ] ) === $all && $of( [ $m['a'], (string) $m['a'], $m['a'], $m['b'] ] ) === $all && $of( [ $m['c'] ] ) === [] && array_keys( $of( [ $m['b'], $m['a'] ] ) ) === [ $m['a'], $m['b'] ]
+		&& $of( [ 0, -1, 1.5, true, false, null, '', ' ', 'a', [ 1 ], '+1', '01', '1e0', '1.0', ' 1', "1\n", '0x1', "1 OR 1=1", "1' OR '1'='1", str_repeat( '9', 30 ) ] ) === [] && $of( [] ) === [] && $of( [ $m['a'] ], '' ) === [] && $of( [ $m['a'] ], 'probe-ghost' ) === []
+		&& array_keys( $of( [ $m['a'], $m['b'] ], 'probe-visit' ) ) === [ $m['a'] ] && array_keys( $of( [ $m['a'], $m['b'], 0, '01', 1.5 ] ) ) === [ $m['a'], $m['b'] ];
+} )() );
+check( 'a long list of clients is asked in portions and put together: a client far beyond the first portion is found, with the clients of the first, and the answer is by client and the newest first', ( static function() use ( &$a, $m ): bool {
+
+	// A client whose id is past two portions (the portion is Records::MOST), with a record of the kind that nobody else has
+	\Nino\Modules\Crm\Db::exec( $a, 'INSERT INTO clients ( id, number, name, created, updated ) VALUES ( 1200, \'K-1200\', \'Late\', \'2026-01-01T00:00:00Z\', \'2026-01-01T00:00:00Z\' )' );
+	\Nino\Modules\Crm\Db::exec( $a, 'INSERT INTO records ( kind, origin, client_id, member_id, sha256, shown, at ) VALUES ( \'probe-visit\', \'crm-probe\', 1200, \'m\', \'h\', \'t\', \'2026-01-01T00:00:00Z\' ), ( \'probe-visit\', \'crm-probe\', :a, \'m\', \'h\', \'t\', \'2026-01-02T00:00:00Z\' )', [ 'a' => $m['a'] ] );
+	$found = \Nino\Modules\Crm\Records::ofClients( $a, range( 1, 1201 ), 'probe-visit' );
+	$late = \Nino\Modules\Crm\Records::ofClients( $a, array_merge( range( 1201, 1, -1 ), [ '1200', 1200 ] ), 'probe-visit' );
+
+	return \Nino\Modules\Crm\Records::MOST === 500 && array_keys( $found ) === [ $m['a'], 1200 ] && count( $found[$m['a']] ) === 2 && count( $found[1200] ) === 1 && $found[1200][0]['client_id'] === 1200 && $late === $found
+		&& array_keys( \Nino\Modules\Crm\Records::ofClients( $a, range( 1, 1199 ), 'probe-visit' ) ) === [ $m['a'] ] && array_keys( \Nino\Modules\Crm\Records::ofClients( $a, [ 1200 ], 'probe-visit' ) ) === [ 1200 ];
+} )() );
+
+
+// The test phase: what a step reads before the rows go
+$kept = static fn( array &$a ): mixed => \Nino\Filesystem::getFileContent( $a, '/data/crm-probe-kept.php', null );
+$wiping = static function( string $name, string $how ): array {
+
+	$GLOBALS['domSet'] = [ './crm-probe/gather' => $how ];
+	$world = domFilled( $name );
+	unset( $GLOBALS['domSet'] );
+
+	return $world;
+};
+check( 'a step of the test phase reads what it needs while it is still there: its gather is asked at every run, before any row goes, and what it answered is the third argument of its leftover - the numbers and the addresses of the clients, which are gone when the leftover runs - and a run that is over leaves no row: the next one asks again and is handed what is there then, nothing', ( static function() use ( $wiping, $kept ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-gather', 'ok' );
+	$answer = domAnswer( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+	$file = $kept( $b );
+	$once = $b['./crm-probe/gathered'] ?? 0;
+	$again = domAnswer( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+
+	return $answer === '200 -' && domCount( $b, 'clients' ) === 0 && $once === 1 && $file === [ 'gathered' => [ 'numbers' => [ 'K-0001', 'K-0002', 'K-0003' ], 'emails' => [ 'ada@example.org' ], 'items' => 3 ], 'clients' => 0 ]
+		&& $again === '200 -' && $b['./crm-probe/gathered'] === 2 && $kept( $b ) === [ 'gathered' => [ 'numbers' => [], 'emails' => [], 'items' => 0 ], 'clients' => 0 ] && domCount( $b, 'settings', 'key = \'wiping.run\'' ) === 0;
+} )() );
+check( 'a step with no gather is handed an empty list as the third argument of its leftover, and nobody is asked to gather for it', ( static function() use ( $wiping, $kept ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-none', 'none' );
+	$answer = domAnswer( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+
+	return $answer === '200 -' && $kept( $b ) === [ 'gathered' => [], 'clients' => 0 ] && isset( $b['./crm-probe/gathered'] ) === false && domCount( $b, 'clients' ) === 0;
+} )() );
+foreach( [ 'throws' => 'RuntimeException', 'text' => 'no list' ] as $how => $said ) {
+
+	check( 'a gather that '. ( $how === 'throws' ? 'throws' : 'answers what is no list' ). ' keeps the run from deleting anything: the clients, the projects and the files of the package stay, the answer is the failure of the step and the warning says the package and '. ( $how === 'throws' ? 'the kind of the throwable, never its message' : 'that it was no list' ). ', and the next press, with a gather that reads, goes through', ( static function() use ( $wiping, $kept, $how, $said ): bool {
+
+		[ , , $b ] = $wiping( 'wipe-gather-'. $how, $how );
+		$before = [ domCount( $b, 'clients' ), domCount( $b, 'records' ), domCount( $b, 'logbook' ), domCount( $b, 'crm_probe_items' ), \Nino\Filesystem::getFileContent( $b, '/data/crm-probe-store.php', null ) ];
+		ninoWarnings();
+		[ $status, $body ] = domPost( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+		$warnings = array_values( array_filter( ninoWarnings(), static fn( string $line ): bool => str_contains( $line, 'could not read what it keeps' ) === true ) );
+		$after = [ domCount( $b, 'clients' ), domCount( $b, 'records' ), domCount( $b, 'logbook' ), domCount( $b, 'crm_probe_items' ), \Nino\Filesystem::getFileContent( $b, '/data/crm-probe-store.php', null ) ];
+		$none = $kept( $b );
+		$b['./crm-probe/gather'] = 'ok';
+		$next = domAnswer( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+
+		return $status === 500 && ( $body['code'] ?? '' ) === 'crm_wipe_step' && $after === $before && $before[0] === 3 && count( $warnings ) === 1 && str_contains( $warnings[0], 'probeg' ) === true && str_contains( $warnings[0], $said ) === true
+			&& str_contains( $warnings[0], 'hunter2' ) === false && str_contains( $warnings[0], 'cannot read' ) === false && $none === null
+			&& $next === '200 -' && domCount( $b, 'clients' ) === 0 && ( $kept( $b )['gathered']['numbers'] ?? [] ) === [ 'K-0001', 'K-0002', 'K-0003' ];
+	} )() );
+}
+$row = static fn( array &$b ): ?array => ( static function( mixed $value ): ?array { return is_string( $value ) === true ? ( json_decode( $value, true ) ?? [] ) : null; } )( \Nino\Modules\Crm\Db::row( $b, 'SELECT value FROM settings WHERE key = \'wiping.run\'' )['value'] ?? null );
+$press = static fn( array &$b, array $more = [] ): array => domPost( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] + $more );
+check( 'a run that stops after the database step is finished by the next press with the lists it held, and nothing is read anew or joined to them: its open leftover is given the list as it was held, a client that came since and has a number the old list names keeps what is its - the leftover leaves it, as the contract says - and a new run begins in the same press, which reads the clients there are, deletes them and has the leftover take what is theirs', ( static function() use ( $wiping, $kept, $row, $press, $features ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-kept', 'ok' );
+	\Nino\Filesystem::putFileContent( $b, '/data/crm-probe-owned.php', [ 'K-0001' => 'ada', 'K-0002' => 'bea', 'K-0003' => 'cleo' ] );
+	$b['./crm-probe/leftover-fails'] = true;
+	ninoWarnings();
+	[ $status, $body ] = $press( $b );
+	ninoWarnings();
+	$held = $row( $b );
+	$before = [ domCount( $b, 'clients' ), $b['./crm-probe/gathered'] ?? 0, $kept( $b ), $b['./crm-probe/handed'] ?? [] ];
+	unset( $b['./crm-probe/leftover-fails'] );
+
+	// A client that came after the database step - the core makes none while the run is open (the answer is 409), so it is one that a restore of the database brings back: it has the number K-0001 again, with a thing of its own under it
+	$refused = domPost( $b, 'crm-clients/save', [ 'name' => 'Later', 'email' => 'later@example.org' ] )[0];
+	try {
+		\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO clients ( number, name, email, created, updated ) VALUES ( \'K-0001\', \'Later\', \'later@example.org\', \'2026-01-01 00:00:00\', \'2026-01-01 00:00:00\' )' );
+	}
+	catch( \Throwable $e ) {
+		$refused = 0;
+	}
+
+	\Nino\Filesystem::putFileContent( $b, '/data/crm-probe-owned.php', [ 'K-0001' => 'later' ] );
+	$next = domAnswer( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+	$handed = $b['./crm-probe/handed'] ?? [];
+	$after = [ $b['./crm-probe/gathered'] ?? 0, $kept( $b ), $row( $b ), domCount( $b, 'clients' ), \Nino\Filesystem::getFileContent( $b, '/data/crm-probe-owned.php', null ), $b['./crm-probe/skipped'] ?? [] ];
+
+	return $status === 500 && ( $body['code'] ?? '' ) === 'crm_wipe_step' && $before[0] === 0 && $before[1] === 1 && $before[2] === null && is_string( $held['began'] ?? null ) === true && array_keys( $held['steps'] ) === [ 'probeg' ] && $held['steps']['probeg']['package'] === 'crm-probe' && $held['steps']['probeg']['folder'] === 'CrmProbe'
+		&& $held['steps']['probeg']['list'] === [ 'numbers' => [ 'K-0001', 'K-0002', 'K-0003' ], 'emails' => [ 'ada@example.org' ], 'items' => 3 ]
+		&& $next === '200 -' && count( $handed ) === 2 && $handed[0] === $held['steps']['probeg']['list'] && $handed[1] === [ 'numbers' => [ 'K-0001' ], 'emails' => [ 'later@example.org' ], 'items' => 0 ]
+		&& $refused === 409 && $after[0] === 2 && $after[2] === null && $after[3] === 0 && $after[4] === [] && $after[5] === [ 'K-0001' ] && $after[1]['gathered'] === $handed[1];
+} )() );
+check( 'while a run of the test phase is open the core makes no client and no project and says so: the endpoint answers 409 with the code crm_wipe_unfinished and no client is made, Clients::add() and Projects::add() answer wiping for the package that calls them, the list of the clients is read as before and says the run is open, the settings tell the steps for the button that finishes it, and when the press has finished the run both work again - and a run that ended whole never held anything back', ( static function() use ( $wiping, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-open-guard', 'ok' );
+	$a = domClient( $b, [ 'name' => 'Before' ] );
+	$b['./crm-probe/leftover-fails'] = true;
+	ninoWarnings();
+	$first = $press( $b )[0];
+	ninoWarnings();
+	$counts = domCount( $b, 'clients' );
+	$list = domBody( $b, 'crm-clients/list', [] );
+	$get = domBody( $b, 'crm/settings-get', [] );
+	[ $status, $body ] = domPost( $b, 'crm-clients/save', [ 'name' => 'During' ] );
+	$direct = \Nino\Modules\Crm\Clients::add( $b, [ 'name' => 'Direct' ] );
+	$project = \Nino\Modules\Crm\Projects::add( $b, $a, [ 'title' => 'During' ], [ 'source' => 'crm-probe', 'text' => 'The probe made it' ] );
+	$still = [ domCount( $b, 'clients' ), domCount( $b, 'logbook' ) ];
+	unset( $b['./crm-probe/leftover-fails'] );
+	$closed = domAnswer( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+	$now = domClient( $b, [ 'name' => 'After' ] );
+	$made = \Nino\Modules\Crm\Projects::add( $b, $now, [ 'title' => 'After' ], [ 'source' => 'crm-probe', 'text' => 'The probe made it' ] );
+
+	// A row that cannot be read is an open run as well: nothing is made while it is there
+	\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO settings ( key, value ) VALUES ( \'wiping.run\', \'{half\' )' );
+	$garbage = [ \Nino\Modules\Crm\Clients::add( $b, [ 'name' => 'Garbage' ] ), \Nino\Modules\Crm\Projects::add( $b, $now, [ 'title' => 'Garbage' ], [ 'source' => 'crm-probe', 'text' => 'The probe made it' ] ) ];
+	\Nino\Modules\Crm\Db::exec( $b, 'DELETE FROM settings WHERE key = \'wiping.run\'' );
+
+	return $first === 500 && $counts === 0 && ( $list['wiping'] ?? null ) === true && is_array( $list['clients'] ?? null ) === true && in_array( 'probeg', $get['wipe']['steps'] ?? [], true ) === true
+		&& $status === 409 && ( $body['code'] ?? '' ) === 'crm_wipe_unfinished' && $direct === 'wiping' && $project === 'wiping' && $still[0] === 0
+		&& $closed === '200 -' && $now > 0 && is_array( $made ) === true && ( domBody( $b, 'crm-clients/list', [] )['wiping'] ?? null ) === false && $garbage === [ 'wiping', 'wiping' ];
+} )() );
+check( 'a leftover that was open and is through is taken from the row at once, whatever the new run of the same press does: where the gather of the new run throws, the answer is the failure of the step, the old run is over and no row is left, and the leftover was given the list it held', ( static function() use ( $wiping, $press, $row ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-old-through', 'ok' );
+	$b['./crm-probe/leftover-fails'] = true;
+	ninoWarnings();
+	$press( $b );
+	unset( $b['./crm-probe/leftover-fails'] );
+	$b['./crm-probe/gather'] = 'throws';
+	ninoWarnings();
+	[ $status, $body ] = $press( $b );
+	ninoWarnings();
+
+	return $status === 500 && ( $body['code'] ?? '' ) === 'crm_wipe_step' && $row( $b ) === null && count( $b['./crm-probe/handed'] ?? [] ) === 1;
+} )() );
+check( 'what a finished leftover took is in the answer of the press that finished it, also where the step has a database step of its own that counts: the count of the step is what its leftover took, not what its rows were, and a run after that finds nothing', ( static function() use ( $wiping, $press ): bool {
+
+	$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok', './crm-probe/g-count' => true ];
+	[ , , $b ] = domFilled( 'wipe-count-sum' );
+	unset( $GLOBALS['domSet'] );
+	$b['./crm-probe/leftover-fails'] = true;
+	ninoWarnings();
+	$first = $press( $b )[0];
+	ninoWarnings();
+	unset( $b['./crm-probe/leftover-fails'] );
+	[ $status, $body ] = $press( $b );
+	[ , $next ] = $press( $b );
+
+	return $first === 500 && $status === 200 && ( $body['probeg'] ?? -1 ) === 3 && ( $next['probeg'] ?? -1 ) === 0;
+} )() );
+check( 'the second process of the suite cannot write while a gather is asked, and can once the run is over: the lock of the run is held for the processes of the site, not only for the connections of this one - it is told the database is locked and no client is made between the reading and the deleting', ( static function() use ( $wiping, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-lock-process', 'lock-process' );
+	$one = [];
+	domPeerOn( $one, $b );
+	$GLOBALS['domPeerGather'] = &$one;
+	[ $status ] = $press( $b );
+	$after = domPeerAsk( $one );
+	domPeerStop( $one );
+	unset( $GLOBALS['domPeerGather'] );
+
+	return $status === 200 && ( $b['./crm-probe/process'] ?? '' ) === 'locked' && $after === 'got the write lock' && domCount( $b, 'clients' ) === 0;
+} )() );
+check( 'nothing inside the write transaction of a run or of the making of a client opens the file of the database: the code that runs between BEGIN IMMEDIATE and the end of the transaction - tables() and begin() of the test phase, add() of the clients - asks no Db::kind(), Db::inspect(), Db::orphansKnown(), settings, mail or file read, and the description says to a package that its gather never opens the file', ( static function(): bool {
+
+	$bad = '~Db::kind\(|Db::inspect\(|orphansKnown\(|Settings::|Mail::|file_get_contents|new .?PDO~';
+	$code = static function( string $class, string $method ): string {
+
+		$m = new \ReflectionMethod( $class, $method );
+		$lines = file( (string) $m->getFileName() );
+
+		return implode( '', array_slice( $lines, $m->getStartLine() - 1, $m->getEndLine() - $m->getStartLine() + 1 ) );
+	};
+	$inside = $code( \Nino\Modules\Crm\Wipe::class, 'tables' ). $code( \Nino\Modules\Crm\Wipe::class, 'begin' );
+	$add = $code( \Nino\Modules\Crm\Clients::class, 'add' );
+	$add = substr( $add, (int) strpos( $add, 'BEGIN IMMEDIATE' ) );
+	$doc = (string) ( new \ReflectionMethod( \Nino\Modules\Crm\Wipe::class, 'add' ) )->getDocComment();
+
+	return preg_match( $bad, $inside ) === 0 && preg_match( $bad, $add ) === 0 && str_contains( $doc, 'never opens the file of the database itself' ) === true && str_contains( (string) ( new \ReflectionClass( \Nino\Modules\Crm::class ) )->getDocComment(), 'A package makes no connection of its own to the file' ) === true;
+} )() );
+// A press ended from outside after the database step - kill -9 from the process itself, in a process of its own - leaves the row with the core's own step, and nothing of the run is inherited: the projects of the clients that are gone go in the press that finishes it, also where the next run of that press stops at its gather
+foreach( [ 'with a step that holds a list' => [ 'ok', './crm-probe/wiped-kills' ], 'with no step that holds a list' => [ 'none', './crm-probe/wiped-kills' ] ] as $label => [ $gatherHow, $kills ] ) {
+	check( 'a run that is ended from outside after the database step, '. $label. ': the row is there with the step of the core, no client can be made, and the next press finishes the projects of the clients that are gone first - so that a client made after it has no project of the clients before - even where the new run of that press stops at its gather', ( static function() use ( $wiping, $press, $row, $gatherHow, $kills ): bool {
+
+		$GLOBALS['domSet'] = [ './crm-probe/gather' => $gatherHow === 'none' ? 'none' : 'ok' ];
+		[ , $where, $b ] = domFilled( 'wipe-killed-'. $gatherHow );
+		unset( $GLOBALS['domSet'] );
+		$projects = count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) );
+		$run = proc_open( [ PHP_BINARY, __FILE__, 'kill-worker', $GLOBALS['features'], $where, $gatherHow, $kills ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+		stream_get_contents( $pipes[1] );
+		stream_get_contents( $pipes[2] );
+		$code = proc_close( $run );
+		$b = domRequest( $where, [ './crm-probe/domain' => true, './crm-probe/gather' => 'ok' ] );
+		domSignIn( $b, 'admin@example.org' );
+		$held = $row( $b );
+		$after = [ domCount( $b, 'clients' ), count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) ) ];
+		$refused = domPost( $b, 'crm-clients/save', [ 'name' => 'Early' ] )[0];
+
+		// The next press: its new run stops at the gather - the old run is over all the same
+		$b['./crm-probe/gather'] = 'throws';
+		ninoWarnings();
+		[ $status, $body ] = $press( $b );
+		ninoWarnings();
+		$finished = [ $row( $b ), count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) ) ];
+		$b['./crm-probe/gather'] = 'ok';
+		$made = domClient( $b, [ 'name' => 'New' ] );
+		$inherited = \Nino\Modules\Crm\Projects::list( $b, 'K-0001' );
+
+		return domSaw( $code !== 0 && $projects >= 3 && $held !== null && isset( $held['steps'][\Nino\Modules\Crm\Wipe::CORE] ) === true && $after === [ 0, $projects ] && $refused === 409 && $status === 500
+			&& $finished === [ null, 0 ] && $made > 0 && $inherited === [], [ $code, $projects, $held, $after, $refused, $status, $finished, $made, $inherited ] );
+	} )() );
+}
+
+// A leftover is through only where it answers true: null, 0, an empty text, a text and a list leave the row and the list as they were, the answer is the failure of the step and the warning says the type of the answer
+check( 'a leftover that answers anything but true is not through: null, 0, an empty text, "false", a list and false itself (which is the answer that says it, and needs no warning) leave the step and its list in the row, the press answers 500 with the step, the warning names the type of the answer, and the next press with a leftover that answers true is handed the list it held', ( static function() use ( $wiping, $press, $row ): bool {
+
+	$wrong = [];
+
+	foreach( [ 'null' => null, 'zero' => 0, 'empty' => '', 'text' => 'false', 'list' => [], 'false' => false ] as $what => $answer ) {
+
+		[ , , $b ] = $wiping( 'wipe-answer-'. $what, 'ok' );
+		$b['./crm-probe/held-answer'] = $answer;
+		ninoWarnings();
+		[ $status, $body ] = $press( $b );
+		$warned = implode( ' ', ninoWarnings() );
+		$held = $row( $b );
+		unset( $b['./crm-probe/held-answer'] );
+		[ $next ] = $press( $b );
+		$handed = $b['./crm-probe/handed'] ?? [];
+
+		if( $status !== 500 || ( $body['code'] ?? '' ) !== 'crm_wipe_step' || isset( $held['steps']['probeg'] ) === false || ( $answer === false ? str_contains( $warned, 'did not say' ) === true : str_contains( $warned, 'answered '. get_debug_type( $answer ) ) === false ) || $next !== 200 || $row( $b ) !== null || ( $handed[0]['numbers'] ?? [] ) !== [ 'K-0001', 'K-0002', 'K-0003' ] )
+			$wrong[] = [ $what, $status, $body['code'] ?? '', isset( $held['steps']['probeg'] ), substr( $warned, -120 ), $next, $row( $b ) === null, $handed ];
+	}
+
+	return domSaw( $wrong === [], $wrong );
+} )() );
+
+// A step is given up with the package that holds it, as the server sees it
+check( 'a step is given up only with the package that holds it: the package that is typed is compared on the server with the one the row holds - another package, a key that names the core, an entry that is no pair and the old list of keys give up nothing and say why - and the pair that is right gives it up, with a line of the log and none of the typed word', ( static function() use ( $wiping, $press, $row ): bool {
+
+	[ , $where, $b ] = $wiping( 'wipe-forget-package', 'ok' );
+	$b['./crm-probe/leftover-fails'] = true;
+	$press( $b );
+	ninoWarnings();
+	$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $c, 'admin@example.org' );
+	$before = $row( $c );
+	$answers = [];
+
+	foreach( [
+		'another package' => [ [ 'step' => 'probeg', 'package' => 'crm-probe-two' ] ], 'the core' => [ [ 'step' => \Nino\Modules\Crm\Wipe::CORE, 'package' => 'crm' ] ],
+		'no pair' => [ 'probeg' ], 'a number' => [ [ 'step' => 'probeg', 'package' => 7 ] ],
+	] as $what => $forget ) {
+		[ $status, $body ] = $press( $c, [ 'forget' => $forget ] );
+		$answers[$what] = [ $status, $body['code'] ?? '' ];
+	}
+
+	[ $mapped, $mappedBody ] = $press( $c, [ 'forget' => [ 'probeg' => 'crm-probe' ] ] );
+	$after = $row( $c );
+	$expected = [ 'another package' => [ 409, 'crm_wipe_forget_package' ], 'the core' => [ 400, 'crm_wipe_forget_core' ], 'no pair' => [ 400, 'crm_wipe_forget_form' ], 'a number' => [ 400, 'crm_wipe_forget_form' ] ];
+
+	// Where the package is on and has a step, nothing is held that could be given up: the step runs. The row is as it was after each refusal
+	return domSaw( $answers === $expected && $before !== null && isset( $before['steps']['probeg'] ) === true && $mapped === 200 && $after === null, [ $answers, $mapped, $mappedBody ] );
+} )() );
+
+// What is given up is gone from the row at once, also where the new run of the same press stops
+check( 'a step that the owner gives up is taken from the row when it is given up: where the new run of the same press stops at its database step, the row is gone, and the step is not held for the next press', ( static function() use ( $wiping, $press, $row ): bool {
+
+	[ , $where, $b ] = $wiping( 'wipe-given-up', 'ok' );
+	$b['./crm-probe/leftover-fails'] = true;
+	$press( $b );
+	ninoWarnings();
+	$c = domRequest( $where, [ './crm-probe/domain' => true, './crm-probe/rows-throws' => true ] );
+	domSignIn( $c, 'admin@example.org' );
+	$held = $row( $c );
+	ninoWarnings();
+
+	try {
+		[ $status ] = $press( $c, [ 'forget' => [ [ 'step' => 'probeg', 'package' => 'crm-probe' ] ] ] );
+	}
+	catch( \Throwable $e ) {
+		$status = 0;
+	}
+
+	ninoWarnings();
+
+	return domSaw( isset( $held['steps']['probeg'] ) === true && $status !== 200 && $row( $c ) === null, [ $held, $status, $row( $c ) ] );
+} )() );
+
+// A row that cannot be read is thrown away by the owner, and the core's own step is done for the projects of the clients that are gone
+check( 'a row of the run that cannot be read gives the owner a way out: the press with the word and discard throws it away with a warning and a line of the log, deletes the projects of the clients that are gone - and only those: the one of a client that is there stays where the new run stops - and then the test phase goes on; without discard the answer is the 409 crm_wipe_journal and nothing is deleted', ( static function() use ( $wiping, $press, $row ): bool {
+
+	$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok' ];
+	[ , $where, $b ] = domFilled( 'wipe-discard' );
+	unset( $GLOBALS['domSet'] );
+	$all = count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) );
+	$run = proc_open( [ PHP_BINARY, __FILE__, 'kill-worker', $GLOBALS['features'], $where, 'ok', './crm-probe/wiped-kills' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+	stream_get_contents( $pipes[1] );
+	stream_get_contents( $pipes[2] );
+	proc_close( $run );
+	$b = domRequest( $where, [ './crm-probe/domain' => true, './crm-probe/gather' => 'ok' ] );
+	domSignIn( $b, 'admin@example.org' );
+	\Nino\Modules\Crm\Db::exec( $b, 'UPDATE settings SET value = \'{half\' WHERE key = \'wiping.run\'' );
+
+	// A client of the first number is there again (a restore): its projects are not those of a client that is gone
+	\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO clients ( number, name, created, updated ) VALUES ( \'K-0001\', \'Again\', \'2026-01-01 00:00:00\', \'2026-01-01 00:00:00\' )' );
+	[ $plain, $plainBody ] = $press( $b );
+	$still = [ $row( $b ), count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) ) ];
+	$b['./crm-probe/gather'] = 'throws';
+	ninoWarnings();
+	[ $status, $body ] = $press( $b, [ 'discard' => true ] );
+	$warned = implode( ' ', ninoWarnings() );
+	$left = array_map( static fn( array $one ): string => (string) $one['client'], \Nino\Modules\Crm\Projects::list( $b ) );
+	$gone = [ domCount( $b, 'settings', 'key = \'wiping.run\'' ), domCount( $b, 'clients' ) ];
+	$log = implode( ' ', domLog( $b, 6 ) );
+	$b['./crm-probe/gather'] = 'ok';
+	[ $final ] = $press( $b, [ 'discard' => true ] );
+
+	return domSaw( $plain === 409 && ( $plainBody['code'] ?? '' ) === 'crm_wipe_journal' && $still[1] === $all && $status === 500 && $gone[0] === 0 && $gone[1] === 1 && $left !== [] && array_unique( $left ) === [ 'K-0001' ] && str_contains( $warned, 'thrown away' ) === true
+		&& str_contains( $log, 'Threw away the row of the run' ) === true && $final === 200 && domCount( $b, 'clients' ) === 0, [ $plain, $still, $status, $left, $gone, $warned ] );
+} )() );
+
+// The gather of the deletion of a client runs in the transaction of the deletion: a save that another process makes for the client meanwhile waits for the lock and finds the client gone
+check( 'the gather of the deletion of a client is asked in the transaction that deletes it, under the write lock: the second process of the suite is refused the lock while it is asked, and a save of the client that another process makes meanwhile waits and is answered that the client is gone - it does not come between the reading of the package and the deleting', ( static function(): bool {
+
+	[ , $where, $b, $m ] = domFilled( 'erase-race' );
+	$signal = $where. '/race';
+	$b['./crm-probe/gather-wait'] = $signal;
+	$peer = [];
+	domPeerOn( $peer, $b );
+	$GLOBALS['domPeerGather'] = &$peer;
+	$run = proc_open( [ PHP_BINARY, __FILE__, 'signal-worker', $GLOBALS['features'], $where, $signal, 'change', (string) $m['a'] ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+
+	for( $wait = 0; is_file( $signal. '-up' ) === false && $wait < 30000; $wait++ )
+		usleep( 1000 );
+
+	$answer = domAnswer( $b, 'crm-clients/delete', [ 'id' => $m['a'], 'confirm' => 'K-0001' ] );
+	$saved = json_decode( (string) stream_get_contents( $pipes[1] ), true );
+	stream_get_contents( $pipes[2] );
+	proc_close( $run );
+	$after = domPeerAsk( $peer );
+	domPeerStop( $peer );
+	unset( $GLOBALS['domPeerGather'] );
+
+	$blocked = (string) ( $b['./crm-probe/blocked'][0] ?? '' );
+
+	if( $blocked === 'noproc' )
+		echo "SKIPPED - the save that waits for the lock of the deletion is seen asleep in the wait for it: /proc does not tell here, the wait is three seconds\n";
+
+	return domSaw( in_array( $blocked, [ 'blocked', 'noproc' ], true ) === true && $answer === '200 -' && ( $b['./crm-probe/peer'] ?? [] ) === [ 'locked' ] && $saved === [ 404, 'crm_clients_unknown' ] && $after === 'got the write lock' && domCount( $b, 'clients', 'id = '. (int) $m['a'] ) === 0, [ $answer, $b['./crm-probe/peer'] ?? null, $saved, $after ] );
+} )() );
+
+// The owner throws away a row that cannot be read: the row is replaced by one that can be read, in one write, and the press that is ended from outside at any place after it is finished by the next press in the same mode
+foreach( [ 'the packages are told' => './crm-probe/wiped-kills', 'the first project is deleted' => './crm-probe/removed-kills' ] as $label => $kill ) {
+	check( 'discarding a row that cannot be read, ended from outside where '. $label. ': the row is still there and can be read - it holds the step of the core in the mode of the clients that are gone - and the next press finishes it: the projects of the clients that are gone are gone, the one of a client that is there is not, and a client made after it inherits nothing', ( static function() use ( $press, $row, $kill ): bool {
+
+		$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok' ];
+		[ , $where, $b ] = domFilled( 'wipe-discard-kill-'. md5( $kill ) );
+		unset( $GLOBALS['domSet'] );
+		$run = proc_open( [ PHP_BINARY, __FILE__, 'kill-worker', $GLOBALS['features'], $where, 'ok', './crm-probe/wiped-kills' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+		stream_get_contents( $pipes[1] );
+		stream_get_contents( $pipes[2] );
+		proc_close( $run );
+		$b = domRequest( $where, [ './crm-probe/domain' => true, './crm-probe/gather' => 'ok' ] );
+		domSignIn( $b, 'admin@example.org' );
+		$all = count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) );
+		\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO clients ( number, name, created, updated ) VALUES ( \'K-0001\', \'Again\', \'2026-01-01 00:00:00\', \'2026-01-01 00:00:00\' )' );
+		\Nino\Modules\Crm\Db::exec( $b, 'UPDATE settings SET value = \'{half\' WHERE key = \'wiping.run\'' );
+		$run = proc_open( [ PHP_BINARY, __FILE__, 'kill-worker', $GLOBALS['features'], $where, 'ok', $kill, 'discard' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+		stream_get_contents( $pipes[1] );
+		stream_get_contents( $pipes[2] );
+		$code = proc_close( $run );
+		$b = domRequest( $where, [ './crm-probe/domain' => true, './crm-probe/gather' => 'ok' ] );
+		domSignIn( $b, 'admin@example.org' );
+		$held = $row( $b );
+		$b['./crm-probe/gather'] = 'throws';
+		ninoWarnings();
+		[ $status ] = $press( $b );
+		ninoWarnings();
+		$left = array_map( static fn( array $one ): string => (string) $one['client'], \Nino\Modules\Crm\Projects::list( $b ) );
+		$after = [ $row( $b ), count( $left ) ];
+		$b['./crm-probe/gather'] = 'ok';
+		$made = domClient( $b, [ 'name' => 'New' ] );
+
+		return domSaw( $code !== 0 && $all >= 3 && is_array( $held ) === true && ( $held['steps'][\Nino\Modules\Crm\Wipe::CORE]['dead'] ?? false ) === true && $status === 500 && $after[0] === null && $left !== [] && array_unique( $left ) === [ 'K-0001' ] && $made > 0, [ $code, $all, $held, $status, $left, $after ] );
+	} )() );
+}
+
+check( 'the row that replaces a row that cannot be read is there, and can be read, at every moment: when the packages are told in the press that discards, the row holds the step of the core in the mode of the clients that are gone, and it was never deleted before - it was replaced in one write', ( static function() use ( $press, $row ): bool {
+
+	$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok' ];
+	[ , $where, $b ] = domFilled( 'wipe-discard-row' );
+	unset( $GLOBALS['domSet'] );
+	\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO settings ( key, value ) VALUES ( \'wiping.run\', \'{half\' )' );
+	\Nino\Modules\Crm\Db::exec( $b, 'CREATE TABLE zz_deleted ( at TEXT )' );
+	\Nino\Modules\Crm\Db::exec( $b, 'CREATE TRIGGER zz_deleted_row AFTER DELETE ON settings WHEN OLD.key = \'wiping.run\' BEGIN INSERT INTO zz_deleted ( at ) VALUES ( \'deleted\' ); END' );
+	$b['./crm-probe/row-at-told'] = true;
+	[ $status ] = $press( $b, [ 'discard' => true ] );
+	$seen = array_map( static fn( mixed $text ): mixed => is_string( $text ) === true ? json_decode( $text, true ) : null, (array) ( $b['./crm-probe/row-seen'] ?? [] ) );
+
+	return domSaw( ( $b['./crm-probe/deleted-before'][0] ?? -1 ) === 0 && $status === 200 && count( $seen ) >= 1 && is_array( $seen[0] ) === true && ( $seen[0]['steps'][\Nino\Modules\Crm\Wipe::CORE]['dead'] ?? false ) === true && $row( $b ) === null, [ $status, $seen ] );
+} )() );
+
+// A client is made - or a project of a client - while a run holds the write lock in its gather: the check of the open row is made under the lock, so that it is seen where the run leaves the row
+foreach( [ 'client', 'project' ] as $kind ) {
+	check( 'a '. $kind. ' that is made by another process while a run of the test phase holds the write lock in its gather is refused or taken with the clients: '. ( $kind === 'client' ? 'the check of the open row is made under the write lock, so that the process that waited for it finds the row the run left (409, no client)' : 'the project that came in the window is deleted with the run - the core\'s step deletes every project - and nothing of it stays, not a line of the logbook' ), ( static function() use ( $press, $row, $kind ): bool {
+
+		$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok' ];
+		[ , $where, $b ] = domFilled( 'wipe-race-'. $kind );
+		unset( $GLOBALS['domSet'] );
+		$signal = $where. '/race';
+		$b['./crm-probe/gather-wait'] = $signal;
+		$b['./crm-probe/leftover-fails'] = true;
+		$first = \Nino\Modules\Crm\Clients::byNumber( $b, 'K-0001' )['id'];
+		$run = proc_open( [ PHP_BINARY, __FILE__, 'signal-worker', $GLOBALS['features'], $where, $signal, $kind, (string) $first ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+
+		for( $wait = 0; is_file( $signal. '-up' ) === false && $wait < 30000; $wait++ )
+			usleep( 1000 );
+
+		ninoWarnings();
+		[ $status ] = $press( $b );
+		ninoWarnings();
+		$out = (string) stream_get_contents( $pipes[1] );
+		stream_get_contents( $pipes[2] );
+		proc_close( $run );
+		$answer = json_decode( $out, true );
+		$projects = count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) );
+
+		$blocked = (string) ( $b['./crm-probe/blocked'][0] ?? '' );
+
+		if( $blocked === 'noproc' )
+			echo "SKIPPED - the process that asks while the run holds the lock is seen asleep in the wait for it: /proc does not tell here, the wait is three seconds\n";
+
+		if( in_array( $blocked, [ 'blocked', 'noproc' ], true ) === false )
+			return domSaw( false, [ 'the process did not wait for the lock', $blocked ] );
+
+		if( $kind === 'client' )
+			return domSaw( $status === 500 && $answer === [ 409, 'crm_wipe_unfinished' ] && domCount( $b, 'clients' ) === 0 && $row( $b ) !== null, [ $status, $answer, domCount( $b, 'clients' ) ] );
+
+		return domSaw( $status === 500 && is_array( $answer ) === true && $projects === 0 && domCount( $b, 'logbook' ) === 0, [ $status, $answer, $projects ] );
+	} )() );
+}
+
+// The places that run in no transaction and hold no lock of the process are still no place that opens the file: giving a step up and the check of a package that is removed
+check( 'giving a step up, the check of a step that a package that is removed or switched off holds, the step of the core of a run that was ended and the throwing away of a row that cannot be read open the database file by nothing but the one read of its header: the record of the opens sees none (a close of a descriptor there lets go of no lock, so only this sees it)', ( static function() use ( $wiping, $press ): bool {
+
+	[ , $where, $b ] = $wiping( 'wipe-stray', 'ok' );
+	$b['./crm-probe/leftover-fails'] = true;
+	$press( $b );
+	ninoWarnings();
+	$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $c, 'admin@example.org' );
+	$stray = [];
+	$stray[] = domStray( static function() use ( $press, &$c ): void { $press( $c ); } );
+	$stray[] = domStray( static function() use ( $press, &$c ): void { $press( $c, [ 'forget' => [ [ 'step' => 'probeg', 'package' => 'crm-probe' ] ] ] ); } );
+	\Nino\Modules\Crm\Db::exec( $c, 'INSERT INTO settings ( key, value ) VALUES ( \'wiping.run\', \'{half\' ) ON CONFLICT( key ) DO UPDATE SET value = \'{half\'' );
+	$stray[] = domStray( static function() use ( $press, &$c ): void { $press( $c, [ 'discard' => true ] ); } );
+
+	// The step of the core in the continuation: a row that holds it, left by a process that was ended after the commit
+	$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok' ];
+	[ , $again, ] = domFilled( 'wipe-stray-core' );
+	unset( $GLOBALS['domSet'] );
+	$run = proc_open( [ PHP_BINARY, __FILE__, 'kill-worker', $GLOBALS['features'], $again, 'ok', './crm-probe/wiped-kills' ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+	stream_get_contents( $pipes[1] );
+	stream_get_contents( $pipes[2] );
+	proc_close( $run );
+	$e = domRequest( $again, [ './crm-probe/domain' => true, './crm-probe/gather' => 'ok' ] );
+	domSignIn( $e, 'admin@example.org' );
+	$stray[] = domStray( static function() use ( $press, &$e ): void { $press( $e ); } );
+
+	return domSaw( $stray === [ [], [], [], [] ], $stray );
+} )() );
+
+check( 'a run that is begun with no row never uses an old list: after a run that was over, the clients that came later are what the next gather reads and the leftover is handed - and the addresses of the clients that are gone are in no row', ( static function() use ( $wiping, $kept, $row, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-new-run', 'ok' );
+	$first = $press( $b )[0];
+	domClient( $b, [ 'name' => 'Later', 'email' => 'later@example.org' ] );
+	$second = $press( $b )[0];
+
+	return $first === 200 && $second === 200 && $kept( $b ) === [ 'gathered' => [ 'numbers' => [ 'K-0001' ], 'emails' => [ 'later@example.org' ], 'items' => 0 ], 'clients' => 0 ] && $row( $b ) === null && domCount( $b, 'settings', 'key LIKE \'wiping%\'' ) === 0;
+} )() );
+check( 'a run that holds what a step read of the clients is not told over when the step is not entered any more: with the package on and the step gone the answer is 409 and the code that says so, with the key of the package and of the step, and nothing is deleted; the owner gives it up by naming the step - the run goes on, a line of the activity log says which package and how many values, no leftover takes it, and the row is gone though no other step holds anything', ( static function() use ( $wiping, $row, $press ): bool {
+
+	[ , $where, $b ] = $wiping( 'wipe-stranded', 'ok' );
+	$b['./crm-probe/leftover-fails'] = true;
+	$press( $b );
+	ninoWarnings();
+
+	// A request in which the step is not entered: the package is on, the step is not there
+	$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $c, 'admin@example.org' );
+	[ $status, $body ] = $press( $c );
+	$held = $row( $c );
+	$log = domLog( $c, 5 );
+	[ $given, $givenBody ] = $press( $c, [ 'forget' => [ [ 'step' => 'probeg', 'package' => 'crm-probe' ] ] ] );
+	$after = $row( $c );
+	$logged = array_values( array_filter( domLog( $c, 8 ), static fn( string $line ): bool => str_contains( $line, 'Gave up what the step probeg of the package crm-probe held' ) === true ) );
+
+	return $status === 409 && ( $body['code'] ?? '' ) === 'crm_wipe_held_step' && ( $body['params'] ?? [] ) === [ 'crm-probe', 'probeg' ] && $held !== null && array_keys( $held['steps'] ) === [ 'probeg' ] && $given === 200 && $after === null && count( $logged ) === 1 && str_contains( $logged[0], 'ada@' ) === false && str_contains( $logged[0], 'K-000' ) === false && is_array( $givenBody );
+} )() );
+check( 'a package that is only switched off is waited for, not given up: the answer is 409 and the code that says it has to be switched on, naming the step does nothing, and the row stays; and where the package is removed the answer says that, and the owner who names the step goes on - one warning, no leftover takes what was held, the row is gone', ( static function() use ( $features, $source, $row, $press ): bool {
+
+	$GLOBALS['domSet'] = [ './crm-probe/two-wipe' => true ];
+	[ $project, $where ] = domFilled( 'wipe-gone' );
+	unset( $GLOBALS['domSet'] );
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	$set = [ './crm-probe/domain' => true, './crm-probe/two-wipe' => true ];
+	$b = domRequest( $where, $set );
+	domSignIn( $b, 'admin@example.org' );
+	$b['./crm-probe/leftover-fails'] = true;
+	$first = $press( $b )[0];
+	\Nino\Features::deactivate( $project, 'crm-probe-two' );
+	$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $c, 'admin@example.org' );
+	[ $off, $offBody ] = $press( $c );
+	[ $offForget, $offForgetBody ] = $press( $c, [ 'forget' => [ [ 'step' => 'twog', 'package' => 'crm-probe-two' ] ] ] );
+	$wrong = [];
+
+	if( $off !== 409 || ( $offBody['code'] ?? '' ) !== 'crm_wipe_held_off' || ( $offBody['params'] ?? [] ) !== [ 'crm-probe-two', 'twog' ] || $offForget !== 409 || ( $offForgetBody['code'] ?? '' ) !== 'crm_wipe_held_off' || $row( $c ) === null )
+		$wrong[] = 'off';
+
+	// A manifest the kernel cannot read: the folder is there and the package is not removed, so it is no step that is given up
+	$manifest = (string) file_get_contents( $features. '/CrmProbeTwo/feature.php' );
+	file_put_contents( $features. '/CrmProbeTwo/feature.php', "<?php\nreturn [ 'key' => ;" );
+	$d = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $d, 'admin@example.org' );
+	[ $broken, $brokenBody ] = $press( $d, [ 'forget' => [ [ 'step' => 'twog', 'package' => 'crm-probe-two' ] ] ] );
+	file_put_contents( $features. '/CrmProbeTwo/feature.php', $manifest );
+
+	if( $broken !== 409 || in_array( $brokenBody['code'] ?? '', [ 'crm_wipe_held_off', 'crm_wipe_held_step' ], true ) === false || $row( $d ) === null )
+		$wrong[] = 'a package whose manifest cannot be read';
+
+	\Nino\Features::remove( $project, 'crm-probe-two' );
+	$e = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $e, 'admin@example.org' );
+	ninoWarnings();
+	[ $status, $body ] = $press( $e );
+	$clients = domCount( $e, 'clients' );
+	[ $other, $otherBody ] = $press( $e, [ 'forget' => [ [ 'step' => 'nothere', 'package' => 'crm-probe' ], [ 'step' => 'probeg', 'package' => 'crm-probe' ] ] ] );
+	[ $done ] = $press( $e, [ 'forget' => [ [ 'step' => 'twog', 'package' => 'crm-probe-two' ] ] ] );
+	$said = ninoWarnings();
+	domCopy( $source. '/tests/fixtures/CrmProbeTwo', $features. '/CrmProbeTwo' );
+
+	return $first === 500 && $wrong === [] && $status === 409 && ( $body['code'] ?? '' ) === 'crm_wipe_held_gone' && ( $body['params'] ?? [] ) === [ 'crm-probe-two', 'twog' ] && $clients === 0 && $other === 409 && ( $otherBody['code'] ?? '' ) === 'crm_wipe_held_gone' && $done === 200 && $row( $e ) === null
+		&& count( array_filter( $said, static fn( string $line ): bool => str_contains( $line, 'twog' ) === true && str_contains( $line, 'given up' ) === true ) ) === 1;
+} )() );
+check( 'a step that another package entered under the key of the one that held the list is not handed that list: the package of the step is compared with the one the row names, and a row of a package that is not the step\'s own is held up - the answer is 409, no leftover is asked and the list is read by nobody', ( static function() use ( $wiping, $row, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-package', 'ok' );
+	$b['./crm-probe/leftover-fails'] = true;
+	$press( $b );
+	unset( $b['./crm-probe/leftover-fails'] );
+	$held = $row( $b );
+	$held['steps']['probeg']['package'] = 'crm-probe-two';
+	$held['steps']['probeg']['folder'] = 'CrmProbeTwo';
+	\Nino\Modules\Crm\Db::exec( $b, 'UPDATE settings SET value = :value WHERE key = \'wiping.run\'', [ 'value' => json_encode( $held ) ] );
+	$b['./crm-probe/handed'] = [];
+	[ $status, $body ] = $press( $b );
+
+	return $status === 409 && in_array( $body['code'] ?? '', [ 'crm_wipe_held_off', 'crm_wipe_held_step' ], true ) === true && ( $b['./crm-probe/handed'] ?? [] ) === [] && $row( $b ) !== null;
+} )() );
+check( 'a row of the journal that cannot be read is no row of nothing: with half a json, a json that is no run, or a step that has no list the run is refused before anything is deleted - 409 and its code, the clients stay, no gather is asked, the row is not touched', ( static function() use ( $wiping, $press ): bool {
+
+	$wrong = [];
+
+	foreach( [ 'half' => '{"began":"2026-01-01T00:00:00Z","steps":{"probeg":', 'text' => '"nothing"', 'no steps' => '{"began":"x"}', 'no list' => '{"began":"x","steps":{"probeg":{"package":"crm-probe","folder":"CrmProbe"}}}', 'empty' => '' ] as $what => $text ) {
+
+		[ , , $b ] = $wiping( 'wipe-journal-'. str_replace( ' ', '', $what ), 'ok' );
+		\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO settings ( key, value ) VALUES ( \'wiping.run\', :value )', [ 'value' => $text ] );
+		ninoWarnings();
+
+		try {
+			[ $status, $body ] = $press( $b );
+		}
+		catch( \Throwable $e ) {
+			[ $status, $body ] = [ 500, [] ];
+		}
+
+		$kept = \Nino\Modules\Crm\Db::row( $b, 'SELECT value FROM settings WHERE key = \'wiping.run\'' )['value'] ?? null;
+
+		if( $status !== 409 || ( $body['code'] ?? '' ) !== 'crm_wipe_journal' || domCount( $b, 'clients' ) !== 3 || ( $b['./crm-probe/gathered'] ?? 0 ) !== 0 || $kept !== $text )
+			$wrong[] = $what;
+	}
+
+	return $wrong === [];
+} )() );
+check( 'a gather whose list cannot be held whole stops the run before anything is deleted, with the step in the answer and one warning that says it cannot be held: a number that is none, a text that is no UTF-8, a list that is too deep and one that is too large - and one of exactly the most a step may hold is held', ( static function() use ( $wiping, $kept, $row, $press ): bool {
+
+	$wrong = [];
+
+	foreach( [ 'inf', 'utf8', 'deep', 'big' ] as $how ) {
+
+		[ , , $b ] = $wiping( 'wipe-held-'. $how, $how );
+		ninoWarnings();
+		[ $status, $body ] = $press( $b );
+		$said = array_values( array_filter( ninoWarnings(), static fn( string $line ): bool => str_contains( $line, 'cannot be held' ) === true || str_contains( $line, 'no list' ) === true ) );
+
+		if( $status !== 500 || ( $body['code'] ?? '' ) !== 'crm_wipe_step' || domCount( $b, 'clients' ) !== 3 || $row( $b ) !== null || count( $said ) !== 1 )
+			$wrong[] = $how;
+	}
+
+	[ , , $b ] = $wiping( 'wipe-held-exact', 'exact' );
+	$exact = $press( $b )[0];
+	$stored = strlen( json_encode( $kept( $b )['gathered'] ?? [] ) );
+
+	return $wrong === [] && $exact === 200 && $stored === \Nino\Modules\Crm\Wipe::HELD_BYTES && domCount( $b, 'clients' ) === 0;
+} )() );
+check( 'the key of the journal is no setting: a package cannot enter it, a post of the settings neither reads nor writes it, and the settings do not know it - the row is what the run wrote, with no answer of the endpoint carrying it', ( static function() use ( $wiping, $row, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-key', 'ok' );
+	$b['./crm-probe/leftover-fails'] = true;
+	$press( $b );
+	$before = $row( $b );
+	unset( $b['./crm-probe/leftover-fails'] );
+	ninoWarnings();
+	$entered = [ \Nino\Modules\Crm\Settings::add( $b, [ [ 'package' => 'crm-probe', 'key' => 'wiping.run', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ] ] ] ), \Nino\Modules\Crm\Settings::add( $b, [ [ 'package' => 'crm-probe', 'key' => 'erasing.K-0001', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ] ] ] ) ];
+	$warned = count( ninoWarnings() );
+	[ , $get ] = domPost( $b, 'crm/settings-get', [] );
+	domPost( $b, 'crm/settings-save', [ 'wiping.run' => '{}', 'values' => [ 'wiping.run' => '{}' ] ] );
+
+	return $entered === [ false, false ] && $warned === 2 && $before !== null && array_key_exists( 'wiping.run', (array) ( $get['settings'] ?? [] ) ) === false && str_contains( (string) json_encode( $get ), 'ada@example.org' ) === false && \Nino\Modules\Crm\Settings::known( $b, 'wiping.run' ) === false
+		&& \Nino\Modules\Crm\Settings::set( $b, 'wiping.run', '{}' ) === 'unknown' && $row( $b ) === $before;
+} )() );
+check( 'what a gather read is read in the transaction that deletes: the lock is held while it is asked - a second connection cannot write a client between the reading and the deleting - and the clients it did not see are not there to be deleted', ( static function() use ( $wiping, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-lock', 'lock' );
+	$status = $press( $b )[0];
+
+	return $status === 200 && ( $b['./crm-probe/locked'] ?? false ) === true && domCount( $b, 'clients' ) === 0 && domCount( $b, 'clients', 'number = \'K-9999\'' ) === 0;
+} )() );
+check( 'a run whose database step fails leaves no row: what the gathers read and the row that was written go back with the transaction - the clients stay, the answer is the failure of the database, and a single deletion of a client afterwards finds no run open', ( static function() use ( $wiping, $row, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-rollback', 'ok' );
+	$b['./crm-probe/rows-throws'] = true;
+	[ $status, $body ] = $press( $b );
+	unset( $b['./crm-probe/rows-throws'] );
+	$after = [ domCount( $b, 'clients' ), $row( $b ), domAnswer( $b, 'crm-clients/delete', [ 'id' => 3, 'confirm' => 'K-0003' ] ) ];
+
+	return $status === 500 && ( $body['code'] ?? '' ) === 'crm_database' && $after[0] === 3 && $after[1] === null && $after[2] === '200 -' && domCount( $b, 'clients' ) === 2 && $row( $b ) === null;
+} )() );
+check( 'a gather that writes - which is the package\'s fault - writes into the transaction of the run: what it wrote goes with the database step where that commits and goes back with it where that fails', ( static function() use ( $wiping, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-writes', 'write' );
+	$b['./crm-probe/rows-throws'] = true;
+	$press( $b );
+	$back = domCount( $b, 'settings', 'key = \'probe.wrote\'' );
+	unset( $b['./crm-probe/rows-throws'] );
+	$status = $press( $b )[0];
+
+	return $back === 0 && $status === 200 && domCount( $b, 'settings', 'key = \'probe.wrote\'' ) === 1;
+} )() );
+check( 'a list that is as deep as the most - 28 levels - is held and read back whole, and one level deeper stops the run before anything is deleted with the step in the answer and a warning that says it cannot be held: never as a row that cannot be read', ( static function() use ( $wiping, $kept, $row, $press ): bool {
+
+	[ , , $b ] = $wiping( 'wipe-deep-28', 'deep28' );
+	$deep = $press( $b )[0];
+	[ , , $c ] = $wiping( 'wipe-deep-29', 'deep29' );
+	ninoWarnings();
+	[ $status, $body ] = $press( $c );
+	$said = ninoWarnings();
+
+	return \Nino\Modules\Crm\Wipe::HELD_DEPTH === 28 && $deep === 200 && domCount( $b, 'clients' ) === 0 && $status === 500 && ( $body['code'] ?? '' ) === 'crm_wipe_step' && ( $body['params'] ?? [] ) === [ 'probeg' ] && domCount( $c, 'clients' ) === 3 && $row( $c ) === null && count( array_filter( $said, static fn( string $line ): bool => str_contains( $line, 'probeg' ) === true ) ) === 1;
+} )() );
+check( 'a row of the journal and the keys of the core that are not settings are not read as settings: the rows with a dot in the key are not read by the settings - a large one is not in the memory of a request that reads a setting - and a read of such a key answers nothing', ( static function() use ( &$a ): bool {
+
+	\Nino\Modules\Crm\Db::exec( $a, 'INSERT INTO settings ( key, value ) VALUES ( \'big.journal\', :value )', [ 'value' => str_repeat( 'x', 3000000 ) ] );
+	\Nino\Modules\Crm\Db::drop( $a, 'settings' );
+	memory_reset_peak_usage();
+	$base = memory_get_peak_usage();
+	$all = \Nino\Modules\Crm\Settings::all( $a );
+	$spent = memory_get_peak_usage() - $base;
+	$read = \Nino\Modules\Crm\Settings::readOnly( $a, 'big.journal' );
+	\Nino\Modules\Crm\Db::exec( $a, 'DELETE FROM settings WHERE key = \'big.journal\'' );
+
+	return $spent < 1000000 && array_key_exists( 'big.journal', $all ) === false && $read === '';
+} )() );
+check( 'a gather without a leftover is refused with one warning, and so is a gather that is a method of another class, a closure or a function: the step of a package is entered with a gather that is a method of the package alone', ( static function() use ( &$a ): bool {
+
+	ninoWarnings();
+	$domain = \Nino\Modules\CrmProbe\Domain::class;
+	$alone = \Nino\Modules\Crm\Wipe::add( $a, [ 'package' => 'crm-probe', 'key' => 'gatherer', 'rows' => [ $domain, 'wipeRows' ], 'gather' => [ $domain, 'wipeGather' ] ] );
+	$said = ninoWarnings();
+	$foreign = \Nino\Modules\Crm\Wipe::add( $a, [ 'package' => 'crm-probe', 'key' => 'gatherer', 'gather' => [ \Nino\Modules\Crm\Wipe::class, 'run' ], 'leftover' => [ $domain, 'leftover' ] ] );
+	$closure = \Nino\Modules\Crm\Wipe::add( $a, [ 'package' => 'crm-probe', 'key' => 'gatherer', 'gather' => static fn( array &$appData ): array => [], 'leftover' => [ $domain, 'leftover' ] ] );
+	$text = \Nino\Modules\Crm\Wipe::add( $a, [ 'package' => 'crm-probe', 'key' => 'gatherer', 'gather' => 'strtoupper', 'leftover' => [ $domain, 'leftover' ] ] );
+	$many = ninoWarnings();
+
+	return $alone === false && count( $said ) === 1 && $foreign === false && $closure === false && $text === false && count( $many ) === 3 && array_key_exists( 'gatherer', \Nino\Modules\Crm\Wipe::entered( $a ) ) === false;
+} )() );
+
+
+// What a package adds to a client and to the list of clients, under its key
+$seen = static function( string $name, array $steer = [], array $two = [], bool $second = true ): array {
+
+	[ $project, $where ] = domWorld( $name );
+
+	if( $second === true )
+		\Nino\Features::activate( $project, 'crm-probe-two' );
+
+	$set = [ './crm-probe/domain' => true, './crm-probe/view' => $steer ] + ( $second === true ? [ './crm-probe/view-two' => $two ] : [] );
+	$GLOBALS['domSet'] = $set;
+	$b = domRequest( $where, $set );
+	unset( $GLOBALS['domSet'] );
+	domSignIn( $b, 'admin@example.org' );
+	$ids = [ 'a' => domClient( $b, [ 'name' => 'Ada', 'email' => 'ada@example.org' ] ), 'b' => domClient( $b, [ 'name' => 'Bea' ] ), 'c' => domClient( $b, [ 'name' => 'Cleo' ] ) ];
+	\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO crm_probe_items ( client_id, label ) VALUES ( :a, \'x\' ), ( :a, \'y\' ), ( :b, \'z\' )', [ 'a' => $ids['a'], 'b' => $ids['b'] ] );
+	ninoWarnings();
+
+	return [ $project, $where, $b, $ids ];
+};
+$parts = static function( array &$b, string $action, array $data ): array {
+
+	// An answer that is none - the endpoint threw - is a status 0 and no card, so that the pin that asked says it is red and the section goes on
+	try {
+		[ $status, $body ] = domPost( $b, $action, $data );
+	}
+	catch( \Throwable $e ) {
+		return [ 0, [ 'client' => [ 'packages' => [] ], 'clients' => [] ] ];
+	}
+
+	return [ $status, is_array( $body ) === true ? $body : [ 'client' => [ 'packages' => [] ], 'clients' => [] ] ];
+};
+check( 'a package adds fields to the card of a client under its key: each package that answers is there with its part, the fields of the core are as they were and no other key stands beside them, and the part of a client that holds nothing is there as well', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-card' );
+	[ $status, $body ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	[ , $none ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['c'] ] );
+	$core = array_keys( (array) \Nino\Modules\Crm\Clients::get( $b, $id['a'] ) );
+	$said = ninoWarnings();
+
+	return $status === 200 && json_encode( $body['client']['packages'] ) === '{"crm-probe":{"items":2,"tags":["a","b"],"nested":{"x":{"y":1}}},"crm-probe-two":{"two":true}}' && array_keys( $body['client'] ) === array_merge( $core, [ 'packages' ] )
+		&& $body['client']['name'] === 'Ada' && $body['client']['number'] === 'K-0001' && $body['client']['id'] === $id['a'] && ( json_decode( (string) json_encode( $none['client']['packages'] ), true )['crm-probe']['items'] ?? null ) === 0 && $said === [];
+} )() );
+check( 'a package adds fields to the list of clients in one question for all of its rows, under the id of the client and its own key: a client the package has no entry for gets none of it, an id that is no client of the list is not read, and the list is the one of the core', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-list' );
+	[ $status, $body ] = $parts( $b, 'crm-clients/list', [] );
+	$asked = array_values( array_filter( (array) ( $b['./crm-probe/viewed'] ?? [] ), static fn( array $one ): bool => array_key_exists( 'clients', $one ) ) );
+	$rows = array_column( $body['clients'], null, 'id' );
+	$packages = array_map( static fn( array $client ): string => (string) json_encode( $client['packages'] ?? null ), $rows );
+
+	return $status === 200 && array_keys( $rows ) === [ $id['a'], $id['b'], $id['c'] ] && ( $packages[$id['a']] ?? '' ) === '{"crm-probe":{"items":2},"crm-probe-two":{"two":true}}' && ( $packages[$id['b']] ?? '' ) === '{"crm-probe":{"items":1},"crm-probe-two":{"two":true}}'
+		&& ( $packages[$id['c']] ?? '' ) === '{"crm-probe-two":{"two":true}}' && count( $asked ) === 1 && count( $asked[0]['clients'] ) === 3 && $asked[0]['packages'] === [] && array_column( $body['clients'], 'number' ) === [ 'K-0001', 'K-0002', 'K-0003' ]
+		&& array_column( $body['clients'], 'name', 'id' ) === [ $id['a'] => 'Ada', $id['b'] => 'Bea', $id['c'] => 'Cleo' ] && isset( $body['erasing'] ) === true && ninoWarnings() === [];
+} )() );
+check( 'every listener is asked on its own: it is handed the client and no part of another package, whatever was asked before it - the argument of the second package holds no part of the first', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-own' );
+	$b['./crm-probe/view-told'] = [];
+	\Nino\Callbacks::registerCallback( $b, \Nino\Modules\Crm\Clients::VIEW, [ \Nino\Modules\CrmProbeTwo::class, 'view' ] );
+	$parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	$told = $b['./crm-probe/viewed'];
+
+	return count( $told ) >= 1 && array_unique( array_map( static fn( array $one ): string => json_encode( $one['packages'] ), $told ) ) === [ '[]' ] && ( $told[0]['client']['id'] ?? 0 ) === $id['a'] && array_key_exists( 'packages', $told[0]['client'] ) === false;
+} )() );
+check( 'a package cannot write into what is the core\'s: what it changes of the client it was given, a field it puts beside packages and the list of clients it empties are not read, in the card and in the list - and the answer has the fields of the core as the model has them', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-tamper', [ 'tamper' => true ] );
+	[ , $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+	$core = (array) \Nino\Modules\Crm\Clients::get( $b, $id['a'] );
+	$card['client']['packages'] = json_decode( (string) json_encode( $card['client']['packages'] ), true );
+	unset( $card['client']['packages'] );
+	$listed = array_column( $list['clients'], null, 'id' )[$id['a']];
+	unset( $listed['packages'] );
+
+	return $card['client'] === $core && $listed === $core && count( $list['clients'] ) === 3 && array_column( $list['clients'], 'name' ) === [ 'Ada', 'Bea', 'Cleo' ] && ninoWarnings() === [];
+} )() );
+check( 'a part under a key that is not the listener\'s own is left out with one warning and nothing of the other parts is lost: the key of the core, of a package that is not on, a key that is no key, a text that is no list, and the key of another package - which has its own listener, and whose part is there', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-refused', [ 'also' => [ 'crm' => [ 'x' => 1 ], 'crm-clients' => [ 'x' => 1 ], 'crm-probe-absent' => [ 'x' => 1 ], 'Bad Key' => [ 'x' => 1 ], 'crm-probe-two' => [ 'fake' => true ], 'crm-text' => 'no list' ] ] );
+	ninoWarnings();
+	[ $status, $body ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	$said = ninoWarnings();
+	[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+	$listSaid = ninoWarnings();
+
+	return $status === 200 && json_encode( $body['client']['packages'] ) === '{"crm-probe":{"items":2,"tags":["a","b"],"nested":{"x":{"y":1}}},"crm-probe-two":{"two":true}}' && count( $said ) === 6 && array_filter( $said, static fn( string $line ): bool => str_contains( $line, \Nino\Modules\Crm\Clients::VIEW ) === false || str_contains( $line, '(key)' ) === false ) === []
+		&& array_filter( array_merge( $said, $listSaid ), static fn( string $line ): bool => preg_match( '/hunter|@|\/home|\/tmp|Bad Key|absent/', $line ) === 1 ) === [] && count( $listSaid ) === 6 && array_filter( $listSaid, static fn( string $line ): bool => str_contains( $line, \Nino\Modules\Crm\Clients::VIEWS ) === false ) === []
+		&& array_column( $list['clients'], 'number' ) === [ 'K-0001', 'K-0002', 'K-0003' ] && json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) === '{"crm-probe":{"items":2},"crm-probe-two":{"two":true}}';
+} )() );
+check( 'a listener answers under the key of its own package only: the listener of the second package that answers under the key of the first, and a closure that answers under any key - at the head of the line, with a priority of 1 - are left out with one warning each, in the card and in the list, and the part of the package that owns the key is there', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-owned', [], [ 'as' => 'crm-probe' ] );
+	$closure = static function( array &$appData, mixed &$argument ): mixed {
+
+		$argument['packages']['crm-probe'] = [ 'from' => 'a closure' ];
+		$argument['packages']['crm-probe-two'] = [ 'from' => 'a closure' ];
+
+		return $argument;
+	};
+	\Nino\Callbacks::registerCallback( $b, \Nino\Modules\Crm\Clients::VIEW, $closure, 1 );
+	\Nino\Callbacks::registerCallback( $b, \Nino\Modules\Crm\Clients::VIEWS, $closure, 1 );
+	[ $status, $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	$cardSaid = ninoWarnings();
+	[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+	$listSaid = ninoWarnings();
+
+	return $status === 200 && json_encode( $card['client']['packages'] ) === '{"crm-probe":{"items":2,"tags":["a","b"],"nested":{"x":{"y":1}}}}' && count( $cardSaid ) === 3 && count( $listSaid ) === 3 && array_filter( array_merge( $cardSaid, $listSaid ), static fn( string $line ): bool => str_contains( $line, '(key)' ) === false ) === []
+		&& json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) === '{"crm-probe":{"items":2}}';
+} )() );
+check( 'what the packages add to the list of the clients is kept to a budget: five packages that add the most they may to each of 1000 clients are answered 200 with a memory limit of 128M and each row holds the five parts; a package that adds more than LIST_BYTES over the list loses its part of the list, with one warning each, and the list is still answered 200', ( static function() use ( $features, $source ): bool {
+
+	[ $project, $where ] = domWorld( 'view-budget' );
+	$template = (string) file_get_contents( $source. '/tests/fixtures/CrmProbeTwo/feature.php' );
+	$packages = [ 'three' => 'Three', 'four' => 'Four', 'five' => 'Five' ];
+
+	foreach( $packages as $slug => $name ) {
+
+		mkdir( $features. '/CrmProbe'. $name );
+		file_put_contents( $features. '/CrmProbe'. $name. '/feature.php', str_replace( [ "'crm-probe-two'", 'CRM probe two', 'CRM-Probe zwei', 'CrmProbeTwo' ], [ "'crm-probe-". $slug. "'", 'CRM probe '. $slug, 'CRM-Probe '. $slug, 'CrmProbe'. $name ], $template ) );
+		file_put_contents( $features. '/CrmProbe'. $name. '/CrmProbe'. $name. '.php', "<?php\ndeclare(strict_types=1);\nnamespace Nino\\Modules {\n\tclass CrmProbe". $name. " {\n\t\tpublic static function init( array &\$appData ): void {\n\t\t\tif( isset( \$appData['./crm-probe/bulk'] ) === true )\n\t\t\t\t\\Nino\\Callbacks::registerCallback( \$appData, \\Nino\\Modules\\Crm\\Clients::VIEWS, [ self::class, 'views' ] );\n\t\t}\n\t\tpublic static function views( array &\$appData, mixed &\$argument ): mixed {\n\t\t\tforeach( \$argument['clients'] as \$client )\n\t\t\t\t\$argument['packages']['crm-probe-". $slug. "'][(int) \$client['id']] = [ 'pad' => str_repeat( 'x', (int) \$appData['./crm-probe/bulk'] ) ];\n\t\t\treturn \$argument;\n\t\t}\n\t}\n}\n" );
+		\Nino\Features::activate( $project, 'crm-probe-'. $slug );
+	}
+
+	\Nino\Features::activate( $project, 'crm-probe-two' );
+	$ran = [];
+
+	foreach( [ 'at the limit' => 950, 'over it' => 16000 ] as $what => $bulk ) {
+
+		$process = proc_open( [ PHP_BINARY, '-d', 'memory_limit=128M', __FILE__, 'budget-worker', $GLOBALS['features'], $where, (string) $bulk ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+		$ran[$what] = json_decode( (string) stream_get_contents( $pipes[1] ), true );
+		stream_get_contents( $pipes[2] );
+		proc_close( $process );
+	}
+
+	foreach( $packages as $name )
+		domRemove( $features. '/CrmProbe'. $name );
+
+	return ( $ran['at the limit']['status'] ?? 0 ) === 200 && $ran['at the limit']['clients'] === 1000 && $ran['at the limit']['packages'] === 5 && $ran['at the limit']['warnings'] === 0 && $ran['at the limit']['peak'] < 100 * 1048576
+		&& ( $ran['over it']['status'] ?? 0 ) === 200 && $ran['over it']['clients'] === 1000 && $ran['over it']['packages'] === 0 && $ran['over it']['warnings'] === 5 && $ran['over it']['peak'] < 100 * 1048576;
+} )() );
+check( 'what a package adds to the whole list is taken at exactly LIST_BYTES and not a byte over: the entries of 70 clients that make the most are in the rows, those that make one byte more are left out with one warning', ( static function() use ( $seen, $parts ): bool {
+
+	$wrong = [];
+
+	foreach( [ 0 => true, 1 => false ] as $over => $taken ) {
+
+		[ , , $b, $id ] = $seen( 'view-listsize-'. $over, [ 'listsize' => $over ] );
+
+		for( $at = 4; $at <= 70; $at++ )
+			\Nino\Modules\Crm\Db::exec( $b, 'INSERT INTO clients ( number, name, created, updated ) VALUES ( :number, \'More\', \'2026-01-01T00:00:00Z\', \'2026-01-01T00:00:00Z\' )', [ 'number' => 'K-'. sprintf( '%04d', $at ) ] );
+
+		\Nino\Modules\Crm\Db::drop( $b );
+		[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+		$said = ninoWarnings();
+		$has = count( array_filter( $list['clients'], static fn( array $client ): bool => array_key_exists( 'crm-probe', (array) $client['packages'] ) === true ) );
+
+		if( $has !== ( $taken === true ? 70 : 0 ) || count( $said ) !== ( $taken === true ? 0 : 1 ) )
+			$wrong[] = '+'. $over. ' ('. $has. ' rows, '. count( $said ). ' warnings)';
+	}
+
+	return $wrong === [];
+} )() );
+check( 'a part of a list is taken at exactly the most and not a byte over, in the card and in each entry of the list; an entry under a text that is no id of a client is refused with the part of the list', ( static function() use ( $seen, $parts ): bool {
+
+	$wrong = [];
+
+	foreach( [ 0 => true, 1 => false ] as $over => $taken ) {
+
+		[ , , $b, $id ] = $seen( 'view-size-'. $over, [ 'size' => $over ] );
+		[ , $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+		$cardSaid = ninoWarnings();
+		[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+		$listSaid = ninoWarnings();
+		$has = static fn( array $packages ): bool => array_key_exists( 'crm-probe', (array) $packages );
+
+		if( $has( (array) $card['client']['packages'] ) !== $taken || $has( (array) array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) !== $taken || count( $cardSaid ) !== ( $taken === true ? 0 : 1 ) || count( $listSaid ) !== ( $taken === true ? 0 : 1 ) )
+			$wrong[] = 'size +'. $over;
+	}
+
+	[ , , $b, $id ] = $seen( 'view-textid', [ 'textid' => true ] );
+	[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+
+	if( array_key_exists( 'crm-probe', (array) array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) === true || count( ninoWarnings() ) !== 1 )
+		$wrong[] = 'a text id';
+
+	return $wrong === [];
+} )() );
+check( 'a package that answers twice under its key is taken once: the second part is left out with one warning that says the key is taken, in the card and in the list, and what the first answered stays', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-twice' );
+	\Nino\Callbacks::registerCallback( $b, \Nino\Modules\Crm\Clients::VIEW, [ \Nino\Modules\CrmProbe\Domain::class, 'viewClient' ] );
+	\Nino\Callbacks::registerCallback( $b, \Nino\Modules\Crm\Clients::VIEWS, [ \Nino\Modules\CrmProbe\Domain::class, 'viewClients' ] );
+	[ , $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	$cardSaid = ninoWarnings();
+	[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+	$listSaid = ninoWarnings();
+
+	return json_encode( $card['client']['packages'] ) === '{"crm-probe":{"items":2,"tags":["a","b"],"nested":{"x":{"y":1}}},"crm-probe-two":{"two":true}}' && count( $cardSaid ) === 1 && str_contains( $cardSaid[0], '(key taken)' ) === true && count( $listSaid ) === 1 && str_contains( $listSaid[0], '(key taken)' ) === true
+		&& json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) === '{"crm-probe":{"items":2},"crm-probe-two":{"two":true}}';
+} )() );
+foreach( [ 'object', 'closure', 'inf', 'nan', 'utf8', 'utf8key', 'deep7', 'big' ] as $bad ) {
+
+	check( 'a part with a value that is no plain one - '. $bad. ' - is left out whole with one warning, in the card and in the list, and the other package stays', ( static function() use ( $seen, $parts, $bad ): bool {
+
+		[ , , $b, $id ] = $seen( 'view-bad-'. $bad, [ 'bad' => $bad ] );
+		[ $status, $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+		$cardSaid = ninoWarnings();
+		[ $all, $list ] = $parts( $b, 'crm-clients/list', [] );
+		$listSaid = ninoWarnings();
+
+		return $status === 200 && $all === 200 && json_encode( $card['client']['packages'] ) === '{"crm-probe-two":{"two":true}}' && count( $cardSaid ) === 1 && json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) === '{"crm-probe-two":{"two":true}}' && count( $listSaid ) === 1 && count( $list['clients'] ) === 3;
+	} )() );
+}
+check( 'the limits are the same in the card and in the list: a field with six levels is taken in both - the most there is - and a part of the list with an entry that is no list of fields is left out whole', ( static function() use ( $seen, $parts ): bool {
+
+	[ , , $b, $id ] = $seen( 'view-limits', [ 'bad' => 'deep6' ] );
+	[ , $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	[ , $list ] = $parts( $b, 'crm-clients/list', [] );
+	$said = ninoWarnings();
+	$deep = '{"in":{"in":{"in":{"in":{"end":1}}}}}';
+	[ , , $c, $ids ] = $seen( 'view-entry', [ 'bad' => 'entry' ] );
+	[ , $entry ] = $parts( $c, 'crm-clients/list', [] );
+	$entrySaid = ninoWarnings();
+
+	return str_contains( json_encode( $card['client']['packages'] ), '"bad":'. $deep ) === true && str_contains( json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ), '"bad":'. $deep ) === true && $said === []
+		&& json_encode( array_column( $entry['clients'], 'packages', 'id' )[$ids['a']] ) === '{"crm-probe-two":{"two":true}}' && count( $entrySaid ) === 1;
+} )() );
+check( 'what a listener keeps a reference to is not what it answered once it answered: another listener that sets that value to infinity, to a number that is none or to an object after it was taken changes nothing of the card and of the list - both are answered 200, with the value the first listener had when it answered', ( static function() use ( $seen, $parts ): bool {
+
+	$wrong = [];
+
+	foreach( [ 'inf' => INF, 'nan' => NAN, 'object' => new \ArrayObject( [ 1 ] ), 'closure' => static fn(): int => 1, 'list' => [ [ [ [ [ [ [ 1 ] ] ] ] ] ] ] ] as $name => $later ) {
+
+		[ , , $b, $id ] = $seen( 'view-live-'. $name, [ 'live' => true ], [ 'touch' => $later ] );
+		$b['./crm-probe/live'] = 1;
+		[ $status, $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+		$changed = $b['./crm-probe/live'] !== 1;
+		$b['./crm-probe/live'] = 1;
+		[ $all, $list ] = $parts( $b, 'crm-clients/list', [] );
+
+		if( $changed === false || $status !== 200 || $all !== 200 || str_contains( (string) json_encode( $card['client']['packages'] ), '"live":1' ) === false || str_contains( (string) json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ), '"live":1' ) === false || ninoWarnings() !== [] )
+			$wrong[] = $name;
+	}
+
+	return $wrong === [];
+} )() );
+check( 'a listener that throws does not break the card or the list: it is left out with one warning that names the hook and the kind of the throwable and not its message, the other package answers, and the answer is 200', ( static function() use ( $seen, $parts ): bool {
+
+	$wrong = [];
+
+	foreach( [ 'the first' => [ [ 'throw' => true ], [] ], 'the second' => [ [], [ 'throw' => true ] ], 'both' => [ [ 'throw' => true ], [ 'throw' => true ] ] ] as $who => [ $steer, $two ] ) {
+
+		[ , , $b, $id ] = $seen( 'view-throws-'. str_replace( ' ', '', $who ), $steer, $two );
+		[ $one, $card ] = $parts( $b, 'crm-clients/get', [ 'id' => $id['a'] ] );
+		$cardSaid = ninoWarnings();
+		[ $all, $list ] = $parts( $b, 'crm-clients/list', [] );
+		$listSaid = ninoWarnings();
+		$expected = $who === 'the first' ? '{"crm-probe-two":{"two":true}}' : ( $who === 'the second' ? '{"crm-probe":{"items":2,"tags":["a","b"],"nested":{"x":{"y":1}}}}' : '{}' );
+		$expectedList = $who === 'the first' ? '{"crm-probe-two":{"two":true}}' : ( $who === 'the second' ? '{"crm-probe":{"items":2}}' : '{}' );
+		$count = $who === 'both' ? 2 : 1;
+
+		if( $one !== 200 || $all !== 200 || json_encode( $card['client']['packages'] ) !== $expected || json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) !== $expectedList || count( $cardSaid ) !== $count || count( $listSaid ) !== $count || count( $list['clients'] ) !== 3
+			|| array_filter( array_merge( $cardSaid, $listSaid ), static fn( string $line ): bool => str_contains( $line, 'RuntimeException' ) === false || str_contains( $line, 'breaks' ) === true || str_contains( $line, 'probe' ) === true && str_contains( $line, 'Exception' ) === false ) !== [] )
+			$wrong[] = $who;
+	}
+
+	return $wrong === [];
+} )() );
+check( 'a package that is switched off or removed adds nothing: its field is not there, the card and the list are the core\'s with no part, and the part of the one that is on stays', ( static function() use ( $seen, $parts, $features, $source ): bool {
+
+	[ $project, $where, $b, $id ] = $seen( 'view-off' );
+	$set = [ './crm-probe/domain' => true, './crm-probe/view' => [], './crm-probe/view-two' => [] ];
+	$wrong = [];
+
+	\Nino\Features::deactivate( $project, 'crm-probe' );
+	$r = domRequest( $where, $set );
+	domSignIn( $r, 'admin@example.org' );
+	[ , $card ] = $parts( $r, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	[ , $list ] = $parts( $r, 'crm-clients/list', [] );
+
+	if( json_encode( $card['client']['packages'] ) !== '{"crm-probe-two":{"two":true}}' || json_encode( array_column( $list['clients'], 'packages', 'id' )[$id['a']] ) !== '{"crm-probe-two":{"two":true}}' )
+		$wrong[] = 'off';
+
+	\Nino\Features::remove( $project, 'crm-probe' );
+	$r = domRequest( $where, $set );
+	domSignIn( $r, 'admin@example.org' );
+	[ , $card ] = $parts( $r, 'crm-clients/get', [ 'id' => $id['a'] ] );
+
+	if( json_encode( $card['client']['packages'] ) !== '{"crm-probe-two":{"two":true}}' )
+		$wrong[] = 'removed';
+
+	\Nino\Features::deactivate( $project, 'crm-probe-two' );
+	$r = domRequest( $where, $set );
+	domSignIn( $r, 'admin@example.org' );
+	[ , $card ] = $parts( $r, 'crm-clients/get', [ 'id' => $id['a'] ] );
+	[ , $list ] = $parts( $r, 'crm-clients/list', [] );
+
+	if( json_encode( $card['client']['packages'] ) !== '{}' || array_unique( array_map( static fn( array $client ): string => json_encode( $client['packages'] ), $list['clients'] ) ) !== [ '{}' ] || count( $list['clients'] ) !== 3 || ninoWarnings() !== [] )
+		$wrong[] = 'none';
+
+	domCopy( $source. '/tests/fixtures/CrmProbe', $features. '/CrmProbe' );
+
+	return $wrong === [];
+} )() );
+
+}
+catch( \Throwable $e ) {
+	domCrashed( 'what the packages asked of the core a second time', $e );
 }
 
 // --- The file and its connection ----------------------------------------------------------------------------------------------
@@ -4967,6 +6376,28 @@ $schemaPeer = domPeer( $lateFile );
 $seen = [];
 domArm( $late, $schemaPeer, $seen, $own );
 $made = \Nino\Modules\Crm\Db::ensure( $late );
+// The transactions of the rest of the core: a device remembered, a record added, a client refused because a run is open, and the test phase with a gather, its row and the leftovers that finish it - each with no file of the database opened beside the connection and the second process refused at every row
+[ $project, $where, $a, $m ] = domFilled( 'lock-others' );
+domPeerOn( $peer, $a );
+check( 'a device that is remembered and a record that is added are written in a transaction that keeps the write lock: the second process is refused at every row, and nothing opens the file beside the connection', ( static function() use ( &$a, &$peer, $m ): bool {
+	$mail = 'admin@example.org';
+	[ $seen, $remembered ] = domLocked( $a, $peer, static function() use ( &$a, $mail ): bool { return \Nino\Modules\Crm\Surface\Devices::remember( $a, $mail ); } );
+	[ $more, $record ] = domLocked( $a, $peer, static function() use ( &$a, $m ): mixed { return \Nino\Modules\Crm\Records::add( $a, [ 'kind' => 'probe-visit', 'client_id' => $m['a'], 'origin' => 'crm-probe', 'member' => [ 'email' => 'v@example.org', 'name' => 'V' ], 'ref' => 'v9', 'shown' => 'text', 'project' => $m['p3'] ] ); } );
+
+	return domSaw( $remembered === true && is_array( $record ) === true && domRefused( $seen, 3 ) && domRefused( $more, 2 ), [ $remembered, $record, array_count_values( $seen ), array_count_values( $more ) ] );
+} )() );
+
+$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok' ];
+[ $project, $where, $a, $m ] = domFilled( 'lock-run' );
+unset( $GLOBALS['domSet'] );
+domPeerOn( $peer, $a );
+$a['./crm-probe/leftover-fails'] = true;
+[ $first, $answer ] = domLocked( $a, $peer, static function() use ( &$a ): string { return domAnswer( $a, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] ); } );
+[ $refusedAdd, $added ] = domLocked( $a, $peer, static function() use ( &$a ): int { return domPost( $a, 'crm-clients/save', [ 'name' => 'While open' ] )[0]; } );
+unset( $a['./crm-probe/leftover-fails'] );
+[ $second, $finished ] = domLocked( $a, $peer, static function() use ( &$a ): string { return domAnswer( $a, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] ); } );
+check( 'the run of the test phase - its gather, the row of the run, the database step and the press that finishes the leftovers - holds the write lock at every row, no client is made while it is open, and no file of the database is opened beside the connection ('. count( $first ). ' and '. count( $second ). ' answers)', domSaw( $answer === '500 crm_wipe_step' && $added === 409 && $finished === '200 -' && domRefused( $first, 20 ) && domRefused( $second, 1 ), [ $answer, $added, $finished, array_count_values( $first ), array_count_values( $second ), $refusedAdd ] ) );
+
 check( 'the steps that make or raise the schema of a package run inside a transaction of the core that keeps the write lock, and the second process is refused it every time it asks ('. count( $seen ). ' times)', $made === 1 && domRefused( $seen, 2 ) && in_array( 'crm-probe', array_keys( \Nino\Modules\Crm\Db::versions( $late ) ), true ) );
 domPeerStop( $schemaPeer );
 $own = null;
@@ -5057,7 +6488,7 @@ check( 'a file that no connection is open on is told by its header, once: the qu
 domPeerStop( $peer );
 
 // The source: the only places that ask the header of the file, and no function that opens a file is given the path of the database anywhere
-check( 'the header of the file is read in one place, Db::kind(), and asked in four: Db::kindFor() for the connection and the status, Settings and the mail band through it, and Db::backup() with what its caller holds - no other call of kind() in the feature', ( static function() use ( $source ): bool {
+check( 'the header of the file is read in one place, Db::kind(), and asked in five: Db::kindFor() for the connection and the status, Settings, the mail band and the restore through it, and Db::backup() with what its caller holds - no other call of kind() in the feature', ( static function() use ( $source ): bool {
 	$calls = [];
 
 	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $source, \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
@@ -5081,11 +6512,12 @@ check( 'the header of the file is read in one place, Db::kind(), and asked in fo
 	ksort( $calls );
 	$calls = array_map( static function( array $names ): array { ksort( $names ); return $names; }, $calls );
 
-	return $calls === [ 'Db/Db.php' => [ 'kind' => 2, 'kindFor' => 2 ], 'Mail/Mail.php' => [ 'kindFor' => 1 ], 'Settings/Settings.php' => [ 'kindFor' => 1 ] ];
+	return $calls === [ 'Crm.php' => [ 'kindFor' => 1 ], 'Db/Db.php' => [ 'kind' => 2, 'kindFor' => 2 ], 'Mail/Mail.php' => [ 'kindFor' => 1 ], 'Settings/Settings.php' => [ 'kindFor' => 1 ] ];
 } )() );
-check( 'no function of php that opens or reads a file is given the path of the database: of the ones that open, the feature has the read of the header in Db::kind() - one - and, besides what it does with files of its own, nothing', ( static function() use ( $source ): bool {
-	$opens = [ 'file_get_contents', 'fopen', 'file', 'readfile', 'copy', 'hash_file', 'md5_file', 'sha1_file', 'SplFileObject', 'finfo', 'fpassthru', 'parse_ini_file', 'file_put_contents', 'touch', 'rename', 'unlink', 'getimagesize', 'mime_content_type', 'fileinode', 'hash_update_file', 'finfo_open', 'finfo_file', 'exif_read_data', 'exif_thumbnail', 'simplexml_load_file', 'highlight_file', 'show_source', 'php_strip_whitespace', 'readgzfile', 'gzfile', 'gzopen', 'bzopen', 'fscanf', 'popen' ];
+check( 'no function of php that opens or reads a file is given the path of the database, and no method that opens one - ->openFile(), Filesystem::copy(), ::copyDir(), SplFileInfo - is in the feature (what a variable function or a name built from text calls is not seen by this reading; the windows that watch the opens, the second process and strace see it): of the functions that open, the feature has the read of the header in Db::kind() - one -, the two connections of the online backup of the restore in Crm.php, the two of the replacement of a file that is damaged and the read of the list of the locks in Db.php, and, besides what it does with files of its own, nothing', ( static function() use ( $source ): bool {
+	$opens = [ 'SQLite3', 'file_get_contents', 'fopen', 'file', 'readfile', 'copy', 'hash_file', 'md5_file', 'sha1_file', 'SplFileObject', 'finfo', 'fpassthru', 'parse_ini_file', 'file_put_contents', 'touch', 'rename', 'unlink', 'getimagesize', 'mime_content_type', 'fileinode', 'hash_update_file', 'finfo_open', 'finfo_file', 'exif_read_data', 'exif_thumbnail', 'simplexml_load_file', 'highlight_file', 'show_source', 'php_strip_whitespace', 'readgzfile', 'gzfile', 'gzopen', 'bzopen', 'fscanf', 'popen' ];
 	$found = [];
+	$methods = [];
 
 	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $source, \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
 
@@ -5093,6 +6525,19 @@ check( 'no function of php that opens or reads a file is given the path of the d
 
 		if( str_ends_with( $relative, '.php' ) === false || str_starts_with( $relative, 'tests/' ) === true )
 			continue;
+
+		// The methods that open a file - ->openFile(), Filesystem::copy(), ::copyDir() - and SplFileInfo, which has the first: the feature has none of them
+		foreach( $tokens = token_get_all( (string) file_get_contents( (string) $file->getPathname() ) ) as $at => $token )
+			if( is_array( $token ) === true && $token[0] === T_STRING && in_array( $token[1], [ 'openFile', 'copyDir', 'copy', 'SplFileInfo' ], true ) === true ) {
+
+				$before = $at - 1;
+
+				while( $before > 0 && is_array( $tokens[$before] ) === true && $tokens[$before][0] === T_WHITESPACE )
+					$before--;
+
+				if( $token[1] === 'SplFileInfo' || in_array( is_array( $tokens[$before] ) === true ? $tokens[$before][0] : 0, [ T_OBJECT_OPERATOR, T_DOUBLE_COLON, T_NULLSAFE_OBJECT_OPERATOR ], true ) === true )
+					$methods[] = $relative. ': '. $token[1];
+			}
 
 		$tokens = token_get_all( (string) file_get_contents( (string) $file->getPathname() ) );
 
@@ -5120,8 +6565,8 @@ check( 'no function of php that opens or reads a file is given the path of the d
 
 	// What each does, and with which file: the header of the database (Db::kind, once), the copy that is a backup (the target is a file that is not there, written by SQLite; the files a failed copy leaves are taken away),
 	// the files of the surface (its own stylesheets, scripts and icons, below the folder of the feature), the files of the project the kernel writes through Filesystem and none of them is the database
-	return domSaw( $files === [ 'Db/Db.php' => [ 'file_get_contents' => 1, 'unlink' => 1 ], 'Surface/Icons/Icons.php' => [ 'file_get_contents' => 3, 'file_put_contents' => 1, 'getimagesize' => 2, 'rename' => 1, 'sha1_file' => 2, 'unlink' => 3 ], 'Surface/Scripts/Scripts.php' => [ 'hash_file' => 1 ], 'Surface/Surface.php' => [ 'hash_file' => 1 ] ]
-		&& preg_match( '/function kind\(.*?file_get_contents\(.*?function kindFor\(/s', (string) file_get_contents( $source. '/Db/Db.php' ) ) === 1, $files );
+	return domSaw( $methods === [] && $files === [ 'Crm.php' => [ 'SQLite3' => 2, 'unlink' => 1 ], 'Db/Db.php' => [ 'SQLite3' => 2, 'file_get_contents' => 2, 'rename' => 1, 'unlink' => 7 ], 'Surface/Icons/Icons.php' => [ 'file_get_contents' => 3, 'file_put_contents' => 1, 'getimagesize' => 2, 'rename' => 1, 'sha1_file' => 2, 'unlink' => 3 ], 'Surface/Scripts/Scripts.php' => [ 'hash_file' => 1 ], 'Surface/Surface.php' => [ 'hash_file' => 1 ] ]
+		&& preg_match( '/function kind\(.*?file_get_contents\(.*?function kindFor\(/s', (string) file_get_contents( $source. '/Db/Db.php' ) ) === 1, [ $files, $methods ] );
 } )() );
 
 // Under strace: every open and close of a descriptor on the file, in a process that runs the whole of it
@@ -5163,6 +6608,758 @@ while( $rounds < 3 ) {
 }
 
 check( 'eight savers and three deleters of clients, each a process of its own, started together and none ended from outside, leave the file whole: integrity_check and foreign_key_check find nothing, and every process ended well ('. $rounds. ' round'. ( $rounds === 1 ? '' : 's' ). ')', $chaos[0] === [ 'ok' ] && $chaos[1] === [] && $chaos[3] === 0 && $chaos[2] >= 100 );
+
+// --- The restore of the database: the online backup of SQLite, after the copy of the archive was looked at ---------------------------------------------------------------------------------------------
+
+/** The archive copy of the database of a request, in a folder that has the layout of the extracted archive: [ the arguments of the callback, the staged file ] */
+function domStaged( array &$request, string $where, string $name ): array {
+
+	$stage = $where. '/stage-'. $name;
+	mkdir( $stage. '/data', 0755, true );
+	\Nino\Modules\Crm\Db::backup( \Nino\Filesystem::path( $request, \Nino\Modules\Crm\Db::FILE ), $stage. '/data/crm.sqlite', \Nino\Modules\Crm\Db::held( $request ) );
+
+	return [ [ 'dataDir' => dirname( \Nino\Filesystem::path( $request, \Nino\Modules\Crm\Db::FILE ) ), 'staging' => $stage ], $stage. '/data/crm.sqlite' ];
+}
+
+echo "\nThe restore of the database\n";
+
+try {
+
+check( 'the copy of the archive is the content of the live database after the restore, written by the online backup: the rows, the application id and the user version are the archive\'s, what the live file had since is gone, the staged file and what an open copy leaves beside it are gone, the file is in the DELETE mode with no file of a log - and the request lets go of its connections and of what it read, so that the next question opens the file anew', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-content' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	domClient( $a, [ 'name' => 'Bea' ] );
+	\Nino\Modules\Crm\Db::pdo( $a )->exec( 'PRAGMA user_version = 7' );
+	[ $args, $staged ] = domStaged( $a, $where, 'content' );
+	domClient( $a, [ 'name' => 'Later' ] );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	$held = \Nino\Modules\Crm\Db::pdo( $a );
+	$before = domCount( $a, 'clients' );
+	ninoWarnings();
+	\Nino\Modules\Crm::callbackRestore( $a, $args );
+	$warned = ninoWarnings();
+	$let = isset( $a['./crm/db/connections'] ) === false && isset( $a['./crm/settings/reader-at'] ) === false;
+	$registered = in_array( [ \Nino\Modules\Crm::class, 'callbackRestore' ], (array) ( $a['./nino/callbacks']['/nino/admin/restore'][5] ?? [] ), true ) === true;
+	$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $b, 'admin@example.org' );
+	$pdo = \Nino\Modules\Crm\Db::pdo( $b );
+	$names = array_column( \Nino\Modules\Crm\Db::rows( $b, 'SELECT name FROM clients ORDER BY id' ), 'name' );
+	$head = (string) file_get_contents( $live, false, null, 18, 2 );
+
+	// The connection that was open before still answers, with the content the restore wrote
+	return domSaw( $registered === true && $let === true && $before === 3 && $warned === [] && is_file( $staged ) === false && glob( dirname( $staged ). '/crm.sqlite*' ) === [] && $names === [ 'Ada', 'Bea' ] && $pdo->query( 'PRAGMA user_version' )->fetchColumn() === 7
+		&& (int) $pdo->query( 'PRAGMA application_id' )->fetchColumn() === \Nino\Modules\Crm\Db::APPLICATION_ID && strtolower( (string) $pdo->query( 'PRAGMA journal_mode' )->fetchColumn() ) === 'delete' && glob( $live. '-*' ) === [] && bin2hex( $head ) === '0101'
+		&& $pdo->query( 'PRAGMA integrity_check' )->fetchColumn() === 'ok' && \Nino\Modules\Crm\Db::kind( $live ) === 'ours', [ $before, $warned, $names, bin2hex( $head ) ] );
+} ) );
+
+check( 'a copy in the log mode of writes, and one with another page size, are written into the file as the DELETE mode with no file of a log beside it, and the file reads whole', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-mode' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	$wrong = [];
+
+	foreach( [ 'wal' => 'PRAGMA journal_mode = WAL', 'page' => 'PRAGMA page_size = 8192; VACUUM' ] as $what => $change ) {
+		[ $args, $staged ] = domStaged( $a, $where, $what );
+		$copy = new \PDO( 'sqlite:'. $staged );
+		$copy->exec( $change );
+		$copy->exec( 'INSERT INTO clients ( number, name, created, updated ) VALUES ( \'K-00'. ( $what === 'wal' ? 98 : 99 ). '\', \'Mode '. $what. '\', \'2026-01-01\', \'2026-01-01\' )' );
+		$copy = null;
+		\Nino\Modules\Crm::callbackRestore( $a, $args );
+		$check = new \PDO( 'sqlite:'. $live );
+
+		if( is_file( $staged ) === true || glob( $live. '-*' ) !== [] || strtolower( (string) $check->query( 'PRAGMA journal_mode' )->fetchColumn() ) !== 'delete' || $check->query( 'PRAGMA integrity_check' )->fetchColumn() !== 'ok' || $check->query( 'SELECT COUNT(*) FROM clients WHERE name = \'Mode '. $what. '\'' )->fetchColumn() !== 1 )
+			$wrong[] = $what;
+	}
+
+	return domSaw( $wrong === [], $wrong );
+} ) );
+
+check( 'a copy that is damaged (in its bytes, and in an index that lacks rows), is no database of the core, has no register of the core, or comes from a newer version of the core is not written, and the kernel is given nothing to copy over the live file: the callback throws with a sentence that says why and has no path, the staged file and what an open copy leaves beside it are gone, the second question of the request is answered the same and does nothing, and the live file is the bytes it was', ( static function(): bool {
+
+	$wrong = [];
+
+	foreach( [
+		'damaged' => static function( string $staged ): void { file_put_contents( $staged, random_bytes( 4096 ) ); },
+		'index' => static function( string $staged ): void {
+			$p = new \PDO( 'sqlite:'. $staged, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+			$p->exec( 'CREATE TABLE zz_index ( id INTEGER PRIMARY KEY, a TEXT )' );
+			$p->exec( 'WITH RECURSIVE n( i ) AS ( SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 60 ) INSERT INTO zz_index ( a ) SELECT \'a\'|| i FROM n' );
+			$p->exec( 'CREATE INDEX zz_index_i ON zz_index ( a ) WHERE id <= 30' );
+			$p->exec( 'PRAGMA writable_schema = ON' );
+			$p->exec( 'UPDATE sqlite_schema SET sql = \'CREATE INDEX zz_index_i ON zz_index ( a )\' WHERE name = \'zz_index_i\'' );
+		},
+		'foreign' => static function( string $staged ): void { $p = new \PDO( 'sqlite:'. $staged ); $p->exec( 'PRAGMA application_id = 77' ); },
+		'no register' => static function( string $staged ): void { $p = new \PDO( 'sqlite:'. $staged ); $p->exec( 'DELETE FROM schema_versions' ); },
+		'newer' => static function( string $staged ): void { $p = new \PDO( 'sqlite:'. $staged ); $p->exec( 'UPDATE schema_versions SET version = '. ( \Nino\Modules\Crm\Db::VERSION + 1 ). ' WHERE package = \'crm\'' ); },
+	] as $what => $make ) {
+
+		[ , $where, $a ] = domWorld( 'restore-refused-'. str_replace( ' ', '', $what ) );
+		domSignIn( $a, 'admin@example.org' );
+		domClient( $a, [ 'name' => 'Ada' ] );
+		$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+		[ $args, $staged ] = domStaged( $a, $where, 'refused' );
+		$make( $staged );
+		$bytes = sha1_file( $live );
+		file_put_contents( $staged. '-wal', 'a log of writes' );
+		file_put_contents( $staged. '-shm', 'shared memory' );
+		ninoWarnings();
+		$thrown = '';
+
+		try {
+			\Nino\Modules\Crm::callbackRestore( $a, $args );
+		}
+		catch( \RuntimeException $e ) {
+			$thrown = $e->getMessage();
+		}
+
+		$answers = [ \Nino\Modules\Crm::restore( $a, $args ), \Nino\Modules\Crm::restore( $a, $args ) ];
+		$again = '';
+
+		try {
+			\Nino\Modules\Crm::callbackRestore( $a, $args );
+		}
+		catch( \RuntimeException $e ) {
+			$again = $e->getMessage();
+		}
+
+		if( $thrown === '' || $thrown !== $again || str_contains( $thrown, '/' ) === true || glob( dirname( $staged ). '/crm.sqlite*' ) !== [] || sha1_file( $live ) !== $bytes || $answers !== [ 'kept', 'kept' ] || glob( $live. '-*' ) !== [] )
+			$wrong[] = [ $what, $thrown, $answers, glob( dirname( $staged ). '/crm.sqlite*' ) ];
+	}
+
+	return domSaw( $wrong === [], $wrong );
+} )() );
+
+check( 'while another process holds the write lock the restore does not write over it and does not let go of it: the callback throws after the wait with a sentence that has no path, the live file is the bytes it was, the staged file is gone from the staging, and the holder commits what it wrote - the lock was never lost', ( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-held' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args, $staged ] = domStaged( $a, $where, 'held' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	$holder = domHold( $live, '$db->exec( "BEGIN IMMEDIATE" ); $db->exec( "INSERT INTO settings ( key, value ) VALUES ( \'held.row\', \'yes\' )" );' );
+	$thrown = '';
+	$began = microtime( true );
+
+	try {
+		\Nino\Modules\Crm::callbackRestore( $a, $args );
+	}
+	catch( \RuntimeException $e ) {
+		$thrown = $e->getMessage();
+	}
+
+	$took = microtime( true ) - $began;
+	$other = new \PDO( 'sqlite:'. $live );
+	$other->exec( 'PRAGMA busy_timeout = 0' );
+
+	try {
+		$other->exec( 'INSERT INTO settings ( key, value ) VALUES ( \'intruder\', \'yes\' )' );
+		$intruded = true;
+	}
+	catch( \PDOException $e ) {
+		$intruded = false;
+	}
+
+	domRelease( $holder );
+
+	return domSaw( $thrown !== '' && str_contains( $thrown, '/' ) === false && is_file( $staged ) === false && ( \Nino\Modules\Crm::restore( $a, $args ) ) === 'kept' && $intruded === false && $took >= 4.0 && $took < 15.0, [ $thrown, $took, $intruded ] );
+} )() );
+
+check( 'the restore opens the database file by nothing but its connections: the record of the opens sees none beside the one read of a header, in the window of the callback, where a request holds a connection to the file', ( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-opens' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args ] = domStaged( $a, $where, 'opens' );
+	\Nino\Modules\Crm\Db::pdo( $a )->exec( 'BEGIN' );
+	\Nino\Modules\Crm\Db::pdo( $a )->exec( 'ROLLBACK' );
+	$stray = domStray( static function() use ( &$a, &$args ): void { \Nino\Modules\Crm::callbackRestore( $a, $args ); } );
+
+	return domSaw( $stray === [], $stray );
+} )() );
+
+check( 'the state of an older backup goes through the restore as before: an archive that holds an open row of the test phase brings the row and the lock on new clients back, an archive without the row takes it away and the clients can be made again, and a row that cannot be read is no row of nothing', ( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-state' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $clean, $cleanStaged ] = domStaged( $a, $where, 'clean' );
+	\Nino\Modules\Crm\Db::exec( $a, 'INSERT INTO settings ( key, value ) VALUES ( \'wiping.run\', :v )', [ 'v' => json_encode( [ 'began' => '2026-01-01T00:00:00Z', 'steps' => [ \Nino\Modules\Crm\Wipe::CORE => [ 'package' => 'crm', 'folder' => 'Crm', 'list' => [] ] ] ] ) ] );
+	[ $open ] = domStaged( $a, $where, 'open' );
+	\Nino\Modules\Crm::callbackRestore( $a, $clean );
+	$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $b, 'admin@example.org' );
+	$gone = [ \Nino\Modules\Crm\Wipe::unfinished( $b ), domPost( $b, 'crm-clients/save', [ 'name' => 'Free' ] )[0] ];
+	\Nino\Modules\Crm::callbackRestore( $b, $open );
+	$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $c, 'admin@example.org' );
+	$back = [ \Nino\Modules\Crm\Wipe::unfinished( $c ), domPost( $c, 'crm-clients/save', [ 'name' => 'Locked' ] ) ];
+
+	return domSaw( $gone === [ false, 200 ] && $back[0] === true && $back[1][0] === 409 && ( $back[1][1]['code'] ?? '' ) === 'crm_wipe_unfinished', [ $gone, $back ] );
+} )() );
+
+check( 'a live file that is the valid database of another application is not written over by the restore: the answer is kept, the callback throws with a sentence that has no path, the staging holds nothing of the database, and the live file is the bytes it was', ( static function(): bool {
+
+	$wrong = [];
+
+	foreach( [ 'another application id' => static function( string $live ): void { $p = new \PDO( 'sqlite:'. $live ); $p->exec( 'PRAGMA application_id = 77' ); } ] as $what => $make ) {
+
+		[ , $where, $a ] = domWorld( 'restore-live-'. str_replace( ' ', '', $what ) );
+		domSignIn( $a, 'admin@example.org' );
+		domClient( $a, [ 'name' => 'Ada' ] );
+		[ $args, $staged ] = domStaged( $a, $where, 'live' );
+		\Nino\Modules\Crm\Db::close( $a );
+		$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+		$make( $live );
+		$bytes = sha1_file( $live );
+		$thrown = '';
+
+		try {
+			\Nino\Modules\Crm::callbackRestore( $a, $args );
+		}
+		catch( \RuntimeException $e ) {
+			$thrown = $e->getMessage();
+		}
+
+		if( $thrown === '' || str_contains( $thrown, '/' ) === true || glob( dirname( $staged ). '/crm.sqlite*' ) !== [] || sha1_file( $live ) !== $bytes || \Nino\Modules\Crm::restore( $a, $args ) !== 'kept' )
+			$wrong[] = [ $what, $thrown ];
+	}
+
+	return domSaw( $wrong === [], $wrong );
+} )() );
+
+check( 'the restore is done once for a request and answers for whoever asks: the first question writes the copy and answers restored, the second answers the same and does nothing - what the live database got since stays - and the callback of the core is silent after it; an archive with no copy of the database is answered kept, silently, and the callback throws nothing', ( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-once' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	\Nino\Modules\Crm\Settings::readOnly( $a, 'seller_name' );
+	$readerBefore = isset( $a['./crm/settings/reader-at'] ) === true;
+	[ $args, $staged ] = domStaged( $a, $where, 'once' );
+	$first = \Nino\Modules\Crm::restore( $a, $args );
+	$readerAfter = isset( $a['./crm/settings/reader-at'] ) === true;
+	domClient( $a, [ 'name' => 'After' ] );
+	$second = \Nino\Modules\Crm::restore( $a, $args );
+	$thrown = '';
+
+	try {
+		\Nino\Modules\Crm::callbackRestore( $a, $args );
+	}
+	catch( \RuntimeException $e ) {
+		$thrown = $e->getMessage();
+	}
+
+	$names = array_column( \Nino\Modules\Crm\Db::rows( $a, 'SELECT name FROM clients ORDER BY id' ), 'name' );
+	$empty = [ 'dataDir' => $args['dataDir'], 'staging' => $where. '/stage-empty' ];
+	mkdir( $empty['staging'], 0755, true );
+	$none = \Nino\Modules\Crm::restore( $a, $empty );
+	$noneThrown = '';
+
+	try {
+		\Nino\Modules\Crm::callbackRestore( $a, $empty );
+	}
+	catch( \RuntimeException $e ) {
+		$noneThrown = $e->getMessage();
+	}
+
+	return domSaw( $readerBefore === true && $readerAfter === false && $first === 'restored' && $second === 'restored' && $thrown === '' && $names === [ 'Ada', 'After' ] && $none === 'kept' && $noneThrown === '', [ $readerBefore, $readerAfter, $first, $second, $thrown, $names, $none, $noneThrown ] );
+} )() );
+
+check( 'a copy in the log mode of writes is written while another process has the database open: the copy is set to the DELETE mode before it is looked at, so that nothing is left beside it in the staging or beside the live file, the answer is restored, and the requests that follow - save, list and the status - are answered 200', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-wal-held' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args, $staged ] = domStaged( $a, $where, 'walheld' );
+	$copy = new \PDO( 'sqlite:'. $staged );
+	$copy->exec( 'PRAGMA journal_mode = WAL' );
+	$copy->exec( 'INSERT INTO clients ( number, name, created, updated ) VALUES ( \'K-0098\', \'Wal\', \'2026-01-01\', \'2026-01-01\' )' );
+	$copy = null;
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	$holder = domHold( $live, '$db->query( "SELECT COUNT(*) FROM clients" )->fetchAll();' );
+	$answer = \Nino\Modules\Crm::restore( $a, $args );
+	$check = new \PDO( 'sqlite:'. $live );
+	$names = array_column( $check->query( 'SELECT name FROM clients ORDER BY id' )->fetchAll(), 'name' );
+	$head = bin2hex( (string) file_get_contents( $live, false, null, 18, 2 ) );
+	$check = null;
+	domRelease( $holder );
+	$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $b, 'admin@example.org' );
+	$codes = [ domPost( $b, 'crm-clients/save', [ 'name' => 'Next' ] )[0], domPost( $b, 'crm-clients/list', [] )[0], domPost( $b, 'crm/status', [] )[0] ];
+
+	return domSaw( $answer === 'restored' && $names === [ 'Ada', 'Wal' ] && $head === '0101' && glob( $live. '-*' ) === [] && glob( dirname( $staged ). '/crm.sqlite*' ) === [] && $codes === [ 200, 200, 200 ], [ $answer, $names, $head, $codes, glob( $live. '-*' ) ] );
+} ) );
+
+// The run that is after its database step does not go on over a database that was written back meanwhile: a second process writes the archive back in that moment, and what the run still has to do - the projects - is not done on clients that the archive brought back
+foreach( [ 'the test phase' => 'wipe', 'the deletion of a client' => 'erase' ] as $label => $kind ) {
+	check( 'a restore between the database step of '. $label. ' and the deletion of the projects, by a second process: the run stops with a warning and no failure, the clients of the archive are there and so are their projects, and no row of the run is left', ( static function() use ( $kind ): bool {
+
+		$GLOBALS['domSet'] = [ './crm-probe/gather' => 'ok' ];
+		[ , $where, $b, $m ] = domFilled( 'restore-after-'. $kind );
+		unset( $GLOBALS['domSet'] );
+		\Nino\Modules\Crm\Db::exec( $b, 'CREATE TABLE zz_written ( at TEXT )' );
+		\Nino\Modules\Crm\Db::exec( $b, 'CREATE TRIGGER zz_written_row AFTER INSERT ON settings WHEN NEW.key = \'wiping.run\' BEGIN INSERT INTO zz_written ( at ) VALUES ( \'written\' ); END' );
+		[ $args ] = domStaged( $b, $where, 'after' );
+		$signal = $where. '/after';
+		$projects = count( \Nino\Elements::queryElements( $b, '/crm-projects', [], '*', [] ) );
+		$b['./crm-probe/after-wait'] = $signal;
+		$run = proc_open( [ PHP_BINARY, __FILE__, 'restore-worker', $GLOBALS['features'], $where, $signal, $args['staging'] ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+		ninoWarnings();
+
+		if( $kind === 'wipe' ) {
+			$answer = domAnswer( $b, 'crm/wipe', [ 'confirm' => 'LÖSCHEN' ] );
+			$expect = '200 -';
+		}
+		else {
+			$answer = domAnswer( $b, 'crm-clients/delete', [ 'id' => $m['a'], 'confirm' => 'K-0001' ] );
+			$expect = '200 -';
+		}
+
+		$warned = implode( ' ', ninoWarnings() );
+		$said = stream_get_contents( $pipes[1] );
+		stream_get_contents( $pipes[2] );
+		proc_close( $run );
+		$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+		domSignIn( $c, 'admin@example.org' );
+
+		return domSaw( $said === 'restored' && $answer === $expect && str_contains( $warned, 'does not stand' ) === true && domCount( $c, 'clients' ) === 3 && count( \Nino\Elements::queryElements( $c, '/crm-projects', [], '*', [] ) ) === $projects
+			&& domCount( $c, 'settings', 'key LIKE \'wiping%\' OR key LIKE \'erasing%\'' ) === 0 && domCount( $c, 'zz_written' ) === 0, [ $said, $answer, $warned, domCount( $c, 'clients' ), $projects ] );
+	} )() );
+}
+
+// A live file that is the core's and is damaged, or is no database at all, is replaced by the copy: a new file beside it, put in its place by rename, the old file never opened by php
+$domBreak = [
+	'pages overwritten' => static function( string $live ): void { $h = fopen( $live, 'r+b' ); fseek( $h, 4096 * 2 ); fwrite( $h, str_repeat( "\xAB", 4096 * 3 ) ); fclose( $h ); },
+	'no byte' => static function( string $live ): void { file_put_contents( $live, '' ); },
+	'text' => static function( string $live ): void { file_put_contents( $live, str_repeat( 'a text that is no database ', 400 ) ); },
+	'a header that is cut off' => static function( string $live ): void { file_put_contents( $live, substr( (string) file_get_contents( $live ), 0, 50 ) ); },
+	'an index that lacks rows' => static function( string $live ): void {
+		$p = new \PDO( 'sqlite:'. $live, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+		$p->exec( 'CREATE TABLE zz_index ( id INTEGER PRIMARY KEY, a TEXT )' );
+		$p->exec( 'WITH RECURSIVE n( i ) AS ( SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 60 ) INSERT INTO zz_index ( a ) SELECT \'a\'|| i FROM n' );
+		$p->exec( 'CREATE INDEX zz_index_i ON zz_index ( a ) WHERE id <= 30' );
+		$p->exec( 'PRAGMA writable_schema = ON' );
+		$p->exec( 'UPDATE sqlite_schema SET sql = \'CREATE INDEX zz_index_i ON zz_index ( a )\' WHERE name = \'zz_index_i\'' );
+	},
+	'a hot journal beside pages that are overwritten' => static function( string $live ): void {
+		$h = fopen( $live, 'r+b' ); fseek( $h, 4096 * 2 ); fwrite( $h, str_repeat( "\xAB", 4096 * 3 ) ); fclose( $h );
+		// A journal that a reader would roll back into the file: the magic, one record of the first page, a checksum that holds
+		$size = 4096; $nonce = 1234; $page = str_repeat( 'Z', $size ); $sum = $nonce;
+		for( $at = $size - 200; $at > 0; $at -= 200 ) $sum += ord( $page[$at] );
+		file_put_contents( $live. '-journal', pack( 'H*', 'd9d505f920a163d7' ). pack( 'NNNNN', 1, $nonce, 1, 512, $size ). str_repeat( "\0", 512 - 28 ). pack( 'N', 1 ). $page. pack( 'N', $sum & 0xffffffff ) );
+	},
+];
+
+check( 'a live file that SQLite takes for a database - pages overwritten inside it, no byte, an index that lacks rows - is written page by page under its locks and keeps its inode, one that is no database for it - a text, a header that is cut off - is replaced by a new file (another inode, the mode of the old one), and the answer is restored in every case: the file is the archive\'s, whole, in the DELETE mode, with no file beside it and none made on the way, and the old file is never opened by php (the record of the opens sees none)', domSafe( static function() use ( $domBreak ): bool {
+
+	$wrong = [];
+
+	foreach( [ 'pages overwritten' => false, 'no byte' => false, 'an index that lacks rows' => false, 'text' => true, 'a header that is cut off' => true ] as $what => $renamed ) {
+
+		[ , $where, $a ] = domWorld( 'restore-replace-'. md5( $what ) );
+		domSignIn( $a, 'admin@example.org' );
+		domClient( $a, [ 'name' => 'Ada' ] );
+		domClient( $a, [ 'name' => 'Bea' ] );
+		[ $args, $staged ] = domStaged( $a, $where, 'replace' );
+		domClient( $a, [ 'name' => 'Later' ] );
+		$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+		\Nino\Modules\Crm\Db::close( $a );
+		$domBreak[$what]( $live );
+		chmod( $live, 0640 );
+		clearstatcache( true, $live );
+		$inode = fileinode( $live );
+		$answer = '';
+		$stray = domStray( static function() use ( &$a, &$args, &$answer ): void { $answer = \Nino\Modules\Crm::restore( $a, $args ); } );
+		clearstatcache( true, $live );
+		$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+		domSignIn( $b, 'admin@example.org' );
+		$names = array_column( \Nino\Modules\Crm\Db::rows( $b, 'SELECT name FROM clients ORDER BY id' ), 'name' );
+		$pdo = \Nino\Modules\Crm\Db::pdo( $b );
+
+		if( $answer !== 'restored' || $stray !== [] || $names !== [ 'Ada', 'Bea' ] || $pdo->query( 'PRAGMA integrity_check' )->fetchColumn() !== 'ok' || strtolower( (string) $pdo->query( 'PRAGMA journal_mode' )->fetchColumn() ) !== 'delete'
+			|| glob( $live. '-*' ) !== [] || glob( $live. '.restore-*' ) !== [] || glob( dirname( $staged ). '/crm.sqlite*' ) !== [] || ( fileinode( $live ) !== $inode ) !== $renamed || ( $renamed === true && fileperms( $live ) % 01000 !== 0640 ) )
+			$wrong[] = [ $what, $answer, $stray, $names, glob( $live. '*' ) ];
+	}
+
+	return domSaw( $wrong === [], $wrong );
+} ) );
+
+check( 'a live file that SQLite opens but cannot overwrite - the count of its pages in the header is wrong, or the file is cut off in the middle of its pages - is not written: the answer is kept, the callback throws with the sentence that says the file is damaged and could not be overwritten, the file is the bytes it was, nothing is made beside it or left in the staging, and when the file is taken away the next restore writes the copy', domSafe( static function(): bool {
+
+	$wrong = [];
+
+	foreach( [ 'the count of pages' => static function( string $live ): void { $h = fopen( $live, 'r+b' ); fseek( $h, 28 ); fwrite( $h, pack( 'N', 9999 ) ); fclose( $h ); }, 'cut off' => static function( string $live ): void { $h = fopen( $live, 'r+b' ); ftruncate( $h, filesize( $live ) - 4096 * 2 ); fclose( $h ); } ] as $what => $make ) {
+
+		[ , $where, $a ] = domWorld( 'restore-unwritable-'. md5( $what ) );
+		domSignIn( $a, 'admin@example.org' );
+		domClient( $a, [ 'name' => 'Ada' ] );
+		[ $args, $staged ] = domStaged( $a, $where, 'unwritable' );
+		[ $args2 ] = domStaged( $a, $where, 'unwritable2' );
+		$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+		\Nino\Modules\Crm\Db::close( $a );
+		$make( $live );
+		$bytes = sha1_file( $live );
+		$thrown = '';
+
+		try {
+			\Nino\Modules\Crm::callbackRestore( $a, $args );
+		}
+		catch( \RuntimeException $e ) {
+			$thrown = $e->getMessage();
+		}
+
+		$same = sha1_file( $live ) === $bytes;
+		$clean = glob( $live. '-*' ) === [] && glob( $live. '.restore-*' ) === [] && glob( dirname( $staged ). '/crm.sqlite*' ) === [];
+		unlink( $live );
+		$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+		$next = \Nino\Modules\Crm::restore( $b, $args2 );
+
+		if( str_contains( $thrown, 'damaged and could not be overwritten' ) === false || str_contains( $thrown, '/' ) === true || $same === false || $clean === false || $next !== 'restored' )
+			$wrong[] = [ $what, $thrown, $same, $clean, $next ];
+	}
+
+	return domSaw( $wrong === [], $wrong );
+} ) );
+
+
+check( 'a file that is damaged and that another process holds a lock on is not replaced: the answer is kept, the callback throws that it is in use with a sentence that has no path, the file is the bytes it was, nothing is made beside it or left in the staging, and the process that holds the lock commits what it wrote', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-replace-held' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args, $staged ] = domStaged( $a, $where, 'replaceheld' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	\Nino\Modules\Crm\Db::close( $a );
+	$p = new \PDO( 'sqlite:'. $live, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
+	$p->exec( 'CREATE TABLE zz_index ( id INTEGER PRIMARY KEY, a TEXT )' );
+	$p->exec( 'WITH RECURSIVE n( i ) AS ( SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 60 ) INSERT INTO zz_index ( a ) SELECT \'a\'|| i FROM n' );
+	$p->exec( 'CREATE INDEX zz_index_i ON zz_index ( a ) WHERE id <= 30' );
+	$p->exec( 'PRAGMA writable_schema = ON' );
+	$p->exec( 'UPDATE sqlite_schema SET sql = \'CREATE INDEX zz_index_i ON zz_index ( a )\' WHERE name = \'zz_index_i\'' );
+	$p = null;
+	$holder = domHold( $live, '$db->exec( "BEGIN IMMEDIATE" ); $db->exec( "INSERT INTO settings ( key, value ) VALUES ( \'held.row\', \'yes\' )" );' );
+	$bytes = sha1_file( $live );
+	$thrown = '';
+
+	try {
+		\Nino\Modules\Crm::callbackRestore( $a, $args );
+	}
+	catch( \RuntimeException $e ) {
+		$thrown = $e->getMessage();
+	}
+
+	$same = sha1_file( $live ) === $bytes;
+	domRelease( $holder );
+
+	return domSaw( $thrown !== '' && str_contains( $thrown, '/' ) === false && $same === true && glob( $live. '.restore-*' ) === [] && glob( dirname( $staged ). '/crm.sqlite*' ) === [], [ $thrown, $same, glob( $live. '*' ) ] );
+} ) );
+
+foreach( [ 'written' => 'the new file is written and looked at, the old one is still the file', 'cleared' => 'the files beside the old one are taken away, the old one is still the file', 'renamed' => 'the new file has taken the place' ] as $place => $label ) {
+	check( 'a process that is ended from outside where '. $label. ' leaves the old file as it was or the new one whole, never a mixture, and the next try goes through, clears what was left and writes the copy', domSafe( static function() use ( $place ): bool {
+
+		[ , $where, $a ] = domWorld( 'restore-replace-kill-'. $place );
+		domSignIn( $a, 'admin@example.org' );
+		domClient( $a, [ 'name' => 'Ada' ] );
+		domClient( $a, [ 'name' => 'Bea' ] );
+		[ $args, $staged ] = domStaged( $a, $where, 'kill' );
+		$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+		\Nino\Modules\Crm\Db::close( $a );
+		file_put_contents( $live, str_repeat( 'a text that is no database ', 400 ) );
+		file_put_contents( $live. '-journal', 'a log of an end that did not come' );
+		$old = sha1_file( $live );
+		$run = proc_open( [ PHP_BINARY, __FILE__, 'replace-kill-worker', $GLOBALS['features'], $where, $args['staging'], $place ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+		$said = stream_get_contents( $pipes[1] );
+		stream_get_contents( $pipes[2] );
+		$code = proc_close( $run );
+		$after = [ sha1_file( $live ), glob( $live. '.restore-*' ) ?: [], is_file( $live. '-journal' ) ];
+		$whole = ( new \PDO( 'sqlite:'. $live, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] ) );
+		$mixture = false;
+
+		try {
+			$state = $after[0] === $old ? 'old' : ( $whole->query( 'PRAGMA integrity_check' )->fetchColumn() === 'ok' ? 'new' : 'mixed' );
+		}
+		catch( \PDOException $e ) {
+			$state = $after[0] === $old ? 'old' : 'mixed';
+		}
+
+		$whole = null;
+		$expect = [ 'written' => 'old', 'cleared' => 'old', 'renamed' => 'new' ][$place];
+
+		// The next try, in this process: the file is the archive's, whatever was left is gone
+		$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+		$answer = \Nino\Modules\Crm::restore( $b, $args );
+		$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+		domSignIn( $c, 'admin@example.org' );
+		$names = array_column( \Nino\Modules\Crm\Db::rows( $c, 'SELECT name FROM clients ORDER BY id' ), 'name' );
+
+		return domSaw( $code !== 0 && $said === '' && $state === $expect && ( $place !== 'written' || $after[1] !== [] ) && ( $place === 'renamed' || $after[2] === ( $place === 'written' ) ) && $answer === 'restored' && $names === [ 'Ada', 'Bea' ]
+			&& glob( $live. '.restore-*' ) === [] && glob( $live. '-*' ) === [], [ $code, $said, $state, $after, $answer, $names ] );
+	} ) );
+}
+
+// A hot journal beside a file that is damaged: SQLite rolls it back when the file is opened for writing, and what is left is what it is - the restore is asked again where it says kept, and goes through
+check( 'a hot journal beside a file that is damaged is no way to a file that is half the archive and half the journal: the first restore may say kept, the second goes through, and the file is the archive\'s, whole, with no file beside it', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-hot' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	domClient( $a, [ 'name' => 'Bea' ] );
+	[ $args, $staged ] = domStaged( $a, $where, 'hot' );
+	[ $args2 ] = domStaged( $a, $where, 'hot2' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	\Nino\Modules\Crm\Db::close( $a );
+	$domBreak = [];
+	$h = fopen( $live, 'r+b' ); fseek( $h, 4096 * 2 ); fwrite( $h, str_repeat( "\xAB", 4096 ) ); fclose( $h );
+	$size = 4096; $nonce = 1234; $page = str_repeat( 'Z', $size ); $sum = $nonce;
+	for( $at = $size - 200; $at > 0; $at -= 200 ) $sum += ord( $page[$at] );
+	file_put_contents( $live. '-journal', pack( 'H*', 'd9d505f920a163d7' ). pack( 'NNNNN', 1, $nonce, 1, 512, $size ). str_repeat( "\0", 512 - 28 ). pack( 'N', 1 ). $page. pack( 'N', $sum & 0xffffffff ) );
+	$first = \Nino\Modules\Crm::restore( $a, $args );
+	$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+	$second = $first === 'restored' ? 'restored' : \Nino\Modules\Crm::restore( $b, $args2 );
+	$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+	domSignIn( $c, 'admin@example.org' );
+	$names = array_column( \Nino\Modules\Crm\Db::rows( $c, 'SELECT name FROM clients ORDER BY id' ), 'name' );
+
+	return domSaw( $second === 'restored' && $names === [ 'Ada', 'Bea' ] && \Nino\Modules\Crm\Db::pdo( $c )->query( 'PRAGMA integrity_check' )->fetchColumn() === 'ok' && glob( $live. '-*' ) === [] && glob( $live. '.restore-*' ) === [], [ $first, $second, $names, glob( $live. '*' ) ] );
+} ) );
+
+check( 'a lock that another process holds on a file that is whole is never a damage and never a reason to replace it: the exclusive lock lasts longer than the wait, the answer is kept after the wait of five seconds - not sixty - and the file keeps its inode and its bytes, and nothing is made beside it', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-busy' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args ] = domStaged( $a, $where, 'busy' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	\Nino\Modules\Crm\Db::close( $a );
+	$bytes = sha1_file( $live );
+	$inode = fileinode( $live );
+	$holder = domHold( $live, '$db->exec( "BEGIN EXCLUSIVE" );' );
+	$began = microtime( true );
+	$answer = \Nino\Modules\Crm::restore( $a, $args );
+	$took = microtime( true ) - $began;
+	domRelease( $holder );
+	clearstatcache( true, $live );
+
+	return domSaw( $answer === 'kept' && $took >= 4.0 && $took < 7.5 && fileinode( $live ) === $inode && sha1_file( $live ) === $bytes && glob( $live. '.restore-*' ) === [] && glob( dirname( $live ). '/crm.sqlite-*' ) === [], [ $answer, $took ] );
+} ) );
+
+check( 'where it cannot be told whether the file is in use - the list of the locks of the system is not there - a file that is no database is not replaced: the answer is kept, the callback throws that it cannot be found out here, and the file is the bytes it was', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-unknown' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args, $staged ] = domStaged( $a, $where, 'unknown' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	\Nino\Modules\Crm\Db::close( $a );
+	file_put_contents( $live, str_repeat( 'a text that is no database ', 400 ) );
+	$bytes = sha1_file( $live );
+	$a['./crm/restore/locks'] = '/nonexistent/locks';
+	$thrown = '';
+
+	try {
+		\Nino\Modules\Crm::callbackRestore( $a, $args );
+	}
+	catch( \RuntimeException $e ) {
+		$thrown = $e->getMessage();
+	}
+
+	return domSaw( str_contains( $thrown, 'cannot be found out here' ) === true && str_contains( $thrown, '/' ) === false && sha1_file( $live ) === $bytes && glob( dirname( $staged ). '/crm.sqlite*' ) === [] && glob( $live. '.restore-*' ) === [], [ $thrown ] );
+} ) );
+
+check( 'a link in the place of the file is not replaced and not written through: the answer is kept, the callback throws that it is a link or no ordinary file, and the file the link names is the bytes it was', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-link' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args, $staged ] = domStaged( $a, $where, 'link' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	\Nino\Modules\Crm\Db::close( $a );
+	rename( $live, $where. '/elsewhere.sqlite' );
+	symlink( $where. '/elsewhere.sqlite', $live );
+	$bytes = sha1_file( $where. '/elsewhere.sqlite' );
+	$thrown = '';
+
+	try {
+		\Nino\Modules\Crm::callbackRestore( $a, $args );
+	}
+	catch( \RuntimeException $e ) {
+		$thrown = $e->getMessage();
+	}
+
+	return domSaw( str_contains( $thrown, 'is a link or no ordinary file' ) === true && is_link( $live ) === true && sha1_file( $where. '/elsewhere.sqlite' ) === $bytes && glob( dirname( $staged ). '/crm.sqlite*' ) === [], [ $thrown ] );
+} ) );
+
+check( 'the replacement of a file asked for directly does what the restore asks of it and no more: a link is not replaced, a copy that is damaged is not made the file, and in both the file is the bytes it was and nothing is left beside it', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'replace-direct' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ , $staged ] = domStaged( $a, $where, 'direct' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	\Nino\Modules\Crm\Db::close( $a );
+	$wrong = [];
+	file_put_contents( $live, str_repeat( 'a text that is no database ', 400 ) );
+	$bytes = sha1_file( $live );
+	rename( $live, $where. '/elsewhere2.sqlite' );
+	symlink( $where. '/elsewhere2.sqlite', $live );
+	$wrong['link'] = \Nino\Modules\Crm\Db::replace( $staged, $live ) === 'link' && is_link( $live ) === true && sha1_file( $where. '/elsewhere2.sqlite' ) === $bytes;
+	unlink( $live );
+	rename( $where. '/elsewhere2.sqlite', $live );
+	$bad = $where. '/bad-copy.sqlite';
+	$d = new \PDO( 'sqlite:'. $bad );
+	$d->exec( 'PRAGMA journal_mode = DELETE' );
+	$d->exec( 'CREATE TABLE t( a INTEGER PRIMARY KEY, b TEXT ); CREATE INDEX ib ON t( b )' );
+	$d->beginTransaction();
+
+	for( $i = 0; $i < 3000; $i++ )
+		$d->exec( "INSERT INTO t( b ) VALUES ( '". str_repeat( 'x', 50 ). $i. "' )" );
+
+	$d->commit();
+	$root = (int) $d->query( "SELECT rootpage FROM sqlite_master WHERE name = 'ib'" )->fetchColumn();
+	$d = null;
+	$h = fopen( $bad, 'r+b' ); fseek( $h, 4096 * $root ); fwrite( $h, str_repeat( "\0", 4096 ) ); fclose( $h );
+	$wrong['damaged copy'] = \Nino\Modules\Crm\Db::replace( $bad, $live ) === 'live' && sha1_file( $live ) === $bytes && glob( $live. '.restore-*' ) === [];
+
+	return domSaw( array_values( array_unique( $wrong ) ) === [ true ], $wrong );
+} ) );
+
+// Each of the two questions about the locks carries a pin of its own: a process that holds a lock on a file that is no database, from before the restore, and one that takes it in the moment between the copy and the rename
+$python = trim( (string) shell_exec( 'command -v python3 2>/dev/null' ) );
+$holdLock = static function( string $file ) use ( $python ): array {
+
+	$p = proc_open( [ $python, '-c', "import fcntl,sys\nf=open(sys.argv[1],'r+b')\nfcntl.lockf(f,fcntl.LOCK_EX)\nprint('held',flush=True)\nsys.stdin.readline()", $file ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes );
+
+	return [ 'process' => $p, 'pipes' => $pipes, 'held' => trim( (string) fgets( $pipes[1] ) ) === 'held' ];
+};
+$letGo = static function( array $holder ): void {
+	fwrite( $holder['pipes'][0], "\n" );
+	fclose( $holder['pipes'][0] );
+	stream_get_contents( $holder['pipes'][1] );
+	stream_get_contents( $holder['pipes'][2] );
+	proc_close( $holder['process'] );
+};
+
+if( $python === '' )
+	echo "SKIPPED - the two questions about the locks of a file that is no database: python3 is not here to take a POSIX lock on it\n";
+else
+	foreach( [ 'before the restore' => 'before', 'in the moment between the copy and the rename' => 'written' ] as $label => $when ) {
+		check( 'a lock that a process holds on a file that is no database '. $label. ' keeps the file from being replaced: the answer is kept, the callback throws that it is in use, the file is the bytes it was and has its inode, and nothing is left beside it or in the staging', domSafe( static function() use ( $holdLock, $letGo, $when ): bool {
+
+			[ , $where, $a ] = domWorld( 'restore-gap-'. $when );
+			domSignIn( $a, 'admin@example.org' );
+			domClient( $a, [ 'name' => 'Ada' ] );
+			[ $args, $staged ] = domStaged( $a, $where, 'gap' );
+			$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+			\Nino\Modules\Crm\Db::close( $a );
+			file_put_contents( $live, str_repeat( 'a text that is no database ', 400 ) );
+			$bytes = sha1_file( $live );
+			$inode = fileinode( $live );
+			$holder = null;
+
+			$told = [];
+
+			if( $when === 'before' ) {
+				$holder = $holdLock( $live );
+				$a['./crm/restore/at'] = static function( string $place ) use ( &$told ): void { $told[] = $place; };
+			}
+			else
+				$a['./crm/restore/at'] = static function( string $place ) use ( &$holder, $holdLock, $live ): void { if( $place === 'written' ) $holder = $holdLock( $live ); };
+
+			$thrown = '';
+
+			try {
+				\Nino\Modules\Crm::callbackRestore( $a, $args );
+			}
+			catch( \RuntimeException $e ) {
+				$thrown = $e->getMessage();
+			}
+
+			if( $holder !== null )
+				$letGo( $holder );
+
+			clearstatcache( true, $live );
+
+			return domSaw( $holder !== null && $holder['held'] === true && ( $when === 'written' || $told === [] ) && str_contains( $thrown, 'held by another process' ) === true && sha1_file( $live ) === $bytes && fileinode( $live ) === $inode && glob( $live. '.restore-*' ) === [] && glob( dirname( $staged ). '/crm.sqlite*' ) === [], [ $thrown, $holder['held'] ?? null, $told ] );
+		} ) );
+	}
+
+// What a replacement left on the way is taken away at the beginning of every restore, whichever way it goes, and before the backup copies; the status says so while it is there
+check( 'a file that a restore that did not end left beside the database (crm.sqlite.restore-...) is named by the status line of writing while it is there, is taken away by the next restore whichever way it goes - the page by page way, and the one of an archive that holds no database - and by the backup before it copies, and no backup has it', domSafe( static function(): bool {
+
+	[ , $where, $a ] = domWorld( 'restore-left' );
+	domSignIn( $a, 'admin@example.org' );
+	domClient( $a, [ 'name' => 'Ada' ] );
+	[ $args, $staged ] = domStaged( $a, $where, 'left' );
+	$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+	$wrong = [];
+	file_put_contents( $live. '.restore-0123456789ab', 'the data of an archive' );
+	file_put_contents( $live. '.restore-0123456789ab-journal', 'its journal' );
+	$line = static fn( array &$r ): array => array_values( array_filter( \Nino\Modules\Crm\Status::lines( $r ), static fn( array $one ): bool => $one['key'] === 'writable' ) )[0] ?? [];
+	$wrong['status'] = ( $line( $a )['state'] ?? '' ) === 'leftover';
+	\Nino\Modules\Crm::restore( $a, $args );
+	$wrong['page way'] = glob( $live. '.restore-*' ) === [];
+	file_put_contents( $live. '.restore-0123456789ab', 'the data of an archive' );
+	$empty = [ 'dataDir' => $args['dataDir'], 'staging' => $where. '/stage-none' ];
+	mkdir( $empty['staging'], 0755, true );
+	\Nino\Modules\Crm::restore( $a, $empty );
+	$wrong['no database'] = glob( $live. '.restore-*' ) === [];
+	file_put_contents( $live. '.restore-0123456789ab', 'the data of an archive' );
+	$copy = $where. '/stage-backup';
+	mkdir( $copy, 0755, true );
+	$handed = [ 'dataDir' => $args['dataDir'], 'staging' => $copy ];
+	\Nino\Modules\Crm::callbackBackup( $a, $handed );
+	$wrong['backup'] = glob( $live. '.restore-*' ) === [] && glob( $copy. '/*' ) === [ $copy. '/crm.sqlite' ];
+	$wrong['status gone'] = ( $line( $a )['state'] ?? '' ) === 'ok';
+
+	return domSaw( array_values( array_unique( $wrong ) ) === [ true ], $wrong );
+} ) );
+
+foreach( [ 'written' ] as $place ) {
+	check( 'a process that is ended from outside where the new file is written leaves a file beside the database, and a restore that finds the file whole - the page by page way - takes it away: no file of that kind is left, the file is the archive\'s', domSafe( static function() use ( $place ): bool {
+
+		[ , $where, $a ] = domWorld( 'restore-kill-page' );
+		domSignIn( $a, 'admin@example.org' );
+		domClient( $a, [ 'name' => 'Ada' ] );
+		domClient( $a, [ 'name' => 'Bea' ] );
+		[ $args, $staged ] = domStaged( $a, $where, 'killpage' );
+		$live = \Nino\Filesystem::path( $a, \Nino\Modules\Crm\Db::FILE );
+		\Nino\Modules\Crm\Db::close( $a );
+		file_put_contents( $live, str_repeat( 'a text that is no database ', 400 ) );
+		$run = proc_open( [ PHP_BINARY, __FILE__, 'replace-kill-worker', $GLOBALS['features'], $where, $args['staging'], $place ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes, null, [ 'NINO_ROOT' => $GLOBALS['root'] ] + getenv() );
+		stream_get_contents( $pipes[1] );
+		stream_get_contents( $pipes[2] );
+		proc_close( $run );
+		$left = glob( $live. '.restore-*' ) ?: [];
+		copy( $staged, $live );
+		$b = domRequest( $where, [ './crm-probe/domain' => true ] );
+		$answer = \Nino\Modules\Crm::restore( $b, $args );
+		$c = domRequest( $where, [ './crm-probe/domain' => true ] );
+		domSignIn( $c, 'admin@example.org' );
+		$names = array_column( \Nino\Modules\Crm\Db::rows( $c, 'SELECT name FROM clients ORDER BY id' ), 'name' );
+
+		return domSaw( $left !== [] && $answer === 'restored' && glob( $live. '.restore-*' ) === [] && $names === [ 'Ada', 'Bea' ], [ $left, $answer, $names ] );
+	} ) );
+}
+
+$restoreChaos = [];
+
+for( $round = 0; $round < 3; $round++ ) {
+	$restoreChaos[] = domChaos( 'lock-chaos-restore-'. $round, true );
+
+	if( $restoreChaos[$round][0] !== [ 'ok' ] || $restoreChaos[$round][1] !== [] )
+		break;
+}
+
+check( 'savers and deleters of clients in processes of their own write while the database is restored under them, '. count( $restoreChaos ). ' rounds: integrity_check and foreign_key_check find nothing after every round, every answer of a saver is 200 or 503, and the restore is done or says the file is held', array_reduce( $restoreChaos, static fn( bool $ok, array $one ): bool => $ok === true && $one[0] === [ 'ok' ] && $one[1] === [] && $one[3] === 0 && $one[4] === [] && in_array( $one[5], [ 'restored', 'held' ], true ) === true, true ) );
+
+}
+catch( \Throwable $e ) {
+	domCrashed( 'the restore of the database', $e );
+}
+
 
 // What the whole of this suite opened of the file besides its connections
 $lockedOpens = array_values( array_filter( DomFileWatch::$log, static fn( array $open ): bool => $open[1] === true && $open[2] === true ) );

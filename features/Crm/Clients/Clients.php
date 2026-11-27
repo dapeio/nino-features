@@ -7,11 +7,12 @@ namespace Nino\Modules\Crm {
 	 *	Clients		The clients of the business. A client has a number K-0001, counted inside a write transaction; all storage is Db and every statement is prepared. A client is known by its title(): the company,
 	 *								else the name, else the address. Only the master data are the core's - what a package keeps of a client (accounts, a message, files, documents) is the package's, and it hears of a client
 	 *								through the hooks of the core: '/crm/client/added' (client, posted: what the form of the package posted for it, key => values; answers: what a listener answers the page with),
-	 *								'/crm/client/changed' (client) and '/crm/client/active' (client, active, answers).
+	 *								'/crm/client/changed' (client) and '/crm/client/active' (client, active, answers). What a package shows of a client is asked of it by two more: VIEW '/crm/client/view' for the card of one client
+	 *								and VIEWS '/crm/clients/view' for the whole list, in one question (see view() and views()).
 	 *
 	 *								A client that a package refuses to lose is not deleted (see Erasure); its number is not given again.
 	 *
-	 *								A write answers the client as list() has it, or a string: 'empty' (neither company nor name), 'email:email', 'long:<field>' or 'format:<field>' (the field a value was refused for - a control
+	 *								A write answers the client as list() has it, or a string: 'wiping' (add() only: a run of the test phase is not finished), 'empty' (neither company nor name), 'email:email', 'long:<field>' or 'format:<field>' (the field a value was refused for - a control
 	 *								character (the line break of the notes excepted), a text that is no UTF-8 and a country that is none of COUNTRIES are 'format:'; format:business for a flag that is none) or 'unknown'
 	 *								(no such client). A database failure is a \PDOException the caller answers.
 	 *
@@ -40,6 +41,20 @@ namespace Nino\Modules\Crm {
 		public const string ADDED = '/crm/client/added';
 		public const string CHANGED = '/crm/client/changed';
 		public const string ACTIVE = '/crm/client/active';
+
+		/**	The hooks that ask what a package adds to the answer of a client and of the list of clients: its fields, under its own key	*/
+		public const string VIEW = '/crm/client/view';
+		public const string VIEWS = '/crm/clients/view';
+
+		/**	The deepest a part of a package may nest - the fields of one client in the list as in the card - and the most it may be, in bytes as serialize() counts them	*/
+		public const int PART_DEPTH = 6;
+		public const int PART_BYTES = 16384;
+
+		/**	The most the parts of one package may be over the whole list of clients, in bytes as serialize() counts them	*/
+		public const int LIST_BYTES = 1048576;
+
+		/**	The shape of the group of a client, the number as a slug: k- and at least four digits; group() makes one and ofGroup() takes no text that is not of this shape	*/
+		public const string GROUP = '/^k-[0-9]{4,}$/D';
 
 		/**	The category of the number sequence of the clients: one row, year 0, whose counter is the least the next client may get	*/
 		public const string CATEGORY = 'client';
@@ -75,6 +90,204 @@ namespace Nino\Modules\Crm {
 		}
 
 		/**
+		 *	One client with what the packages add to it: the hook VIEW is asked with [ 'client' => the client as get() has it, 'packages' => [] ], and each listener answers with a part under packages, under the key of its
+		 *	package: [ 'packages' => [ 'crm-portal' => [ 'account' => true, 'last' => '2026-01-01' ] ] ]. The listener is a method of a class of that package, written as [ class, method ] ( array &$appData, mixed &$argument ) in its folder
+		 *	(Register::owned()), and it answers under the key of its own package and under no other: a closure, a function, a method of another package and a key that is none of the listener's are left out. The part is a list of
+		 *	fields made of plain values - texts of valid UTF-8, whole numbers, finite floats, booleans, null and lists of them, six levels deep and at most PART_BYTES bytes (as serialize() counts them) - and it is copied, value by value, at the moment it is
+		 *	taken: what the listener keeps a reference to and changes later is not in it. The fields of a package are the package's own, under its key, and nothing else of the answer is the package's: a listener cannot change a
+		 *	field of the client, and what it answers besides packages is not read. A part is left out - with one warning that names the hook and says why: key (the key is no package that is on, or no key of the listener's own package, or the
+		 *	listener is no method of a package), key taken (a part under it was taken before), part (no list, or a value that is none of the plain ones, or too deep or too large) - and nothing of the others is lost; a listener that throws is
+		 *	left out with a warning that names the hook and the kind of the throwable, and the others are asked all the same. A package that is switched off or removed has no listener, and its part is not there. Every listener is
+		 *	handed an argument of its own, so that what one makes of it is nothing of the others'. Whatever shape a part has - too deep, too large, no plain value, a reference changed later - the card is the client with the parts that were taken and the answer is 200 (measured, see the tests)
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array 		$client				As get() has it
+		 *
+		 *	@return 	array											The client with packages: key of the package => its part; [] where no package adds one
+		 */
+		public static function view( array &$appData, array $client ): array {
+
+			$parts = self::asked( $appData, self::VIEW, [ 'client' => $client, 'packages' => [] ], false );
+			$client['packages'] = $parts;
+
+			return $client;
+		}
+
+		/**
+		 *	The list of clients with what the packages add to them, in one question for all of the rows: the hook VIEWS is asked with [ 'clients' => the list as list() has it, 'packages' => [] ], and each listener answers
+		 *	with a part under packages, under the key of its package, that is a map of the id of a client to the fields it adds to that client: [ 'packages' => [ 'crm-portal' => [ 7 => [ 'account' => true ], 9 => [ ... ] ] ] ].
+		 *	A client the part holds no entry for gets none from that package, an id that is no client of the list is not read. The rules of view() hold, and the same limits: every entry - the fields of one client - is as deep
+		 *	and as large as a part of the card may be; the listener is a method of the package it answers for; a part with one entry that is no list of fields or that does not keep the limits is left out whole (part), the
+		 *	others are not, and the list is the list of the core with what was taken
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array 		$clients			As list() has them
+		 *
+		 *	@return 	array											The clients, each with packages: key of the package => the fields it adds to that client; [] for a client none adds to
+		 */
+		public static function views( array &$appData, array $clients ): array {
+
+			$parts = self::asked( $appData, self::VIEWS, [ 'clients' => $clients, 'packages' => [] ], true );
+			$rows = [];
+
+			foreach( $clients as $at => $client ) {
+
+				$client['packages'] = [];
+
+				foreach( $parts as $key => $part )
+					if( is_array( $part[$client['id'] ?? 0] ?? null ) === true )
+						$client['packages'][$key] = $part[$client['id']];
+
+				$rows[$at] = $client;
+			}
+
+			return $rows;
+		}
+
+		/**
+		 *	What the listeners of a hook of the view answer, each asked on its own: the argument is the one the hook is given, and what comes back is read for packages and for nothing else. A part is taken - checked and copied
+		 *	in one pass, so that no reference of the listener is left in it - before the next listener is asked
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		string		$hook					VIEW or VIEWS
+		 *	@param		array 		$argument			The argument of the hook, with packages
+		 *	@param		bool			$list					Whether a part is a map of the ids of clients to lists of fields
+		 *
+		 *	@return 	array											key of the package => its part, as a copy, the parts that are as the hook says
+		 */
+		private static function asked( array &$appData, string $hook, array $argument, bool $list ): array {
+
+			$found = [];
+
+			foreach( \Nino\Callbacks::registered( $appData, $hook ) as $callback ) {
+
+				$own = $argument;
+
+				try {
+					$returned = call_user_func_array( $callback, [ &$appData, &$own ] );
+				}
+				catch( \Throwable $e ) {
+					trigger_error( 'Crm: a listener of '. $hook. ' was left out ('. strtok( get_class( $e ), "\0" ). ')', E_USER_WARNING );
+
+					continue;
+				}
+
+				$answer = $returned ?? $own;
+
+				foreach( is_array( $answer ) === true && is_array( $answer['packages'] ?? null ) === true ? $answer['packages'] : [] as $key => $part ) {
+
+					$copy = null;
+					$refused = match( true ) {
+						Register::owned( $appData, (string) $key, $callback, 2, [ 0, 1 ] ) === false => 'key',
+						array_key_exists( (string) $key, $found ) === true => 'key taken',
+						is_array( $part ) === false => 'part',
+						default => '',
+					};
+
+					if( $refused === '' ) {
+						$copy = $list === true ? self::taken( $part ) : self::plain( $part, self::PART_DEPTH );
+						$refused = $copy === null ? 'part' : '';
+					}
+
+					if( $refused !== '' ) {
+						trigger_error( 'Crm: a part of '. $hook. ' was left out ('. $refused. ')', E_USER_WARNING );
+
+						continue;
+					}
+
+					$found[(string) $key] = $copy;
+				}
+			}
+
+			return $found;
+		}
+
+		/**
+		 *	The part of a listener of the list: a map of ids of clients to lists of fields, each list kept to the limits of a part of the card, as a copy
+		 *
+		 *	@param		array 		$part
+		 *
+		 *	@return 	array|null								null where an id is none or an entry is none or breaks a limit
+		 */
+		private static function taken( array $part ): ?array {
+
+			$copy = [];
+			$bytes = 0;
+
+			foreach( $part as $id => $entry ) {
+
+				$fields = is_array( $entry ) === true ? self::plain( $entry, self::PART_DEPTH ) : null;
+
+				if( is_int( $id ) === false || $fields === null )
+					return null;
+
+				// What a package adds to the whole list is kept to LIST_BYTES, counted as the entries are copied: the memory of the answer is the sum of the packages' parts and no more
+				$bytes += strlen( serialize( $fields ) );
+
+				if( $bytes > self::LIST_BYTES )
+					return null;
+
+				$copy[$id] = $fields;
+			}
+
+			return $copy;
+		}
+
+		/**
+		 *	A copy of a list of fields made of plain values and nothing else: texts of valid UTF-8 (as values and as keys), whole numbers, floats that are numbers, booleans, null and lists and maps of them, no deeper than $depth
+		 *	and no larger than PART_BYTES bytes serialised. What the copy holds is the value the listener had at the moment it was read; no object, no closure and no reference is in it
+		 *
+		 *	@param		array 		$value
+		 *	@param		int				$depth
+		 *
+		 *	@return 	array|null								null for what is not plain, too deep or too large
+		 */
+		private static function plain( array $value, int $depth ): ?array {
+
+			$copy = self::copied( $value, $depth );
+
+			return is_array( $copy ) === true && strlen( serialize( $copy ) ) <= self::PART_BYTES ? $copy : null;
+		}
+
+		/**
+		 *	The copy that plain() makes: one level, and the levels below it
+		 *
+		 *	@param		array 		$value
+		 *	@param		int				$depth
+		 *
+		 *	@return 	array|null								null for what is not plain
+		 */
+		private static function copied( array $value, int $depth ): ?array {
+
+			if( $depth < 1 )
+				return null;
+
+			$copy = [];
+
+			foreach( $value as $key => $one ) {
+
+				if( is_string( $key ) === true && preg_match( '//u', $key ) !== 1 )
+					return null;
+
+				if( is_array( $one ) === true ) {
+
+					$inner = self::copied( $one, $depth - 1 );
+
+					if( $inner === null )
+						return null;
+
+					$copy[$key] = $inner;
+				}
+				elseif( $one === null || is_bool( $one ) === true || is_int( $one ) === true || ( is_float( $one ) === true && is_finite( $one ) === true ) || ( is_string( $one ) === true && preg_match( '//u', $one ) === 1 ) )
+					$copy[$key] = $one;
+				else
+					return null;
+			}
+
+			return $copy;
+		}
+
+		/**
 		 *	The client with a number
 		 *
 		 *	@param		array 		&$appData
@@ -90,28 +303,34 @@ namespace Nino\Modules\Crm {
 		}
 
 		/**
-		 *	The group of a client: its number as a slug (k-0001), the name a package files what belongs to the client under
+		 *	The group of a client: its number as a slug (k-0001), the name a package files what belongs to the client under. A text that is no number of a client has none
 		 *
 		 *	@param		string		$number				K-0001
 		 *
-		 *	@return 	string										k-0001
+		 *	@return 	string										k-0001; '' for a text that is no number of a client as the core writes it - K- and at least four digits, nothing around them, a blank, a line end or another dash is none
 		 */
 		public static function group( string $number ): string {
 
-			return \Nino\Feature::slug( $number );
+			// The number as the core writes it: K- and at least four digits, nothing before it, nothing after it, no other dash
+			if( preg_match( '/^K-[0-9]{4,}$/D', $number ) !== 1 )
+				return '';
+
+			$group = \Nino\Feature::slug( $number );
+
+			return preg_match( self::GROUP, $group ) === 1 ? $group : '';
 		}
 
 		/**
 		 *	The client a group is the group of
 		 *
 		 *	@param		array 		&$appData
-		 *	@param		string		$group				k-0001
+		 *	@param		string		$group				k-0001, of the shape GROUP
 		 *
 		 *	@return 	array|null								As get() has it; null for a text that is the group of no client, among them one that only looks like it (k-1, K-0001, k-0002 with a blank)
 		 */
 		public static function ofGroup( array &$appData, string $group ): ?array {
 
-			if( preg_match( '/^k-[0-9]{4,}$/D', $group ) !== 1 )
+			if( preg_match( self::GROUP, $group ) !== 1 )
 				return null;
 
 			return self::byNumber( $appData, strtoupper( $group ) );
@@ -240,6 +459,14 @@ namespace Nino\Modules\Crm {
 			$pdo->exec( 'BEGIN IMMEDIATE' );
 
 			try {
+
+				// Under the lock: a run of the test phase that is not finished (Wipe::unfinished()) lets no client be made, whoever asks
+				if( Wipe::unfinished( $appData ) === true ) {
+					$pdo->exec( 'ROLLBACK' );
+
+					return 'wiping';
+				}
+
 				$max = (int) $pdo->query( self::HIGHEST )->fetchColumn();
 				$number = self::number( max( $max + 1, $start ) );
 

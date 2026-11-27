@@ -826,7 +826,7 @@ namespace Nino\Modules\Crm {
 		 *	@param		array 		$project			title (one line, up to 200 characters), description (up to 2000, optional), started (Y-m-d, optional) and packages (what the forms of the packages posted for the project: key => values, optional)
 		 *	@param		array 		$by						source (the key of the package, a slug, required; crm is the core's own and refused), text (the finished sentence of the logbook, one line, required), ref (a reference of the source, optional) and by (the address of the account; the account that is signed in where none is given, else system)
 		 *
-		 *	@return 	array|string							project (as get() has it); or why not: source, text, ref, by (not what they are asked to be), title, description, started, client (no such client), inactive (the client is switched off), type (the element type of the projects is not there), refused (a listener of ADDED took the project back) or write (the project could not be written)
+		 *	@return 	array|string							project (as get() has it); or why not: wiping (a run of the test phase is not finished), source, text, ref, by (not what they are asked to be), title, description, started, client (no such client), inactive (the client is switched off), type (the element type of the projects is not there), refused (a listener of ADDED took the project back) or write (the project could not be written)
 		 */
 		public static function add( array &$appData, int $clientId, array $project, array $by ): array|string {
 
@@ -856,6 +856,10 @@ namespace Nino\Modules\Crm {
 
 			if( self::missing( $appData ) === true )
 				return 'type';
+
+			// A run of the test phase that is not finished lets no project be made
+			if( Wipe::unfinished( $appData ) === true )
+				return 'wiping';
 
 			$client = $clientId < 1 ? null : Clients::get( $appData, $clientId );
 
@@ -903,6 +907,14 @@ namespace Nino\Modules\Crm {
 
 			if( is_string( $written ) === true ) {
 				\Nino\Elements::deleteElement( $appData, self::TYPE. '/'. $id, '*' );
+
+				return 'write';
+			}
+
+			// The client may be gone by now - a run of the test phase that held the write lock while the line was written deleted it, and the line came after its rows went: the project and its line go too, so that nothing of it is left for a client that is made later
+			if( Clients::get( $appData, $clientId ) === null ) {
+				\Nino\Elements::deleteElement( $appData, self::TYPE. '/'. $id, '*' );
+				Db::exec( $appData, 'DELETE FROM logbook WHERE project = :project', [ 'project' => $id ] );
 
 				return 'write';
 			}

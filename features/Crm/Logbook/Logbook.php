@@ -326,15 +326,16 @@ namespace Nino\Modules\Crm {
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		string		$source				The key of the package, or crm
-		 *	@param		string		$kind					A kind the source has entered
+		 *	@param		string		$kind					A kind the source has entered, or a kind of the core (KINDS) that the core wrote in the name of the source: Projects::add() writes project-added under the key of the package that made the project, and a package finds the projects it made by it
 		 *	@param		array 		$where				ref (a text or a whole number: as text) and/or project (the id, as text); at least one, no other key
 		 *	@param		int				$limit				1 to MOST
 		 *
-		 *	@return 	array											Rows of id, client_id (null for none), project, ref, data (a list; none where the entry has none), at; none for a source or a kind that was not entered, and for a condition that is none
+		 *	@return 	array											Rows of id, client_id (null for none), project, ref, data (a list; none where the entry has none), at; none for a source or a kind that was not entered (and is no kind of the core), and for a condition that is none
 		 */
 		public static function find( array &$appData, string $source, string $kind, array $where, int $limit = 50 ): array {
 
-			if( Register::word( $source ) === false || self::kindOf( $appData, $source, $kind ) === false || $where === [] || array_diff( array_map( 'strval', array_keys( $where ) ), [ 'ref', 'project' ] ) !== [] )
+			// A kind of the core is the source's own to read where the core wrote it for the source (only its own rows are asked for: the source is in the statement); no other kind is found that the source did not enter
+			if( Register::word( $source ) === false || ( self::kindOf( $appData, $source, $kind ) === false && in_array( $kind, self::KINDS, true ) === false ) || $where === [] || array_diff( array_map( 'strval', array_keys( $where ) ), [ 'ref', 'project' ] ) !== [] )
 				return [];
 
 			$sql = 'SELECT id, client_id, project, ref, data, at FROM logbook WHERE source = :source AND kind = :kind';

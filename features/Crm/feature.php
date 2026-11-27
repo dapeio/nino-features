@@ -66,6 +66,14 @@ return [
 				'en_US' => 'Asked before a client is switched on or off; a package that cannot follow says so in failed and the client stays as it was.',
 				'de_DE' => 'Wird gefragt, bevor ein Kunde ein- oder ausgeschaltet wird; ein Paket, das nicht folgen kann, sagt es in failed, und der Kunde bleibt, wie er war.',
 			],
+			'/crm/client/view' => [
+				'en_US' => 'Asked what a package adds to the card of a client; a listener puts its fields under packages, under its key, and what it changes of the client itself is not read.',
+				'de_DE' => 'Fragt, was ein Paket der Karte eines Kunden hinzufügt; ein Listener legt seine Felder unter packages ab, unter seinem Schlüssel, und was er am Kunden selbst ändert, wird nicht gelesen.',
+			],
+			'/crm/clients/view' => [
+				'en_US' => 'Asked what a package adds to the rows of the list of clients, in one question for all of them: a map of the id of a client to its fields under packages, under the key of the package.',
+				'de_DE' => 'Fragt, was ein Paket den Zeilen der Kundenliste hinzufügt, in einer Frage für alle: eine Zuordnung von Kundenkennung zu seinen Feldern unter packages, unter dem Schlüssel des Pakets.',
+			],
 			'/crm/client/holds' => [
 				'en_US' => 'Asked what a package holds on a client; a listener adds an entry to holds, and one that blocks keeps the client from being deleted.',
 				'de_DE' => 'Fragt, was ein Paket an einem Kunden hält; ein Listener ergänzt holds um einen Eintrag, und ein sperrender hält den Kunden vor dem Löschen zurück.',
@@ -151,6 +159,22 @@ return [
 			'/data/crm.sqlite' => [
 				'en_US' => 'The database, of which a backup carries a whole copy that the core makes, kept without a write-ahead log - the price is the readers, who can wait up to about 0.15 s for a write, with the log 0.015 s.',
 				'de_DE' => 'Die Datenbank, von der eine Sicherung eine ganze Kopie trägt, die der Kern macht, ohne Write-ahead-Log geführt - Leser warten dafür bis zu etwa 0,15 s auf ein Schreiben, mit Log 0,015 s.',
+			],
+			'/data/crm.sqlite run of the test phase' => [
+				'en_US' => 'A run of the test phase that is not done holds a list with data about persons in the database, and so in its backup, until it is done or given up.',
+				'de_DE' => 'Ein unfertiger Lauf der Testphase hält eine Liste mit Daten über Personen in der Datenbank und damit in ihrer Sicherung, bis er fertig oder aufgegeben ist.',
+			],
+			'/data/crm.sqlite restore' => [
+				'en_US' => 'A restore writes the copy of the archive into the database with the online backup of SQLite (ext/sqlite3), after looking at it; a damaged, foreign or newer copy is not written and the restore says so.',
+				'de_DE' => 'Das Zurückspielen schreibt die Kopie des Archivs mit der Online-Sicherung von SQLite (ext/sqlite3) in die Datenbank; eine beschädigte, fremde oder neuere Kopie schreibt es nicht und sagt das.',
+			],
+			'/data/crm.sqlite restore over a damaged file' => [
+				'en_US' => 'A damaged file that opens is overwritten page by page and one that is no database is replaced; where SQLite cannot overwrite it, the restore says to take the file away and restore once more.',
+				'de_DE' => 'Eine beschädigte Datei, die sich öffnen lässt, wird Seite für Seite überschrieben, eine ohne Datenbank ersetzt; geht das nicht, sagt das Zurückspielen: Datei wegnehmen und noch einmal zurückspielen.',
+			],
+			'/data/crm.sqlite restore without sqlite3' => [
+				'en_US' => 'Without ext/sqlite3 the CRM cannot restore its database: the restore says so and the live database stays as it is.',
+				'de_DE' => 'Ohne ext/sqlite3 kann das CRM seine Datenbank nicht zurückspielen: das Zurückspielen sagt es, die lebende Datenbank bleibt, wie sie ist.',
 			],
 			'/data/crm.sqlite empty or cut off' => [
 				'en_US' => 'A file at this place that is empty, or cut to less than the 72 bytes of its header, is not the core\'s database: the backup packs it as it lies, without an error.',

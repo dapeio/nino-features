@@ -60,7 +60,7 @@
 
 		Object.assign( state, {
 			base : '', day : '', csrf : '', perm : '', locale : 'en_US', perms : { crm : true, elements : false, text : false }, user : '', texts : {}, links : {}, packages : {},
-			settings : {}, clients : [], summary : null, people : [], erasing : [],
+			settings : {}, clients : [], summary : null, people : [], erasing : [], wiping : false,
 			cfilter : { q : '', sort : 'number', dir : 1, page : 1 },
 			row : null, chord : false,
 			wfilter : { q : '', page : 1 }, wbody : null, phases : [], jclients : [], jpick : null, jfilter : { q : '', all : false, client : '', phase : '', page : 1 }, jbody : null, busy : null, saver : {}, company : null,

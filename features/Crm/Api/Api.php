@@ -11,8 +11,8 @@ namespace Nino\Modules\Crm {
 	 *				puts back what stood there. A method keeps its own guardPerm().
 	 *
 	 *				The table of the actions is entered, not written here: the core enters its own in init() and a package enters the actions it owns with add() - a map action => [ class, method ] and
-	 *				the options package (the key of the feature: an action is named by it, <key>/<name>, or by a name that begins with <key>-), panel (the actions are those of a panel of the workbench the
-	 *				package answers, named as the panel names them), files (the actions that take a multipart file) and needs (a feature that has to be on, else the 409 <key>_off). A line of the activity
+	 *				the options package (the key of the feature: an action is named by it, <key>/<name>, or by a name that begins with <key>-), files (the actions that take a multipart file) and needs (the key of
+	 *				one feature that has to be on, else the 409 <key>_off; a second feature is the action's own to ask). No other option is there: an option that is none is refused, with a warning, and none of the actions is entered. A line of the activity
 	 *				log is written by the action itself, with made(): the dispatcher puts it into the log after an answer of 200, and a read writes none.
 	 *
 	 *	@package						Dape/Nino

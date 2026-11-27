@@ -35,9 +35,36 @@ namespace Nino\Modules {
 			\Nino\Feature::shortcode( $appData, 'mail-head', [ self::class, 'doShortcodeMailHead' ], false );
 			\Nino\Callbacks::registerCallback( $appData, '/crm/settings/view', [ self::class, 'callbackView' ] );
 
+			// A package that answers a host of its own turns a request away, or moves it, with the two calls of Hosts: the suite names which in app data
+			if( is_string( $appData['./crm-probe/hosts'] ?? null ) === true )
+				\Nino\Callbacks::registerCallback( $appData, '/nino/http/request', [ self::class, 'callbackRequest' ] );
+
 			// The places the second part of the core offers: the suite of the domain asks for them in app data
 			if( ( $appData['./crm-probe/domain'] ?? false ) === true )
 				\Nino\Modules\CrmProbe\Domain::init( $appData );
+		}
+
+		/**
+		 *	What the package does with a request for a place of its own (/_admin/probe...): the suite says in './crm-probe/hosts' whether it is refused (refuse), shut (closed), moved to a host (towards) or moved
+		 *	to a host that is no name (bad)
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array 		&$request
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackRequest( array &$appData, array &$request ): void {
+
+			if( str_starts_with( (string) ( $request['/nino/http/request']['uri'] ?? '' ), '/_admin/probe' ) === false )
+				return;
+
+			match( (string) $appData['./crm-probe/hosts'] ) {
+				'refuse' => \Nino\Modules\Crm\Hosts::refuse( $request ),
+				'closed' => \Nino\Modules\Crm\Hosts::refuse( $request, true ),
+				'towards' => \Nino\Modules\Crm\Hosts::towards( 'moved.example.org', $request ),
+				'bad' => \Nino\Modules\Crm\Hosts::towards( 'moved.example.org/evil?x=', $request ),
+				default => null,
+			};
 		}
 
 		/**

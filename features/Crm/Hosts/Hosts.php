@@ -515,14 +515,17 @@ namespace Nino\Modules\Crm {
 		}
 
 		/**
-		 *	A request that is not for this host is turned into the route that answers 404: no word of what is on another host, no redirect, whatever the method
+		 *	The interface for a package that answers a host of its own (the portal): a request that is not for this host is turned into the route that answers 404 - no word of what is on another host, no redirect,
+		 *	whatever the method. Called from a listener of the hook '/nino/http/request' with the argument it was given, the way the core calls it: $request is the array of that hook, and the request of the page is
+		 *	changed in it - its method becomes GET and its route the one of this class (ROUTE), which answers the 404 (or, with $closed, the 503) and nothing else. Whatever redirect an earlier listener of the core put
+		 *	there is taken away. The call makes no answer of its own and reads nothing: where the request goes on after the call is the kernel's, and a package calls it as the last thing it does for a request
 		 *
-		 *	@param		array 		&$request
+		 *	@param		array 		&$request			(reference) The argument of the hook '/nino/http/request'
 		 *	@param		bool			$closed				That the answer is 503 and not 404: the place is shut because it cannot be told whose it is, not because it is not there
 		 *
 		 *	@return 	void
 		 */
-		private static function refuse( array &$request, bool $closed = false ): void {
+		public static function refuse( array &$request, bool $closed = false ): void {
 
 			unset( $request[self::REDIRECT], $request[self::CLOSED] );
 
@@ -535,17 +538,27 @@ namespace Nino\Modules\Crm {
 		}
 
 		/**
-		 *	The workbench asked for on the CRM host, where it was before the app had a name of its own: a GET with the plain spelling of the path answers 301 with the address on the app (the query kept, the place the browser keeps; the route of the answer is a route of GET, so another method
-		 *	never reaches it); a spelling a web server would read differently is refused as a place that is not there
+		 *	The interface for a package that moves a place to another host: the request is turned into the route of the answer that sends it to $app - a GET with the plain spelling of a path of the workbench (/_admin and below)
+		 *	answers 301 with the address on that host (the query kept, the place the browser keeps; the route of the answer is a route of GET, so another method never reaches it); anything else - another method, a spelling a web server would
+		 *	read differently, a path of another place - is refused as refuse() refuses it, and nothing moves. Called from a listener of the hook '/nino/http/request' with its argument, like refuse(); a host that is no name
+		 *	(Settings::validHost()) and the host the request is on (which would send it round in a circle) are refused as well, with a warning (a host name comes from a setting that holds one, never from the request)
 		 *
-		 *	@param		string		$app					The name of the app
-		 *	@param		array 		&$request
+		 *	@param		string		$app					The name of the host the place is on: a host name, no scheme and no path
+		 *	@param		array 		&$request			(reference) The argument of the hook '/nino/http/request'
 		 *
 		 *	@return 	void
 		 */
-		private static function towards( string $app, array &$request ): void {
+		public static function towards( string $app, array &$request ): void {
 
 			$uri = (string) ( $request['/nino/http/request']['uri'] ?? '' );
+
+			// A host that is no name is none to move to, and the host the request is on is no place to move it to - it would come back to the same place, again and again: the request is refused, and the package that asked is told
+			if( Settings::validHost( $app ) === false || $app === self::seen( $request ) ) {
+				trigger_error( 'Crm: a request was not moved to a host that is no name or to the host it is on', E_USER_WARNING );
+				self::refuse( $request );
+
+				return;
+			}
 
 			// Only a GET with the plain spelling of the path is a bookmark of before; any other method is no request that moves
 			if( ( $request['/nino/http/request']['method'] ?? '' ) !== 'GET' || preg_match( '#^/_admin(?:/[A-Za-z0-9._~/-]*)?$#D', $uri ) !== 1 || str_contains( $uri, '..' ) === true || str_contains( $uri, '//' ) === true ) {

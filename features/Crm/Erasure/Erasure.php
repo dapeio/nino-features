@@ -454,22 +454,30 @@ namespace Nino\Modules\Crm {
 			if( $client === null )
 				return 'unknown';
 
-			$who = self::who( $client );
-			$projects = array_column( Projects::ofClient( $appData, (string) $client['number'] ), 'id' );
-			$journal = [ 'number' => (string) $client['number'], 'projects' => $projects, 'emails' => $who['email'] === '' ? [] : [ $who['email'] ], 'steps' => [], 'owners' => [], 'folders' => [] ];
-
-			// What a package needs to find its things when the client row is gone is read now and kept in the journal
-			foreach( self::entered( $appData ) as $key => $table )
-				if( $table['gather'] !== null ) {
-					$journal['steps'][(string) $key] = self::flat( call_user_func_array( $table['gather'], [ &$appData, $who ] ) );
-					$journal['owners'][(string) $key] = (string) $table['package'];
-					$journal['folders'][(string) $key] = Register::directory( $appData, (string) $table['package'] );
-				}
-
 			$pdo = Db::pdo( $appData );
 			$pdo->exec( 'BEGIN IMMEDIATE' );
 
 			try {
+				// What the client is, what its projects are and what the packages need to find their things when the client row is gone are read here, with the write lock held: a save that a package makes for the client
+				// is done before this and is read, or comes after the client is gone and is refused. A gather runs in this transaction, on the connection of the core: it reads, it writes nothing and it never opens the file
+				$client = Clients::get( $appData, $id );
+
+				if( $client === null ) {
+					$pdo->exec( 'ROLLBACK' );
+					return 'unknown';
+				}
+
+				$who = self::who( $client );
+				$projects = array_column( Projects::ofClient( $appData, (string) $client['number'] ), 'id' );
+				$journal = [ 'number' => (string) $client['number'], 'projects' => $projects, 'emails' => $who['email'] === '' ? [] : [ $who['email'] ], 'steps' => [], 'owners' => [], 'folders' => [] ];
+
+				foreach( self::entered( $appData ) as $key => $table )
+					if( $table['gather'] !== null ) {
+						$journal['steps'][(string) $key] = self::flat( call_user_func_array( $table['gather'], [ &$appData, $who ] ) );
+						$journal['owners'][(string) $key] = (string) $table['package'];
+						$journal['folders'][(string) $key] = Register::directory( $appData, (string) $table['package'] );
+					}
+
 				// What decides is read inside the transaction, with the write lock held: a row that is fixed now is fixed before this, or after the client is gone and cannot be - and so is the register of the
 				// packages, which another process may have changed since the plan
 				$orphans = self::orphanKeys( $appData );
@@ -668,6 +676,14 @@ namespace Nino\Modules\Crm {
 			Db::drop( $appData );
 
 			foreach( Projects::ofClient( $appData, $journal['number'] ) as $project ) {
+
+				// Before every project: the deletion still stands - its journal is there and the client is not. Where the database was written back since - a restore - the client that is there is not the one this deletion is for,
+				// and what is left is not deleted: a warning and no failure
+				if( self::journal( $appData, $journal['number'] ) === null || Clients::byNumber( $appData, $journal['number'] ) !== null ) {
+					trigger_error( 'Crm: the deletion of client '. $journal['number']. ' does not stand any more, the projects that are left are not deleted', E_USER_WARNING );
+
+					return [ 'number' => $journal['number'], 'counts' => array_diff_key( $done, [ 'features' => 0 ] ), 'features' => $done['features'] ?? [] ];
+				}
 
 				if( \Nino\Elements::deleteElement( $appData, Projects::TYPE. '/'. $project['id'], '*' ) !== true )
 					return 'projects';

@@ -16,6 +16,10 @@ namespace Nino\Modules\Crm\Wipe {
 	 *																package that is gone is in the database the answer is the 409 with the code crm_package_data where every package that holds data is removed, else crm_package_off, and nothing is deleted. The answer is the counts; a second press answers zeros. The activity log
 	 *																gets one line, "Wiped ..." with the counts - never a name, a number or an address
 	 *
+	 *									A run that was begun holds what the steps of the packages read of the clients (Wipe::JOURNAL): where that cannot be read the answer is the 409 crm_wipe_journal and nothing is deleted - unless the post carries discard: true, which replaces the row, in one write, by one that holds only the step of the core in the mode of the clients that are gone (a warning, a line of the activity log), and goes on - the projects of the clients that are gone are deleted first -, and where a package that is not on holds a step the
+	 *									answer is the 409 crm_wipe_held_off (the package is off: it has to be on), crm_wipe_held_step (the package is on and has no such step any more) or crm_wipe_held_gone (the package is removed), with the key of the package and the key of the step in the params;
+	 *									the owner gives a step of a removed package, or of one that is on and has no such step, up by naming it in forget, a list of pairs { step, package } in the post - the package as typed, compared with the one the row holds: another package is the 409 crm_wipe_forget_package, the key of the core's step the 400 crm_wipe_forget_core, a form that is none the 400 crm_wipe_forget_form, and nothing is given up -, and the run goes on with a line of the activity log and a warning.
+	 *
 	 *	@package						Dape/Nino
 	 */
 	class Api {
@@ -54,10 +58,26 @@ namespace Nino\Modules\Crm\Wipe {
 				return;
 			}
 
-			Endpoint::run( $request, static function() use ( &$appData, &$request ): void {
+			Endpoint::run( $request, static function() use ( &$appData, &$request, $data ): void {
 
 				$so = [];
-				$done = Wipe::run( $appData, $so );
+				// forget: a list of { step, package } - or a map step => package: the owner names the package that holds the step, as typed; a form that is none is refused and nothing is given up
+				$forget = [];
+
+				foreach( is_array( $data['forget'] ?? null ) === true ? $data['forget'] : [] as $name => $one ) {
+
+					$step = is_array( $one ) === true ? ( $one['step'] ?? null ) : ( is_string( $name ) === true ? $name : null );
+					$package = is_array( $one ) === true ? ( $one['package'] ?? null ) : $one;
+
+					if( is_string( $step ) === false || is_string( $package ) === false ) {
+						\Nino\Http::fail( $request, 400, 'a step is given up with the package that holds it', 'crm_wipe_forget_form', [], 'forget' );
+						return;
+					}
+
+					$forget[$step] = $package;
+				}
+
+				$done = Wipe::run( $appData, $so, $forget, ( $data['discard'] ?? false ) === true );
 				$keys = Wipe::keys( $appData );
 				$line = static fn( array $counts ): string => implode( ', ', array_map( static fn( string $key ): string => (int) ( $counts[$key] ?? 0 ). ' '. $key, $keys ) );
 
@@ -81,6 +101,24 @@ namespace Nino\Modules\Crm\Wipe {
 
 					if( $done === 'denied' ) {
 						\Nino\Http::fail( $request, 403, 'not allowed', 'crm_wipe_perm' );
+						return;
+					}
+
+					// A run that was begun holds what the steps read of the clients: a row that cannot be read, and what a package that is off or removed holds, keep the run from going on - nothing is deleted
+					if( $done === 'journal' ) {
+						\Nino\Http::fail( $request, 409, 'the run that was begun cannot be read', 'crm_wipe_journal' );
+						return;
+					}
+
+					if( str_starts_with( $done, 'forget:' ) === true ) {
+						[ , $why, $step ] = explode( ':', $done, 3 );
+						\Nino\Http::fail( $request, $why === 'core' ? 400 : 409, 'a step is given up with the package that holds it', $why === 'core' ? 'crm_wipe_forget_core' : 'crm_wipe_forget_package', [ $step ] );
+						return;
+					}
+
+					if( str_starts_with( $done, 'held:' ) === true ) {
+						[ , $why, $step, $package ] = explode( ':', $done, 4 );
+						\Nino\Http::fail( $request, 409, 'a package that is not on holds what a run that was begun read', [ 'gone' => 'crm_wipe_held_gone', 'step' => 'crm_wipe_held_step' ][$why] ?? 'crm_wipe_held_off', [ $package, $step ] );
 						return;
 					}
 

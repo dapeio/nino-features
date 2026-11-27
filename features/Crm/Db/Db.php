@@ -114,20 +114,29 @@ namespace Nino\Modules\Crm {
 		 *	What a file is: absent, empty (a file that was made and has nothing yet), the core's, or foreign - a database that is not the core's, a file that
 		 *	is no database, a directory. Read from the header of the file alone: nothing is opened, so nothing of a foreign file is touched. A file with the mark of the core and no row of the core in its register is called ours here, as the header says; inspect() and pdo() tell it as it is - not the database of the CRM
 		 *
+		 *	What this does not know, and says: a file that is held is answered "ours" without being read, also where its content was overwritten in place since the connection was opened (the restore of the kernel copies over the living file, with the same inode) - a caller that then reads the file as a database,
+		 *	Db::backup(), finds it damaged and stops, with no target left: it fails closed. The device and the inode of a connection are taken with stat() after the file is opened, not from the descriptor: a file that is exchanged in the instant between the two is not told from the one the connection is on
+		 *
 		 *	@param		string		$file
 		 *	@param		array 		$held					Device and inode of every file a connection of this process is open on, as held() has them: such a file is ours and is not read (see kindFor())
+		 *	@param		string|null	$why					For a file that is foreign: other (a database with the application id of another), garbage (no database, or a header that is cut off) or directory
 		 *
 		 *	@return 	string										absent, empty, ours, foreign or unreadable
 		 */
-		public static function kind( string $file, array $held = [] ): string {
+		public static function kind( string $file, array $held = [], ?string &$why = null ): string {
 
 			clearstatcache( true, $file );
 
 			if( file_exists( $file ) === false && is_link( $file ) === false )
 				return 'absent';
 
-			if( is_file( $file ) === false )
+			$why = 'garbage';
+
+			if( is_file( $file ) === false ) {
+				$why = 'directory';
+
 				return 'foreign';
+			}
 
 			// A file a connection is open on is not opened here: close() of any descriptor of a file lets go of every POSIX lock the process holds on it (fcntl(2)) - the locks of SQLite
 			// of that connection too, the write lock of an open transaction among them - and another process then writes into the middle of that transaction
@@ -147,6 +156,9 @@ namespace Nino\Modules\Crm {
 			if( is_string( $head ) === false || strlen( $head ) < 72 || str_starts_with( $head, "SQLite format 3\0" ) === false )
 				return 'foreign';
 
+			// Another application's database: a valid header with another application id - not a file that is damaged
+			$why = 'other';
+
 			return (int) ( unpack( 'N', substr( $head, 68, 4 ) )[1] ?? 0 ) === self::APPLICATION_ID ? 'ours' : 'foreign';
 		}
 
@@ -159,9 +171,9 @@ namespace Nino\Modules\Crm {
 		 *
 		 *	@return 	string										As kind()
 		 */
-		public static function kindFor( array &$appData, string $file ): string {
+		public static function kindFor( array &$appData, string $file, ?string &$why = null ): string {
 
-			return self::kind( $file, self::held( $appData ) );
+			return self::kind( $file, self::held( $appData ), $why );
 		}
 
 		/**
@@ -297,6 +309,206 @@ namespace Nino\Modules\Crm {
 			}
 
 			return true;
+		}
+
+		/**
+		 *	What is the matter with a database of the core, asked through SQLite and nothing else: it is opened for reading, with the wait of five seconds and no more, and its integrity check - the full one - is run and the connection is closed.
+		 *	A lock another process holds (SQLITE_BUSY, SQLITE_LOCKED) is never a damage: the answer is busy. Where a connection of the process is open on the file, ask this only after the question what the file is (kindFor()) was answered
+		 *
+		 *	@param		string		$file
+		 *
+		 *	@return 	string										ok, damaged (the integrity check finds something, or SQLite cannot read it - a hot journal beside it that a reader cannot roll back among them) or busy
+		 */
+		public static function damaged( string $file ): string {
+
+			try {
+				$pdo = new \PDO( 'sqlite:'. $file, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_TIMEOUT => (int) ( self::BUSY / 1000 ), \PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY ] );
+
+				return $pdo->query( 'PRAGMA integrity_check' )->fetchAll( \PDO::FETCH_COLUMN ) === [ 'ok' ] ? 'ok' : 'damaged';
+			}
+			catch( \PDOException $e ) {
+				return preg_match( '/locked|busy/i', $e->getMessage() ) === 1 ? 'busy' : 'damaged';
+			}
+		}
+
+		/**
+		 *	Whether another process holds a lock on a file, as the system lists it and never by opening the file (closing any descriptor of it would let go of the locks this process holds): stat() for the device and the inode, and
+		 *	/proc/locks, as the restore of the kernel does it. Where the list cannot be read - a system that has none, a restricted one - nothing is known: the answer is null, and whoever asks fails closed. The locks of this very process are in the list too, so a connection of this request that holds one is seen
+		 *
+		 *	@param		string		$file
+		 *
+		 *	@return 	bool|null									null where it cannot be told
+		 */
+		public static function locked( string $file, ?string $list = null ): ?bool {
+
+			clearstatcache( true, $file );
+			$stat = @stat( $file );
+			$list = @file_get_contents( $list ?? '/proc/locks' );
+
+			if( $list === false )
+				return null;
+
+			if( $stat === false )
+				return false;
+
+			$major = ( ( $stat['dev'] >> 8 ) & 0xfff ) | ( ( $stat['dev'] >> 32 ) & ~0xfff );
+			$minor = ( $stat['dev'] & 0xff ) | ( ( $stat['dev'] >> 12 ) & ~0xff );
+
+			foreach( explode( "\n", $list ) as $line )
+				if( preg_match( '/^\d+:\s+(?:->\s+)?POSIX\s.*?\s([0-9a-f]+):([0-9a-f]+):(\d+)\s/', $line, $match ) === 1 && hexdec( $match[1] ) === $major && hexdec( $match[2] ) === $minor && (int) $match[3] === $stat['ino'] )
+					return true;
+
+			return false;
+		}
+
+		/**
+		 *	The files that a replacement left on the way and that nothing made whole: crm.sqlite.restore-<random> beside the live file, with the journal of one. They hold the data of an archive and are no database of the core
+		 *
+		 *	@param		string		$file							The live file
+		 *
+		 *	@return 	array											The paths
+		 */
+		public static function left( string $file ): array {
+
+			return glob( $file. '.restore-*' ) ?: [];
+		}
+
+		/**
+		 *	Take away what a replacement left on the way (left()): at the beginning of every restore, whichever way it goes, and before the backup copies
+		 *
+		 *	@param		string		$file
+		 *
+		 *	@return 	void
+		 */
+		public static function clearLeft( string $file ): void {
+
+			foreach( self::left( $file ) as $left )
+				@unlink( $left );
+		}
+
+		/**
+		 *	Put a copy of the database in the place of a file that is no database for SQLite at all - bytes that are none, a header that is cut off, a text: no process can have a transaction on it that is worth anything. The copy is written by
+		 *	SQLite into a new file in the same folder, looked at whole, and the new file takes the place of the old by rename(), which is atomic and takes the lock of no process; the new file has the mode, and where it is allowed the
+		 *	owner, of the old. The old file is never opened by php. What the old file keeps beside it (-journal, -wal, -shm) is taken away BEFORE, while it is still the file there. A file that another process holds a lock on, and a file of which
+		 *	it cannot be told - the list of the locks of the system is not there -, is not replaced. The window that is left is the time between the last question about the locks and the rename(): a process that takes a lock on a file that is no
+		 *	database in that time is not seen. A process that ends anywhere in this leaves the old file as it was or the new one whole
+		 *
+		 *	@param		string		$copy							The copy of the archive, looked at (archived())
+		 *	@param		string		$file							The live file
+		 *	@param		callable|null	$at						Told the name of each place - written, cleared, renamed - for the suites
+		 *	@param		string|null	$locks					Where the list of the locks is read from, for the suites; null is /proc/locks
+		 *
+		 *	@return 	string										'' where it was replaced; held (a process holds a lock on the old file), unknown (it cannot be told whether it is held), link (it is a link or no ordinary file) or live (the new file could not be made whole)
+		 */
+		public static function replace( string $copy, string $file, ?callable $at = null, ?string $locks = null ): string {
+
+			if( is_link( $file ) === true || is_file( $file ) === false )
+				return 'link';
+
+			$held = self::locked( $file, $locks );
+
+			if( $held !== false )
+				return $held === null ? 'unknown' : 'held';
+
+			$say = static function( string $place ) use ( $at ): void { if( $at !== null ) $at( $place ); };
+			$temp = $file. '.restore-'. bin2hex( random_bytes( 6 ) );
+			$from = null;
+			$to = null;
+
+			try {
+				$from = new \SQLite3( $copy, SQLITE3_OPEN_READONLY );
+				$to = new \SQLite3( $temp );
+				$from->enableExceptions( true );
+				$to->enableExceptions( true );
+				$to->busyTimeout( self::BUSY );
+				$from->backup( $to );
+				$to->querySingle( 'PRAGMA journal_mode = DELETE' );
+			}
+			catch( \Throwable $e ) {
+				$from?->close();
+				$to?->close();
+
+				foreach( [ '', '-journal' ] as $suffix )
+					@unlink( $temp. $suffix );
+
+				return 'live';
+			}
+
+			$from->close();
+			$to->close();
+
+			try {
+				self::verifyCopy( $temp );
+			}
+			catch( \Throwable $e ) {
+				foreach( [ '', '-journal' ] as $suffix )
+					@unlink( $temp. $suffix );
+
+				return 'live';
+			}
+
+			// The mode and, where it is allowed, the owner of the file that goes; where they cannot be read, 0644
+			$stat = @stat( $file );
+			@chmod( $temp, $stat === false ? 0644 : ( $stat['mode'] & 0777 ) );
+
+			if( $stat !== false && function_exists( 'posix_geteuid' ) === true && posix_geteuid() === 0 )
+				@chown( $temp, $stat['uid'] ) && @chgrp( $temp, $stat['gid'] );
+
+			$say( 'written' );
+			$held = self::locked( $file, $locks );
+
+			if( $held !== false ) {
+				@unlink( $temp );
+
+				return $held === null ? 'unknown' : 'held';
+			}
+
+			foreach( [ '-journal', '-wal', '-shm' ] as $suffix )
+				if( is_file( $file. $suffix ) === true || is_link( $file. $suffix ) === true )
+					@unlink( $file. $suffix );
+
+			$say( 'cleared' );
+
+			if( @rename( $temp, $file ) === false ) {
+				@unlink( $temp );
+
+				return 'live';
+			}
+
+			$say( 'renamed' );
+
+			return '';
+		}
+
+		/**
+		 *	What is wrong with the copy of the database that an archive carries, before it is written into the live file: the copy is opened for reading only and looked at whole - the integrity check, the application id of the core,
+		 *	the register of the schemas with a row of the core whose version this core can read. A copy that was made by a newer version of the core is not written into a file this one runs on
+		 *
+		 *	@param		string		$copy
+		 *
+		 *	@return 	string										'' for a copy that is good; damaged, foreign (another application id, no register of the core) or newer
+		 */
+		public static function archived( string $copy ): string {
+
+			try {
+				$pdo = new \PDO( 'sqlite:'. $copy, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY ] );
+
+				if( $pdo->query( 'PRAGMA integrity_check' )->fetchAll( \PDO::FETCH_COLUMN ) !== [ 'ok' ] )
+					return 'damaged';
+
+				if( (int) $pdo->query( 'PRAGMA application_id' )->fetchColumn() !== self::APPLICATION_ID || $pdo->query( 'SELECT 1 FROM sqlite_master WHERE type = \'table\' AND name = \'schema_versions\'' )->fetchColumn() === false )
+					return 'foreign';
+
+				$version = $pdo->query( 'SELECT version FROM schema_versions WHERE package = '. $pdo->quote( self::CORE ) )->fetchColumn();
+
+				if( $version === false )
+					return 'foreign';
+
+				return (int) $version > self::VERSION ? 'newer' : '';
+			}
+			catch( \PDOException $e ) {
+				return 'damaged';
+			}
 		}
 
 		/**

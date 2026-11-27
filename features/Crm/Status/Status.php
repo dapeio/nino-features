@@ -234,9 +234,13 @@ namespace Nino\Modules\Crm {
 		 *
 		 *	@param		array 		&$appData
 		 *
-		 *	@return 	array											state ok or unwritable
+		 *	@return 	array											state ok, unwritable or leftover (a file of a replacement of the database is left beside it)
 		 */
 		public static function writable( array &$appData ): array {
+
+			// A file that a replacement of the database left on the way (crm.sqlite.restore-...) holds the data of an archive and nothing makes it whole or takes it away until the next restore: the line says so
+			if( Db::left( \Nino\Filesystem::path( $appData, Db::FILE ) ) !== [] )
+				return [ 'state' => 'leftover' ];
 
 			return [ 'state' => Db::inspect( $appData )['writable'] === true ? 'ok' : 'unwritable' ];
 		}

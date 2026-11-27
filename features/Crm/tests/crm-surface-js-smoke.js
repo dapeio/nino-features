@@ -538,6 +538,23 @@ const values = function( w, selector ) { return inMain( w, selector ).map( funct
 
 	const kitNames = Object.keys( first.win.Nino.crm.kit.make( 'probe' ) ).sort();
 
+	// What the scripts of the packages call under Nino.crm is declared in the description of the class Crm (Crm.php), and held here: each name is there, is a function and is written in that description
+	const declaredPoints = ['kit.make', 'state.own', 'keys.add', 'menu.add', 'pages.add', 'overview.addTile', 'wipe.addCount', 'cards.addTab', 'cards.addFact'];
+	const declaredKit = ['append', 'ask', 'badge', 'card', 'cardList', 'clear', 'clientField', 'dmy', 'el', 'formList', 'formOf', 'format.locale', 'has', 'kv', 'link', 'menu', 'note', 'submitter', 't', 'toast', 'unsaver', 'valuesOfForm', 'api', 'call', 'crumb', 'search', 'sortHead', 'keepSearch', 'refuseAt', 'failed', 'errorText', 'saver', 'reveal', 'loading', 'loadFailed', 'data', 'dialog', 'head'];
+	const declaredText = fs.readFileSync( path.join( featureDir, 'Crm.php' ), 'utf8' );
+	const missing = declaredPoints.filter( function( name ) {
+
+		const found = name.split( '.' ).reduce( function( object, part ) { return object === undefined || object === null ? undefined : object[part] }, first.win.Nino.crm );
+
+		return typeof found !== 'function' || declaredText.includes( 'Nino.crm.'+ name+ '(' ) === false;
+	} ).concat( declaredKit.filter( function( name ) {
+
+		const found = name.split( '.' ).reduce( function( object, part ) { return object === undefined || object === null ? undefined : object[part] }, first.win.Nino.crm.kit.make( 'probe' ) );
+
+		return typeof found !== 'function' || declaredText.includes( 'kit.'+ name+ '(' ) === false;
+	} ) );
+
+	check( 'every name under Nino.crm that the scripts of the packages call is declared in the description of the class and is a function - '+ declaredPoints.length+ ' registration points and the kit of a package with '+ declaredKit.length+ ' members: a name that goes, or that the description does not write, is a failure of this line', missing.length === 0 && declaredPoints.length === 9 && declaredKit.length === 38 );
 	check( 'the kit a package gets at load time names what the packages after the core need and is frozen: no main, no alive, no title, no form', kitNames.length > 60 && [ 'main', 'alive', 'title', 'form', 'mine' ].every( function( name ) { return kitNames.includes( name ) === false } ) === true && Object.isFrozen( first.win.Nino.crm.kit.make( 'probe' ) ) === true );
 	check( 'the kit has the names of the first group a package draws with (el, t, api, toast, link, note, kv, head, dmy, stamp, clear, append, dialog, ask, projectLabel, projectText, badge, card, today, errorText, clientField)', [ 'el', 't', 'api', 'toast', 'link', 'note', 'kv', 'head', 'dmy', 'stamp', 'clear', 'append', 'dialog', 'ask', 'projectLabel', 'projectText', 'badge', 'card', 'today', 'errorText', 'clientField' ].every( function( name ) { return kitNames.includes( name ) } ) );
 	check( 'the kit has the names of the second group (hm, format, step, failed, loadFailed, loading, reveal, route, wordOf, extra, extraText, search, menu, saver, unsaver, projectNo, clientTitle, pickerClients, cardList, sortHead, keepRoles, phone, pagerOf, keepSearch, refusedText, cardTabs, cardBody, headParts, headItems, headChoice, headHasAction, headLines, PHONE, PAGE_SIZE, settingsOrdered, sitePage, quietField, quietText, saveFrom, showLink)', [ 'hm', 'format', 'step', 'failed', 'loadFailed', 'loading', 'reveal', 'route', 'wordOf', 'extra', 'extraText', 'search', 'menu', 'saver', 'unsaver', 'projectNo', 'clientTitle', 'pickerClients', 'cardList', 'sortHead', 'keepRoles', 'phone', 'pagerOf', 'keepSearch', 'refusedText', 'cardTabs', 'cardBody', 'headParts', 'headItems', 'headChoice', 'headHasAction', 'headLines', 'PHONE', 'PAGE_SIZE', 'settingsOrdered', 'sitePage', 'quietField', 'quietText', 'saveFrom', 'showLink' ].every( function( name ) { return kitNames.includes( name ) } ) );
@@ -934,6 +951,7 @@ const values = function( w, selector ) { return inMain( w, selector ).map( funct
 		check( 'without a package the settings show no tab and no section of a package, and no tab of the strip has no section', inMain( bareSettings, '.settings-tabs a' ).every( function( tab ) { return inMain( bareSettings, '#panel-'+ tab.dataset.tab )[0].children.length > 0 } ) );
 	}
 
+	const pageInner = {};
 	const probe = function( win, context ) {
 
 		const crm = win.Nino.crm;
@@ -942,7 +960,7 @@ const values = function( w, selector ) { return inMain( w, selector ).map( funct
 
 		crm.settings.addTab( { key : 'probe', word : 'Probe tab', rank : 500 } );
 		crm.settings.addSection( { key : 'probe-section', tab : 'probe', word : 'Probe section', build : function( inner ) { return inner.card( 'Probe card', node( 'probe settings', 'probe-settings' ) ) } } );
-		crm.pages.add( { key : 'probe', hash : 'probe', title : 'Probe page', draw : function( inner, where ) { return node( 'probe page '+ where.rest, 'probe-page' ) } } );
+		crm.pages.add( { key : 'probe', hash : 'probe', title : 'Probe page', draw : function( inner, where ) { pageInner.object = inner; return node( 'probe page '+ where.rest, 'probe-page' ) } } );
 		crm.menu.add( { key : 'probe', word : 'Probe entry', page : 'probe', rank : 700, count : function() { return 4 } } );
 		crm.overview.addTile( { key : 'probe', rank : 5, draw : function( inner, overview ) { return node( 'probe tile '+ overview.probe, 'probe-tile' ) } } );
 		crm.overview.addBlock( { key : 'probe', rank : 40, draw : function() { return inner( 'probe block' ) } } );
@@ -1002,6 +1020,21 @@ const values = function( w, selector ) { return inMain( w, selector ).map( funct
 		w.send( 'hashchange', {} );
 		await settle();
 		check( 'the page of the package draws the rest of its address and marks its entry in the rail', inMain( w, '#probe-page' )[0].textContent === 'probe page 77' && all( w.nav, 'a' ).filter( function( anchor ) { return hasText( anchor, 'Probe entry' ) && String( anchor.className ).split( ' ' ).includes( 'on' ) } ).length === 1 );
+
+		// What the core hands over, read at run time and held against the description of the class as a set against a set: the kit of a package, and the object a page is given (the kit of the page and what belongs to the page).
+		// A helper that a package adds to the kit is the package's, not the core's
+		const given = pageInner.object;
+		const made = first.win.Nino.crm.kit.make( 'probe' );
+		const own = function( object ) { return Object.keys( object ).filter( function( name ) { return name !== 'probeHelper' } ).sort() };
+		const words = function( heading, prefix ) {
+			const at = declaredText.indexOf( heading );
+			return at === -1 ? [ '(no such section)' ] : Array.from( declaredText.slice( at, declaredText.indexOf( ' - ', at ) === -1 || prefix === 'kit.' ? declaredText.indexOf( '. The object', at ) : declaredText.indexOf( ' - ', at ) ).matchAll( new RegExp( '\\b'+ prefix.replace( '.', '\\.' )+ '([A-Za-z_]+)', 'g' ) ) ).map( function( found ) { return found[1] } ).sort();
+		};
+		const declaredKitSet = words( 'THE MEMBERS OF THE KIT', 'kit.' );
+		const declaredInnerSet = words( 'THE MEMBERS OF THE OBJECT OF A PAGE', 'inner.' );
+		const same = function( one, two ) { return one.length === two.length && one.every( function( name, at ) { return name === two[at] } ) };
+
+		check( 'the members of the kit ('+ declaredKitSet.length+ ') and of the object a page is given ('+ declaredInnerSet.length+ ') are the set the description of the class declares, name for name, read from what the core hands over - not counted by hand: a member that is added or goes without the description saying so is a failure of this line', given !== undefined && same( own( made ), declaredKitSet ) === true && same( own( given ), declaredInnerSet ) === true && typeof given.main === 'object' && typeof given.alive === 'function' && typeof given.arm === 'function' );
 
 		const search = world( { hash : '#overview', answers : answers, package : probe } );
 		await settle();
@@ -1089,6 +1122,123 @@ const values = function( w, selector ) { return inMain( w, selector ).map( funct
 		click( wipe, all( wipe.dialogs[0], 'button' ).pop() );
 		await settle();
 		check( 'the toast of the test phase counts what went in the order the server names it, with the sentence each line gave; every count the server names has the sentence a line gave', wipe.last( 'crm/wipe' ).data.confirm === texts['wipe.word'] && textOf( wipe.toast ) === texts['wipe.done'].replace( '%s', [ texts['wipe.count-clients'].replace( '%s', '2' ), texts['wipe.count-projects'].replace( '%s', '1' ), 'probe rows: 5', texts['wipe.count-records'].replace( '%s', '0' ), texts['wipe.count-logbook'].replace( '%s', '3' ), texts['wipe.count-shares'].replace( '%s', '0' ) ].join( ', ' ) ) );
+
+		// A run that was begun holds what a package that is removed - or that is on and has no such step - left over: the dialog asks whether to give it up, names the PACKAGE and sends forget only with its key typed
+		for( const code of [ 'crm_wipe_held_gone', 'crm_wipe_held_step' ] ) {
+
+			const sent = [];
+			const held = server( { 'crm/wipe' : function( data ) { sent.push( data ); return data.forget === undefined ? [ 409, { error : 'x', code : code, params : [ 'crm-probe-two', 'twog' ] } ] : [ 200, { clients : 0, projects : 0, records : 0, logbook : 0, shares : 0 } ] } } );
+			const gone = world( { hash : '#settings/system', answers : held, package : probe } );
+			await settle();
+			click( gone, inMain( gone, '#wipe-open' )[0] );
+			await settle();
+			type( all( gone.dialogs[0], 'input' )[0], texts['wipe.word'] );
+			click( gone, all( gone.dialogs[0], 'button' ).pop() );
+			await settle();
+			const ask = gone.dialogs[gone.dialogs.length - 1];
+			const said = ask === undefined ? '' : textOf( ask );
+			const typed = ask === undefined ? null : all( ask, 'input' )[0];
+			const yes = ask === undefined ? null : all( ask, 'button' ).pop();
+			const early = sent.length;
+
+			if( yes !== null ) {
+				click( gone, yes );
+				await settle();
+			}
+
+			const noKey = sent.length === early && yes !== null && yes.disabled === true;
+
+			if( typed !== null ) {
+				type( typed, 'twog' );
+				click( gone, yes );
+				await settle();
+			}
+
+			const stepOnly = sent.length === early;
+
+			if( typed !== null ) {
+				type( typed, 'crm-probe-two' );
+				click( gone, yes );
+				await settle();
+			}
+
+			check( 'a run that holds what a package left over - '+ code+ ' - is asked about in a dialog of its own that names the package and not the step, in the language of the page, with no key left raw: the button is off until the key of the PACKAGE is typed, the step is not its key, and then the post carries the word again and forget with the step and the package, as typed',
+				said.includes( 'crm-probe-two' ) === true && said.includes( 'twog' ) === false && said.includes( 'crm_wipe' ) === false && noKey === true && stepOnly === true && sent.length === early + 1 && JSON.stringify( sent[sent.length - 1].forget ) === JSON.stringify( [ { step : 'twog', package : 'crm-probe-two' } ] ) && sent[sent.length - 1].confirm === texts['wipe.word'] && sent[0].forget === undefined );
+		}
+
+		{
+			const off = world( { hash : '#settings/system', answers : server( { 'crm/wipe' : function() { return [ 409, { error : 'x', code : 'crm_wipe_held_off', params : [ 'crm-probe-two', 'twog' ] } ] } } ), package : probe } );
+			await settle();
+			click( off, inMain( off, '#wipe-open' )[0] );
+			await settle();
+			type( all( off.dialogs[0], 'input' )[0], texts['wipe.word'] );
+			click( off, all( off.dialogs[0], 'button' ).pop() );
+			await settle();
+			const offText = textOf( off.dialogs[0] );
+
+			check( 'a package that is only switched off is not given up: the dialog of the test phase stays, says the package - not the step - and that it has to be switched on, and there is no second dialog', off.dialogs.length === 1 && offText.includes( 'crm-probe-two' ) === true && offText.includes( 'twog' ) === false && offText.includes( 'crm_wipe' ) === false && offText.length > 40 );
+		}
+
+		// A run that is not finished: the list of the clients says so above the rows, with the button that opens the dialog of the test phase, and no banner where the server says nothing of it
+		{
+			const rows = server( { 'crm-clients/list' : function() { return [ 200, { clients : CLIENTS, erasing : [], wiping : true } ] }, 'crm/wipe' : function() { return [ 200, { clients : 0, projects : 0, records : 0, logbook : 0, shares : 0 } ] } } );
+			const open = world( { hash : '#clients', answers : rows, package : probe } );
+			await settle();
+			const banner = inMain( open, '.wipe-pending' )[0];
+			const quiet = world( { hash : '#clients', answers : answers, package : probe } );
+			await settle();
+
+			const label = textOf( inMain( open, '#wipe-finish' )[0] );
+
+			click( open, inMain( open, '#wipe-finish' )[0] );
+			await settle();
+			const asked = open.dialogs.length === 1 && open.sent().includes( 'crm/settings-get' ) === true;
+
+			if( asked === true ) {
+				type( all( open.dialogs[0], 'input' )[0], texts['wipe.word'] );
+				click( open, all( open.dialogs[0], 'button' ).pop() );
+				await settle();
+			}
+
+			check( 'a run of the test phase that is not finished is shown above the list of the clients with its sentence and the button that finishes it, the button opens the dialog of the test phase and the word posts the wipe, and a list the server says nothing of has no banner', banner !== undefined && textOf( banner ).includes( texts['wipe.pending'] ) === true && label === texts['wipe.finish']
+				&& inMain( quiet, '.wipe-pending' ).length === 0 && asked === true && open.last( 'crm/wipe' ).data.confirm === texts['wipe.word'] );
+		}
+
+		// A row that cannot be read: the dialog of the test phase stays, a second dialog throws the rest away with the word typed again, and the post carries discard
+		{
+			const sent = [];
+			const broken = server( { 'crm/wipe' : function( data ) { sent.push( data ); return data.discard === true ? [ 200, { clients : 0, projects : 0, records : 0, logbook : 0, shares : 0 } ] : [ 409, { error : 'x', code : 'crm_wipe_journal' } ] } } );
+			const dead = world( { hash : '#settings/system', answers : broken, package : probe } );
+			await settle();
+			click( dead, inMain( dead, '#wipe-open' )[0] );
+			await settle();
+			type( all( dead.dialogs[0], 'input' )[0], texts['wipe.word'] );
+			click( dead, all( dead.dialogs[0], 'button' ).pop() );
+			await settle();
+			const second = dead.dialogs[dead.dialogs.length - 1];
+			const text = second === undefined ? '' : textOf( second );
+			const yes = second === undefined ? null : all( second, 'button' ).pop();
+			const off = yes !== null && yes.disabled === true;
+			const early = sent.length;
+
+			if( second !== undefined ) {
+				type( all( second, 'input' )[0], texts['wipe.word'] );
+				click( dead, yes );
+				await settle();
+			}
+
+			check( 'a row of the run that cannot be read has a way out at the surface: a dialog of its own says what is lost and what may stay, its button is off until the word of the test phase is typed, and the post then carries discard', dead.dialogs.length === 2 && text.includes( texts['wipe.discard-title'] ) === true && text.includes( 'crm_wipe' ) === false && off === true && sent.length === early + 1 && sent[sent.length - 1].discard === true && sent[sent.length - 1].confirm === texts['wipe.word'] && sent[0].discard === undefined );
+		}
+
+		// While a run is open the button of the new client is off and says why in words that stand beside it
+		{
+			const open = world( { hash : '#clients', answers : server( { 'crm-clients/list' : function() { return [ 200, { clients : CLIENTS, erasing : [], wiping : true } ] } } ), package : probe } );
+			await settle();
+			const button = inMain( open, '#new-client' )[0];
+			const why = inMain( open, '#new-client-why' )[0];
+
+			check( 'while a run of the test phase is open the button of the new client is off and the reason stands beside it, not in a hint alone', button !== undefined && button.tagName === 'BUTTON' && button.disabled === true && why !== undefined && textOf( why ) === texts['clients.new-wiping'] && button.getAttribute( 'aria-describedby' ) === 'new-client-why' );
+		}
 
 		const form = world( { hash : '#client-new', answers : answers, package : probe } );
 		await settle();

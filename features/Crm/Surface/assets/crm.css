@@ -313,6 +313,8 @@ dialog.dlg .wipe-list li { margin: 0 0 4px }
 dialog.dlg .delete-blocked p { margin: 0 0 10px; overflow-wrap: anywhere }
 .card.delete-pending { border-color: var(--bad); margin: 0 0 12px }
 .card.delete-pending p { margin: 0 0 8px }
+.card.wipe-pending { border-color: var(--bad); margin: 0 0 12px }
+.card.wipe-pending p { margin: 0 0 8px }
 #numbers, #seller, #company-holder, #mailnotes, #testphase { scroll-margin-top: 56px }
 .settings-panel[hidden] { display: none }
 .settings-panel > [id], .settings-panel #numbers, .settings-panel #seller { scroll-margin-top: 56px }

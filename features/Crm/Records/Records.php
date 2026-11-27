@@ -302,12 +302,66 @@ namespace Nino\Modules\Crm {
 		 *	@param		array 		&$appData
 		 *	@param		int				$clientId
 		 *	@param		string|null	$kind					Only this kind; null for every one
+		 *	@param		string|null	$purpose			Only this purpose; null for every one. A revocation has the purpose of the agreement it takes back, so that the purpose names both; '' is the records that have none
 		 *
 		 *	@return 	array											id, kind, origin, client_id, member_id, member_email, member_name, thing, thing_id, project, purpose, parent (null for none), sha256, shown, at, ip, agent
 		 */
-		public static function of( array &$appData, int $clientId, ?string $kind = null ): array {
+		public static function of( array &$appData, int $clientId, ?string $kind = null, ?string $purpose = null ): array {
 
-			return array_map( [ self::class, 'shape' ], Db::rows( $appData, 'SELECT * FROM records WHERE client_id = :client'. ( $kind === null ? '' : ' AND kind = :kind' ). ' ORDER BY id DESC', [ 'client' => $clientId ] + ( $kind === null ? [] : [ 'kind' => $kind ] ) ) );
+			$params = [ 'client' => $clientId ] + ( $kind === null ? [] : [ 'kind' => $kind ] ) + ( $purpose === null ? [] : [ 'purpose' => $purpose ] );
+
+			return array_map( [ self::class, 'shape' ], Db::rows( $appData, 'SELECT * FROM records WHERE client_id = :client'. ( $kind === null ? '' : ' AND kind = :kind' ). ( $purpose === null ? '' : ' AND purpose = :purpose' ). ' ORDER BY id DESC', $params ) );
+		}
+
+		/**
+		 *	The records of several clients of one kind, in one question, the newest first: a list of clients - the portal's, a page of the list - is not asked client by client. The ids are those of the clients, whole numbers
+		 *	or the digits of one written as text ('7'); anything else in the list - a number with a sign or a zero in front, a float, a boolean, a list, an empty text - is no client and left out, and a client twice is one.
+		 *	A long list is asked in portions of MOST and put together, so that no client is left out and none is answered by "nothing found"
+		 *
+		 *	@param		array 		&$appData
+		 *	@param		array 		$ids					The ids of the clients
+		 *	@param		string		$kind					The kind of the records
+		 *
+		 *	@return 	array											client id => the records of the client as of() has them, the newest first, the clients by their id; a client that has none is not in it. PHP makes a key of digits a whole number: it is the id of the client as client_id of each of its records has it
+		 */
+		public static function ofClients( array &$appData, array $ids, string $kind ): array {
+
+			$clients = [];
+
+			foreach( $ids as $id )
+				if( ( is_int( $id ) === true && $id >= 1 ) || ( is_string( $id ) === true && preg_match( '/^[1-9][0-9]{0,17}$/D', $id ) === 1 ) )
+					$clients[(string) $id] = true;
+
+			$clients = array_map( 'intval', array_keys( $clients ) );
+
+			if( $kind === '' || $clients === [] )
+				return [];
+
+			$rows = [];
+
+			foreach( array_chunk( $clients, self::MOST ) as $portion ) {
+
+				$params = [ 'kind' => $kind ];
+				$marks = [];
+
+				foreach( $portion as $at => $id ) {
+					$marks[] = ':client'. $at;
+					$params['client'. $at] = $id;
+				}
+
+				array_push( $rows, ...Db::rows( $appData, 'SELECT * FROM records WHERE kind = :kind AND client_id IN ( '. implode( ', ', $marks ). ' )', $params ) );
+			}
+
+			usort( $rows, static fn( array $a, array $b ): int => (int) $b['id'] <=> (int) $a['id'] );
+
+			$found = [];
+
+			foreach( array_map( [ self::class, 'shape' ], $rows ) as $record )
+				$found[$record['client_id']][] = $record;
+
+			ksort( $found );
+
+			return $found;
 		}
 
 		/**

@@ -223,7 +223,7 @@ function srfHold( string $file ): array {
 
 	$program = '$in = fopen( "php://stdin", "r" ); $db = new PDO( "sqlite:". $argv[1], null, null, [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ] ); $db->exec( "PRAGMA busy_timeout = 0" ); $db->exec( "BEGIN EXCLUSIVE" ); echo "held\n"; fflush( STDOUT ); fgets( $in ); $db->exec( "ROLLBACK" );';
 	$process = proc_open( [ PHP_BINARY, '-r', $program, $file ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ] ], $pipes );
-	fgets( $pipes[1] );
+	check( 'the second process holds the database it was asked to hold (a pin that needs it would pass for nothing otherwise)', trim( (string) fgets( $pipes[1] ) ) === 'held' );
 
 	return [ $process, $pipes ];
 }

@@ -11,7 +11,7 @@ namespace Nino\Modules\Crm\Clients {
 
 	/**
 	 *	Clients\Api		The actions of the clients behind the endpoint: the clients (list, card, add, change, deactivate) and the deletion of one, under the permission of the CRM. What a package keeps of a client
-	 *										is the package's own actions; it hears of a client through the hooks of Clients, and what a form of a package posts for the client travels in packages (key of the package => values). Deleting a client is two
+	 *										is the package's own actions; it hears of a client through the hooks of Clients, and what a form of a package posts for the client travels in packages (key of the package => values), and what a package adds to a client or to the list - crm-clients/get and crm-clients/list - comes back in packages, in the same shape, under its key (Clients::VIEW, VIEWS). Deleting a client is two
 	 *										actions: delete-preview (what hangs on it, as numbers, and whether it may go) and delete (the number typed is compared here, on the server, and the deletion of Erasure runs). It validates what it is
 	 *										posted and answers the failures a person can cause with codes; the rules of the data are Clients', the storage Db's. A database failure is answered 500 with the code crm_database.
 	 *
@@ -43,7 +43,7 @@ namespace Nino\Modules\Crm\Clients {
 				return;
 
 			Endpoint::run( $request, static function() use ( &$appData, &$request ): void {
-				\Nino\Http::ok( $request, [ 'clients' => Clients::list( $appData ), 'erasing' => Erasure::pending( $appData ) ] );
+				\Nino\Http::ok( $request, [ 'clients' => array_map( [ self::class, 'shown' ], Clients::views( $appData, Clients::list( $appData ) ) ), 'erasing' => Erasure::pending( $appData ), 'wiping' => \Nino\Modules\Crm\Wipe::unfinished( $appData ) ] );
 			} );
 		}
 
@@ -60,7 +60,7 @@ namespace Nino\Modules\Crm\Clients {
 				$client = self::client( $appData, $request, \Nino\Modules\Crm\Values::posted() );
 
 				if( $client !== null )
-					\Nino\Http::ok( $request, [ 'client' => $client ] );
+					\Nino\Http::ok( $request, [ 'client' => self::shown( Clients::view( $appData, $client ) ) ] );
 			} );
 		}
 
@@ -315,6 +315,20 @@ namespace Nino\Modules\Crm\Clients {
 		}
 
 		/**
+		 *	A client as the answer says it: what the packages add to it is an object of objects, key of the package => its fields - {} where none adds - and never a list
+		 *
+		 *	@param		array 		$client				As Clients::view() has it
+		 *
+		 *	@return 	array
+		 */
+		private static function shown( array $client ): array {
+
+			$client['packages'] = (object) array_map( static fn( array $part ): object => (object) $part, (array) ( $client['packages'] ?? [] ) );
+
+			return $client;
+		}
+
+		/**
 		 *	What the forms of the packages posted: an object of objects, key of the package => values; none where nothing was posted
 		 *
 		 *	@param		array 		&$request
@@ -357,6 +371,7 @@ namespace Nino\Modules\Crm\Clients {
 			[ $kind, $field ] = array_pad( explode( ':', $why, 2 ), 2, '' );
 
 			match( $kind ) {
+				'wiping'  => \Nino\Http::fail( $request, 409, 'the test phase is not finished yet', 'crm_wipe_unfinished' ),
 				'empty'   => \Nino\Http::fail( $request, 400, 'a client needs a company or a name', 'crm_clients_empty', [], 'company' ),
 				'email'   => \Nino\Http::fail( $request, 400, 'the address is not valid', 'crm_clients_email', [], 'email' ),
 				'long'    => \Nino\Http::fail( $request, 400, 'the value is too long', 'crm_clients_long', [ Clients::FIELDS[$field] ?? 0 ], $field ),

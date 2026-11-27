@@ -273,9 +273,9 @@ function crmSchemaFile( string $name, array $statements, array $steps = [], stri
 function crmHold( string $file, int $micro = 0 ): array {
 
 	$release = $micro > 0 ? 'usleep( '. $micro. ' );' : 'fgets( STDIN );';
-	$code = '$p = new PDO( "sqlite:'. $file. '" ); $p->exec( "BEGIN EXCLUSIVE" ); echo "held\n"; fflush( STDOUT ); '. $release. ' $p->exec( "COMMIT" );';
+	$code = '$p = new PDO( "sqlite:'. $file. '" ); $p->exec( "BEGIN EXCLUSIVE" ); echo "held\n"; fflush( STDOUT ); '. $release. ' $p->exec( "COMMIT" ); file_put_contents( "'. $file. '.let-go", (string) microtime( true ) );';
 	$proc = proc_open( [ PHP_BINARY, '-r', $code ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ] ], $pipes );
-	fgets( $pipes[1] );
+	check( 'the second process holds the database it was asked to hold (a pin that needs it would pass for nothing otherwise)', trim( (string) fgets( $pipes[1] ) ) === 'held' );
 
 	return [ $proc, $pipes ];
 }
@@ -305,7 +305,7 @@ function crmWriter( string $file, string $code ): array {
 
 	$program = '$in = fopen( "php://stdin", "r" ); $db = new PDO( "sqlite:". $argv[1], null, null, [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ] ); $db->exec( "PRAGMA busy_timeout = 0" ); eval( $argv[2] ); echo "held\n"; fflush( STDOUT ); fgets( $in ); $db->exec( "ROLLBACK" );';
 	$process = proc_open( [ PHP_BINARY, '-r', $program, $file, $code ], [ 0 => [ 'pipe', 'r' ], 1 => [ 'pipe', 'w' ] ], $pipes );
-	fgets( $pipes[1] );
+	check( 'the second process holds the database it was asked to hold (a pin that needs it would pass for nothing otherwise)', trim( (string) fgets( $pipes[1] ) ) === 'held' );
 
 	return [ $process, $pipes ];
 }
@@ -405,6 +405,21 @@ function crmArchive( array &$appData, string $id, ?string $key = null ): array {
 	ksort( $files );
 
 	return [ 'files' => $files, 'stamp' => (array) include $into. '/nino.php', 'folder' => $into ];
+}
+
+/**
+ *	A backup that packs the file of the core as it lies: the callback of the core is taken out of the request, so that a copy that is not the core's can be in an archive - the state a restore has to meet
+ *
+ *	@param		string		$sandbox
+ *
+ *	@return 	string|array							The id of the archive, or what the kernel answers where it ends
+ */
+function crmBackupRaw( string $sandbox ): string|array {
+
+	$request = crmRequest( $sandbox );
+	unset( $request['./nino/callbacks']['/nino/admin/backup'] );
+
+	return \Nino\Modules\Backups::now( $request );
 }
 
 /**
@@ -562,7 +577,7 @@ check( 'the manifest validates, is written for this kernel and is spelled out: c
 check( 'every line of the manual is a sentence of at most 200 characters in both languages, and every handle is at most 120', array_filter( $manifest['manual'], static fn( array $section ): bool => array_filter( $section, static fn( array $line, string $handle ): bool => strlen( $handle ) > 120
 	|| array_keys( $line ) !== [ 'en_US', 'de_DE' ] || mb_strlen( $line['en_US'] ) > 200 || mb_strlen( $line['de_DE'] ) > 200 || str_ends_with( $line['en_US'], '.' ) === false || str_ends_with( $line['de_DE'], '.' ) === false, ARRAY_FILTER_USE_BOTH ) !== [] ) === [] );
 check( 'the manual names what the feature brings: the shortcode, both routes, the panel, the callbacks, the unit and the data file', isset( $manifest['manual']['shortcodes']['[mail-head]'], $manifest['manual']['routes']['/.crm/place'], $manifest['manual']['routes']['/.crm/probe'], $manifest['manual']['panel']['CRM'], $manifest['manual']['install']['/data/crm.sqlite'] ) === true
-	&& count( $manifest['manual']['callbacks'] ) === 20 );
+	&& count( $manifest['manual']['callbacks'] ) === 22 );
 check( 'the unit and the panel words are in the folders the kernel reads, in both languages and with the same keys', array_keys( include $dir. '/text/de_DE.php' ) === array_keys( include $dir. '/text/en_US.php' ) && array_keys( include $dir. '/install/text/de_DE.php' ) === array_keys( include $dir. '/install/text/en_US.php' ) );
 $privacy = (array) include $dir. '/install/elements/privacy.php';
 check( 'the feature carries its section of the privacy policy, one id in the three buckets at the position its tests/catalogue.php names: the core keeps the clients', array_keys( $privacy ) === [ '*', 'de_DE', 'en_US' ] && array_keys( $privacy['de_DE'] ) === [ 'crm' ] && array_keys( $privacy['en_US'] ) === [ 'crm' ]
@@ -1216,12 +1231,15 @@ check( 'with the database free a name that does not own the places of the owner 
 	&& $lkVisit( 'crm.example.org', '/crm' ) === [ '/crm', 0, '' ] && $lkVisit( 'www.example.org', '/' ) === [ '/', 0, '' ] );
 
 // A lock another process holds for a second: the read of the names waits for it - as long as a write would - and the names are what the settings say
-$held = crmHold( $lkFile, 900000 );
+@unlink( $lkFile. '.let-go' );
+$held = crmHold( $lkFile, 1500000 );
 $started = microtime( true );
 $waited = $lkVisit( 'evil.example.org', '/crm', 5000 );
-$took = microtime( true ) - $started;
 crmRelease( $held );
-check( 'a lock that another process holds for less than the wait does not open the places of the owner: the request waits for it and is answered by the names of the settings - a name that does not own them is turned away, 404', $waited === [ $place, 404, '' ] && $took > 0.4 );
+
+// The request came while the holder held: it was asked before the holder let go - else this proves nothing of waiting, and says so
+$took = is_file( $lkFile. '.let-go' ) === true && $started < (float) file_get_contents( $lkFile. '.let-go' );
+check( 'a lock that another process holds for less than the wait does not open the places of the owner: the request waits for it and is answered by the names of the settings - a name that does not own them is turned away, 404', $waited === [ $place, 404, '' ] && $took === true );
 
 // A lock held for longer than the wait: the places of the owner are shut, on every name, and the website is not
 $held = crmHold( $lkFile );
@@ -1708,7 +1726,7 @@ $badKeys = [
 	'no default' => [ 'package' => 'crm-probe', 'key' => 'mine', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ] ], 'no rule for a key that a post may write' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '' ], 'a rule that is a closure' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => static fn() => '' ],
 	'a rule that is no method' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'nothing' ] ], 'a flag that is text' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'host' => 'yes' ],
 	'a read-only flag that is a number' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'read_only' => 1 ], 'a written that is no method' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'written' => [ 'Nope', 'nope' ] ],
-	'a refusal with capitals' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'refusal' => 'Crm Bad' ], 'a before that is no key of the core' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'before' => 'probe_limit' ],
+	'a refusal with capitals' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'refusal' => 'Crm Bad' ], 'a before that is no name of a key' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'before' => 'Probe Limit' ], 'a before that is the key itself' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'before' => 'mine' ], 'a before that is a list' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'before' => [ 'seller_name' ] ],
 	'a rank that is text' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'rank' => '5' ], 'a field the description has not' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ], 'secret' => true ],
 	'a key another package has, with another rule' => [ 'package' => 'crm-probe', 'key' => 'probe_limit', 'default' => '9', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ] ], 'a key that is a type of another feature' => [ 'package' => 'crm-probe', 'key' => 'mine', 'default' => '', 'clean' => 'strtoupper' ],
 ];
@@ -1718,7 +1736,7 @@ foreach( $badKeys as $label => $spec )
 	if( \Nino\Modules\Crm\Settings::add( $stRequest, [ $spec ] ) !== false || count( ninoWarnings() ) !== 1 )
 		$refused[] = $label;
 
-check( 'a key of the core or of another package, a key that is no key, a default that is no text, a rule that is none, a flag that is no flag, a field the description has not and a type of another feature are each refused with one warning', $refused === [] && count( $badKeys ) === 21 );
+check( 'a key of the core or of another package, a key that is no key, a default that is no text, a rule that is none, a flag that is no flag, a field the description has not and a type of another feature are each refused with one warning', $refused === [] && count( $badKeys ) === 23 );
 check( 'a list that has one bad key enters none of it; the same list again, after the good one, is as good as the first time, and the keys of the request are as they were', \Nino\Modules\Crm\Settings::add( $stRequest, [ [ 'package' => 'crm-probe', 'key' => 'fine_one', 'default' => '', 'clean' => [ \Nino\Modules\Crm\Settings::class, 'host' ] ], $badKeys['a key of the core'] ] ) === false && ninoWarnings() !== [] && \Nino\Modules\Crm\Settings::known( $stRequest, 'fine_one' ) === false
 	&& array_keys( \Nino\Modules\Crm\Settings::all( $stRequest ) ) === [ 'start_client', 'start_project', 'probe_limit', 'seller_name', 'brand_word', 'brand_domain', 'brand_color', 'brand_ink', 'crm_host', 'app_host', 'probe_host' ] );
 
@@ -1814,7 +1832,7 @@ $waited = microtime( true ) - $began;
 crmRelease( $holder );
 $retried = \Nino\Modules\Crm\Settings::readOnly( $lockedRead, 'seller_name' );
 $next = crmRequest( $stDir );
-check( 'a read that only reads waits for a locked database for a fraction of a second, answers nothing, is not tried again in the same request - the answer stays nothing though the lock is gone - and the next request reads the value', $busy === '' && $waited < 2.0 && $retried === '' && \Nino\Modules\Crm\Settings::readOnly( $next, 'seller_name' ) !== '' );
+check( 'a read that only reads waits for a locked database for the wait it has, answers nothing, is not tried again in the same request - the answer stays nothing though the lock is gone - and the next request reads the value', $busy === '' && $retried === '' && \Nino\Modules\Crm\Settings::readOnly( $next, 'seller_name' ) !== '' );
 $strange = crmSandbox( 'crm6-strange' );
 \Nino\Features::activate( $strange, 'crm' );
 $strangeDir = ninoSandboxDir( $strange );
@@ -2056,9 +2074,9 @@ $call = static function( mixed $content ) use ( &$hsRequest, $probe ): array {
 
 	return [ $answer['/nino/http/response']['statusCode'], $answer['/nino/http/response']['body'], $answer['/nino/http/response']['header']['Cache-Control'] ?? '' ];
 };
-check( 'the probe answers the hash of the number a question made while it lives - 200, never cached - and 404 in every other case: no file, an empty file, a number that is old, one from the future, and a file with a number that is no text',
-	$call( [ 'nonce' => 'abc', 'at' => time() ] ) === [ 200, hash( 'sha256', 'abc' ), 'no-store' ] && $call( null )[0] === 404 && $call( [] )[0] === 404 && $call( [ 'nonce' => 'abc', 'at' => time() - 601 ] )[0] === 404 && $call( [ 'nonce' => 'abc', 'at' => time() + 600 ] )[0] === 404
-	&& $call( [ 'nonce' => 7, 'at' => time() ] )[0] === 404 && $call( [ 'nonce' => 'abc' ] )[0] === 404 && $call( 'text' )[0] === 404 && $call( [ 'nonce' => 'abc', 'at' => time() - 600 ] )[0] === 200 );
+check( 'the probe answers the hash of the number a question made while it lives - 200, never cached - and 404 in every other case: no file, an empty file, a number that is old - the limit is ten minutes, and the check stays off its edge by two seconds, since the second can turn between the two calls -, one from the future, and a file with a number that is no text',
+	$call( [ 'nonce' => 'abc', 'at' => time() ] ) === [ 200, hash( 'sha256', 'abc' ), 'no-store' ] && $call( null )[0] === 404 && $call( [] )[0] === 404 && $call( [ 'nonce' => 'abc', 'at' => time() - 603 ] )[0] === 404 && $call( [ 'nonce' => 'abc', 'at' => time() + 600 ] )[0] === 404
+	&& $call( [ 'nonce' => 7, 'at' => time() ] )[0] === 404 && $call( [ 'nonce' => 'abc' ] )[0] === 404 && $call( 'text' )[0] === 404 && $call( [ 'nonce' => 'abc', 'at' => time() - 598 ] )[0] === 200 );
 $call( null );
 $asked = \Nino\Modules\Crm\Hosts::probe( $hsRequest, 'not a host' );
 check( 'asking whether a name is this installation is no request for a name that is none, and writes nothing', $asked === false && is_file( $probe ) === false && \Nino\Modules\Crm\Hosts::probe( $hsRequest, "a.example.org\0@evil.test" ) === false && \Nino\Modules\Crm\Hosts::probe( $hsRequest, 'a.example.org/x' ) === false && is_file( $probe ) === false );
@@ -2855,10 +2873,120 @@ foreach( [ 'an index has entries that are none of its table' => static function(
 $notice = null;
 $damaged = (string) file_get_contents( $bkFile );
 $restored = \Nino\Modules\Backups\Admin::restore( $bkRequest, $goodId, $notice );
-check( 'a restore of the good backup over the damaged database goes through, with the files of the core in the snapshot as they lay - the callback that throws does not keep a restore from happening - and puts the copy back: whole, with the rows it had',
-	$restored === true && ( $notice['code'] ?? '' ) === 'backups_snapshot_raw' && ( $notice['params'] ?? [] ) === [ 'crm' ] && $bkRows( $bkFile ) === $expect && glob( $bkFile. '-*' ) === [] );
 $snapshots = array_values( array_filter( array_map( static fn( string $file ): string => basename( $file, '.php' ), glob( \Nino\Modules\Backups::dir( $bkRequest ). '/pre-restore-*.php' ) ?: [] ) ) );
+check( 'a restore of the good backup over a database that SQLite opens but cannot overwrite - the file is cut off in the middle of its pages - is refused with the core named and a sentence of its own: the answer is 500 with backups_restore_callback, the file is the bytes it was, and nothing is left beside it',
+	is_array( $restored ) === true && $restored[0] === 500 && ( $restored[2] ?? '' ) === 'backups_restore_callback' && ( $restored[4]['features'] ?? [] ) === [ 'crm' ] && (string) file_get_contents( $bkFile ) === $damaged && ( glob( $bkFile. '-*' ) ?: [] ) === [] && ( glob( $bkFile. '.restore-*' ) ?: [] ) === [] );
 check( '...and the snapshot it took first holds the damaged file as it lay, byte for byte, with no copy of the core in it', count( $snapshots ) >= 1 && ( static function() use ( &$bkRequest, $snapshots, $damaged, $goodKey ): bool { $held = crmArchive( $bkRequest, end( $snapshots ), $goodKey ); return ( $held['files']['data/crm.sqlite'] ?? null ) === $damaged && ( $held['stamp']['copies'] ?? [] ) === []; } )() );
+
+// The rare rest, and the way out: the file is taken away, and the next restore writes the copy where there is no file
+unlink( $bkFile );
+$notice = null;
+$restored = \Nino\Modules\Backups\Admin::restore( $bkRequest, $goodId, $notice );
+check( 'a restore of the good backup where the file that could not be overwritten is gone goes through: whole, with the rows it had', $restored === true && $bkRows( $bkFile ) === $expect && ( glob( $bkFile. '-*' ) ?: [] ) === [] );
+
+// The file that is in the way is whatever it is: pages that are overwritten, a file of no byte, a file of text, a header that is cut off, a database whose index lacks rows - each is replaced, and the file is the archive's afterwards
+$replaced = [];
+
+foreach( [
+	'pages overwritten' => static function( string $file ): void { $h = fopen( $file, 'r+b' ); fseek( $h, 4096 * 2 ); fwrite( $h, str_repeat( "\xAB", 4096 ) ); fclose( $h ); },
+	'no byte' => static function( string $file ): void { file_put_contents( $file, '' ); },
+	'text' => static function( string $file ): void { file_put_contents( $file, str_repeat( 'a text that is no database ', 400 ) ); },
+	'a header that is cut off' => static function( string $file ): void { file_put_contents( $file, substr( (string) file_get_contents( $file ), 0, 50 ) ); },
+	'an index that lacks rows' => static function( string $file ) use ( $bkIndex ): void { $bkIndex( $file, 2 ); },
+] as $label => $break ) {
+	$noticeOf = null;
+	$break( $bkFile );
+	$answer = \Nino\Modules\Backups\Admin::restore( $bkRequest, $goodId, $noticeOf );
+	$replaced[$label] = $answer === true && $bkRows( $bkFile ) === $expect && ( glob( $bkFile. '-*' ) ?: [] ) === [] && ( glob( $bkFile. '.restore-*' ) ?: [] ) === [];
+}
+
+if( array_values( array_unique( $replaced ) ) !== [ true ] )
+	echo '        saw: '. json_encode( $replaced ). "\n";
+
+check( 'a live file that is the core\'s and is damaged in its pages, has no byte, is a text, has a header that is cut off or has an index that lacks rows is replaced by the restore of the panel: the answer is true, the file is the copy of the archive, whole, and nothing is left beside it', array_values( array_unique( $replaced ) ) === [ true ] );
+
+// A database of another application in that place is not written over, and a file that another process holds a lock on is not replaced
+$wholeBytes = (string) file_get_contents( $bkFile );
+$other = new \PDO( 'sqlite:'. $bkFile );
+$other->exec( 'PRAGMA application_id = 77' );
+$other = null;
+$otherBytes = (string) file_get_contents( $bkFile );
+$noticeOf = null;
+$answer = \Nino\Modules\Backups\Admin::restore( $bkRequest, $goodId, $noticeOf );
+check( 'a valid database of another application in the place of the file is not written over: the answer is 500 with the core named, and the file is the bytes it was', is_array( $answer ) === true && $answer[0] === 500 && ( $answer[4]['features'] ?? [] ) === [ 'crm' ] && (string) file_get_contents( $bkFile ) === $otherBytes && ( glob( $bkFile. '-*' ) ?: [] ) === [] && ( glob( $bkFile. '.restore-*' ) ?: [] ) === [] );
+file_put_contents( $bkFile, $wholeBytes );
+$bkIndex( $bkFile, 2 );
+$damagedBytes = (string) file_get_contents( $bkFile );
+$holder = crmWriter( $bkFile, '$db->exec( "BEGIN IMMEDIATE" ); $db->exec( "INSERT INTO settings ( key, value ) VALUES ( \'held.row\', \'yes\' )" );' );
+$noticeOf = null;
+$answer = \Nino\Modules\Backups\Admin::restore( $bkRequest, $goodId, $noticeOf );
+crmRelease( $holder );
+check( 'a file that is damaged and that another process holds a lock on is not replaced - it is in use: the answer is 500 with the core named, and the file is the bytes it was, with nothing made on the way', is_array( $answer ) === true && $answer[0] === 500 && ( $answer[4]['features'] ?? [] ) === [ 'crm' ] && (string) file_get_contents( $bkFile ) === $damagedBytes && ( glob( $bkFile. '-*' ) ?: [] ) === [] && ( glob( $bkFile. '.restore-*' ) ?: [] ) === [] );
+file_put_contents( $bkFile, $wholeBytes );
+
+// A copy in the archive that is not to be written: the panel's own function, with the archive that holds it. The live database is the bytes it was, nothing of the core is left in the staging for the kernel to copy over it, and the answer
+// names the core (backups_restore_callback). A copy in the log mode of writes is written, and the file is in the DELETE mode
+$goodBytes = (string) file_get_contents( $bkFile );
+$refusals = [];
+
+foreach( [
+	'damaged in its bytes' => static function( string $file ): void { file_put_contents( $file, random_bytes( 8192 ) ); },
+	'of no byte' => static function( string $file ): void { file_put_contents( $file, '' ); },
+	'of another application id' => static function( string $file ): void { $p = new \PDO( 'sqlite:'. $file ); $p->exec( 'PRAGMA application_id = 77' ); },
+	'of a newer version' => static function( string $file ): void { $p = new \PDO( 'sqlite:'. $file ); $p->exec( 'UPDATE schema_versions SET version = '. ( \Nino\Modules\Crm\Db::VERSION + 1 ). ' WHERE package = \'crm\'' ); },
+	'with no register of the core' => static function( string $file ): void { $p = new \PDO( 'sqlite:'. $file ); $p->exec( 'DELETE FROM schema_versions' ); },
+	'with an index that lacks rows' => static function( string $file ) use ( $bkIndex ): void { $bkIndex( $file, 2 ); },
+] as $label => $make ) {
+	file_put_contents( $bkFile, $goodBytes );
+	$make( $bkFile );
+	$id = crmBackupRaw( $bkDir );
+	file_put_contents( $bkFile, $goodBytes );
+	$noticeOf = null;
+	$answer = is_string( $id ) === true ? \Nino\Modules\Backups\Admin::restore( $bkRequest, $id, $noticeOf ) : $id;
+	$refusals[$label] = is_array( $answer ) === true && $answer[0] === 500 && ( $answer[2] ?? '' ) === 'backups_restore_callback' && ( $answer[4]['features'] ?? [] ) === [ 'crm' ] && (string) file_get_contents( $bkFile ) === $goodBytes && glob( $bkFile. '-*' ) === [];
+}
+
+if( array_values( array_unique( $refusals ) ) !== [ true ] )
+	echo '        saw: '. json_encode( $refusals ). "\n";
+check( 'a copy in the archive that is damaged, of no byte, of another application id, of a newer version, with no register of the core or with an index that lacks rows is not written by the restore of the panel, and the kernel copies nothing over the live database: the answer is 500 with backups_restore_callback and the core named, and the live file is the bytes it was', array_values( array_unique( $refusals ) ) === [ true ] );
+check( 'a restore with a live database that another process holds longer than the wait is the same: 500 backups_restore_callback, the live file is the bytes it was, and what the holder wrote is its own', ( static function() use ( $bkFile, $bkDir, $bkRequest, $goodBytes ): bool {
+
+	file_put_contents( $bkFile, $goodBytes );
+	$id = crmBackupRaw( $bkDir );
+	$holder = crmWriter( $bkFile, '$db->exec( "BEGIN IMMEDIATE" ); $db->exec( "INSERT INTO settings ( key, value ) VALUES ( \'held.row\', \'yes\' )" );' );
+	$noticeOf = null;
+	$answer = is_string( $id ) === true ? \Nino\Modules\Backups\Admin::restore( $bkRequest, $id, $noticeOf ) : $id;
+	crmRelease( $holder );
+	$same = (string) file_get_contents( $bkFile ) === $goodBytes;
+
+	return is_array( $answer ) === true && in_array( $answer[2] ?? '', [ 'backups_restore_callback', 'backups_restore_both' ], true ) === true && $same === true;
+} )() );
+
+// The restore through the code of the kernel - the panel's own function, which asks the callback of the core - while a process of its own writes to the database again and again: the file is whole after every restore, and what the writer
+// had committed is in it or is not, and nothing else is the matter; the state after the last one is the archive's, with what the writer wrote since
+$writerFile = $bkDir. '/writer.stop';
+$writerProgram = '$db = new PDO( "sqlite:". $argv[1], null, null, [ PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ] ); $db->exec( "PRAGMA busy_timeout = 5000" ); echo "up\n"; fflush( STDOUT ); $n = 0; $fails = 0; while( is_file( $argv[2] ) === false ) { try { $db->exec( "INSERT INTO settings ( key, value ) VALUES ( \'writer.". ( $n++ ). "\', \'x\' ) ON CONFLICT( key ) DO NOTHING" ); } catch( Throwable $e ) { $fails++; } usleep( 300 ); } echo json_encode( [ $n, $fails ] );';
+$writer = proc_open( [ PHP_BINARY, '-r', $writerProgram, $bkFile, $writerFile ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $writerPipes );
+fgets( $writerPipes[1] );
+$answers = [];
+
+for( $round = 0; $round < 6; $round++ ) {
+	$noticeOf = null;
+	$answers[] = \Nino\Modules\Backups\Admin::restore( $bkRequest, $goodId, $noticeOf );
+	usleep( 20000 );
+}
+
+touch( $writerFile );
+$writerSaid = json_decode( (string) stream_get_contents( $writerPipes[1] ), true );
+stream_get_contents( $writerPipes[2] );
+proc_close( $writer );
+unlink( $writerFile );
+$after = new \PDO( 'sqlite:'. $bkFile );
+$codes = array_map( static fn( mixed $one ): string => $one === true ? 'true' : ( is_array( $one ) === true ? (string) ( $one[2] ?? '' ) : 'other' ), $answers );
+check( 'the restore of the panel, six times while another process writes to the database: the file is whole after it - integrity check and foreign keys find nothing, no file of a log is left, the register of the core is there - and no restore ends as "written while it was in use" (the copy over a live file is the damage the callback of the core keeps from it)',
+	$after->query( 'PRAGMA integrity_check' )->fetchColumn() === 'ok' && $after->query( 'PRAGMA foreign_key_check' )->fetchAll() === [] && glob( $bkFile. '-*' ) === []
+	&& array_diff( $codes, [ 'true', 'backups_restore_callback', 'backups_restore_inuse', 'backups_restore_both' ] ) === [] && is_array( $writerSaid ) === true && (int) $after->query( 'SELECT COUNT(*) FROM schema_versions WHERE package = \'crm\'' )->fetchColumn() === 1 );
+$after = null;
 
 // The copy is looked at before it is handed over, whole: a copy that is damaged in an index or has the application id of another is none
 $verify = $bkDir. '/verify.sqlite';
@@ -3045,6 +3173,434 @@ else {
 }
 catch( \Throwable $crash ) {
 	crmCrashed( 'The script of the panel', $crash );
+}
+
+
+// --- What the packages asked of the core a second time ------------------------------------------------------------------------
+
+echo "\nWhat the packages asked of the core a second time\n";
+
+try {
+
+[ $c8, $c8Dir, $c8Request ] = crmWorld( 'crm-c8b' );
+
+// A package turns a request away, or moves it, with the calls of Hosts
+$c8Hosts = static function( string $how, string $uri, string $method = 'GET', string $host = 'www.example.org' ) use ( $c8Dir ): array {
+
+	$request = crmRequest( $c8Dir, true, [ './crm-probe/hosts' => $how ] );
+	$sent = crmVisit( $request, $host, $uri, $method );
+	$answer = $sent;
+	\Nino\Modules\Crm\Hosts::callbackRedirect( $request, $answer );
+	$response = $answer['/nino/http/response'];
+
+	return [ 'route' => (string) $sent['/nino/http/request']['uri'], 'method' => (string) $sent['/nino/http/request']['method'], 'status' => (int) $response['statusCode'], 'to' => (string) ( $response['header']['Location'] ?? '' ), 'retry' => (string) ( $response['header']['Retry-After'] ?? '' ) ];
+};
+check( 'refuse() and towards() are the interface of the class: public, with the hook that hands them their request in the description', array_map( static fn( string $method ): bool => ( new \ReflectionMethod( \Nino\Modules\Crm\Hosts::class, $method ) )->isPublic() === true && str_contains( (string) ( new \ReflectionMethod( \Nino\Modules\Crm\Hosts::class, $method ) )->getDocComment(), '/nino/http/request' ), [ 'refuse', 'towards' ] ) === [ true, true ] );
+$c8Route = \Nino\Modules\Crm\Hosts::ROUTE;
+$refused = [ $c8Hosts( 'refuse', '/_admin/probe/x', 'POST' ), $c8Hosts( 'refuse', '/_admin/probe/x?a=1' ) ];
+$shut = $c8Hosts( 'closed', '/_admin/probe/x', 'POST' );
+$other = $c8Hosts( 'refuse', '/page' );
+check( 'a package turns a request away with Hosts::refuse(): the request is the route that answers 404 with the method GET whatever it came with, nothing is redirected, and a request of another place is not touched', $refused[0] === [ 'route' => $c8Route, 'method' => 'GET', 'status' => 404, 'to' => '', 'retry' => '' ] && $refused[1]['route'] === $c8Route && $refused[1]['status'] === 404
+	&& $other['route'] === '/page' && $other['method'] === 'GET' );
+check( 'a package that shuts a place for want of knowing whose it is says so with Hosts::refuse( closed ): the answer is 503 and wait five seconds, nothing is redirected', $shut['route'] === $c8Route && $shut['status'] === 503 && $shut['retry'] === '5' && $shut['to'] === '' );
+ninoWarnings();
+$moved = $c8Hosts( 'towards', '/_admin/probe/x?tab=1&b=2' );
+$post = $c8Hosts( 'towards', '/_admin/probe/x', 'POST' );
+$odd = array_map( static fn( string $uri ): array => $c8Hosts( 'towards', $uri ), [ '/_admin/probe/../x', '/_admin/probe//x', '/_admin/probe/%2e%2e/x', "/_admin/probe/x\r\nSet-Cookie: a=b" ] );
+$same = $c8Hosts( 'towards', "/_admin/probe/x?a=1\r\nX: y" );
+check( 'a package moves a place with Hosts::towards(): a GET in the plain spelling of a path of the workbench is sent to the host it names, 301, with the query; any other method, a spelling a web server reads differently and a blank are refused as a place that is not there, with no Location', $moved === [ 'route' => $c8Route, 'method' => 'GET', 'status' => 301, 'to' => 'https://moved.example.org/_admin/probe/x?tab=1&b=2', 'retry' => '' ]
+	&& $post['status'] === 404 && $post['to'] === '' && array_filter( $odd, static fn( array $answer ): bool => $answer['status'] !== 404 || $answer['to'] !== '' || $answer['route'] !== \Nino\Modules\Crm\Hosts::ROUTE ) === [] && $same['status'] === 301 && str_contains( $same['to'], "\n" ) === false && ninoWarnings() === [] );
+$bad = $c8Hosts( 'bad', '/_admin/probe/x' );
+$said = ninoWarnings();
+check( 'a host that is no name is none to move a place to: the request is refused as a place that is not there, one warning says it and it names no host', $bad['status'] === 404 && $bad['to'] === '' && $bad['route'] === $c8Route && count( $said ) === 1 && str_contains( $said[0], 'evil' ) === false && str_contains( $said[0], 'moved.example' ) === false );
+$loop = $c8Hosts( 'towards', '/_admin/probe/x', 'GET', 'moved.example.org' );
+$loopSaid = ninoWarnings();
+check( 'a place is not moved to the host the request is on, which would send it round in a circle: the request is refused as a place that is not there, one warning says so, and the same call from another host moves it', $loop['status'] === 404 && $loop['to'] === '' && $loop['route'] === $c8Route && count( $loopSaid ) === 1 && $moved['status'] === 301 );
+
+check( 'the description of deliver() says of the kind VOID what the outbox does with it - it counts against the cap of the client - and not that it counts against none', str_contains( (string) file_get_contents( $source. '/Mail/Mail.php' ), 'of no cap (VOID' ) === false && str_contains( (string) file_get_contents( $source. '/Mail/Mail.php' ), 'CLIENT, and VOID, which goes to nobody' ) === true );
+
+// The mail: what became of each, and the kinds
+$c8Mail = crmRequest( $c8Dir );
+\Nino\Html::addFills( $c8Mail, [ '[[/project/company/contact/email]]' => 'owner@example.org', '[[/project/mail/address/envelope]]' => 'no-reply@example.org' ], '*' );
+crmTransport( $c8Mail );
+crmAccounts( $c8Mail );
+$GLOBALS['crmMails'] = [];
+$_SERVER['REMOTE_ADDR'] = '203.0.113.71';
+$c8Make = static fn( string $to, string $subject = 'S' ): array => [ 'to' => $to, 'subject' => $subject, 'body' => '<p>B</p>', 'replyTo' => '' ];
+$ids = [ 'stale' ];
+$taken = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'a@example.org' ), $c8Make( 'not an address' ), 'no mail', $c8Make( 'b@example.org' ) ], 'the mails about ids', true, 'crm/ids', \Nino\Mail::CLIENT, $ids );
+$said = ninoWarnings();
+$again = [];
+$takenAgain = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'a@example.org' ), $c8Make( 'not an address' ), 'no mail', $c8Make( 'b@example.org' ) ], 'the mails about ids', true, 'crm/ids', \Nino\Mail::CLIENT, $again );
+ninoWarnings();
+check( 'deliver() says which mail the outbox took: the id of each, in the order of the mails, and nothing for a mail it did not take - what stood in the list is gone, the list is as long as the mails, and the same mails under the same key are the same ids', $taken === 2 && count( $ids ) === 4 && preg_match( '/^[0-9a-f]{16}$/D', $ids[0] ) === 1 && $ids[1] === '' && $ids[2] === '' && preg_match( '/^[0-9a-f]{16}$/D', $ids[3] ) === 1 && $ids[0] !== $ids[3]
+	&& count( $said ) === 2 && $takenAgain === 2 && $again === $ids );
+$none = null;
+$left = [];
+$taken = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'c@example.org' ) ], 'a mail', false, '', \Nino\Mail::CLIENT, $none );
+$empty = [ 'x' ];
+\Nino\Modules\Crm\Mail::deliver( $c8Mail, [], 'no mails', true, '', \Nino\Mail::CLIENT, $empty );
+check( 'a caller that has no use for the ids passes none and gets the number as before, and no mail at all is a list of none', $taken === 1 && $none !== null && count( $none ) === 1 && $empty === [] );
+\Nino\Mail::deliverQueued( $c8Mail, 20 );
+$GLOBALS['crmMails'] = [];
+$c8Mail['/nino/mail/cap'] = 1;
+$_SERVER['REMOTE_ADDR'] = '203.0.113.72';
+$cap = [];
+$limit = [ \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'cap1@example.org' ) ], 'a mail' ), \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'cap2@example.org' ), $c8Make( 'cap3@example.org' ) ], 'the mails about the cap', true, '', \Nino\Mail::CLIENT, $cap ) ];
+$said = ninoWarnings();
+check( 'a mail the cap of the hour refused has no id and the mails after it were not asked: the list is as long as the mails and holds nothing, and the answer is limit with the warning that names the cap', $limit === [ 1, 'limit' ] && $cap === [ '', '' ] && count( $said ) === 1 && str_contains( $said[0], 'cap' ) === true );
+$mine = [];
+$void = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'nobody@example.org' ) ], 'a mail to nobody', false, 'crm/void', \Nino\Mail::VOID, $mine );
+$voidSaid = ninoWarnings();
+check( 'a mail of the kind VOID counts against the cap of the hour of a client as a mail of a client does: over a full cap it is refused - limit, no id, one warning that names the cap', $void === 'limit' && $mine === [ '' ] && count( $voidSaid ) === 1 && str_contains( $voidSaid[0], 'cap' ) === true );
+unset( $c8Mail['/nino/mail/cap'] );
+$_SERVER['REMOTE_ADDR'] = '203.0.113.73';
+\Nino\Mail::deliverQueued( $c8Mail, 20 );
+$GLOBALS['crmMails'] = [];
+$mine = [];
+$void = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'nobody@example.org' ) ], 'a mail to nobody', false, 'crm/void2', \Nino\Mail::VOID, $mine );
+$before = \Nino\Mail::state( $c8Mail, 'crm/void2' );
+\Nino\Mail::deliverQueued( $c8Mail, 20 );
+$sentTo = array_column( $GLOBALS['crmMails'], 'to' );
+check( 'a mail of the kind VOID is taken with an id, waits under its key, is let go to nobody - the transport is not asked - and its key tells it was delivered', $void === 1 && preg_match( '/^[0-9a-f]{16}$/D', $mine[0] ?? '' ) === 1 && $before === \Nino\Mail::STATE_WAITING && $sentTo === [] && \Nino\Mail::state( $c8Mail, 'crm/void2' ) === \Nino\Mail::STATE_SENT && ninoWarnings() === [] );
+
+// The kind OWNER: a signed-in account of the workbench and a POST
+$_SERVER['REQUEST_METHOD'] = 'GET';
+crmWorkbench( $c8Mail, '' );
+$visitor = [];
+$none = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'o1@example.org' ), $c8Make( 'o2@example.org' ) ], 'the mails of the owner', true, 'crm/owner-v', \Nino\Mail::OWNER, $visitor );
+$visitorSaid = ninoWarnings();
+crmWorkbench( $c8Mail, 'admin@example.org' );
+$get = [];
+$onGet = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'o3@example.org' ) ], 'the mail of the owner', false, 'crm/owner-g', \Nino\Mail::OWNER, $get );
+$getSaid = ninoWarnings();
+$_SERVER['REQUEST_METHOD'] = 'POST';
+$owner = [];
+$sent = \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'o4@example.org' ), $c8Make( 'o5@example.org' ) ], 'the mails of the owner', true, 'crm/owner', \Nino\Mail::OWNER, $owner );
+$ownerSaid = ninoWarnings();
+$states = [ \Nino\Mail::state( $c8Mail, 'crm/owner-0' ), \Nino\Mail::state( $c8Mail, 'crm/owner-v-0' ) ];
+$c8Mail['/nino/mail/cap'] = 1;
+$_SERVER['REMOTE_ADDR'] = '203.0.113.74';
+$full = [ \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'cl1@example.org' ) ], 'a mail' ), \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'cl2@example.org' ) ], 'a mail' ), \Nino\Modules\Crm\Mail::deliver( $c8Mail, [ $c8Make( 'o6@example.org' ) ], 'the mail of the owner', false, 'crm/owner-c', \Nino\Mail::OWNER ) ];
+$fullSaid = ninoWarnings();
+unset( $c8Mail['/nino/mail/cap'] );
+check( 'a mail of the kind OWNER needs a session of an account of the workbench: from a visitor each mail is refused with a warning that says session - no id, none taken -, from an account in a request that is no POST with one that says method, from an account in a POST it is taken with its id', $none === 0 && $visitor === [ '', '' ] && count( $visitorSaid ) === 2 && array_filter( $visitorSaid, static fn( string $line ): bool => str_contains( $line, '(session)' ) === false ) === []
+	&& $onGet === 0 && $get === [ '' ] && count( $getSaid ) === 1 && str_contains( $getSaid[0], '(method)' ) === true && $sent === 2 && count( array_filter( $owner, static fn( string $id ): bool => preg_match( '/^[0-9a-f]{16}$/D', $id ) === 1 ) ) === 2 && $ownerSaid === [] );
+check( 'a mail of the owner counts against no cap of the hour: where the cap of a client is full and refuses its second mail, the mail of the owner is taken, and what became of it is asked by its key: it waits, and the one nobody took is unknown', $full === [ 1, 'limit', 1 ] && count( $fullSaid ) === 1 && $states === [ \Nino\Mail::STATE_WAITING, \Nino\Mail::STATE_UNKNOWN ] );
+$GLOBALS['crmMails'] = [];
+\Nino\Mail::deliverQueued( $c8Mail, 40 );
+$gotten = array_column( $GLOBALS['crmMails'], 'to' );
+sort( $gotten );
+check( 'the mails of the owner are delivered, each once, to the address it was made for, and their keys tell they were sent', array_values( array_intersect( $gotten, [ 'o4@example.org', 'o5@example.org', 'o6@example.org' ] ) ) === [ 'o4@example.org', 'o5@example.org', 'o6@example.org' ] && in_array( 'o1@example.org', $gotten, true ) === false && in_array( 'o3@example.org', $gotten, true ) === false
+	&& \Nino\Mail::state( $c8Mail, 'crm/owner-0' ) === \Nino\Mail::STATE_SENT && \Nino\Mail::state( $c8Mail, 'crm/owner-1' ) === \Nino\Mail::STATE_SENT );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+crmWorkbench( $c8Mail, '' );
+$_SERVER['REMOTE_ADDR'] = '203.0.113.60';
+
+
+// The settings: a key stands in front of any key, of the core, of its own package or of another
+\Nino\Features::activate( $c8, 'crm-probe-two' );
+$c8Clean = [ \Nino\Modules\Crm\Settings::class, 'host' ];
+$c8Two = [ \Nino\Modules\CrmProbeTwo::class, 'clean' ];
+$c8Key = static fn( string $key, ?string $before, int $rank = 500, string $package = 'crm-probe' ): array => [ 'package' => $package, 'key' => $key, 'default' => '', 'clean' => $package === 'crm-probe' ? [ \Nino\Modules\Crm\Settings::class, 'host' ] : [ \Nino\Modules\CrmProbeTwo::class, 'clean' ], 'before' => $before, 'rank' => $rank ];
+$c8Order = static function( array ...$calls ) use ( $c8Dir, $c8Key ): array {
+
+	$request = crmRequest( $c8Dir );
+	ninoWarnings();
+	$entered = [];
+
+	foreach( $calls as $call )
+		$entered[] = \Nino\Modules\Crm\Settings::add( $request, array_map( static fn( array $key ): array => $c8Key( ...$key ), $call ) );
+
+	return [ array_keys( \Nino\Modules\Crm\Settings::all( $request ) ), $entered, ninoWarnings(), $request ];
+};
+$core = [ 'start_client', 'start_project', 'probe_limit', 'seller_name', 'brand_word', 'brand_domain', 'brand_color', 'brand_ink', 'crm_host', 'app_host', 'probe_host' ];
+$put = static fn( array $keys, string $before, string ...$new ): array => array_merge( array_slice( $keys, 0, (int) array_search( $before, $keys, true ) ), $new, array_slice( $keys, (int) array_search( $before, $keys, true ) ) );
+$own = $c8Order( [ [ 'mine_a', 'probe_limit' ] ] );
+$other = $c8Order( [ [ 'two_a', 'probe_limit', 500, 'crm-probe-two' ] ] );
+$request = $other[3];
+check( 'a key of a package stands in front of a key of its own package or of another: of the core as before, of its own package\'s probe_limit and of the key another package entered - and the key is known and has its default like any other', $own[0] === $put( $core, 'probe_limit', 'mine_a' ) && $other[0] === $put( $core, 'probe_limit', 'two_a' ) && $own[1] === [ true ] && $other[1] === [ true ] && $own[2] === [] && $other[2] === []
+	&& \Nino\Modules\Crm\Settings::known( $request, 'two_a' ) === true && \Nino\Modules\Crm\Settings::get( $request, 'two_a' ) === '' );
+$forward = $c8Order( [ [ 'mine_a', 'probe_limit' ], [ 'two_a', 'probe_limit', 500, 'crm-probe-two' ] ] );
+$backward = $c8Order( [ [ 'two_a', 'probe_limit', 500, 'crm-probe-two' ] ], [ [ 'mine_a', 'probe_limit' ] ] );
+$ranked = $c8Order( [ [ 'two_a', 'probe_limit', 200, 'crm-probe-two' ] ], [ [ 'mine_a', 'probe_limit', 100 ] ] );
+$rankedBack = $c8Order( [ [ 'mine_a', 'probe_limit', 100 ] ], [ [ 'two_a', 'probe_limit', 200, 'crm-probe-two' ] ] );
+$same = $c8Order( [ [ 'mine_a', 'probe_limit', 500 ], [ 'mine_b', 'probe_limit', 500 ] ] );
+$sameBack = $c8Order( [ [ 'mine_b', 'probe_limit', 500 ] ], [ [ 'mine_a', 'probe_limit', 500 ] ] );
+check( 'the order does not depend on which package entered itself first, at any place: keys that stand in front of the same key go by their rank, then by the key of their package, then by their own key - and the order is the same with the packages entered in either order, at the same rank and at another', $forward[0] === $put( $core, 'probe_limit', 'mine_a', 'two_a' ) && $backward[0] === $forward[0]
+	&& $ranked[0] === $put( $core, 'probe_limit', 'mine_a', 'two_a' ) && $rankedBack[0] === $ranked[0] && $same[0] === $put( $core, 'probe_limit', 'mine_a', 'mine_b' ) && $sameBack[0] === $same[0] );
+$late = $c8Order( [ [ 'mine_a', 'later_key' ] ] );
+$after = $c8Order( [ [ 'mine_a', 'later_key' ] ], [ [ 'later_key', 'app_host' ] ] );
+$before = $c8Order( [ [ 'later_key', 'app_host' ] ], [ [ 'mine_a', 'later_key' ] ] );
+check( 'a key whose anchor is not entered - the package that has it is off or removed - goes to the end with no refusal and no warning, and stands in front of it where the anchor is entered after it, as where it is entered before', $late[0] === $put( $core, 'probe_host', 'mine_a' ) && $late[1] === [ true ] && $late[2] === [] && $after[0] === $put( $core, 'app_host', 'mine_a', 'later_key' ) && $before[0] === $after[0] );
+$chain = $c8Order( [ [ 'chain_b', 'chain_a' ], [ 'chain_a', 'seller_name' ] ] );
+$chainBack = $c8Order( [ [ 'chain_a', 'seller_name' ] ], [ [ 'chain_b', 'chain_a' ] ] );
+$deep = $c8Order( [ [ 'deep_c', 'deep_b' ], [ 'deep_b', 'deep_a', 100 ], [ 'deep_a', 'probe_limit' ], [ 'deep_d', 'deep_b', 50 ] ] );
+check( 'a key stands in front of a key that stands in front of another, however deep and whichever was entered first: the keys that stand in front of it go in front of it as they go in front of a key of the core', $chain[0] === $put( $core, 'seller_name', 'chain_b', 'chain_a' ) && $chainBack[0] === $chain[0]
+	&& $deep[0] === $put( $core, 'probe_limit', 'deep_d', 'deep_c', 'deep_b', 'deep_a' ) );
+$ringKeys = [ [ 'ring_a', 'ring_b' ], [ 'ring_b', 'ring_a' ], [ 'ring_c', 'ring_c2' ], [ 'ring_c2', 'ring_c3' ], [ 'ring_c3', 'ring_c' ], [ 'hang', 'ring_a' ] ];
+$ringBack = $c8Order( ...array_map( static fn( array $one ): array => [ $one ], array_reverse( $ringKeys ) ) );
+[ $ring, $ringEntered, $ringSaid ] = $c8Order( [ [ 'ring_a', 'ring_b' ], [ 'ring_b', 'ring_a' ], [ 'ring_c', 'ring_c2' ], [ 'ring_c2', 'ring_c3' ], [ 'ring_c3', 'ring_c' ], [ 'hang', 'ring_a' ] ] );
+check( 'keys that stand in front of each other in a ring are none of the core\'s to place: they go to the end in the order they were entered in, with no refusal, no warning and no loop, a key that stands in front of one of them stands in front of it there, and the keys of the core are where they were', $ring === array_merge( $core, [ 'hang', 'ring_a', 'ring_b', 'ring_c', 'ring_c2', 'ring_c3' ] ) && $ringEntered === [ true ] && $ringSaid === [] && $ringBack[0] === $ring );
+$none = $c8Order( [ [ 'mine_a', null ], [ 'mine_b', null, 100 ] ] );
+check( 'a key with no anchor stands at the end by its rank, then by the key of its package and its own key', $none[0] === array_merge( array_slice( $core, 0, 10 ), [ 'mine_b', 'mine_a', 'probe_host' ] ) );
+
+// The schema of a package: a partial index and a table that names itself
+[ $c8s, $c8sDir ] = crmWorld( 'crm-c8b-schema' );
+$c8Enter = static function( int $version, string $file, array $tables ) use ( $c8sDir, $features ): array {
+
+	$request = crmRequest( $c8sDir, false );
+	ninoWarnings();
+	\Nino\Modules\Crm\Db::addSchema( $request, [ 'package' => 'crm-probe', 'version' => $version, 'tables' => $tables, 'file' => $features. '/CrmProbe/'. $file ] );
+
+	return $request;
+};
+$c8Schema = crmSchemaFile( 'schema-c8b.php', [
+	'CREATE TABLE crm_probe_items ( id INTEGER PRIMARY KEY, client_id INTEGER NOT NULL REFERENCES clients( id ) ON DELETE RESTRICT, parent_id INTEGER REFERENCES crm_probe_items( id ) ON DELETE RESTRICT, label TEXT NOT NULL DEFAULT \'\', gone TEXT )',
+	'CREATE INDEX crm_probe_items_client ON crm_probe_items ( client_id )',
+	'CREATE UNIQUE INDEX crm_probe_items_open ON crm_probe_items ( label ) WHERE gone IS NULL',
+	'CREATE INDEX crm_probe_items_children ON crm_probe_items ( parent_id ) WHERE parent_id IS NOT NULL',
+], [
+	2 => [ 'CREATE INDEX crm_probe_items_gone ON crm_probe_items ( gone ) WHERE gone IS NOT NULL', 'DROP INDEX crm_probe_items_children', 'CREATE INDEX crm_probe_items_children ON crm_probe_items ( parent_id, label ) WHERE parent_id IS NOT NULL' ],
+] );
+$c8Db = $c8Enter( 1, $c8Schema, [ 'crm_probe_items' ] );
+$c8Pdo = null;
+
+try {
+	$c8Pdo = \Nino\Modules\Crm\Db::pdo( $c8Db );
+}
+catch( \Throwable $e ) {
+	// The pin that asks says it: a schema that is refused has no tables, and the section goes on to the end of it
+	$c8Pdo = new \PDO( 'sqlite::memory:' );
+}
+
+$c8Sql = static fn( string $name ) => $c8Pdo->query( 'SELECT sql FROM sqlite_master WHERE name = '. $c8Pdo->quote( $name ) )->fetchColumn();
+$c8Fails = static function( string $sql ) use ( $c8Pdo ): bool {
+
+	try {
+		$c8Pdo->exec( $sql );
+
+		return false;
+	}
+	catch( \PDOException $e ) {
+		return true;
+	}
+};
+check( 'the schema of a package is taken with a partial index - a unique one and one on a column that may be empty - and with a table that names itself: the package is entered, nothing is refused and nothing warns, and the index holds the condition it was made with', ( static function() use ( $c8Db, $c8Pdo, $c8Sql ): bool {
+
+	// A schema that is refused makes no database to ask: the pin says so, and the section goes on
+	try {
+		return \Nino\Modules\Crm\Db::failed( $c8Db ) === [] && ninoWarnings() === [] && \Nino\Modules\Crm\Db::versions( $c8Db )['crm-probe'] === 1
+			&& str_contains( (string) $c8Sql( 'crm_probe_items_open' ), 'WHERE gone IS NULL' ) === true && str_contains( (string) $c8Sql( 'crm_probe_items_children' ), 'WHERE parent_id IS NOT NULL' ) === true
+			&& array_map( static fn( array $row ): string => $row['table'], $c8Pdo->query( 'PRAGMA foreign_key_list( crm_probe_items )' )->fetchAll( \PDO::FETCH_ASSOC ) ) === [ 'crm_probe_items', 'clients' ];
+	}
+	catch( \Throwable $e ) {
+		return false;
+	}
+} )() );
+$c8Pdo->exec( 'INSERT INTO clients ( id, number, name, created, updated ) VALUES ( 1, \'K-0001\', \'Ada\', \'2026-01-01T00:00:00Z\', \'2026-01-01T00:00:00Z\' )' );
+$c8Pdo->exec( 'INSERT INTO crm_probe_items ( id, client_id, label ) VALUES ( 1, 1, \'root\' )' );
+$c8Pdo->exec( 'INSERT INTO crm_probe_items ( id, client_id, parent_id, label ) VALUES ( 2, 1, 1, \'child\' )' );
+$c8Pdo->exec( 'INSERT INTO crm_probe_items ( client_id, label, gone ) VALUES ( 1, \'root\', \'2026-01-01\' )' );
+check( 'what the table that names itself and the partial index say holds: a row of the table names a row of it - one that is not there is refused, and the row that is named cannot be deleted while it is -, and the partial unique index refuses a second open row of a label and takes one that is gone', $c8Fails( 'INSERT INTO crm_probe_items ( client_id, parent_id, label ) VALUES ( 1, 99, \'orphan\' )' ) === true && $c8Fails( 'DELETE FROM crm_probe_items WHERE id = 1' ) === true
+	&& $c8Fails( 'INSERT INTO crm_probe_items ( client_id, label ) VALUES ( 1, \'root\' )' ) === true && $c8Fails( 'INSERT INTO crm_probe_items ( client_id, label, gone ) VALUES ( 1, \'root\', \'2026-02-02\' )' ) === false );
+$c8Peel = static function( array &$a ): int {
+
+	$pdo = \Nino\Modules\Crm\Db::pdo( $a );
+	$pdo->exec( 'BEGIN IMMEDIATE' );
+
+	try {
+		$gone = \Nino\Modules\Crm\Wipe::peel( \Nino\Modules\Crm\Db::runner( $pdo ), 'crm_probe_items', 'parent_id' );
+		$pdo->exec( 'COMMIT' );
+	}
+	catch( \Throwable $e ) {
+		$pdo->exec( 'ROLLBACK' );
+		throw $e;
+	}
+
+	return $gone;
+};
+check( 'the rows of a table that names itself go in one run of the test phase: the rows nobody names first, then the ones they named, none left, in the transaction of the database step', $c8Peel( $c8Db ) === 4 && (int) $c8Pdo->query( 'SELECT COUNT(*) FROM crm_probe_items' )->fetchColumn() === 0 );
+$c8Next = $c8Enter( 2, $c8Schema, [ 'crm_probe_items' ] );
+$c8Pdo = \Nino\Modules\Crm\Db::pdo( $c8Next );
+check( 'a step of a package makes a partial index, drops one and makes it again with another column: the package is at version 2 and nothing failed', \Nino\Modules\Crm\Db::failed( $c8Next ) === [] && \Nino\Modules\Crm\Db::versions( $c8Next )['crm-probe'] === 2 && str_contains( (string) $c8Sql( 'crm_probe_items_gone' ), 'WHERE gone IS NOT NULL' ) === true
+	&& str_contains( (string) $c8Sql( 'crm_probe_items_children' ), 'parent_id, label' ) === true );
+// What the rules of the schema still refuse, said through a partial index and a self-reference as through any other
+$c8Rules = [
+	'a partial index on a table of the core' => [ 'CREATE INDEX crm_probe_x ON clients ( name ) WHERE active = 1' ],
+	'a partial index on the table of another package' => [ 'CREATE INDEX crm_probe_x ON crm_two_items ( id ) WHERE id > 0' ],
+	'an index with a condition that reads the clients' => [ 'CREATE INDEX crm_probe_x ON crm_probe_items ( label ) WHERE label IN ( SELECT number FROM clients )' ],
+	'a statement that follows a partial index' => [ 'CREATE INDEX crm_probe_x ON crm_probe_items ( label ) WHERE label <> \'\'; DROP TABLE clients' ],
+	'a table that names itself and then drops the clients' => [ 'CREATE TABLE crm_probe_old ( id INTEGER PRIMARY KEY, up INTEGER REFERENCES crm_probe_old( id ) )', 'DROP TABLE clients' ],
+	'an index that has the name of an index of the core' => [ 'CREATE INDEX records_client_kind ON crm_probe_items ( label ) WHERE label <> \'\'' ],
+];
+$c8Kept = (string) $c8Pdo->query( 'SELECT group_concat( sql, \';\' ) FROM sqlite_master WHERE name NOT LIKE \'crm\_probe%\' ESCAPE \'\\\' ORDER BY name' )->fetchColumn();
+$c8Wrong = [];
+
+foreach( $c8Rules as $what => $statements ) {
+
+	$file = crmSchemaFile( 'schema-c8b-rule.php', [ 'CREATE TABLE crm_probe_items ( id INTEGER PRIMARY KEY, client_id INTEGER NOT NULL REFERENCES clients( id ), label TEXT )' ], [ 3 => $statements ] );
+	$request = $c8Enter( 3, $file, [ 'crm_probe_items', 'crm_probe_old' ] );
+	$now = (string) \Nino\Modules\Crm\Db::pdo( $request )->query( 'SELECT group_concat( sql, \';\' ) FROM sqlite_master WHERE name NOT LIKE \'crm\_probe%\' ESCAPE \'\\\' ORDER BY name' )->fetchColumn();
+
+	if( \Nino\Modules\Crm\Db::failed( $request ) !== [ 'crm-probe' => 3 ] || $now !== $c8Kept )
+		$c8Wrong[] = $what;
+}
+
+check( 'the rules of what a schema may hold are the same for a partial index and for a table that names itself: on a table that is not the package\'s, with a second statement, with a condition that reads the clients, under the name of an index of the core - the package fails, and what the file holds of the core and of the others is as it was', $c8Wrong === [] );
+
+
+// What the packages call of the core is declared in the description of the class, and held here
+$declared = <<<'LIST'
+Crm::MANAGE_PERM|const "/_admin/crm/manage"
+Crm::featureOn|( array &$appData, string $key ): bool
+Crm::restore|( array &$appData, array &$args ): string
+Crm::siteName|( array &$appData ): string
+Api::ROUTE|const "/crm/api"
+Api::add|( array &$appData, array $actions, array $opts = [] ): bool
+Api::made|( array &$appData, string $line ): void
+Api::record|( array &$appData, string $actor, string $line ): bool
+Api::id|( array &$request, array $data, string $code, string $key = 'id' ): ?int
+Api::run|( array &$request, callable $run ): void
+Clients::GROUP|const "/^k-[0-9]{4,}$/D"
+Clients::VIEW|const "/crm/client/view"
+Clients::VIEWS|const "/crm/clients/view"
+Clients::PART_DEPTH|const 6
+Clients::PART_BYTES|const 16384
+Clients::LIST_BYTES|const 1048576
+Clients::get|( array &$appData, int $id ): ?array
+Clients::list|( array &$appData ): array
+Clients::byNumber|( array &$appData, string $number ): ?array
+Clients::title|( array $client, string $fallback = '' ): string
+Clients::complete|( array $values ): bool
+Clients::group|( string $number ): string
+Clients::ofGroup|( array &$appData, string $group ): ?array
+Clients::view|( array &$appData, array $client ): array
+Clients::views|( array &$appData, array $clients ): array
+Db::addSchema|( array &$appData, array $spec ): bool
+Db::ensure|( array &$appData ): int
+Db::exec|( array &$appData, string $sql, array $params = [] ): int
+Db::pdo|( array &$appData ): PDO
+Db::row|( array &$appData, string $sql, array $params = [] ): ?array
+Db::rows|( array &$appData, string $sql, array $params = [] ): array
+Erasure::add|( array &$appData, array $spec ): bool
+Erasure::peel|( callable $run, string $table, string $column, int $client, array $only = [] ): int
+Format::country|( string $code, string $locale ): string
+Format::day|( string $date ): string
+Hosts::share|( array &$appData, array $prefixes, array $exact = [], array $opts = [] ): bool
+Hosts::refuse|( array &$request, bool $closed = false ): void
+Hosts::towards|( string $app, array &$request ): void
+Logbook::add|( array &$appData, array $entry ): array|string
+Logbook::addKinds|( array &$appData, array $kinds, array $opts = [] ): bool
+Logbook::find|( array &$appData, string $source, string $kind, array $where, int $limit = 50 ): array
+Logbook::scrub|( string $value ): string
+Logbook::who|( array &$appData ): string
+Mail::deliver|( array &$appData, array $mails, string $about, bool $many = false, string $key = '', string $kind = 'client', ?array &$ids = null ): string|int
+Mail::addWords|( array &$appData, string $root, array $opts = [] ): bool
+Erasure::HOLDS|const "/crm/client/holds"
+Overview::HOOK|const "/crm/overview"
+Projects::FIGURES|const "/crm/project/figures"
+Projects::HOLDS|const "/crm/project/holds"
+Projects::ID|const "/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/D"
+Projects::forget|( array &$appData ): void
+Projects::get|( array &$appData, string $id ): ?array
+Projects::named|( string $id, string $title ): string
+Projects::ofClient|( array &$appData, string $clientNumber ): array
+Projects::titles|( array &$appData ): array
+Records::of|( array &$appData, int $clientId, ?string $kind = null, ?string $purpose = null ): array
+Records::ofClients|( array &$appData, array $ids, string $kind ): array
+Records::names|( array &$appData, string $thing, string $id ): bool
+Sequences::add|( array &$appData, array $spec ): bool
+Sequences::next|( array &$appData, PDO $pdo, string $category, int $year, int $start = 1 ): int
+Sequences::upcoming|( array &$appData, string $category, int $year, int $start = 1 ): int
+Settings::add|( array &$appData, array $keys ): bool
+Settings::all|( array &$appData ): array
+Settings::get|( array &$appData, string $key ): string
+Settings::oneOf|( string $key, string $value, array $words ): array|string
+Settings::start|( array &$appData, string $category ): int
+Settings::ownerName|( array &$appData ): string
+Settings::readOnly|( array &$appData, string $key ): string
+Settings\Api::SAVE|const "/crm/settings/save"
+Status::add|( array &$appData, array $spec ): bool
+Surface::addTexts|( array &$appData, string $directory, array $opts = [] ): bool
+Surface\Data::add|( array &$appData, array $source, array $opts = [] ): bool
+Surface\Scripts::add|( array &$appData, string $name, string $file, array $opts = [] ): bool
+Surface\Scripts::addStyle|( array &$appData, string $name, string $file, array $opts = [] ): bool
+Surface\Texts::add|( array &$appData, string $directory, array $opts = [] ): bool
+Surface\Texts::word|( array &$appData, string $key ): string
+Surface\Texts::locale|( array &$appData ): string
+Surface\Texts::all|( array &$appData ): array
+Values::START|const "/crm/element/start"
+Values::addType|( array &$appData, array $spec ): bool
+Values::permit|( array &$appData, array &$request, string $perm ): bool
+Values::posted|(): array
+Values::string|( array $data, string $key, string $default = '' ): string
+Values::scoped|( array &$appData, string $prefix, string $perm ): bool
+Values::workbench|( array &$appData ): bool
+Wipe::add|( array &$appData, array $spec ): bool
+Wipe::peel|( callable $run, string $table, string $column ): int
+LIST;
+$whole = (string) file_get_contents( $source. '/Crm.php' );
+$from = strpos( $whole, 'THE CALLS A PACKAGE MAKES OF THE CORE' );
+$till = strpos( $whole, 'THE NAMES A SCRIPT OF A PACKAGE' );
+
+// The section of the description that declares them, and no other place: a line that is gone from it is a failure even where the older list above names the same signature
+$described = $from === false || $till === false || $till < $from ? '' : substr( $whole, $from, $till - $from );
+$differ = [];
+$seen = 0;
+
+foreach( explode( "\n", $declared ) as $line ) {
+
+	[ $name, $signature ] = explode( '|', $line, 2 );
+	[ $class, $member ] = explode( '::', $name, 2 );
+	$full = '\\Nino\\Modules\\Crm'. ( $class === 'Crm' ? '' : '\\'. $class );
+	$seen++;
+
+	if( str_starts_with( $signature, 'const ' ) === true ) {
+
+		$value = constant( $full. '::'. $member );
+
+		if( 'const '. json_encode( $value, JSON_UNESCAPED_SLASHES ) !== $signature || str_contains( $described, $name. ' = \''. $value. '\'' ) === false && str_contains( $described, $name. ' = '. $value ) === false )
+			$differ[] = $name;
+
+		continue;
+	}
+
+	try {
+		$method = new \ReflectionMethod( $full, $member );
+	}
+	catch( \ReflectionException $e ) {
+		$differ[] = $name;
+
+		continue;
+	}
+
+	$parameters = [];
+
+	foreach( $method->getParameters() as $parameter ) {
+
+		$default = '';
+
+		if( $parameter->isDefaultValueAvailable() === true ) {
+			$value = $parameter->getDefaultValue();
+			$default = ' = '. ( $value === [] ? '[]' : ( $value === null ? 'null' : var_export( $value, true ) ) );
+		}
+
+		$parameters[] = ( $parameter->hasType() === true ? $parameter->getType(). ' ' : '' ). ( $parameter->isPassedByReference() === true ? '&' : '' ). '$'. $parameter->getName(). $default;
+	}
+
+	$said = ( $parameters === [] ? '()' : '( '. implode( ', ', $parameters ). ' )' ). ': '. ( $method->hasReturnType() === true ? $method->getReturnType() : 'mixed' );
+
+	if( $method->isPublic() === false || $method->isStatic() === false || $said !== $signature || str_contains( $described, $name. $signature ) === false )
+		$differ[] = $name;
+}
+
+check( 'the description says of the calls of the database what they are: a package is code with the rights of the kernel, and what Db::exec() and Db::pdo() let it write passes no check of the core', str_contains( $whole, 'with the rights of the kernel' ) === true && str_contains( $whole, 'Db::exec(), Db::pdo() - passes no check of the core' ) === true && str_contains( (string) substr( $described, (int) strpos( $described, '- Db::exec( array' ), 700 ), 'the tables of the core are not the package' ) === true );
+check( 'every call that the packages make of the core is declared in the description of the class with the signature php says - a public static method of that name, its parameters with their types, references and defaults, its type of answer - and every constant with its value: a signature that changes is a failure of this line, and so is a line of the description that is no longer what the code says ('. $seen. ' places)', $differ === [] && $seen === 87 );
+
+}
+catch( \Throwable $crash ) {
+	crmCrashed( 'What the packages asked of the core a second time', $crash );
 }
 
 

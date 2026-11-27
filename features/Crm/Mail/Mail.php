@@ -286,27 +286,42 @@ namespace Nino\Modules\Crm {
 
 		/**
 		 *	Hand mails to the outbox of the kernel, in one call: each is kept until it is out - delivered after the response, by this request or a later one, tried again after a failure -
-		 *	and counts one try of the cap of mails an hour of the client that set it off (CLIENT) or of the cap of the whole site (SYSTEM). The warning for a cap that refused them
-		 *	and for a mail the outbox did not take, and the number that were taken
+		 *	and counts one try of the cap of mails an hour of the client that set it off (CLIENT, and VOID, which goes to nobody), of the cap of the whole site (SYSTEM, TEST) or of no cap but the places of the owner (OWNER).
+		 *	The warning for a cap that refused them and for a mail the outbox did not take - one warning for each mail that was not taken, and the cap's own for the first one it refused, which ends the call -, the number that
+		 *	were taken, and what became of each mail
+		 *
+		 *	The kinds, as the outbox of the kernel has them (\Nino\Mail::queue()):
+		 *	- CLIENT: a mail that a visitor sets off - a form, a link, an order. It counts one try of the cap of the visitor's address, the mails an hour the kernel allows an address, so that a visitor cannot make the site mail without end
+		 *	- SYSTEM and TEST: a mail of the site itself, against the cap of the whole site of that kind; a cap that is over is no refusal, the mail waits for the next hour
+		 *	- VOID: a mail to nobody. It goes the whole way of a CLIENT mail - it counts against the cap of the client's address, so that it is refused over a full cap as a mail of a client is (limit, no id), it gets its id, waits under its key - and the
+		 *	  outbox lets it go without asking a transport: its key then says it was delivered (\Nino\Mail::state()). A package that wants to know what a mail would have done - the same text under the same key - without anybody getting it uses it
+		 *	- OWNER: a mail that an account of the workbench sets off, to the people it writes to - a round mail, a reminder. The outbox takes it only where the request carries the session of a signed-in account of the workbench
+		 *	  and is a POST: a visitor, a session that ended, a command and a link that is followed get no mail - the outbox answers no id (queueRefused() says session or method), and deliver() says so in a warning, one for each mail, and takes none. The right
+		 *	  to send it and the token of the form (\Nino\Csrf::blocked()) are the package's own to ask before it calls deliver(). It counts against no cap of the hour: where the cap of a client is full, a mail of the owner is taken all the same. What became of a mail is asked
+		 *	  by its key, \Nino\Mail::state() - it waits, then it was sent; a second call with the same key and the same mail is the same mail, and answers its id
 		 *
 		 *	@param		array 		&$appData
 		 *	@param		array 		$mails				[ { to, subject, body, replyTo }, ... ], the body rendered: the outbox keeps the finished mail
 		 *	@param		string		$about				What the warnings name, "the mail about ..." or "the mails about ..."
 		 *	@param		bool			$many					Whether $about is in the plural
 		 *	@param		string		$key					'<key of the feature>/<what>' to make a second call with the same mails the same mails (\Nino\Mail::queue()); with several mails each gets -<n> after it; '' for none
-		 *	@param		string		$kind					\Nino\Mail::CLIENT, SYSTEM or TEST: whose cap of the hour the mails count against
+		 *	@param		string		$kind					\Nino\Mail::CLIENT, SYSTEM, TEST, VOID or OWNER: whose cap the mails count against, see above
+		 *	@param		array|null	&$ids					(reference) Gets the id of the outbox of each mail, in the order of $mails: the id (16 hex digits) of a mail the outbox took - a mail that was taken before under the same key and is the same mail answers its id again -, '' of a mail
+		 *																		it did not take and of one the call did not come to (the cap refused one before it); a list as long as $mails. What stood in it is gone. A caller that has no use for it passes none
 		 *
 		 *	@return 	int|string								How many mails the outbox took; 'limit' where the cap refused one
 		 */
-		public static function deliver( array &$appData, array $mails, string $about, bool $many = false, string $key = '', string $kind = \Nino\Mail::CLIENT ): int|string {
+		public static function deliver( array &$appData, array $mails, string $about, bool $many = false, string $key = '', string $kind = \Nino\Mail::CLIENT, ?array &$ids = null ): int|string {
 
 			$taken = 0;
+			$ids = array_fill( 0, count( $mails ), '' );
 
 			foreach( array_values( $mails ) as $at => $mail ) {
 
 				$id = \Nino\Mail::queue( $appData, is_array( $mail ) === true ? $mail : [], $kind, $key === '' ? '' : ( count( $mails ) > 1 ? $key. '-'. $at : $key ) );
 
 				if( $id !== '' ) {
+					$ids[$at] = $id;
 					$taken++;
 					continue;
 				}

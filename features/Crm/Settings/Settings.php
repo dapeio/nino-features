@@ -70,8 +70,9 @@ namespace Nino\Modules\Crm {
 		 *	The description of a key: package (the key of the feature that enters it, see Register::package()), key (lower case words of letters and digits joined by underscores, at most 40 characters), default (a string), clean (what checks a value: a callable ( string $key, string $value ): string|array that
 		 *	gets the value as text, trimmed, and answers the text to store, or [ 'value:<key>' ] or [ 'format:<key>' ] for a value that fails; none for a read_only key), read_only (the module keeps the key itself, a post never
 		 *	writes it; false), host (the key holds a host: it may be neither the website's nor another host key's; false), written (a callable ( array &$appData, string $value, bool $changed ): void that is called after the key was
-		 *	written and before the hook '/crm/settings/changed' is told; none), refusal (the code the API of the settings answers with for a value that fails; none: the one it has for all), before (a key of the core: the key stands
-		 *	in front of it in all(); none: at the end) and rank (the order of the keys that stand in front of the same key, 500 by default, then the order they were entered in). A key of the core, a key another package has, a key
+		 *	written and before the hook '/crm/settings/changed' is told; none), refusal (the code the API of the settings answers with for a value that fails; none: the one it has for all), before (a key the key stands in front of in all(): a key of the core, a key of the package itself or a key of another package - a position and no dependence: the order does not depend on the order
+		 *	the packages enter themselves in, and a key that is not entered - the package that has it is off or removed - or one that is part of a ring of keys that stand in front of each other puts the key at the end, with no refusal and no
+		 *	warning - a key that stands in front of itself is refused; none: at the end) and rank (the order of the keys that stand in front of the same key, 500 by default, then the key of the package, then the key). A key of the core, a key another package has, a key
 		 *	with a description that is none or with a field the description does not have, and a callable that is none are refused, and none of the list is entered then. The same list again is as good as the first time. Callables are given as [ class, method ]
 		 *
 		 *	@param		array 		&$appData
@@ -93,11 +94,12 @@ namespace Nino\Modules\Crm {
 					'clean' => static function( mixed $clean ) use ( &$appData ): bool { return $clean === null || Register::callable( $appData, $clean, 2 ); },
 					'written' => static function( mixed $written ) use ( &$appData ): bool { return $written === null || Register::callable( $appData, $written, 3, [ 0 ] ); },
 					'refusal' => static fn( mixed $code ): bool => $code === null || ( is_string( $code ) === true && preg_match( '/^[a-z][a-z0-9_]*$/D', $code ) === 1 ),
-					'before' => static fn( mixed $before ): bool => $before === null || ( is_string( $before ) === true && isset( self::DEFAULTS[$before] ) === true ),
+					'before' => static fn( mixed $before ): bool => $before === null || Register::word( $before, 40, '_' ),
 					'rank' => static fn( mixed $rank ): bool => is_int( $rank ),
 				],
 				'refuse' => static fn( array $spec ): string => match( true ) {
 					isset( self::DEFAULTS[$spec['key']] ) === true => 'key of the core',
+					$spec['before'] === $spec['key'] => 'before',
 					$spec['read_only'] === false && $spec['clean'] === null => 'clean',
 					default => '',
 				},
@@ -111,7 +113,9 @@ namespace Nino\Modules\Crm {
 		}
 
 		/**
-		 *	The keys with their defaults: the keys of the core, and the keys of the packages each in front of the key of the core it names (or at the end), by rank
+		 *	The keys with their defaults: the keys of the core, and the keys of the packages each in front of the key it names - a key of the core, of the package itself or of another package - or at the end, by rank.
+		 *	A key stands in front of the key it names wherever that stands: the keys that stand in front of a key of a package go in front of it as they go in front of a key of the core, so that the order is the same
+		 *	whichever package entered itself first: keys that stand in front of the same key go by their rank, then by the key of their package, then by their own key - an order that is the same in every request and has nothing of the order of the init()s in it. A key whose anchor is not entered and a key in a ring of keys that stand in front of each other have no anchor: they go to the end by the same order, and the keys that stand in front of them stand in front of them there
 		 *
 		 *	@param		array 		&$appData
 		 *
@@ -124,27 +128,61 @@ namespace Nino\Modules\Crm {
 			if( $entered === [] )
 				return self::DEFAULTS;
 
+			// Where a key stands: in front of a key of the core or of an entered key, else at the end
+			$anchor = [];
+
+			foreach( $entered as $key => $spec ) {
+
+				$before = (string) $spec['before'];
+				$anchor[(string) $key] = isset( self::DEFAULTS[$before] ) === true || isset( $entered[$before] ) === true ? $before : '';
+			}
+
+			// A ring: the anchors, followed from a key, lead back to it. Its keys have none
+			$ring = [];
+
+			foreach( array_keys( $anchor ) as $key ) {
+
+				$at = (string) $key;
+
+				for( $step = 0; $step <= count( $anchor ) && isset( $anchor[$at] ) === true && $anchor[$at] !== ''; $step++ ) {
+
+					$at = $anchor[$at];
+
+					if( $at === (string) $key ) {
+						$ring[] = (string) $key;
+						break;
+					}
+				}
+			}
+
+			foreach( $ring as $key )
+				$anchor[$key] = '';
+
 			$stand = [];
 
 			foreach( $entered as $key => $spec )
-				$stand[(string) $spec['before']][] = [ $spec['rank'], $spec[Register::SEQ], (string) $key, $spec['default'] ];
+				$stand[$anchor[(string) $key]][] = [ $spec['rank'], (string) $spec['package'], (string) $key, $spec['default'] ];
 
 			foreach( $stand as &$list )
-				usort( $list, static fn( array $a, array $b ): int => [ $a[0], $a[1] ] <=> [ $b[0], $b[1] ] );
+				usort( $list, static fn( array $a, array $b ): int => [ $a[0], $a[1], $a[2] ] <=> [ $b[0], $b[1], $b[2] ] );
 
 			unset( $list );
 			$all = [];
 
-			foreach( self::DEFAULTS as $key => $default ) {
+			// A key goes in after the keys that stand in front of it, each of them after its own
+			$put = static function( string $key, string $default ) use ( &$put, &$all, $stand ): void {
 
 				foreach( $stand[$key] ?? [] as [ , , $entry, $value ] )
-					$all[$entry] = $value;
+					$put( $entry, $value );
 
 				$all[$key] = $default;
-			}
+			};
+
+			foreach( self::DEFAULTS as $key => $default )
+				$put( $key, $default );
 
 			foreach( $stand[''] ?? [] as [ , , $entry, $value ] )
-				$all[$entry] = $value;
+				$put( $entry, $value );
 
 			return $all;
 		}
@@ -199,7 +237,7 @@ namespace Nino\Modules\Crm {
 			// Read once for the request: a page asks for a setting at every file, document and project it draws, and a write drops what was kept
 			return (array) Db::kept( $appData, 'settings', 'all', static function() use ( &$appData ): array {
 
-				$stored = array_column( Db::rows( $appData, 'SELECT key, value FROM settings' ), 'value', 'key' );
+				$stored = array_column( Db::rows( $appData, 'SELECT key, value FROM settings WHERE instr( key, \'.\' ) = 0' ), 'value', 'key' );
 				$all = [];
 
 				foreach( self::defaults( $appData ) as $key => $default )
@@ -308,6 +346,11 @@ namespace Nino\Modules\Crm {
 		 *	@return 	string|null								The value, '' where the setting holds nothing or there is no database of the core's to read (none yet, or another file); null where there is one and it could not be read - it is locked past the wait, or damaged
 		 */
 		public static function readOrNull( array &$appData, string $key, int $wait = self::SELLER_WAIT ): ?string {
+
+			// A key of a setting is a word with no dot: the rows with a dot - the journals of the core - are no setting and are not read
+			if( Register::word( $key, 40, '_' ) === false )
+				return '';
+
 
 			$file = \Nino\Filesystem::path( $appData, Db::FILE );
 
@@ -463,6 +506,18 @@ namespace Nino\Modules\Crm {
 		public static function mayShare( string $a, string $b ): bool {
 
 			return in_array( [ $a, $b ], [ [ 'crm_host', 'app_host' ], [ 'app_host', 'crm_host' ] ], true );
+		}
+
+		/**
+		 *	Let go of what the request read: the reader that only reads and its tries are made again at the next question - after the file was written by another way than the connection of the request, a restore
+		 *
+		 *	@param		array 		&$appData
+		 *
+		 *	@return 	void
+		 */
+		public static function release( array &$appData ): void {
+
+			unset( $appData[self::READERS], $appData[self::READER_AT], $appData[self::TRIED] );
 		}
 
 		/**

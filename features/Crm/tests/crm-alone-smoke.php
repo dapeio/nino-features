@@ -266,6 +266,11 @@ try {
 	[ $status, $overview ] = aloPost( $where, $crm, 'crm/overview' );
 	check( 'the overview answers with what the core knows: no part of a package, no need of one', $status === 200 && (array) ( $overview['packages'] ?? [] ) === [] && (array) ( $overview['needs'] ?? [] ) === [] );
 
+	[ $status, $card ] = aloPost( $where, $crm, 'crm-clients/get', [ 'id' => $clientId ] );
+	[ $listed, $list ] = aloPost( $where, $crm, 'crm-clients/list' );
+	check( 'with no package the card of a client and the list of the clients say nothing of one: packages is an empty object - not a list - in the card and in every row, the fields of the core are as they were, and nobody is asked for a part', $status === 200 && $listed === 200 && json_encode( $card['client']['packages'] ?? null ) === '{}' && $card['client']['name'] === 'Ada Example' && $card['client']['number'] === $number
+		&& count( $list['clients'] ) === 1 && json_encode( $list['clients'][0]['packages'] ?? null ) === '{}' && $list['clients'][0]['id'] === $clientId && \Nino\Callbacks::registered( $a, \Nino\Modules\Crm\Clients::VIEW ) === [] && \Nino\Callbacks::registered( $a, \Nino\Modules\Crm\Clients::VIEWS ) === [] && ninoWarnings() === [] );
+
 	$names = array_keys( \Nino\Modules\Crm\Api::actions( $a ) );
 	$late = array_values( array_filter( $names, static fn( string $name ): bool => str_contains( $name, 'delete' ) === true || str_contains( $name, 'wipe' ) === true ) );
 	$first = array_values( array_diff( $names, $late ) );
