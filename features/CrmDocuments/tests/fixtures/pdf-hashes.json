@@ -1,0 +1,136 @@
+{
+ "offer": {
+  "number": "A-2026-0001",
+  "net": 103998,
+  "vat": 19280,
+  "gross": 123278,
+  "pdf": [
+   1639,
+   "04d42f4ccccad705ab98c8ab73f44295dfc26e13844ddc1c92f1f67196b0f793"
+  ],
+  "xml": null,
+  "lacks": []
+ },
+ "contract": {
+  "number": "",
+  "net": 0,
+  "vat": 0,
+  "gross": 0,
+  "pdf": [
+   1523,
+   "204742c4660e0a998681a14cc7f0cd821183afb6fe569d7a5de7ed9b01974685"
+  ],
+  "xml": null,
+  "lacks": []
+ },
+ "invoice": {
+  "number": "R-2026-0001",
+  "net": 103001,
+  "vat": 19091,
+  "gross": 122092,
+  "pdf": [
+   1781,
+   "260b8c617742889a5f06493f14b02ec4548fdd0bdcf0c5ec0f8b872487086407"
+  ],
+  "xml": [
+   10478,
+   "b4f82f470c01c1a8b968a40a7db8b4c1a07d626b5b99e393a25385394631cb73"
+  ],
+  "lacks": []
+ },
+ "credit-one": {
+  "number": "G-2026-0001",
+  "net": -20003,
+  "vat": -3801,
+  "gross": -23804,
+  "pdf": [
+   1641,
+   "58a8c75e18819b252e12a7f3b840b01f08462dfe4507014f98a9e091fa8e2f6e"
+  ],
+  "xml": [
+   7896,
+   "5342a040a979c02390c743e0e85860e9dd4bea0db27e94d7989d1c9043cf39b7"
+  ],
+  "lacks": []
+ },
+ "credit-two": {
+  "number": "G-2026-0002",
+  "net": -82998,
+  "vat": -15290,
+  "gross": -98288,
+  "pdf": [
+   1703,
+   "5e447975a2325209d4d715d01161ae189110939cd009834ffaa0b1f7dbef7209"
+  ],
+  "xml": [
+   9392,
+   "41eb414b90e7bc40b1d38337a8f62feefc5967fabac514ee5564c8157423fea0"
+  ],
+  "lacks": []
+ },
+ "private": {
+  "number": "R-2026-0002",
+  "net": 4950,
+  "vat": 941,
+  "gross": 5891,
+  "pdf": [
+   1554,
+   "28dacc16d1066fa019cb9ef7caddc5acf596a06b3625b5c872a952471a484ae2"
+  ],
+  "xml": null,
+  "lacks": []
+ },
+ "reverse": {
+  "number": "R-2026-0003",
+  "net": 100000,
+  "vat": 0,
+  "gross": 100000,
+  "pdf": [
+   1579,
+   "6bc9f7784798c39dce07db867b84457799ccb422d29101c5696fc8faa8d7b0d0"
+  ],
+  "xml": null,
+  "lacks": [
+   "reverse_charge"
+  ]
+ },
+ "privacy": {
+  "number": "",
+  "net": 0,
+  "vat": 0,
+  "gross": 0,
+  "pdf": [
+   1114,
+   "5202b9f8bc2b9e6cf90ae2b28eb7af3a427795455c784e5fe08d1f12ee67ea63"
+  ],
+  "xml": null,
+  "lacks": []
+ },
+ "information": {
+  "number": "",
+  "net": 0,
+  "vat": 0,
+  "gross": 0,
+  "pdf": [
+   1094,
+   "910f78ed2e0ccc75e08a68e39878524fe13bfc3ce06a22907889d99eb1fe7567"
+  ],
+  "xml": null,
+  "lacks": []
+ },
+ "small": {
+  "number": "R-2026-0004",
+  "net": 18000,
+  "vat": 0,
+  "gross": 18000,
+  "pdf": [
+   1514,
+   "d8891cd1382c49ae165b936d9d34c5afe2d75e4e536d31093082397dbb135c7b"
+  ],
+  "xml": [
+   6620,
+   "e530a0007fe59189c8bb84b0a94da1a4ca6728b8b9636c1c6efa44bb9161429c"
+  ],
+  "lacks": []
+ }
+}
