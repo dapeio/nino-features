@@ -1,0 +1,48 @@
+/* The screens of the PDF templates in the surface of the CRM: the editor of a template (its blocks as cards, the fields of a block), the text fields with the menu of the placeholders, the picture of the layout and the list of
+   the templates and of the text blocks as cards on the phone. Only what the style sheet of the surface does not have; its tokens (colours, radius, mono font) are its own, so that the dark scheme follows. Written from the phone up. */
+.tagline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; flex: 1 1 100% }
+.tagline input { flex: 1 1 220px; min-width: 0; height: 32px; border: 1px solid var(--control); border-radius: var(--radius); background: var(--surface); color: inherit; font: inherit; font-size: 15px; font-weight: 600; padding: 0 8px }
+.tagline select { height: 32px; max-width: 100%; border: 1px solid var(--control); border-radius: var(--radius); background: var(--surface); color: inherit; font: inherit; padding: 0 6px }
+.tagline input.err, .tagline select.err { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad) }
+.blocks { display: flex; flex-direction: column; gap: 8px }
+.block { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px }
+.block.err { border-color: var(--bad) }
+.block .bmain { min-width: 0; display: flex; flex-direction: column; gap: 8px }
+.block .kind { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--fg-3) }
+.block .tag { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--fg-2); background: var(--surface-2); border-radius: 10px; padding: 1px 8px }
+.block .ctl { display: flex; flex-direction: row; gap: 4px }
+.block .ctl button { width: 32px; height: 32px; border: 1px solid var(--control); border-radius: var(--radius); background: var(--surface); color: var(--fg-2); cursor: pointer; line-height: 1 }
+.block .ctl button:hover:not([disabled]) { background: var(--surface-2); color: var(--fg) }
+.block .ctl button.del:hover { color: var(--bad) }
+.block .ctl button[disabled] { opacity: .35; cursor: default }
+.block .berr:empty { display: none }
+.block .state-note { margin: 0 }
+.sig { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 10px }
+.sf { display: flex; flex-direction: column; gap: 3px; min-width: 0 }
+.sf > span { color: var(--fg-3); font-size: 12px }
+.sf input[type="text"], .sf select { width: 100%; height: 32px; border: 1px solid var(--control); border-radius: var(--radius); background: var(--surface); color: inherit; font: inherit; padding: 0 8px }
+.check.sf { flex-direction: row; align-items: center; gap: 8px; margin: 0; min-height: 32px }
+.check.sf > span { color: var(--fg) }
+.check.sf input { width: 24px; height: 24px; margin: 0; flex: none }
+.addblock { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 }
+.addblock .menu .list { right: auto; left: 0 }
+textarea.code, .textbox textarea { width: 100%; border: 1px solid var(--control); border-radius: var(--radius); background: var(--surface); color: inherit; font: 12.5px/1.45 var(--mono); padding: 6px 8px; resize: vertical; min-height: 90px }
+textarea.code.err, textarea.sheet.err { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad) }
+textarea.sheet { white-space: pre; min-height: 220px; border-color: var(--control) }
+#pdf-templates button.th { min-width: 24px }
+.textbox .tools { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 6px }
+.textbox .menu .list, .tools .menu .list { right: auto; left: 0 }
+input.mm { width: 64px }
+.pic { display: inline-block; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; margin-bottom: 8px }
+.pic img { display: block; max-width: 100%; max-height: 120px }
+input.file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none }
+label.btn:has(+ input.file:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px }
+#legend td { white-space: normal; overflow-wrap: anywhere; height: auto; padding-block: 5px }
+#legend table { table-layout: auto }
+.tbl.cards[data-cards="pdf-templates"] tbody tr { grid-template-columns: minmax(0, 1fr) fit-content(60%); grid-template-areas: "id state" "date date" }
+.tbl.cards[data-cards="pdf-blocks"] tbody tr { grid-template-columns: minmax(0, 1fr); grid-template-areas: "id" "sub" }
+@media (min-width: 768px) {
+	.tagline { flex: 1 1 360px }
+	.block { grid-template-columns: minmax(0, 1fr) auto }
+	.block .ctl { flex-direction: column }
+}
