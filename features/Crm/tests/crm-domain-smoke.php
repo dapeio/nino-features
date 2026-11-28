@@ -43,6 +43,33 @@ function domCopy( string $from, string $to ): void {
 }
 
 /**
+ *	Give up the right to write a folder: root becomes nobody, and an account that is not root - it cannot become another one - takes the write bits from the folder and from all that is in it,
+ *	so that its own files refuse a write the way the files of another account do. The suite gives the modes back when the process has ended
+ *
+ *	@param		string		$folder
+ *
+ *	@return 	void
+ */
+function domGiveUp( string $folder ): void {
+
+	if( function_exists( 'posix_setuid' ) === true && posix_getuid() === 0 ) {
+		posix_setgid( 65534 );
+		posix_setuid( 65534 );
+
+		return;
+	}
+
+	$paths = [ $folder ];
+
+	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $folder, \FilesystemIterator::SKIP_DOTS ), \RecursiveIteratorIterator::SELF_FIRST ) as $item )
+		$paths[] = (string) $item->getPathname();
+
+	foreach( $paths as $path )
+		if( is_link( $path ) === false )
+			chmod( $path, fileperms( $path ) & 0555 );
+}
+
+/**
  *	Take a folder of the suite away with what is in it
  *
  *	@param		string		$folder
@@ -1167,15 +1194,12 @@ if( in_array( $argv[1] ?? '', [ 'clients-worker', 'writer-worker', 'holder-worke
 	exit( 0 );
 }
 
-/*	A process that may read the files and take the locks, and may not write them: what the second part says of a disk it cannot write. Root gives up its rights	*/
+/*	A process that may read the files and take the locks, and may not write them: what the second part says of a disk it cannot write. Root becomes nobody; an account that is not
+	root - the runner of the CI is none - takes the write bits from its own files	*/
 if( ( $argv[1] ?? '' ) === 'nobody-worker' ) {
 
 	$worker = domRequest( (string) $argv[3] );
-
-	if( function_exists( 'posix_setuid' ) === true && posix_getuid() === 0 ) {
-		posix_setgid( 65534 );
-		posix_setuid( 65534 );
-	}
+	domGiveUp( (string) $argv[3] );
 
 	$warnings = [];
 	set_error_handler( static function( int $level, string $message ) use ( &$warnings ): bool {
@@ -2653,10 +2677,22 @@ $errors = ninoErrors( static function() use ( &$a, $id, &$answer ): void { $answ
 check( 'an entry of the logbook that the database refuses is said: "write", and a warning that names the kind and the source and nothing of the client - as the account the server runs as', $answer === 'write' && count( $errors ) === 1 && $errors[0][0] === E_USER_WARNING && str_contains( $errors[0][1], 'probe-happened' ) === true && str_contains( $errors[0][1], 'Ada' ) === false );
 \Nino\Modules\Crm\Db::exec( $a, 'DROP TRIGGER logbook_refuses' );
 
+// Where the suite is not root the process takes the write bits from the files of the project: the modes are kept here and given back when it has ended
+$modes = [ $where => fileperms( $where ) & 07777 ];
+
+foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $where, \FilesystemIterator::SKIP_DOTS ), \RecursiveIteratorIterator::SELF_FIRST ) as $item )
+	if( $item->isLink() === false )
+		$modes[(string) $item->getPathname()] = $item->getPerms() & 07777;
+
 $denied = proc_open( [ PHP_BINARY, __FILE__, 'nobody-worker', $features, $where, (string) $id ], [ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ], $pipes2, null, [ 'NINO_ROOT' => $root ] + getenv() );
 $report = json_decode( (string) stream_get_contents( $pipes2[1] ), true );
 proc_close( $denied );
-check( 'as an account that may read the files and not write them - where root would write all the same - the write is refused and said: the entry of the logbook is "write" with a warning, a client is not made (a \PDOException the endpoint answers 500 crm_database), nothing of the client is in what is said', is_array( $report ) === true && $report['uid'] !== 0 && $report['logbook'] === 'write' && $report['warnings'] === 1 && $report['client'] === 'refused' && $report['personal'] === false
+
+foreach( $modes as $path => $mode )
+	if( file_exists( $path ) === true )
+		chmod( $path, $mode );
+
+check( 'as an account that may read the files and not write them - nobody where the suite is root, the owner of files with no write bit where it is not - the write is refused and said: the entry of the logbook is "write" with a warning, a client is not made (a \PDOException the endpoint answers 500 crm_database), nothing of the client is in what is said', is_array( $report ) === true && $report['uid'] !== 0 && $report['logbook'] === 'write' && $report['warnings'] === 1 && $report['client'] === 'refused' && $report['personal'] === false
 	|| ( function_exists( 'posix_setuid' ) === false && is_array( $report ) === true ) );
 check( 'the client the refused account tried to make is not there, and the entry is not either', domCount( $a, 'clients', 'name = \'Never Written\'' ) === 0 && domCount( $a, 'logbook', 'kind = \'probe-happened\'' ) === 0 );
 

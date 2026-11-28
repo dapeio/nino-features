@@ -60,6 +60,33 @@ function crmRemove( string $folder ): void {
 	rmdir( $folder );
 }
 
+/**
+ *	Give up the right to write a folder: root becomes nobody, and an account that is not root - it cannot become another one - takes the write bits from the folder and from all that is in it,
+ *	so that its own files refuse a write the way the files of another account do. The suite gives the modes back when the process has ended
+ *
+ *	@param		string		$folder
+ *
+ *	@return 	void
+ */
+function crmGiveUp( string $folder ): void {
+
+	if( function_exists( 'posix_setuid' ) === true && posix_getuid() === 0 ) {
+		posix_setgid( 65534 );
+		posix_setuid( 65534 );
+
+		return;
+	}
+
+	$paths = [ $folder ];
+
+	foreach( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $folder, \FilesystemIterator::SKIP_DOTS ), \RecursiveIteratorIterator::SELF_FIRST ) as $item )
+		$paths[] = (string) $item->getPathname();
+
+	foreach( $paths as $path )
+		if( is_link( $path ) === false )
+			chmod( $path, fileperms( $path ) & 0555 );
+}
+
 /*	The features directory of the suite: a folder of its own, made for the run, with a copy of the feature and the package of the suite (tests/fixtures/CrmProbe) - never the
 	folder of the catalogue, which the probe does not belong to. The processes the suite starts are told it	*/
 if( ( $argv[1] ?? '' ) !== '' && str_ends_with( (string) $argv[1], '-worker' ) === true )
@@ -123,6 +150,9 @@ function crmRequest( string $sandbox, bool $init = true, array $set = [] ): arra
 	$appData['/nino/dir']											= '';
 	$appData['/nino/modules']									= (array) ( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'] ?? [] );
 	$appData['./nino/test/sandbox']						= $sandbox;
+
+	// The suite makes more manual backups than a project keeps: the kernel keeps thirty here, so that the archive a test made is there when the test reads it
+	$appData['/nino/admin/backups-manual']		= 30;
 	$appData									= $set + $appData;
 
 	// The shortcodes of the kernel - [imagevalues] draws the logo of the band - are registered as the boot of a request does it
@@ -520,11 +550,9 @@ if( in_array( $argv[1] ?? '', [ 'connect-worker', 'numbers-worker', 'nobody-work
 		exit( 0 );
 	}
 
-	// A process that may read the files and take the locks, and may not write them: what the status says of a disk it cannot write. Root gives up its rights
-	if( function_exists( 'posix_setuid' ) === true && posix_getuid() === 0 ) {
-		posix_setgid( 65534 );
-		posix_setuid( 65534 );
-	}
+	// A process that may read the files and take the locks, and may not write them: what the status says of a disk it cannot write. Root becomes nobody; an account that is not root -
+	// the runner of the CI is none - takes the write bits from its own files
+	crmGiveUp( (string) $argv[3] );
 
 	$errors = [];
 	set_error_handler( static function( int $level, string $message ) use ( &$errors ): bool {
@@ -818,8 +846,13 @@ foreach( $walk as $path )
 	chmod( $path, is_dir( $path ) === true ? 0755 : 0644 );
 
 $nobody = crmFinish( crmStart( 'nobody-worker', $readOnlyDir ) );
+
+// Where the suite is not root the process took the write bits from the files: they are given back, so that the folder can be taken away
+foreach( $walk as $path )
+	chmod( $path, is_dir( $path ) === true ? 0755 : 0644 );
+
 $said = json_decode( $nobody[1], true );
-check( 'a process that cannot write the disk - it is nobody and the files are another\'s - reads the status without a crash: the line of the writing says so, the database is the core\'s, and a write is a failure of the database',
+check( 'a process that cannot write the disk - it is nobody and the files are another\'s, or it is the owner and the files have no write bit - reads the status without a crash: the line of the writing says so, the database is the core\'s, and a write is a failure of the database',
 	$nobody[0] === 0 && is_array( $said ) === true && ( $said['uid'] ?? 0 ) !== 0 && $said['states']['writable'] === 'unwritable' && $said['states']['database'] === 'ok' && $said['write'] === 'refused' && $said['errors'] === [] );
 crmRemove( $readOnlyDir );
 }
