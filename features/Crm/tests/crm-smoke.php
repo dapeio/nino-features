@@ -2843,6 +2843,8 @@ $goodKey = (string) $good['key'];
 
 // A damage of an index is one that the copy has as the file has: VACUUM INTO carries the trees of the indexes over as they are, and PRAGMA quick_check does not read an index against its table. The schema of the index is
 // changed under the file (writable_schema) so that the entries it holds are not the ones its table asks for: wrong ones, none for some rows, or a key twice in a unique index
+// The index that lacks rows stays a partial one, with a condition that asks for all sixty rows where thirty have an entry: a newer SQLite (seen with the one of PHP 8.4.28 on Ubuntu 26.04, not with 3.45.1) counts the
+// entries of an index that has no condition in PRAGMA quick_check as well, and would show this damage to the check of the file - the entries of a partial index it counts in PRAGMA integrity_check alone
 $bkIndex = static function( string $file, int $form ): void {
 
 	$pdo = new \PDO( 'sqlite:'. $file, null, null, [ \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION ] );
@@ -2857,7 +2859,7 @@ $bkIndex = static function( string $file, int $form ): void {
 		$pdo->exec( 'CREATE INDEX bk_index_i ON bk_index ( b )' );
 
 	$pdo->exec( 'PRAGMA writable_schema = ON' );
-	$pdo->exec( 'UPDATE sqlite_schema SET sql = '. $pdo->quote( [ 1 => 'CREATE INDEX bk_index_i ON bk_index ( b )', 2 => 'CREATE INDEX bk_index_i ON bk_index ( a )', 3 => 'CREATE UNIQUE INDEX bk_index_i ON bk_index ( b )' ][$form] ). ' WHERE name = \'bk_index_i\'' );
+	$pdo->exec( 'UPDATE sqlite_schema SET sql = '. $pdo->quote( [ 1 => 'CREATE INDEX bk_index_i ON bk_index ( b )', 2 => 'CREATE INDEX bk_index_i ON bk_index ( a ) WHERE id <= 60', 3 => 'CREATE UNIQUE INDEX bk_index_i ON bk_index ( b )' ][$form] ). ' WHERE name = \'bk_index_i\'' );
 };
 
 foreach( [ 'an index has entries that are none of its table' => static function( string $file ) use ( $bkIndex ): void { $bkIndex( $file, 1 ); },

@@ -2835,6 +2835,9 @@ check( 'the one grip on the shell of the workbench is one class: only Values nam
 		}
 	}
 
+	// The directory hands its files over in the order the disk keeps them, which is not the same on every system
+	sort( $holders );
+
 	return $holders === [ 'Admin/Admin.php', 'Values/Values.php' ] && $panel === [ '\\Nino\\Admin\\Admin::guardPerm' => 3, '\\Nino\\Admin\\Admin::postData' => 2, '\\Nino\\Admin\\Admin::postString' => 3, '\\Nino\\Admin\\Panels::relative' => 2 ];
 } )() );
 check( 'every sentence of an error the core says is in both languages, with the same keys and a sentence for every code the sources name', ( static function() use ( $source ): bool {
